@@ -535,59 +535,16 @@ vlib_bytes_left_in_buffer (vlib_buffer_t *b, void *obj)
   return b->current_length - (((u8 *) obj - b->data) - b->current_data);
 }
 
-always_inline void *
-ip6_ext_next_header_s (ip_protocol_t cur_nh, void *hdr, u32 max_offset,
-		       u32 *offset, int *res_nh, bool *last)
-{
-  u16 hdrlen = 0;
-  int new_nh = -1;
-  void *res = 0;
-  if (ip6_ext_hdr (cur_nh))
-    {
-      if (*offset + sizeof (ip6_ext_header_t) > max_offset)
-	return 0;
-      hdrlen = ip6_ext_header_len (hdr);
-      new_nh = ((ip6_ext_header_t *) hdr)->next_hdr;
-      res = hdr + hdrlen;
-    }
-  else if (cur_nh == IP_PROTOCOL_IPV6_FRAGMENTATION)
-    {
-      if (*offset + sizeof (ip6_frag_hdr_t) > max_offset)
-	return 0;
-      ip6_frag_hdr_t *frag_hdr = (ip6_frag_hdr_t *) hdr;
-      if (ip6_frag_hdr_offset (frag_hdr) > 0)
-	*last = true;
-      new_nh = frag_hdr->next_hdr;
-      hdrlen = sizeof (ip6_frag_hdr_t);
-      res = hdr + hdrlen;
-    }
-  else if (cur_nh == IP_PROTOCOL_IPSEC_AH)
-    {
-      if (*offset + sizeof (ip6_ext_header_t) > max_offset)
-	return 0;
-      new_nh = ((ip6_ext_header_t *) hdr)->next_hdr;
-      hdrlen = ip6_ext_authhdr_len (hdr);
-      res = hdr + hdrlen;
-    }
-  else
-    {
-      ;
-    }
-
-  if (res && (*offset + hdrlen) > max_offset)
-    {
-      return 0;
-    }
-  *res_nh = new_nh;
-  *offset += hdrlen;
-  return res;
-}
-
 #define IP6_EXT_HDR_MAX	      (4)   /* Maximum number of headers */
 #define IP6_EXT_HDR_MAX_DEPTH (256) /* Maximum header depth */
 typedef struct
 {
   int length;
+  bool complete;
+  bool term_is_l4;
+  bool l4_fits;
+  u16 term_protocol;
+  u16 term_offset;
   struct
   {
     u16 protocol;
@@ -596,55 +553,170 @@ typedef struct
 } ip6_ext_hdr_chain_t;
 
 /*
- * Find ipv6 extension header within ipv6 header within
- * whichever is smallest of buffer or IP6_EXT_HDR_MAX_DEPTH.
- * The complete header chain must be in first buffer.
+ * Walk the IPv6 extension header chain from ip, bounded by valid_end
+ * bytes from ip. A header is recorded only when it fits entirely within
+ * valid_end. The scan stops at IP6_EXT_HDR_MAX_DEPTH bytes, but a header
+ * that starts before that limit is still recorded when it fits within
+ * valid_end.
  *
- * The complete header chain (up to the terminating header) is
- * returned in res.
- * Returns the index of the find_hdr_type if > 0. Otherwise
- * it returns the index of the last header.
+ * When the walk reaches a terminating header, complete is true.
+ * term_protocol and term_offset describe it: an L4 header, or the
+ * protocol named by a non-first fragment header. term_is_l4 is true only
+ * for an L4 header. Otherwise complete is false, and term_protocol and
+ * term_offset describe the header that did not fit when the walk stopped
+ * there; they are zero when the walk stopped at the depth or entry
+ * limit.
+ *
+ * Returns the index of find_hdr_type if it is in the chain, otherwise
+ * the index of the last extension header, or -1 when no extension
+ * header was recorded. The found header is valid even when the walk did
+ * not complete.
  */
 always_inline int
-ip6_ext_header_walk (vlib_buffer_t *b, ip6_header_t *ip, int find_hdr_type,
-		     ip6_ext_hdr_chain_t *res)
+ip6_ext_header_walk_bounded (const ip6_header_t *ip, u32 valid_end, int find_hdr_type,
+			     ip6_ext_hdr_chain_t *res)
 {
+  const u8 *p = (const u8 *) ip;
+  u8 next_proto = ip->protocol;
+  u32 offset = sizeof (ip6_header_t);
+  u32 scan_end = clib_min (valid_end, IP6_EXT_HDR_MAX_DEPTH);
   int i = 0;
   int found = -1;
-  void *next_header = ip6_next_header (ip);
-  int next_proto = ip->protocol;
-  res->length = 0;
-  u32 n_bytes_this_buffer =
-    clib_min (vlib_bytes_left_in_buffer (b, ip), IP6_EXT_HDR_MAX_DEPTH);
-  u32 max_offset = clib_min (n_bytes_this_buffer,
-			     sizeof (ip6_header_t) +
-			       clib_net_to_host_u16 (ip->payload_length));
-  u32 offset = sizeof (ip6_header_t);
 
-  if ((ip6_ext_header_len_s (ip->protocol, next_header) + offset) > max_offset)
+  res->length = 0;
+  res->complete = false;
+  res->term_is_l4 = false;
+  res->l4_fits = true;
+  res->term_protocol = 0;
+  res->term_offset = 0;
+
+  while (offset <= scan_end && i < IP6_EXT_HDR_MAX)
     {
-      return -1;
-    }
-  bool last = false;
-  while (next_header)
-    {
-      /* Move on to next header */
+      u32 hdrlen;
+
+      if (ip6_ext_hdr (next_proto))
+	{
+	  /* The length byte at offset + 1 must be readable. */
+	  if (offset + sizeof (ip6_ext_header_t) > valid_end)
+	    {
+	      res->term_protocol = next_proto;
+	      res->term_offset = offset;
+	      break;
+	    }
+	  hdrlen = ip6_ext_header_len ((void *) (p + offset));
+	}
+      else if (next_proto == IP_PROTOCOL_IPV6_FRAGMENTATION)
+	hdrlen = sizeof (ip6_frag_hdr_t);
+      else if (next_proto == IP_PROTOCOL_IPSEC_AH)
+	{
+	  if (offset + sizeof (ip6_ext_header_t) > valid_end)
+	    {
+	      res->term_protocol = next_proto;
+	      res->term_offset = offset;
+	      break;
+	    }
+	  hdrlen = ip6_ext_authhdr_len ((void *) (p + offset));
+	}
+      else
+	hdrlen = 0;
+
+      if (offset + hdrlen > valid_end)
+	{
+	  res->term_protocol = next_proto;
+	  res->term_offset = offset;
+	  break;
+	}
+
+      if (hdrlen == 0)
+	{
+	  res->complete = true;
+	  res->term_is_l4 = true;
+	  res->term_protocol = next_proto;
+	  res->term_offset = offset;
+	  break;
+	}
+
       res->eh[i].offset = offset;
       res->eh[i].protocol = next_proto;
       if (next_proto == find_hdr_type)
 	found = i;
       i++;
-      if (last)
-	break;
-      if (i >= IP6_EXT_HDR_MAX)
-	break;
-      next_header = ip6_ext_next_header_s (next_proto, next_header, max_offset,
-					   &offset, &next_proto, &last);
+
+      if (next_proto == IP_PROTOCOL_IPV6_FRAGMENTATION &&
+	  ip6_frag_hdr_offset ((const ip6_frag_hdr_t *) (p + offset)) > 0)
+	{
+	  /*
+	   * A non-first fragment carries no L4 header. Its fragment
+	   * header names the datagram's protocol; report that protocol
+	   * and the offset after the fragment header.
+	   */
+	  res->complete = true;
+	  res->term_protocol = ((const ip6_frag_hdr_t *) (p + offset))->next_hdr;
+	  res->term_offset = offset + hdrlen;
+	  break;
+	}
+
+      next_proto = ((const ip6_ext_header_t *) (p + offset))->next_hdr;
+      offset += hdrlen;
     }
+
+  /*
+   * The entry limit can stop the walk before a terminating header, but
+   * the terminating protocol needs no chain slot. Record it when the
+   * last extension header names one within the scan.
+   */
+  if (!res->complete && i == IP6_EXT_HDR_MAX && offset <= scan_end && !ip6_ext_hdr (next_proto) &&
+      next_proto != IP_PROTOCOL_IPV6_FRAGMENTATION && next_proto != IP_PROTOCOL_IPSEC_AH)
+    {
+      res->complete = true;
+      res->term_is_l4 = true;
+      res->term_protocol = next_proto;
+      res->term_offset = offset;
+    }
+
   res->length = i;
-  if (find_hdr_type < 0)
-    return i - 1;
-  return found != -1 ? found : i - 1;
+  if (found != -1)
+    return found;
+  return i > 0 ? i - 1 : -1;
+}
+
+/*
+ * Find an IPv6 extension header in the IPv6 header chain. The walk is
+ * bounded by the bytes in the first buffer and the datagram's declared
+ * length; the IP6_EXT_HDR_MAX_DEPTH limit stops the scan, not the
+ * datagram.
+ *
+ * The extension header chain is returned in res. complete reports
+ * whether the walk reached a terminating header; term_protocol and
+ * term_offset describe it, and l4_fits reports whether a terminating
+ * L4 header fits in full. When the walk stops at the depth or entry
+ * limit, term_protocol and term_offset are zero.
+ * Returns the index of find_hdr_type if it is in the chain, otherwise
+ * the index of the last extension header, or -1 when the chain has no
+ * extension header.
+ */
+always_inline int
+ip6_ext_header_walk (vlib_buffer_t *b, ip6_header_t *ip, int find_hdr_type,
+		     ip6_ext_hdr_chain_t *res)
+{
+  u32 valid_end = clib_min (vlib_bytes_left_in_buffer (b, ip),
+			    sizeof (ip6_header_t) + clib_net_to_host_u16 (ip->payload_length));
+  int walk_res = ip6_ext_header_walk_bounded (ip, valid_end, find_hdr_type, res);
+
+  /*
+   * Callers read the terminating L4 header without the tolerance for
+   * truncated fields that the bounded walk allows, so require a
+   * terminating L4 header to fit in full.
+   */
+  if (res->complete && res->term_is_l4)
+    {
+      u32 l4_len = ip6_ext_header_len_s (res->term_protocol, NULL);
+
+      if (res->term_offset + l4_len > valid_end)
+	res->l4_fits = false;
+    }
+
+  return walk_res;
 }
 
 always_inline void *
@@ -653,24 +725,45 @@ ip6_ext_header_find (vlib_main_t *vm, vlib_buffer_t *b, ip6_header_t *ip,
 {
   ip6_ext_hdr_chain_t hdr_chain;
   int res = ip6_ext_header_walk (b, ip, find_hdr_type, &hdr_chain);
-  if (res < 0)
-    return 0;
 
-  if (prev_ext_header)
+  if (res >= 0 && hdr_chain.eh[res].protocol == find_hdr_type)
     {
-      if (res > 0)
+      if (prev_ext_header)
 	{
-	  *prev_ext_header =
-	    ip6_ext_next_header_offset (ip, hdr_chain.eh[res - 1].offset);
+	  if (res > 0)
+	    *prev_ext_header = ip6_ext_next_header_offset (ip, hdr_chain.eh[res - 1].offset);
+	  else
+	    *prev_ext_header = 0;
 	}
-      else
-	{
-	  *prev_ext_header = 0;
-	}
+      return ip6_ext_next_header_offset (ip, hdr_chain.eh[res].offset);
     }
-  if (find_hdr_type == hdr_chain.eh[res].protocol)
-    return ip6_ext_next_header_offset (ip, hdr_chain.eh[res].offset);
+
+  if (hdr_chain.complete && hdr_chain.l4_fits && hdr_chain.term_protocol == find_hdr_type)
+    {
+      if (prev_ext_header)
+	*prev_ext_header =
+	  hdr_chain.length > 0 ?
+	    ip6_ext_next_header_offset (ip, hdr_chain.eh[hdr_chain.length - 1].offset) :
+	    0;
+      return ip6_ext_next_header_offset (ip, hdr_chain.term_offset);
+    }
+
   return 0;
+}
+
+/*
+ * Whether the chain contains a first-fragment header.
+ */
+always_inline bool
+ip6_ext_hdr_chain_is_first_fragment (const ip6_header_t *ip, const ip6_ext_hdr_chain_t *chain)
+{
+  int i;
+
+  for (i = 0; i < chain->length; i++)
+    if (chain->eh[i].protocol == IP_PROTOCOL_IPV6_FRAGMENTATION &&
+	0 == ip6_frag_hdr_offset ((const ip6_frag_hdr_t *) ((const u8 *) ip + chain->eh[i].offset)))
+      return true;
+  return false;
 }
 
 #endif /* included_ip6_packet_h */

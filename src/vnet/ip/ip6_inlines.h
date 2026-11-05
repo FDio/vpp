@@ -115,8 +115,8 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
  *   2. If a header with find_hdr_type > 0 protocol number is found then the
  *      offset is stored in *offset and protocol number of the header is
  *      returned.
- *   3. If find_hdr_type is not found or packet is malformed or
- *      it is a non-first fragment -1 is returned.
+ *   3. If find_hdr_type is not found, or find_hdr_type is negative and
+ *      the chain does not reach a terminating header, -1 is returned.
  */
 always_inline int
 ip6_locate_header (vlib_buffer_t *b, ip6_header_t *ip, int find_hdr_type,
@@ -124,11 +124,27 @@ ip6_locate_header (vlib_buffer_t *b, ip6_header_t *ip, int find_hdr_type,
 {
   ip6_ext_hdr_chain_t hdr_chain;
   int res = ip6_ext_header_walk (b, ip, find_hdr_type, &hdr_chain);
-  if (res >= 0)
+
+  if (find_hdr_type < 0)
+    {
+      if (!hdr_chain.complete || !hdr_chain.l4_fits)
+	return -1;
+      *offset = hdr_chain.term_offset;
+      return hdr_chain.term_protocol;
+    }
+
+  if (res >= 0 && hdr_chain.eh[res].protocol == find_hdr_type)
     {
       *offset = hdr_chain.eh[res].offset;
       return hdr_chain.eh[res].protocol;
     }
+
+  if (hdr_chain.complete && hdr_chain.l4_fits && hdr_chain.term_protocol == find_hdr_type)
+    {
+      *offset = hdr_chain.term_offset;
+      return hdr_chain.term_protocol;
+    }
+
   return -1;
 }
 
