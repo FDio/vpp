@@ -104,12 +104,17 @@ defaults:
 
 permissions:
   contents: read
-  actions: read
+  actions: read   # Needed to read local actions
+
+concurrency:
+  group: vpp-merge-maketest-${{ github.workflow }}-${{ inputs.GERRIT_PROJECT }}-${{ inputs.GERRIT_BRANCH }}-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.FDIO_NAMESPACE }}
+  cancel-in-progress: true
 
 jobs:
   merge-maketest:
     name: ${{ matrix.build_type }}_${{ matrix.os }}_${{ matrix.executor_arch }}
     runs-on:
+      # zizmor: ignore[self-hosted-runner]
       - self-hosted
       - nomad
       - fdio:arch=${{ matrix.executor_arch }}
@@ -118,6 +123,7 @@ jobs:
       - fdio:os=${{ matrix.os }}
       - fdio:workflow=${{ github.run_id }}
 
+    environment: production
     strategy:
       fail-fast: false
       matrix:
@@ -206,6 +212,8 @@ jobs:
 
       - name: Push Packages to Packagecloud
         if: ${{ always() && inputs.FDIO_NAMESPACE == 'prod' }}
+        env:
+          PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
         run: |
           set -euxo pipefail
           pkgcloud_cmd=""
@@ -218,7 +226,7 @@ jobs:
               local downloads_dir="/root/Downloads"
               local pkgcloud_acct="fdio"
 
-              echo '{"url":"https://packagecloud.io","token":"${{ secrets.PACKAGECLOUD_TOKEN }}"}' > /root/.packagecloud
+              echo "{\"url\":\"https://packagecloud.io\",\"token\":\"$PACKAGECLOUD_TOKEN\"}" > /root/.packagecloud
               distro=${distro,,} # to lowercase
               codename=${codename,,} # to lowercase
               pkgcloud_cmd="package_cloud push ${pkgcloud_acct}/${GERRIT_BRANCH/stable\//}/${distro}/${codename}/main/ "

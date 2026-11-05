@@ -113,6 +113,7 @@ jobs:
       - fdio:os=${{ matrix.os }}
       - fdio:workflow=${{ github.run_id }}
 
+    environment: production
     strategy:
       fail-fast: false
       matrix:

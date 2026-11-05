@@ -54,7 +54,7 @@ defaults:
 
 permissions:
   contents: read
-  actions: read
+  actions: read   # Needed to read local actions
 
 concurrency:
   group: ${{ github.workflow }}-${{ inputs.GERRIT_PROJECT }}-${{ inputs.GERRIT_BRANCH }}-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.FDIO_NAMESPACE }}
@@ -64,36 +64,50 @@ jobs:
   start-merge:
     name: Start Merge
     runs-on: ubuntu-latest
+    environment: production
     outputs:
       log_prefix: ${{ steps.start-time.outputs.log_prefix }}
     steps:
       - name: Start Time
         id: start-time
+        env:
+          GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+          GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+          GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+          GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+          GERRIT_EVENT_TYPE: ${{ inputs.GERRIT_EVENT_TYPE }}
         run: |
           set -euxo pipefail
           timestamp=$(date -u +%Y_%m_%d_%H%M%S_UTC)
-          branch=${{ inputs.GERRIT_BRANCH }}
+          branch="$GERRIT_BRANCH"
           branch=${branch/\//-}
-          log_prefix="gha-vpp-gerrit-patchset/merge-${branch}-${timestamp}-gerrit-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.GERRIT_PATCHSET_NUMBER}}"
+          log_prefix="gha-vpp-gerrit-patchset/merge-${branch}-${timestamp}-gerrit-$GERRIT_CHANGE_NUMBER-$GERRIT_PATCHSET_NUMBER"
           echo "log_prefix=$log_prefix" >> "$GITHUB_OUTPUT"
-          echo "Gerrit Change: ${{ inputs.GERRIT_CHANGE_URL }}"
-          echo "Gerrit Event Type: ${{ inputs.GERRIT_EVENT_TYPE }}"
+          echo "Gerrit Change: $GERRIT_CHANGE_URL"
+          echo "Gerrit Event Type: $GERRIT_EVENT_TYPE"
 
       - name: Job Details
+        env:
+          GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+          GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+          GERRIT_CHANGE_ID: ${{ inputs.GERRIT_CHANGE_ID }}
+          GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
+          GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+          GERRIT_EVENT_TYPE: ${{ inputs.GERRIT_EVENT_TYPE }}
+          FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
         run: |
           {
             echo "### Gerrit Merge Handler"
             echo
             echo "| Field | Value |"
             echo "| --- | --- |"
-            echo "| Gerrit change | ${{ inputs.GERRIT_CHANGE_URL }} |"
-            echo "| Branch | ${{ inputs.GERRIT_BRANCH }} |"
-            echo "| Gerrit Change ID | ${{ inputs.GERRIT_CHANGE_ID }} |"
-            echo "| Patchset Revision | ${{ inputs.GERRIT_PATCHSET_REVISION }} |"
-            echo "| Refspec | ${{ inputs.GERRIT_REFSPEC }} |"
-            echo "| Gerrit Event | ${{ inputs.GERRIT_EVENT_TYPE }} |"
-            echo "| Gerrit Comment | ${{ inputs.GERRIT_COMMENT }} |"
-            echo "| Namespace | ${{ inputs.FDIO_NAMESPACE }} |"
+            echo "| Gerrit change | $GERRIT_CHANGE_URL |"
+            echo "| Branch | $GERRIT_BRANCH |"
+            echo "| Gerrit Change ID | $GERRIT_CHANGE_ID |"
+            echo "| Patchset Revision | $GERRIT_PATCHSET_REVISION |"
+            echo "| Refspec | $GERRIT_REFSPEC |"
+            echo "| Gerrit Event | $GERRIT_EVENT_TYPE |"
+            echo "| Namespace | $FDIO_NAMESPACE |"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Clear Gerrit Vote
@@ -126,13 +140,16 @@ jobs:
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
       GERRIT_REFSPEC: refs/heads/${{ inputs.GERRIT_BRANCH }}
       LOG_PREFIX: ${{ needs.start-merge.outputs.log_prefix }}
-    secrets: inherit
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
   detect-docs-changes:
     name: Detect Docs Changes
     needs:
       - start-merge
     runs-on:
+      # zizmor: ignore[self-hosted-runner]
       - self-hosted
       - nomad
       - fdio:arch=x86_64
@@ -207,7 +224,9 @@ jobs:
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
       GERRIT_REFSPEC: refs/heads/${{ inputs.GERRIT_BRANCH }}
       LOG_PREFIX: ${{ needs.start-merge.outputs.log_prefix }}
-    secrets: inherit
+    secrets:
+      AWS_DOCS_ACCESS_KEY_ID: ${{ secrets.AWS_DOCS_ACCESS_KEY_ID }}
+      AWS_DOCS_SECRET_ACCESS_KEY: ${{ secrets.AWS_DOCS_SECRET_ACCESS_KEY }}
 
   final-vote:
     name: Vote
@@ -218,21 +237,27 @@ jobs:
       - merge-maketest
       - merge-docs
     runs-on: ubuntu-latest
+    environment: production
     env:
       GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
       GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
     steps:
       - name: Collect workflow results
         id: overall
+        env:
+          DOCS_CHANGED: ${{ needs.detect-docs-changes.outputs.docs_changed }}
+          MERGE_DOCS_RESULT: ${{ needs.merge-docs.result }}
+          START_MERGE_RESULT: ${{ needs.start-merge.result }}
+          MERGE_MAKETEST_RESULT: ${{ needs.merge-maketest.result }}
         run: |
           set -euxo pipefail
           docs_ok="true"
-          if [[ "${{ needs.detect-docs-changes.outputs.docs_changed }}" == "true" ]]; then
-            [[ "${{ needs.merge-docs.result }}" == "success" ]] || docs_ok="false"
+          if [[ "$DOCS_CHANGED" == "true" ]]; then
+            [[ "$MERGE_DOCS_RESULT" == "success" ]] || docs_ok="false"
           fi
 
-          if [[ "${{ needs.start-merge.result }}" == "success" && \
-                "${{ needs.merge-maketest.result }}" == "success" && \
+          if [[ "$START_MERGE_RESULT" == "success" && \
+                "$MERGE_MAKETEST_RESULT" == "success" && \
                 "$docs_ok" == "true" ]] ; then
             echo "result=success" >> "$GITHUB_OUTPUT"
           else
