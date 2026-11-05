@@ -70,6 +70,14 @@ quic_quicly_connection_delete (quic_ctx_t *ctx)
 {
   quic_quicly_main_t *qqm = &quic_quicly_main;
   quic_main_t *qm = qqm->qm;
+  quicly_conn_t *conn = ctx->conn;
+
+  if (ctx->opaque == QUIC_QUICLY_RX_STATE_CLOSED)
+    return;
+
+  ctx->opaque = QUIC_QUICLY_RX_STATE_CLOSED;
+  ctx->conn_state = QUIC_CONN_STATE_CLOSED;
+  ctx->conn = NULL;
 
   /* Free the connection's peer certificate, including failed handshakes. */
   if (ctx->peer_cert)
@@ -78,22 +86,19 @@ quic_quicly_connection_delete (quic_ctx_t *ctx)
       ctx->peer_cert = NULL;
     }
 
-  if (ctx->conn == NULL)
-    {
-      QUIC_DBG (2, "Skipping redundant delete of connection %u",
-		ctx->c_c_index);
-      return;
-    }
   QUIC_DBG (2, "Deleting connection %u", ctx->c_c_index);
 
   QUIC_ASSERT (!quic_ctx_is_stream (ctx));
   quic_mvt.conn_tx_timer_stop (quic_wrk_ctx_get (qm, ctx->c_thread_index), ctx);
+  quic_mvt.conn_accept_timer_stop (quic_wrk_ctx_get (qm, ctx->c_thread_index), ctx);
   QUIC_DBG (4, "Stopped timer for ctx %u", ctx->c_c_index);
 
   quic_disconnect_transport (ctx, qm->app_index);
-  quicly_free (ctx->conn);
-  ctx->conn = NULL;
-  quic_increment_counter (qm, QUIC_ERROR_CLOSED_CONNECTION, 1);
+  if (conn)
+    {
+      quicly_free (conn);
+      quic_increment_counter (qm, QUIC_ERROR_CLOSED_CONNECTION, 1);
+    }
   if (ctx->c_s_index != QUIC_SESSION_INVALID && !(ctx->flags & QUIC_F_NO_APP_SESSION))
     session_transport_delete_notify (&ctx->connection);
 }
@@ -265,12 +270,14 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
   ASSERT (vec_len (packets) >= QUIC_QUICLY_SEND_PACKET_VEC_SIZE);
   ASSERT (!quic_ctx_is_stream (ctx));
 
+  /* UDP dequeue notifications can outlive quicly connection */
+  conn = ctx->conn;
+  if (PREDICT_FALSE (!conn))
+    return;
+
   udp_session = session_get_from_handle (ctx->udp_session_handle);
   if (PREDICT_FALSE (udp_session->session_state == SESSION_STATE_TRANSPORT_DELETED))
     return;
-
-  conn = ctx->conn;
-  ASSERT (conn);
 
   max_packets = quic_quicly_sendable_packet_count (udp_session);
   if (PREDICT_FALSE (max_packets < 2))
@@ -1193,6 +1200,7 @@ quic_quicly_on_app_closed (u32 ctx_index, clib_thread_index_t thread_index)
       quic_quicly_connection_delete (ctx);
       break;
     case QUIC_CONN_STATE_ACTIVE_CLOSING:
+    case QUIC_CONN_STATE_CLOSED:
       break;
     default:
       QUIC_ERR ("Trying to close conn in state %d", ctx->conn_state);
@@ -1320,18 +1328,15 @@ quic_quicly_accept_connection (quic_ctx_t *ctx, quic_quicly_rx_packet_ctx_t *pct
       /* Invalid packet, pass */
       ASSERT (conn == NULL);
       QUIC_ERR ("Accept connection: failed with %U", quic_quicly_format_err, rv);
-      /* close UDP session */
-      if (ctx->conn_state < QUIC_CONN_STATE_CLOSED)
-	{
-	  ctx->conn_state = QUIC_CONN_STATE_CLOSED;
-	  quic_disconnect_transport (ctx, qm->app_index);
-	}
+      quic_quicly_connection_delete (ctx);
       return QUIC_QUICLY_RX_ERROR_CRITICAL;
     }
   ASSERT (conn != NULL);
 
   ++qqm->next_cid[ctx->c_thread_index].master_id;
   ctx->conn = conn;
+  ctx->opaque = quic_quicly_crypto_engine_is_vpp () ? QUIC_QUICLY_RX_STATE_HANDSHAKE_VPP_CRYPTO :
+						      QUIC_QUICLY_RX_STATE_HANDSHAKE;
   quic_increment_counter (qm, QUIC_ERROR_ACCEPTED_CONNECTION, 1);
 
   QUIC_DBG (2, "Accept connection: ctx_index %u, thread %u", ctx->c_c_index, ctx->c_thread_index);
@@ -1351,9 +1356,6 @@ quic_quicly_accept_connection (quic_ctx_t *ctx, quic_quicly_rx_packet_ctx_t *pct
     {
       QUIC_DBG (2, "Handshake not yet completed: ctx_index %u, thread %u", ctx->c_c_index,
 		ctx->c_thread_index);
-      ctx->opaque = quic_quicly_crypto_engine_is_vpp () ?
-		      QUIC_QUICLY_RX_STATE_HANDSHAKE_VPP_CRYPTO :
-		      QUIC_QUICLY_RX_STATE_HANDSHAKE;
       ctx->conn_state = QUIC_CONN_STATE_HANDSHAKE;
       return QUIC_QUICLY_RX_ERROR_NONE;
     }
@@ -1375,6 +1377,9 @@ quic_quicly_process_one_rx_dgram (quic_ctx_t *ctx, quicly_context_t *quicly_ctx,
   int rv;
   quic_quicly_rx_packet_ctx_t *pctx;
   quic_quicly_main_t *qqm = &quic_quicly_main;
+
+  ASSERT (ctx->conn || (ctx->opaque == QUIC_QUICLY_RX_STATE_ACCEPT &&
+			ctx->conn_state == QUIC_CONN_STATE_OPENED));
 
   if (PREDICT_FALSE (data_length > sizeof (dctx->data)))
     {
@@ -1663,21 +1668,26 @@ quic_quicly_receive_a_packet (quic_ctx_t *ctx, quic_quicly_rx_packet_ctx_t *pctx
   QUIC_DBG (2, "ctx_index %u, thread_index %u, vpp_crypto %u, try_establish %u", ctx->c_c_index,
 	    ctx->c_thread_index, is_vpp_crypto, try_establish);
 
+  ASSERT (ctx->conn);
+
+  u32 ctx_index = ctx->c_c_index;
+  clib_thread_index_t thread_index = ctx->c_thread_index;
   if (is_vpp_crypto)
     quic_quicly_crypto_decrypt_packet (ctx, pctx);
 
   quicly_error_t rv = quicly_receive (ctx->conn, NULL, src_addr, &pctx->packet);
+  ctx = quic_quicly_get_quic_ctx (ctx_index, thread_index);
   /* bail out if fatal error */
   if (rv == QUICLY_ERROR_STATE_EXHAUSTION || rv == PTLS_ERROR_NO_MEMORY)
     {
       QUIC_ERR ("quicly_receive return error %U", quic_quicly_format_err, rv);
-      /* close UDP session */
-      if (ctx->conn_state < QUIC_CONN_STATE_CLOSED)
+      if (ctx->conn_state == QUIC_CONN_STATE_HANDSHAKE)
+	quic_quicly_connection_closed (ctx);
+      else
 	{
-	  quic_quicly_main_t *qqm = &quic_quicly_main;
-	  quic_main_t *qm = qqm->qm;
-	  ctx->conn_state = QUIC_CONN_STATE_CLOSED;
-	  quic_disconnect_transport (ctx, qm->app_index);
+	  if (ctx->conn_state == QUIC_CONN_STATE_READY && !(ctx->flags & QUIC_F_NO_APP_SESSION))
+	    session_transport_reset_notify (&ctx->connection);
+	  quic_quicly_connection_delete (ctx);
 	}
       return QUIC_QUICLY_RX_ERROR_CRITICAL;
     }
@@ -1815,12 +1825,20 @@ quic_quicly_engine_init (quic_main_t *qm)
     }
 }
 
+static quic_quicly_rx_error_t
+quic_quicly_rx_state_closed (quic_ctx_t *ctx, quic_quicly_rx_packet_ctx_t *pctx,
+			     struct sockaddr *src_addr)
+{
+  return QUIC_QUICLY_RX_ERROR_CRITICAL;
+}
+
 static quic_quicly_rx_handler quic_quicly_rx_state_funcs[QUIC_QUICLY_RX_N_STATES] = {
   quic_quicly_accept_connection,
   quic_quicly_rx_state_ready,
   quic_quicly_rx_state_handshake,
   quic_quicly_rx_state_ready_vpp_crypto,
   quic_quicly_rx_state_handshake_vpp_crypto,
+  quic_quicly_rx_state_closed,
 };
 
 static int
@@ -1852,6 +1870,12 @@ quic_quicly_udp_session_rx_packets (session_t *us)
       return 0;
     }
 
+  ctx = quic_quicly_get_quic_ctx (opaque, thread_index);
+  ASSERT (!quic_ctx_is_stream (ctx));
+  if (PREDICT_FALSE (ctx->conn_state == QUIC_CONN_STATE_CLOSED ||
+		     ctx->opaque == QUIC_QUICLY_RX_STATE_CLOSED))
+    goto retired;
+
   max_deq = svm_fifo_max_dequeue (us->rx_fifo);
   if (PREDICT_FALSE (max_deq < SESSION_CONN_HDR_LEN))
     {
@@ -1863,13 +1887,9 @@ quic_quicly_udp_session_rx_packets (session_t *us)
   /* we can do it here because the session is connected */
   tc = session_get_transport (us);
   quic_build_sockaddr (&src_addr.sa, &tc->rmt_ip, tc->rmt_port, tc->is_ip4);
-
-  ctx = quic_quicly_get_quic_ctx (opaque, thread_index);
-  ASSERT (!quic_ctx_is_stream (ctx));
   quicly_ctx = quic_quicly_get_quicly_ctx_from_ctx (ctx);
 
 rx_start:
-
   packets_num = 0;
 
   /* expect worst case 4 coalesced quic packets in udp datagram (1-RTT packet can be only the last
@@ -1908,7 +1928,7 @@ rx_start:
 	{
 	  /* connection closed? */
 	  if (rv == QUIC_QUICLY_RX_ERROR_CRITICAL)
-	    return -1;
+	    goto retired;
 	  /* otherwise stop processing and send response */
 	  left_deq = 0;
 	  goto send;
@@ -1918,6 +1938,8 @@ rx_start:
 send:
   /* pool might grow */
   ctx = quic_quicly_get_quic_ctx (opaque, thread_index);
+  if (PREDICT_FALSE (ctx->opaque == QUIC_QUICLY_RX_STATE_CLOSED))
+    goto retired;
   if (PREDICT_TRUE (ctx->conn != NULL))
     {
       if (quicly_get_first_timeout (ctx->conn) <= wc->time_now)
@@ -1926,17 +1948,27 @@ send:
 	quic_quicly_reschedule_ctx (ctx);
     }
 
+  /* sending can retire connection */
+  if (PREDICT_FALSE (ctx->opaque == QUIC_QUICLY_RX_STATE_CLOSED))
+    goto retired;
   if (left_deq > SESSION_CONN_HDR_LEN)
     goto rx_start;
 
   svm_fifo_dequeue_drop (rx_fifo, fifo_offset);
 
   return 0;
+
+retired:
+  svm_fifo_dequeue_drop_all (rx_fifo);
+  return -1;
 }
 
 static void
 quic_quicly_transport_closed (quic_ctx_t *ctx)
 {
+  if (ctx->opaque == QUIC_QUICLY_RX_STATE_CLOSED)
+    return;
+
   quic_quicly_connection_closed (ctx);
 }
 
