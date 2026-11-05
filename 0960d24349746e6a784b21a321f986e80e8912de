@@ -38,6 +38,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "40d84c2d_e7b2da31",
+        "filename": ".github/workflows/periodic-vpp-verify-maketest.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 3347
+      },
+      "writtenOn": "2026-11-05T16:59:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "a0db7f3e_5de49b7d",
+      "revId": "0960d24349746e6a784b21a321f986e80e8912de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "545cb81b_7c8a9ca1",
         "filename": ".github/workflows/periodic-vpp-verify-maketest.yml",
         "patchSetId": 1
@@ -73,6 +91,30 @@
       "side": 1,
       "message": "Please fix this per Aritra\u0027s comment.",
       "parentUuid": "545cb81b_7c8a9ca1",
+      "range": {
+        "startLine": 44,
+        "startChar": 0,
+        "endLine": 61,
+        "endChar": 28
+      },
+      "revId": "0960d24349746e6a784b21a321f986e80e8912de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "36a9320e_c4ec98f3",
+        "filename": ".github/workflows/periodic-vpp-verify-maketest.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 3347
+      },
+      "writtenOn": "2026-11-05T16:59:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "42c0460e_6acc4178",
       "range": {
         "startLine": 44,
         "startChar": 0,
