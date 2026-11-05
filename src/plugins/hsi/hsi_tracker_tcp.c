@@ -331,6 +331,24 @@ hsi_tcp_segment_in_rcv_wnd (tcp_connection_t *tc, u32 seq, u32 seq_end)
   return seq_geq (seq_end, tc->rcv_las) && seq_leq (seq, tc->rcv_nxt + tc->rcv_wnd);
 }
 
+#define HSI_TCP_TRACKED_MAX_WND (TCP_WND_MAX << TCP_MAX_WND_SCALE)
+
+/*
+ * Tracked connections only splice segments and endpoints validate them, so
+ * accept anything within a max window of the highest seq seen. That includes
+ * out of order segments, retransmits, keepalives and window probes. Resets
+ * tear down the pair, so they must be within the window advertised at commit.
+ */
+static_always_inline u8
+hsi_tcp_tracked_segment_in_wnd (tcp_connection_t *tc, u32 seq, u32 seq_end, u8 rst)
+{
+  if (PREDICT_FALSE (rst))
+    return seq_geq (seq, tc->rcv_nxt) && seq_leq (seq, tc->rcv_nxt + tc->rcv_wnd);
+
+  return seq_gt (seq_end, tc->rcv_nxt - HSI_TCP_TRACKED_MAX_WND) &&
+	 seq_leq (seq, tc->rcv_nxt + HSI_TCP_TRACKED_MAX_WND);
+}
+
 static_always_inline void
 hsi_tcp_update_snd_wnd (tcp_connection_t *tc, u32 seq, u32 ack, tcp_header_t *tcp_hdr)
 {
@@ -1267,7 +1285,7 @@ hsi_tcp_track_maybe_cleanup_pair (tcp_connection_t *tc, hsi_tcp_tracker_t *trk)
   hsi_tcp_tracker_t *peer_trk;
   session_t *peer_s;
 
-  if (!hsi_tcp_tracker_fin_done (trk))
+  if (!hsi_tcp_tracker_fin_received (trk))
     return;
 
   if (trk->flags & HSI_TRACKER_F_CLEANUP_PENDING)
@@ -1283,13 +1301,15 @@ hsi_tcp_track_maybe_cleanup_pair (tcp_connection_t *tc, hsi_tcp_tracker_t *trk)
     return;
 
   peer_trk = hsi_tcp_tracker_from_connection (peer_tc);
-  if (hsi_tcp_tracker_fin_done (peer_trk))
+  if (hsi_tcp_tracker_fin_done (trk) && hsi_tcp_tracker_fin_done (peer_trk))
     {
       hsi_tcp_track_schedule_cleanup_pair (tc, trk, HSI_TCP_CLEANUP_REASON_FIN);
       return;
     }
 
-  if (hsi_tcp_tracker_fin_received (peer_trk))
+  /* Both fins seen and one acked. Other side might never ack its fin */
+  if (hsi_tcp_tracker_fin_received (peer_trk) &&
+      (hsi_tcp_tracker_fin_done (trk) || hsi_tcp_tracker_fin_done (peer_trk)))
     hsi_tcp_track_arm_fin_wait (tc, trk);
 }
 
@@ -1552,15 +1572,12 @@ hsi_tcp_validate_and_update_state (tcp_connection_t *tc, hsi_tcp_tracker_t *trk,
   if (PREDICT_FALSE (tcp_syn (tcp_hdr)))
     return 0;
 
-  if (PREDICT_FALSE (!hsi_tcp_segment_in_rcv_wnd (tc, *seq, seq_end)))
+  if (PREDICT_FALSE (!hsi_tcp_tracked_segment_in_wnd (tc, *seq, seq_end, rst)))
     return 0;
 
+  /* Ack might cover data not yet acked, endpoint validates it */
   if (PREDICT_FALSE (rst))
-    {
-      if (tcp_ack (tcp_hdr) && seq_gt (*ack, tc->snd_nxt))
-	return 0;
-      return 1;
-    }
+    return 1;
 
   if (tcp_ack (tcp_hdr))
     {
@@ -1573,11 +1590,9 @@ hsi_tcp_validate_and_update_state (tcp_connection_t *tc, hsi_tcp_tracker_t *trk,
   else
     return 0;
 
-  if (seq_leq (*seq, tc->rcv_nxt) && seq_gt (seq_end, tc->rcv_nxt))
-    {
-      tc->rcv_nxt = seq_end;
-      tc->rcv_las = tc->rcv_nxt;
-    }
+  /* Highest seq seen, so out of order data and fins also move it */
+  if (seq_gt (seq_end, tc->rcv_nxt))
+    tc->rcv_nxt = seq_end;
 
   if (PREDICT_FALSE (tcp_fin (tcp_hdr)))
     trk->flags |= HSI_TRACKER_F_FIN_RCVD;
