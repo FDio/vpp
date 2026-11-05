@@ -822,6 +822,12 @@ counters ah_decrypt {
     units "packets";
     description "SA replayed packet";
   };
+  malformed {
+    severity error;
+    type counter64;
+    units "packets";
+    description "AH header malformed (dropped)";
+  };
 };
 
 counters ipsec_tun {

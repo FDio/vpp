@@ -668,22 +668,6 @@ ip6_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
 }
 
 always_inline bool
-ip6_sv_reass_verify_upper_layer_present (vlib_buffer_t *b,
-					 ip6_ext_hdr_chain_t *hc)
-{
-  int nh = hc->eh[hc->length - 1].protocol;
-  /* Checking to see if it's a terminating header */
-  if (ip6_ext_hdr (nh))
-    {
-      icmp6_error_set_vnet_buffer (
-	b, ICMP6_parameter_problem,
-	ICMP6_parameter_problem_first_fragment_has_incomplete_header_chain, 0);
-      return false;
-    }
-  return true;
-}
-
-always_inline bool
 ip6_sv_reass_verify_fragment_multiple_8 (vlib_main_t *vm, vlib_buffer_t *b,
 					 ip6_frag_hdr_t *frag_hdr)
 {
@@ -798,6 +782,37 @@ ip6_sv_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  int res = ip6_ext_header_walk (
 	    b0, ip0, IP_PROTOCOL_IPV6_FRAGMENTATION, &hdr_chain);
+	  if (!hdr_chain.complete)
+	    {
+	      /*
+	       * A header that did not fit is malformed. A walk stopped by
+	       * the depth or entry limit is not: fall through to the
+	       * regular path, which passes an unsupported protocol
+	       * through.
+	       */
+	      if (ip6_ext_hdr_chain_is_first_fragment (ip0, &hdr_chain) &&
+		  (hdr_chain.term_offset ||
+		   ip6_ext_hdr (hdr_chain.eh[hdr_chain.length - 1].protocol)))
+		{
+		  icmp6_error_set_vnet_buffer (
+		    b0, ICMP6_parameter_problem,
+		    ICMP6_parameter_problem_first_fragment_has_incomplete_header_chain, 0);
+		  error0 = IP6_ERROR_REASS_MISSING_UPPER;
+		  b0->error = node->errors[error0];
+		  next0 = IP6_SV_REASSEMBLY_NEXT_ICMP_ERROR;
+		  goto packet_enqueue;
+		}
+	      if (hdr_chain.term_offset)
+		{
+		  icmp6_error_set_vnet_buffer (b0, ICMP6_parameter_problem,
+					       ICMP6_parameter_problem_erroneous_header_field,
+					       hdr_chain.term_offset);
+		  error0 = IP6_ERROR_REASS_MISSING_UPPER;
+		  b0->error = node->errors[error0];
+		  next0 = IP6_SV_REASSEMBLY_NEXT_ICMP_ERROR;
+		  goto packet_enqueue;
+		}
+	    }
 	  if (res >= 0 &&
 	      hdr_chain.eh[res].protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
 	    {
@@ -848,17 +863,6 @@ ip6_sv_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  vnet_buffer (b0)->ip.reass.ip6_frag_hdr_offset =
 	    hdr_chain.eh[res].offset;
 
-	  if (0 == ip6_frag_hdr_offset (frag_hdr))
-	    {
-	      // first fragment - verify upper-layer is present
-	      if (!ip6_sv_reass_verify_upper_layer_present (b0, &hdr_chain))
-		{
-		  error0 = IP6_ERROR_REASS_MISSING_UPPER;
-		  b0->error = node->errors[error0];
-		  next0 = IP6_SV_REASSEMBLY_NEXT_ICMP_ERROR;
-		  goto packet_enqueue;
-		}
-	    }
 	  if (!ip6_sv_reass_verify_fragment_multiple_8 (vm, b0, frag_hdr) ||
 	      !ip6_sv_reass_verify_packet_size_lt_64k (vm, b0, frag_hdr))
 	    {
