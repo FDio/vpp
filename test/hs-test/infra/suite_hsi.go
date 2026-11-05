@@ -479,6 +479,36 @@ func AssertProxyLiteSessionsCleaned(s *HsiSuite) {
 	AssertProxyLiteSessionsCleanedCount(s, 2)
 }
 
+func proxyLiteHsiCleanupsDone(output string, want int) bool {
+	cleanups := regexp.MustCompile(`hsi cleanups (\d+)`).FindStringSubmatch(output)
+	active := regexp.MustCompile(`active-sessions (\d+)`).FindStringSubmatch(output)
+	return cleanups != nil && active != nil && cleanups[1] == strconv.Itoa(want) &&
+		active[1] == "0"
+}
+
+// AssertProxyLiteHsiCleanups waits for proxy-lite to get exactly want hsi
+// cleanup notifications, i.e., one per tracked session, and to free all its
+// sessions. It then checks that no extra notification shows up.
+func AssertProxyLiteHsiCleanups(vpp *VppInstance, want int) string {
+	var lastOutput string
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		lastOutput = vpp.Vppctl("show proxy-lite")
+		if proxyLiteHsiCleanupsDone(lastOutput, want) {
+			time.Sleep(500 * time.Millisecond)
+			lastOutput = vpp.Vppctl("show proxy-lite")
+			Log(lastOutput)
+			AssertEqual(true, proxyLiteHsiCleanupsDone(lastOutput, want),
+				"unexpected proxy-lite hsi cleanups:\n"+lastOutput)
+			return lastOutput
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	AssertFail("timed out waiting for %d proxy-lite hsi cleanups; last output:\n%s", want,
+		lastOutput)
+	return lastOutput
+}
+
 var _ = Describe("HsiSuite", Ordered, ContinueOnFailure, Label("HSI"), func() {
 	var s HsiSuite
 	BeforeAll(func() {
