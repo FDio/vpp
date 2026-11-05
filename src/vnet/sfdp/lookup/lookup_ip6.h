@@ -133,6 +133,19 @@ sfdp_calc_key_v6 (vlib_buffer_t *b, u32 context_id,
 	  lookup_val[0] = (u64) SFDP_SP_NODE_IP6_REASS << 32 | SFDP_LV_TO_SP;
 	  return slowpath_needed;
 	}
+      else if (res < 0)
+	{
+	  /*
+	   * A malformed or truncated extension header chain has no L4
+	   * header to key on. Keep the IPv6 header's protocol and next
+	   * header so the slow path treats the packet as an unknown
+	   * protocol.
+	   */
+	  next_header = ip6_next_header (ip);
+	  pr = ip->protocol;
+	  tcp_or_udp = false;
+	  k.as_u8[6] = pr;
+	}
       else
 	{
 	  next_header =

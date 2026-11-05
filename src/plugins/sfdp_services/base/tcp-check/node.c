@@ -76,7 +76,16 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant, u8 fsol_non_syn_secu
       ip6_ext_hdr_chain_t chain = { 0 };
       int res = ip6_ext_header_walk (b[0], ip6, IP_PROTOCOL_IPV6_FRAGMENTATION,
 				     &chain);
-      if (res >= 0 && chain.eh[res].protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
+      if (res < 0)
+	{
+	  /*
+	   * A malformed or truncated extension header chain carries no
+	   * TCP header to parse. Leave the session state untouched.
+	   */
+	  sfdp_next (b[0], to_next);
+	  return;
+	}
+      if (chain.eh[res].protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
 	{
 	  ip6_frag_hdr_t *frag =
 	    ip6_ext_next_header_offset (ip6, chain.eh[res].offset);
