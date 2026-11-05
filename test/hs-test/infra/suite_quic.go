@@ -13,7 +13,7 @@ var quicSoloTests = map[string][]func(s *QuicSuite){}
 var quicMWTests = map[string][]func(s *QuicSuite){}
 
 type QuicSuite struct {
-	VethsSuite
+	TapSuite
 }
 
 func RegisterQuicTests(tests ...func(s *QuicSuite)) {
@@ -26,7 +26,7 @@ func RegisterQuicMWTests(tests ...func(s *QuicSuite)) {
 	quicMWTests[GetTestFilename()] = tests
 }
 
-var _ = Describe("QuicSuite", Ordered, ContinueOnFailure, Label("Veth", "Quic"), func() {
+var _ = Describe("QuicSuite", Ordered, ContinueOnFailure, Label("Tap", "Quic"), func() {
 	var s QuicSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -57,7 +57,7 @@ var _ = Describe("QuicSuite", Ordered, ContinueOnFailure, Label("Veth", "Quic"),
 	}
 })
 
-var _ = Describe("QuicSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Veth", "Quic"), func() {
+var _ = Describe("QuicSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Tap", "Quic"), func() {
 	var s QuicSuite
 	BeforeAll(func() {
 		s.SetupSuite()
@@ -87,7 +87,7 @@ var _ = Describe("QuicSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Vet
 	}
 })
 
-var _ = DescribeMWSuite("QuicSuiteMW", MWWideLabels("Veth", "Quic", "MW"), func() {
+var _ = DescribeMWSuite("QuicSuiteMW", MWWideLabels("Tap", "Quic", "MW"), func() {
 	var s QuicSuite
 	BeforeAll(func() {
 		s.SetupSuite()

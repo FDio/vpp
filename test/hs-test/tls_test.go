@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"time"
 
 	. "fd.io/hs-test/infra"
@@ -23,18 +24,18 @@ func init() {
 }
 
 func TlsPeerCertCloseTest(s *TlsSuite) {
-	tlsPeerCertClose(&s.VethsSuite, "tls")
+	uri := "tls://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+	a := s.CreateTlsCrlTestArtifacts("tls-peer-cert", s.Interfaces.Server.Ip4AddressString(),
+		s.Containers.ServerVpp, s.Containers.ClientVpp)
+	tlsPeerCertClose(s.Containers.ServerVpp.VppInstance, s.Containers.ClientVpp.VppInstance, uri, a)
 }
 
 // Retrieve borrowed leaf and chain certificates in separate calls (leaf only for
 // QUIC), then wait for connection teardown before reusing the pools.
-func tlsPeerCertClose(s *VethsSuite, proto string) {
-	serverVpp := s.Containers.ServerVpp.VppInstance
-	clientVpp := s.Containers.ClientVpp.VppInstance
-	uri := proto + "://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
-	a := s.CreateTlsCrlTestArtifacts(proto + "-peer-cert")
+func tlsPeerCertClose(serverVpp, clientVpp *VppInstance, uri string, a TlsCrlTestArtifacts) {
+	isQuic := strings.HasPrefix(uri, "quic://")
 	cleanupTimeout := 5 * time.Second
-	if proto == "tls" {
+	if !isQuic {
 		// TCP retains closed TLS sessions during its ten-second TIME_WAIT.
 		cleanupTimeout = 15 * time.Second
 	}
@@ -45,7 +46,7 @@ func tlsPeerCertClose(s *VethsSuite, proto string) {
 	serverSessions := serverVpp.Vppctl("show session")
 	clientSessions := clientVpp.Vppctl("show session")
 	var checkQuicCleanup func()
-	if proto == "quic" {
+	if isQuic {
 		checkQuicCleanup = quicCleanupCheck(cleanupTimeout, clientVpp, serverVpp)
 	}
 
@@ -107,7 +108,8 @@ func TlsCrlRejectThenAllowTest(s *TlsSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
 	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
-	a := s.CreateTlsCrlTestArtifacts("tls")
+	a := s.CreateTlsCrlTestArtifacts("tls", s.Interfaces.Server.Ip4AddressString(),
+		s.Containers.ServerVpp, s.Containers.ClientVpp)
 
 	Log(serverVpp.Vppctl("test tls server cert " + a.ServerCert + " key " + a.ServerKey + " uri tls://" + serverAddress))
 
