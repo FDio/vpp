@@ -27,7 +27,7 @@ func init() {
 		HsiProxyLiteUdpDrainCacheOverflowTest,
 		HsiProxyLiteUdpDrainTimeoutTest, HsiProxyLiteNotifyCleanupTest,
 		HsiProxyLiteNotifyCleanupDrainTimeoutTest, HsiProxyLiteNotifyCleanupUdpIdleTest,
-		HsiProxyLiteDrainTransportClosedTest)
+		HsiProxyLiteDrainTransportClosedTest, HsiProxyLiteLossTest)
 	RegisterHsiMWTests(HsiProxyLiteOffloadMWTest, HsiProxyLiteRepeatedOffloadMWTest,
 		HsiProxyLiteDrainOffloadMWTest,
 		HsiProxyLiteUdpConnectedMWTest, HsiProxyLiteUdpDrainOffloadMWTest,
@@ -623,6 +623,26 @@ func HsiProxyLiteDrainTransportClosedTest(s *HsiSuite) {
 	AssertNotNil(<-finished)
 	AssertProxyLiteSessionsCleaned(s)
 	AssertProxyLiteHsiCleanups(vpp, 2)
+}
+
+// Tracked flows must survive loss in both directions, i.e., out of order
+// segments, retransmits of data already seen and lost acks
+func HsiProxyLiteLossTest(s *HsiSuite) {
+	s.SetupNginxServer()
+	vpp := s.Containers.Vpp.VppInstance
+	clearLoss := s.AddHostLoss(1)
+	defer clearLoss()
+	s.StartProxyLiteTcp4("hsi-offload")
+
+	uri := fmt.Sprintf("http://%s:%d/httpTestFile", s.ServerAddr(), s.Ports.Server)
+	finished := startCurlHttpRequest(uri, s.NetNamespaces.Client, "200", 60)
+	WaitProxyLiteTracked(vpp, func() {})
+	AssertNil(<-finished)
+	clearLoss()
+
+	hsi := WaitHsiContains(vpp, "tcp-fin-cleanup 1")
+	Log(hsi)
+	AssertProxyLiteSessionsCleaned(s)
 }
 
 func runHsiProxyLiteClientAbortTest(s *HsiSuite) {

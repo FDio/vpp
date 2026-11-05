@@ -291,6 +291,32 @@ func (s *HsiSuite) BlockServerReplies() func() {
 	return unblock
 }
 
+// AddHostLoss drops percent of the packets the client and the target send to
+// vpp. The returned function removes the loss.
+func (s *HsiSuite) AddHostLoss(percent int) func() {
+	loss := fmt.Sprintf("%d%%", percent)
+	clientIf := s.Interfaces.Client.Host.Name()
+	serverIf := s.Interfaces.Server.Host.Name()
+	run := func(cmd *exec.Cmd) {
+		output, err := cmd.CombinedOutput()
+		AssertNil(err, string(output))
+	}
+	run(CommandInNetns([]string{"tc", "qdisc", "add", "dev", clientIf, "root", "netem", "loss",
+		loss}, s.NetNamespaces.Client))
+	run(exec.Command("tc", "qdisc", "add", "dev", serverIf, "root", "netem", "loss", loss))
+
+	lossy := true
+	return func() {
+		if !lossy {
+			return
+		}
+		run(CommandInNetns([]string{"tc", "qdisc", "del", "dev", clientIf, "root"},
+			s.NetNamespaces.Client))
+		run(exec.Command("tc", "qdisc", "del", "dev", serverIf, "root"))
+		lossy = false
+	}
+}
+
 // DropServerDataSegments drops full size TCP segments sent to the target, i.e.,
 // IPv4 total length between 1024 and 2047, so handshakes and acks pass but
 // data is never acked. The returned function removes the filter.
