@@ -53,6 +53,9 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant, u8 fsol_non_syn_secu
 		      sfdp_tcp_check_session_state_t *tcp_session, sfdp_session_t *session,
 		      f64 current_time, u8 dir, u16 *to_next, vlib_buffer_t **b, u32 *sf, u32 *nsf)
 {
+  sf[0] = tcp_session->flags;
+  nsf[0] = sf[0];
+
   /* Parse the packet */
   /* TODO: !!! Broken with IP options !!! */
   u8 *data = vlib_buffer_get_current (b[0]);
@@ -74,8 +77,16 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant, u8 fsol_non_syn_secu
   if (session->type == SFDP_SESSION_TYPE_IP6 && ip6_ext_hdr (ip6->protocol))
     {
       ip6_ext_hdr_chain_t chain = { 0 };
-      int res = ip6_ext_header_walk (b[0], ip6, IP_PROTOCOL_IPV6_FRAGMENTATION,
-				     &chain);
+      int res = ip6_ext_header_walk (b[0], ip6, IP_PROTOCOL_IPV6_FRAGMENTATION, &chain);
+      if (!chain.complete || !chain.l4_fits)
+	{
+	  /*
+	   * A malformed or truncated extension header chain carries no
+	   * TCP header to parse. Leave the session state untouched.
+	   */
+	  sfdp_next (b[0], to_next);
+	  return;
+	}
       if (res >= 0 && chain.eh[res].protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
 	{
 	  ip6_frag_hdr_t *frag =
@@ -86,8 +97,7 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant, u8 fsol_non_syn_secu
 	      return;
 	    }
 	}
-      tcph =
-	ip6_ext_next_header_offset (ip6, chain.eh[chain.length - 1].offset);
+      tcph = ip6_ext_next_header_offset (ip6, chain.term_offset);
     }
 
   u8 flags = tcph->flags & SFDP_TCP_CHECK_TCP_FLAGS_MASK;

@@ -57,17 +57,39 @@ ip6_parse (vlib_main_t *vm, vlib_buffer_t *b, ip6_header_t *ip6, u32 buff_len,
   ip6_ext_hdr_chain_t hdr_chain;
   int res =
     ip6_ext_header_walk (b, ip6, IP_PROTOCOL_IPV6_FRAGMENTATION, &hdr_chain);
-  if (res < 0)
+
+  if (!hdr_chain.complete)
     {
-      return -1;
+      /*
+       * A header that did not fit makes the packet malformed. A walk
+       * stopped by the depth or entry limit is not malformed: report
+       * the last extension header so the caller treats the protocol as
+       * unsupported and stays transparent.
+       */
+      if (hdr_chain.term_offset || hdr_chain.length == 0)
+	return -1;
+
+      if (res >= 0 &&
+	  hdr_chain.eh[res].protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
+	*frag_hdr_offset = hdr_chain.eh[res].offset;
+      else
+	*frag_hdr_offset = 0;
+
+      *l4_protocol = hdr_chain.eh[hdr_chain.length - 1].protocol;
+      *l4_offset = hdr_chain.eh[hdr_chain.length - 1].offset;
+      return 0;
     }
-  if (hdr_chain.eh[res].protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
+
+  if (!hdr_chain.l4_fits)
+    return -1;
+
+  if (res >= 0 && hdr_chain.eh[res].protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
     *frag_hdr_offset = hdr_chain.eh[res].offset;
   else
     *frag_hdr_offset = 0;
 
-  *l4_protocol = hdr_chain.eh[hdr_chain.length - 1].protocol;
-  *l4_offset = hdr_chain.eh[hdr_chain.length - 1].offset;
+  *l4_protocol = hdr_chain.term_protocol;
+  *l4_offset = hdr_chain.term_offset;
 
   return 0;
 }
