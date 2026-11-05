@@ -566,7 +566,10 @@ ipsec_tun_protect_update (u32 sw_if_index,
 			  const ip_address_t * nh, u32 sa_out, u32 * sas_in)
 {
   ipsec_tun_protect_t *itp;
-  u32 itpi, ii, *saip;
+  u32 itpi, ii;
+  ipsec_tun_protect_t *new_itp = NULL;
+  u32 n_sa_in_locked = 0;
+  index_t locked_sa_out = INDEX_INVALID;
   ipsec_main_t *im;
   int rv;
 
@@ -595,6 +598,7 @@ ipsec_tun_protect_update (u32 sw_if_index,
 	rv = VNET_API_ERROR_INVALID_VALUE;
 	goto out;
       }
+    n_sa_in_locked++;
   }
 
   sa_out = ipsec_sa_find_and_lock (sa_out);
@@ -604,6 +608,7 @@ ipsec_tun_protect_update (u32 sw_if_index,
       rv = VNET_API_ERROR_INVALID_VALUE;
       goto out;
     }
+  locked_sa_out = sa_out;
 
   if (INDEX_INVALID == itpi)
     {
@@ -623,6 +628,7 @@ ipsec_tun_protect_update (u32 sw_if_index,
 	}
 
       pool_get_zero (ipsec_tun_protect_pool, itp);
+      new_itp = itp;
 
       itp->itp_sw_if_index = sw_if_index;
       itp->itp_ai = ADJ_INDEX_INVALID;
@@ -704,11 +710,18 @@ ipsec_tun_protect_update (u32 sw_if_index,
       ipsec_tun_protect_config (im, itp, sa_out, sas_in);
     }
 
-  ipsec_sa_unlock (sa_out);
-  vec_foreach (saip, sas_in) ipsec_sa_unlock (*saip);
-  vec_free (sas_in);
-
 out:
+  if (rv && new_itp)
+    {
+      clib_mem_free (new_itp->itp_key);
+      pool_put (ipsec_tun_protect_pool, new_itp);
+    }
+  if (locked_sa_out != INDEX_INVALID)
+    ipsec_sa_unlock (locked_sa_out);
+  for (ii = 0; ii < n_sa_in_locked; ii++)
+    ipsec_sa_unlock (sas_in[ii]);
+  if (!rv)
+    vec_free (sas_in);
   return (rv);
 }
 
