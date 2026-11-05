@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": true,
+      "key": {
+        "uuid": "a0db7f3e_5de49b7d",
+        "filename": ".github/workflows/periodic-vpp-verify-maketest.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-05T03:44:57Z",
+      "side": 1,
+      "message": "Please address Aritra\u0027s comment.  I second the motion.",
+      "parentUuid": "33d5181c_8a05dd9b",
+      "revId": "0960d24349746e6a784b21a321f986e80e8912de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": false,
       "key": {
         "uuid": "545cb81b_7c8a9ca1",
@@ -31,6 +49,30 @@
       "writtenOn": "2026-11-05T01:21:56Z",
       "side": 1,
       "message": "We can probably write this as a plain `matrix` without `include` for better readability, but this should be fine as well.\n```\n  matrix:  \n    build_type: [\u0027debug\u0027, \u0027release\u0027]  \n    executor_arch: [\u0027x86_64\u0027, \u0027aarch64\u0027]  \n    os: [\u0027ubuntu2604\u0027]  \n    class: [\u0027builder\u0027]\n```",
+      "range": {
+        "startLine": 44,
+        "startChar": 0,
+        "endLine": 61,
+        "endChar": 28
+      },
+      "revId": "0960d24349746e6a784b21a321f986e80e8912de",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "42c0460e_6acc4178",
+        "filename": ".github/workflows/periodic-vpp-verify-maketest.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-05T03:44:57Z",
+      "side": 1,
+      "message": "Please fix this per Aritra\u0027s comment.",
+      "parentUuid": "545cb81b_7c8a9ca1",
       "range": {
         "startLine": 44,
         "startChar": 0,
