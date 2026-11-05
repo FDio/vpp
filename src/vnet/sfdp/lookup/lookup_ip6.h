@@ -133,14 +133,18 @@ sfdp_calc_key_v6 (vlib_buffer_t *b, u32 context_id,
 	  lookup_val[0] = (u64) SFDP_SP_NODE_IP6_REASS << 32 | SFDP_LV_TO_SP;
 	  return slowpath_needed;
 	}
-      else
+      else if (chain.complete && chain.l4_fits)
 	{
-	  next_header =
-	    ip6_ext_next_header_offset (ip, chain.eh[chain.length - 1].offset);
-	  pr = chain.eh[chain.length - 1].protocol;
+	  next_header = ip6_ext_next_header_offset (ip, chain.term_offset);
+	  pr = chain.term_protocol;
 	  tcp_or_udp = pr == IP_PROTOCOL_TCP || pr == IP_PROTOCOL_UDP;
 	  k.as_u8[6] = pr;
 	}
+      /*
+       * Otherwise the chain is incomplete and has no L4 header to key
+       * on. next_header and pr still name the IPv6 header's protocol,
+       * so the unknown-protocol slow path handles the packet.
+       */
     }
   l4_hdr_offset[0] = (u8 *) next_header - b[0].data;
   unknown_protocol = !tcp_or_udp && pr != IP_PROTOCOL_ICMP6;

@@ -2737,6 +2737,39 @@ class TestIPv6SVReassembly(VppTestCase):
         self.assertIn(ICMPv6ParamProblem, rx[0])
         self.assertEqual(rx[0][ICMPv6ParamProblem].code, 0)
 
+    def test_truncated_ext_header_pointer(self):
+        """A truncated extension header reports the erroneous header pointer
+
+        The hop-by-hop header ends before the destination options header,
+        whose length byte is not present. The node must report a Parameter
+        Problem with the erroneous header field code and point at the
+        truncated header."""
+        IP_PROTOCOL_IP6_DESTINATION_HEADER = 60
+
+        # 8-byte Hop-by-Hop header: next = Destination Options Header,
+        # Hdr Ext Len = 0. Followed by 1 byte of a truncated Destination
+        # Options header.
+        hbh = struct.pack("BB", IP_PROTOCOL_IP6_DESTINATION_HEADER, 0) + b"\x00" * 7
+
+        pkt = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(
+                src=self.src_if.remote_ip6,
+                dst=self.dst_if.remote_ip6,
+                nh="Hop-by-Hop Option Header",
+            )
+            / Raw(load=hbh)
+        )
+
+        rx = self.send_and_expect(
+            self.src_if,
+            [pkt],
+            self.src_if,
+        )
+        self.assertIn(ICMPv6ParamProblem, rx[0])
+        self.assertEqual(rx[0][ICMPv6ParamProblem].code, 0)
+        self.assertEqual(rx[0][ICMPv6ParamProblem].ptr, 48)
+
     def _get_buffer_count(self):
         """Get the number of allocated buffers from 'show buffers'"""
         output = self.vapi.ppcli("show buffers")

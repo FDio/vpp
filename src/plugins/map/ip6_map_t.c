@@ -557,6 +557,9 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    {
 	      error0 =
 		error0 == MAP_ERROR_NONE ? MAP_ERROR_MALFORMED : error0;
+	      p0->error = error_node->errors[error0];
+	      next0 = IP6_MAPT_NEXT_DROP;
+	      goto trace;
 	    }
 
 	  l4_len0 =
