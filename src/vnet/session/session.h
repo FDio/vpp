@@ -461,7 +461,7 @@ int session_wrk_handle_mq (session_worker_t *wrk, svm_msg_q_t *mq);
 __clib_export session_t *session_alloc (clib_thread_index_t thread_index);
 __clib_export void session_free (session_t *s);
 void session_cleanup (session_t *s);
-void session_program_cleanup (session_t *s);
+__clib_export void session_program_cleanup (session_t *s);
 __clib_export void session_cleanup_half_open (session_handle_t ho_handle);
 __clib_export u8 session_is_valid (u32 si, u8 thread_index);
 
