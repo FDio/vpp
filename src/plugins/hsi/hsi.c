@@ -152,11 +152,11 @@ hsi_udp_lookup (vlib_buffer_t *b, void *ip_hdr, udp_header_t **rhdr, u8 is_ip4)
 }
 
 always_inline transport_connection_t *
-hsi_tcp_lookup (vlib_main_t *vm, vlib_buffer_t *b, void *ip_hdr, tcp_header_t **rhdr, u8 is_ip4)
+hsi_tcp_lookup (vlib_main_t *vm, vlib_buffer_t *b, void *ip_hdr, tcp_header_t **rhdr, u8 is_ip4,
+		u8 *result)
 {
   transport_connection_t *tc;
   tcp_header_t *hdr;
-  u8 result = 0;
 
   if (is_ip4)
     {
@@ -164,7 +164,7 @@ hsi_tcp_lookup (vlib_main_t *vm, vlib_buffer_t *b, void *ip_hdr, tcp_header_t **
       *rhdr = hdr = ip4_next_header (ip4);
       tc = session_lookup_connection_wt4 (vnet_buffer (b)->ip.fib_index, &ip4->dst_address,
 					  &ip4->src_address, hdr->dst_port, hdr->src_port,
-					  TRANSPORT_PROTO_TCP, vm->thread_index, &result);
+					  TRANSPORT_PROTO_TCP, vm->thread_index, result);
     }
   else
     {
@@ -172,26 +172,49 @@ hsi_tcp_lookup (vlib_main_t *vm, vlib_buffer_t *b, void *ip_hdr, tcp_header_t **
       *rhdr = hdr = ip6_next_header (ip6);
       tc = session_lookup_connection_wt6 (vnet_buffer (b)->ip.fib_index, &ip6->dst_address,
 					  &ip6->src_address, hdr->dst_port, hdr->src_port,
-					  TRANSPORT_PROTO_TCP, vm->thread_index, &result);
+					  TRANSPORT_PROTO_TCP, vm->thread_index, result);
     }
 
-  return result == 0 ? tc : 0;
+  return *result == SESSION_LOOKUP_RESULT_NONE ? tc : 0;
+}
+
+/* Intercept listener might have been removed since intercept was enabled */
+always_inline session_t *
+hsi_intercept_listener_get (transport_proto_t proto, u8 is_ip4)
+{
+  session_handle_tu_t sh = { .handle = hsi_main.intercept_listeners[!is_ip4][proto] };
+  session_t *ls;
+
+  if (sh.handle == SESSION_INVALID_HANDLE)
+    return 0;
+
+  ls = session_get_from_handle_if_valid (sh);
+  if (!ls || ls->session_state != SESSION_STATE_LISTENING ||
+      ls->session_type != session_type_from_proto_and_ip (proto, is_ip4))
+    return 0;
+
+  return ls;
 }
 
 always_inline hsi_lookup_result_t
 hsi_tcp_lookup_handler (vlib_main_t *vm, vlib_buffer_t *b, void *ip_hdr, u32 *next, u8 *error,
 			u8 is_ip4, u8 is_input)
 {
+  u8 result = SESSION_LOOKUP_RESULT_NONE;
   tcp_header_t *tcp_hdr = 0;
   tcp_connection_t *tc;
   tcp_state_t state;
+  session_t *ls;
 
-  tc = (tcp_connection_t *) hsi_tcp_lookup (vm, b, ip_hdr, &tcp_hdr, is_ip4);
+  tc = (tcp_connection_t *) hsi_tcp_lookup (vm, b, ip_hdr, &tcp_hdr, is_ip4, &result);
   if (!tc)
     {
       u32 error = 0;
 
-      if (!hsi_have_intercept_proto (TRANSPORT_PROTO_TCP, is_ip4) || !tcp_syn (tcp_hdr))
+      /* Filtered or on another thread, normal path handles it */
+      if (result != SESSION_LOOKUP_RESULT_NONE ||
+	  !hsi_have_intercept_proto (TRANSPORT_PROTO_TCP, is_ip4) || !tcp_syn (tcp_hdr) ||
+	  !(ls = hsi_intercept_listener_get (TRANSPORT_PROTO_TCP, is_ip4)))
 	{
 	  vnet_feature_next (next, b);
 	  return HSI_LOOKUP_RESULT_PASS;
@@ -205,8 +228,7 @@ hsi_tcp_lookup_handler (vlib_main_t *vm, vlib_buffer_t *b, void *ip_hdr, u32 *ne
 	  return HSI_LOOKUP_RESULT_PASS;
 	}
 
-      vnet_buffer (b)->tcp.connection_index =
-	hsi_main.intercept_listeners[!is_ip4][TRANSPORT_PROTO_TCP];
+      vnet_buffer (b)->tcp.connection_index = ls->connection_index;
       vnet_buffer (b)->tcp.flags = TCP_STATE_LISTEN;
 
       *next = HSI_INPUT_NEXT_TCP_LISTEN;
@@ -319,12 +341,12 @@ hsi_udp_lookup_handler (vlib_main_t *vm, vlib_buffer_t *b, void *ip_hdr, u32 *ne
     }
   else
     {
-      if (!hsi_have_intercept_proto (TRANSPORT_PROTO_UDP, is_ip4))
+      if (!hsi_have_intercept_proto (TRANSPORT_PROTO_UDP, is_ip4) ||
+	  !(s = hsi_intercept_listener_get (TRANSPORT_PROTO_UDP, is_ip4)))
 	{
 	  vnet_feature_next (next, b);
 	  return HSI_LOOKUP_RESULT_PASS;
 	}
-      s = session_get_from_handle (hsi_main.intercept_listeners[!is_ip4][TRANSPORT_PROTO_UDP]);
     }
   *next = HSI_INPUT_NEXT_UDP_INPUT_NOLOOKUP;
   /* Emulate udp-local and consume headers up to udp payload */
@@ -614,25 +636,24 @@ hsi_intercept_proto (transport_proto_t proto, u8 is_ip4, u8 is_enable)
 {
   hsi_main_t *hm = &hsi_main;
   session_endpoint_t sep = { .transport_proto = proto, .is_ip4 = is_ip4 };
+  u32 table_index;
   session_t *ls;
 
-  ls = session_lookup_listener_wildcard (0, &sep);
-  if (!ls)
-    return;
-
-  if (is_enable)
-    {
-      if (proto == TRANSPORT_PROTO_TCP)
-	hm->intercept_listeners[!is_ip4][proto] = ls->connection_index;
-      else
-	hm->intercept_listeners[!is_ip4][proto] = ls->handle;
-      hm->intercept_type |= hsi_intercept_proto_flag (proto, is_ip4);
-    }
-  else
+  /* Disable even if the listener is gone */
+  if (!is_enable)
     {
       hm->intercept_listeners[!is_ip4][proto] = SESSION_INVALID_HANDLE;
       hm->intercept_type &= ~hsi_intercept_proto_flag (proto, is_ip4);
+      return;
     }
+
+  table_index = session_lookup_get_index_for_fib (is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6, 0);
+  ls = session_lookup_listener_wildcard (table_index, &sep);
+  if (!ls)
+    return;
+
+  hm->intercept_listeners[!is_ip4][proto] = session_handle (ls);
+  hm->intercept_type |= hsi_intercept_proto_flag (proto, is_ip4);
 }
 
 static clib_error_t *
