@@ -33,6 +33,24 @@
       "message": "Could we handle the shared tail rather than return success here? If the datagram ends inside a shared buffer, this leaves the trailer attached, so cloned packets can still exhibit the oversized-frame behavior this change fixes. Please make the affected tail private before trimming, handle allocation failure explicitly, and add coverage for a cloned chain.",
       "revId": "6237005e9df5da3e0c3817fddaf348a4ac2bd5c5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5a1070ea_60d23919",
+        "filename": "src/vnet/ip/ip.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-05T09:08:05Z",
+      "side": 1,
+      "message": "Could we validate the Jumbo Payload option before exempting these packets from length checks (or reject them if jumbograms are unsupported)? `plen \u003d\u003d 0` and next-header HBH alone do not make a jumbogram: the new `test_ip6_jumbo` packet has no Jumbo Payload option at all. With default `hbh_enabled \u003d 0`, lookup skips HBH processing and rewrite checks an IP length of only 40, so that packet plus the 2060-byte trailer is still forwarded over a 1500-MTU interface unchanged. This leaves the oversized-frame failure reachable through an ordinary, unshared packet. RFC 2675 §3 requires deriving the length from a valid Jumbo Payload option or rejecting the malformed packet; please add an egress assertion for the missing-option case. See https://www.rfc-editor.org/rfc/rfc2675.html#section-3.",
+      "tag": "prview:7b773c3776f4c196ce697aac07186984:6237005e9df5da3e0c3817fddaf348a4ac2bd5c5",
+      "revId": "6237005e9df5da3e0c3817fddaf348a4ac2bd5c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
