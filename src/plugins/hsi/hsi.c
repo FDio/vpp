@@ -287,7 +287,8 @@ hsi_udp_tracked_lookup_handler (vlib_main_t *vm, vlib_buffer_t *b, session_t *s,
 
   if (uc->c_thread_index != vm->thread_index)
     {
-      if (hsi_udp_connection_is_draining (uc))
+      /* Owner's drain state is not safe to read, let owner decide */
+      if (!hsi_udp_connection_is_committed (uc))
 	{
 	  if (!is_input)
 	    {
