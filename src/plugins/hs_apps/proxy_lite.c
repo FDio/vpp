@@ -414,13 +414,13 @@ fail:
 }
 
 static int
-proxy_lite_start_connect (proxy_lite_session_t *ps)
+proxy_lite_start_connect (u32 ps_index)
 {
   proxy_lite_main_t *pm = &proxy_lite_main;
   vnet_connect_args_t _a = {}, *a = &_a;
 
   clib_memcpy (&a->sep_ext, &pm->client_sep, sizeof (pm->client_sep));
-  a->api_context = ps - pm->sessions;
+  a->api_context = ps_index;
   a->app_index = pm->active_open_app_index;
 
   return vnet_connect2 (a);
@@ -460,7 +460,7 @@ proxy_lite_accept_callback (session_t *s)
   s->opaque = proxy_lite_side_ctx_opaque (s->thread_index, ctx);
   s->session_state = SESSION_STATE_READY;
 
-  if (proxy_lite_start_connect (ps))
+  if (proxy_lite_start_connect (ps_index))
     {
       clib_spinlock_lock_if_init (&pm->sessions_lock);
       ps = proxy_lite_session_get (ps_index);
@@ -598,11 +598,15 @@ proxy_lite_active_open_connected_callback (u32 app_index, u32 opaque, session_t 
 					   session_error_t err)
 {
   proxy_lite_main_t *pm = &proxy_lite_main;
-  proxy_lite_side_ctx_t *ao_ctx;
+  proxy_lite_side_ctx_t *ao_ctx = 0;
   proxy_lite_session_t *ps;
   session_handle_t po_handle;
   u32 ps_index;
   u8 hsi_offload;
+
+  /* Alloc before taking the lock, growing the pool might sync workers */
+  if (!err)
+    ao_ctx = proxy_lite_side_ctx_alloc (s->thread_index);
 
   clib_spinlock_lock_if_init (&pm->sessions_lock);
   ps = proxy_lite_session_get (opaque);
@@ -613,10 +617,11 @@ proxy_lite_active_open_connected_callback (u32 app_index, u32 opaque, session_t 
       ps->state = PROXY_LITE_S_CLOSING;
       proxy_lite_session_close_pair (ps, SESSION_INVALID_HANDLE);
       clib_spinlock_unlock_if_init (&pm->sessions_lock);
+      if (ao_ctx)
+	proxy_lite_side_ctx_free (s->thread_index, ao_ctx->ctx_index);
       return 0;
     }
 
-  ao_ctx = proxy_lite_side_ctx_alloc (s->thread_index);
   ao_ctx->ps_index = opaque;
   ao_ctx->is_active_open = 1;
   ao_ctx->peer_handle = ps->po_handle;
