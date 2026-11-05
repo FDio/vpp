@@ -44,6 +44,48 @@ class IpsecApiTestCase(VppTestCase):
                 return dump
         self.fail("SA not found in VPP")
 
+    def test_failed_protection_releases_sa(self):
+        """Rejected protection must not retain temporary SA references."""
+        missing = 0xDEADBEEF
+        self.assertNotIn(
+            missing, [entry.entry.sad_id for entry in self.vapi.ipsec_sa_v5_dump()]
+        )
+        for case in ("missing inbound", "missing outbound", "non-tunnel interface"):
+            with self.subTest(case=case):
+                params = self.ipv4_params
+                sa = VppIpsecSA(
+                    self,
+                    params.scapy_tun_sa_id,
+                    params.scapy_tun_spi,
+                    params.auth_algo_vpp_id,
+                    params.auth_key,
+                    params.crypt_algo_vpp_id,
+                    params.crypt_key,
+                    self.vpp_esp_protocol,
+                )
+                sa.add_vpp_config()
+                inbound = [sa.id, missing] if case == "missing inbound" else [sa.id]
+                outbound = missing if case == "missing outbound" else sa.id
+                with self.vapi.assert_negative_api_retval():
+                    self.vapi.ipsec_tunnel_protect_update(
+                        tunnel={
+                            "sw_if_index": self.pg0.sw_if_index,
+                            "sa_out": outbound,
+                            "n_sa_in": len(inbound),
+                            "sa_in": inbound,
+                        }
+                    )
+                self.assertEqual(
+                    len(
+                        self.vapi.ipsec_tunnel_protect_dump(
+                            sw_if_index=self.pg0.sw_if_index
+                        )
+                    ),
+                    0,
+                )
+                sa.remove_vpp_config()
+                self.assertFalse(sa.query_vpp_config())
+
     def test_sa_basic(self):
         """basic SA API tests"""
         sa = VppIpsecSA(
