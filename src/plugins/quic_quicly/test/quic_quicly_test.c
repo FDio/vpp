@@ -3,13 +3,15 @@
  */
 
 #include <quic_quicly/quic_quicly.h>
+#include <vnet/session/application.h>
 #include <vpp/app/version.h>
 
 #define QUICLY_TEST(cond, text)                                                                    \
   do                                                                                               \
     {                                                                                              \
-      vlib_cli_output (vm, "%s:%d: %s", (cond) ? "PASS" : "FAIL", __LINE__, text);                 \
-      if (!(cond))                                                                                 \
+      int test_ok = !!(cond);                                                                      \
+      vlib_cli_output (vm, "%s:%d: %s", test_ok ? "PASS" : "FAIL", __LINE__, text);                \
+      if (!test_ok)                                                                                \
 	{                                                                                          \
 	  res = 1;                                                                                 \
 	  goto done;                                                                               \
@@ -101,6 +103,173 @@ done:
   return res;
 }
 
+typedef struct
+{
+  quicly_update_open_count_t super;
+  i64 count;
+} quicly_test_conn_count_t;
+
+static void
+quicly_test_conn_count (quicly_update_open_count_t *self, ssize_t delta)
+{
+  ((quicly_test_conn_count_t *) self)->count += delta;
+}
+
+static int
+quicly_test_retired_rx (vlib_main_t *vm, quic_quicly_main_t *qqm, const quic_engine_vft_t *engine)
+{
+  fifo_segment_main_t fsm = {};
+  fifo_segment_create_args_t args = { .segment_type = SSVM_SEGMENT_PRIVATE,
+				      .segment_size = 1 << 20,
+				      .segment_name = "quicly-retired-rx" };
+  fifo_segment_t *fs = NULL;
+  svm_fifo_t *fifo = NULL;
+  quicly_context_t *spec, quicly_ctx;
+  ptls_context_t tls = {};
+  ptls_get_time_t **get_time;
+  typeof (quicly_connect) *connect;
+  typeof (quicly_amend_ptls_context) *amend;
+  typeof (quicly_decode_packet) *decode;
+  quicly_test_conn_count_t count = { .super = { quicly_test_conn_count } };
+  quicly_cid_plaintext_t cid = {};
+  struct sockaddr_in peer = { .sin_family = AF_INET,
+			      .sin_port = 1234,
+			      .sin_addr.s_addr = clib_host_to_net_u32 (0x7f000001) };
+  session_t *us = NULL;
+  session_dgram_hdr_t hdr = { .data_length = 1200 };
+  u8 initial[1200] = { 0xc0, 0, 0, 0, 1, 8, [16] = 0x44, [17] = 0x9e };
+  quicly_decoded_packet_t packet;
+  size_t offset = 0;
+  quic_ctx_t *ctx;
+  quicly_conn_t *conn = NULL;
+  u32 ctx_index = ~0, thread_index = vlib_get_thread_index ();
+  quic_worker_ctx_t *wc = &qqm->qm->wrk_ctx[thread_index];
+  int res = 0;
+
+#define RX_SYMBOL(symbol) vlib_get_plugin_symbol ("quic_quicly_plugin.so", #symbol)
+  spec = RX_SYMBOL (quicly_spec_context);
+  connect = RX_SYMBOL (quicly_connect);
+  amend = RX_SYMBOL (quicly_amend_ptls_context);
+  decode = RX_SYMBOL (quicly_decode_packet);
+  tls.random_bytes = RX_SYMBOL (ptls_openssl_random_bytes);
+  tls.key_exchanges = RX_SYMBOL (ptls_openssl_key_exchanges);
+  tls.cipher_suites = RX_SYMBOL (ptls_openssl_cipher_suites);
+  get_time = RX_SYMBOL (ptls_get_time);
+#undef RX_SYMBOL
+  QUICLY_TEST (spec && connect && amend && decode && tls.random_bytes && tls.key_exchanges &&
+		 tls.cipher_suites && get_time,
+	       "real engine fixture symbols loaded");
+  tls.get_time = *get_time;
+  amend (&tls);
+  quicly_ctx = *spec;
+  quicly_ctx.tls = &tls;
+  quicly_ctx.update_open_count = &count.super;
+  QUICLY_TEST (decode (&quicly_ctx, &packet, initial, sizeof (initial), &offset) != SIZE_MAX &&
+		 offset == sizeof (initial) && packet.cid.dest.might_be_client_generated,
+	       "late Initial passes packet decoding and pre-accept CID checks");
+  QUICLY_TEST (fifo_segment_create (&fsm, &args) == 0, "late packet FIFO segment created");
+  fs = fifo_segment_get_segment (&fsm, args.new_segment_indices[0]);
+  fifo = fifo_segment_alloc_fifo_w_slice (fs, 0, 4096, FIFO_SEGMENT_RX_FIFO);
+  QUICLY_TEST (fifo != NULL, "late packet FIFO allocated");
+  us = session_alloc (thread_index);
+  us->rx_fifo = fifo;
+  us->app_wrk_index =
+    application_get_default_worker (application_get (qqm->qm->app_index))->wrk_index;
+  /* The UDP close has already been acknowledged. Suppress asynchronous close
+   * events into the real session worker while these private pools are in use. */
+  us->flags = SESSION_F_APP_CLOSED;
+  ctx_index = quic_ctx_alloc (qqm->qm, thread_index);
+  us->opaque = ctx_index;
+  for (u32 state = QUIC_QUICLY_RX_STATE_ACCEPT; state < QUIC_QUICLY_RX_STATE_CLOSED; state++)
+    {
+      ctx = pool_elt_at_index (wc->ctx_pool, ctx_index);
+      ctx->c_c_index = ctx_index;
+      ctx->c_s_index = QUIC_SESSION_INVALID;
+      ctx->flags = QUIC_F_NO_APP_SESSION;
+      ctx->crypto_context_index = ~0; /* Retired RX must not look up crypto. */
+      ctx->udp_session_handle = session_handle (us);
+      ctx->opaque = state;
+      if (state == QUIC_QUICLY_RX_STATE_ACCEPT)
+	{
+	  /* State left by quic_accept_timer_expired before UDP cleanup. */
+	  ctx->conn_state = QUIC_CONN_STATE_CLOSED;
+	}
+      else
+	{
+	  QUICLY_TEST (connect (&conn, &quicly_ctx, "localhost", (void *) &peer, NULL, &cid,
+				ptls_iovec_init (NULL, 0), NULL, NULL, NULL) == 0,
+		       "real engine connection created");
+	  ctx->conn = conn;
+	  conn = NULL;
+	  QUICLY_TEST (count.count == 1, "engine owns one connection before deletion");
+	  ctx->conn_state = QUIC_CONN_STATE_TRANSPORT_CLOSED;
+	  engine->transport_closed (ctx);
+	  ctx = pool_elt_at_index (wc->ctx_pool, ctx_index);
+	  QUICLY_TEST (!ctx->conn && ctx->opaque == QUIC_QUICLY_RX_STATE_CLOSED,
+		       "deletion retires RX before UDP context cleanup");
+	  QUICLY_TEST (count.count == 0, "deletion releases the real engine connection");
+	  engine->transport_closed (ctx);
+	  QUICLY_TEST (count.count == 0,
+		       "duplicate transport close does not delete the engine twice");
+	}
+
+      /* A UDP dequeue event can still dispatch TX before UDP cleanup. */
+      engine->send_packets (ctx);
+      QUICLY_TEST (!ctx->conn && count.count == 0 &&
+		     ctx->timers[QUIC_TIMER_TX] == QUIC_TIMER_HANDLE_INVALID,
+		   "late TX without an engine connection does not send or reschedule");
+
+      for (u32 i = 0; i < 2; i++)
+	{
+	  QUICLY_TEST (svm_fifo_enqueue (fifo, sizeof (hdr), (void *) &hdr) == sizeof (hdr),
+		       "late datagram header queued");
+	  QUICLY_TEST (svm_fifo_enqueue (fifo, sizeof (initial), initial) == sizeof (initial),
+		       "late long-header datagram queued");
+	}
+      /* Match session-node builtin RX event consumption before the callback. */
+      svm_fifo_set_event (fifo);
+      svm_fifo_unset_event (fifo);
+      QUICLY_TEST (engine->udp_session_rx_packets (us) == -1, "retired RX is rejected");
+      QUICLY_TEST (svm_fifo_max_dequeue (fifo) == 0 && !svm_fifo_has_event (fifo),
+		   "all queued datagrams are consumed without a busy RX event");
+      QUICLY_TEST (engine->udp_session_rx_packets (us) == -1, "duplicate RX event is harmless");
+      QUICLY_TEST (count.count == 0 && pool_elts (wc->ctx_pool) == 1,
+		   "late RX creates no engine object and leaves context owned by UDP");
+      if (state == QUIC_QUICLY_RX_STATE_ACCEPT)
+	QUICLY_TEST (ctx->opaque == QUIC_QUICLY_RX_STATE_ACCEPT && !ctx->conn &&
+		       ctx->conn_state == QUIC_CONN_STATE_CLOSED,
+		     "late RX does not accept a connection after timeout");
+    }
+
+done:
+  if (conn)
+    {
+      typeof (quicly_free) *free_conn =
+	vlib_get_plugin_symbol ("quic_quicly_plugin.so", "quicly_free");
+      free_conn (conn);
+    }
+  if (ctx_index != ~0)
+    {
+      ctx = pool_elt_at_index (wc->ctx_pool, ctx_index);
+      if (ctx->conn)
+	{
+	  ctx->conn_state = QUIC_CONN_STATE_TRANSPORT_CLOSED;
+	  engine->transport_closed (ctx);
+	  ctx = pool_elt_at_index (wc->ctx_pool, ctx_index);
+	}
+      quic_ctx_free (qqm->qm, ctx);
+    }
+  if (us)
+    session_free (us);
+  if (fifo)
+    fifo_segment_free_fifo (fs, fifo);
+  if (fs)
+    fifo_segment_delete (&fsm, fs);
+  pool_free (fsm.segments);
+  vec_free (args.new_segment_indices);
+  return res;
+}
+
 static clib_error_t *
 quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
@@ -115,23 +284,41 @@ quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
   vlib_node_t *quic_node;
   u32 counter_index;
   u64 saved_counter;
+  u64 saved_closed_connections;
   const u64 stream_ids[] = { 0, 2, 3 }; /* bidi, sending uni, receiving uni */
   int res = 0;
+  enum
+  {
+    TEST_NONE,
+    TEST_STREAM_CLOSE,
+    TEST_RX,
+    TEST_ALL,
+  } test = TEST_NONE;
 
-  if ((!unformat (input, "stream-close") && !unformat (input, "all")) ||
-      unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    return clib_error_return (0, "expected stream-close or all");
+  if (unformat (input, "stream-close"))
+    test = TEST_STREAM_CLOSE;
+  else if (unformat (input, "rx"))
+    test = TEST_RX;
+  else if (unformat (input, "all"))
+    test = TEST_ALL;
+  if (test == TEST_NONE || unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "expected exactly one of stream-close, rx or all");
   QUIC_LOAD_SYMBOL_FROM_PLUGIN_TO ("quic_plugin.so", quic_main, qm);
   QUIC_LOAD_SYMBOL_FROM_PLUGIN_TO ("quic_plugin.so", quic_engine_vfts, engines);
   QUIC_LOAD_SYMBOL_FROM_PLUGIN_TO ("quic_quicly_plugin.so", quic_quicly_main, qqm);
   QUIC_LOAD_SYMBOL_FROM_PLUGIN_TO ("quic_quicly_plugin.so", quic_quicly_stream_callbacks,
 				   callbacks);
+  if ((test == TEST_RX || test == TEST_ALL) &&
+      (qm->app_index == APP_INVALID_INDEX || !qm->engine_is_initialized[QUIC_ENGINE_QUICLY]))
+    return clib_error_return (0, "QUIC RX tests require an enabled quicly engine (session enable)");
   quic_node = vlib_get_node_by_name (vm, (u8 *) "quic-input");
   if (!quic_node || vec_len (*engines) <= QUIC_ENGINE_QUICLY)
     return clib_error_return (0, "QUIC engine is not registered");
   node.index = quic_node->index;
   counter_index = quic_node->error_heap_index + QUIC_ERROR_CLOSED_STREAM;
   saved_counter = vm->error_main.counters[counter_index];
+  saved_closed_connections =
+    vm->error_main.counters[quic_node->error_heap_index + QUIC_ERROR_CLOSED_CONNECTION];
   saved_node = qm->quic_input_node;
   saved_workers = qm->wrk_ctx;
   saved_sessions = session_main.wrk;
@@ -153,17 +340,22 @@ quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
   session_main.wrk = sessions;
   qqm->qm = qm;
   qqm->worker_stats = stats;
-  for (u32 thread_index = 0; thread_index < 2 && !res; thread_index++)
-    for (u32 i = 0; i < ARRAY_LEN (stream_ids) && !res; i++)
-      for (u32 order = 0; order < 3 && !res; order++)
-	res = quicly_test_stream_close (vm, qqm, callbacks, &(*engines)[QUIC_ENGINE_QUICLY],
-					thread_index, stream_ids[i], order);
+  if (test == TEST_STREAM_CLOSE || test == TEST_ALL)
+    for (u32 thread_index = 0; thread_index < 2 && !res; thread_index++)
+      for (u32 i = 0; i < ARRAY_LEN (stream_ids) && !res; i++)
+	for (u32 order = 0; order < 3 && !res; order++)
+	  res = quicly_test_stream_close (vm, qqm, callbacks, &(*engines)[QUIC_ENGINE_QUICLY],
+					  thread_index, stream_ids[i], order);
+  if (!res && (test == TEST_RX || test == TEST_ALL))
+    res = quicly_test_retired_rx (vm, qqm, &(*engines)[QUIC_ENGINE_QUICLY]);
   qm->wrk_ctx = saved_workers;
   qm->quic_input_node = saved_node;
   session_main.wrk = saved_sessions;
   qqm->qm = saved_qm;
   qqm->worker_stats = saved_stats;
   vm->error_main.counters[counter_index] = saved_counter;
+  vm->error_main.counters[quic_node->error_heap_index + QUIC_ERROR_CLOSED_CONNECTION] =
+    saved_closed_connections;
   for (u32 i = 0; i < 2; i++)
     {
       pool_free (workers[i].ctx_pool);
@@ -180,7 +372,7 @@ quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 
 VLIB_CLI_COMMAND (quicly_test_command, static) = {
   .path = "test quicly",
-  .short_help = "test quicly [stream-close|all]",
+  .short_help = "test quicly [stream-close|rx|all]",
   .function = quicly_test,
 };
 
