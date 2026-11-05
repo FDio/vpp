@@ -1406,7 +1406,8 @@ hsi_udp_handle_tracked_connection (vlib_main_t *vm, vlib_buffer_t *b, udp_connec
 
   udp_hdr->src_port = trk->tx_lcl_port;
   udp_hdr->dst_port = trk->tx_rmt_port;
-  vnet_buffer (b)->ip.fib_index = trk->tx_fib_index;
+  /* ip lookup uses tx sw_if_index as fib index */
+  vnet_buffer (b)->sw_if_index[VLIB_TX] = trk->tx_fib_index;
   vnet_buffer (b)->l3_hdr_offset = b->current_data;
   vnet_buffer (b)->l4_hdr_offset = (u8 *) udp_hdr - b->data;
 

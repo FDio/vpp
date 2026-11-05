@@ -57,16 +57,19 @@ hsi_tcp_connection_is_committed (tcp_connection_t *tc)
   return tc->c_flags & TRANSPORT_CONNECTION_F_SPLICED;
 }
 
+/* If set, is_drain reports segments handled by the drain, which might commit */
 static_always_inline hsi_tcp_tracked_action_t
 hsi_tcp_tracked_connection_action (vlib_main_t *vm, vlib_buffer_t *b, tcp_connection_t *tc,
 				   void *ip_hdr, tcp_header_t *tcp_hdr, u8 is_ip4,
-				   u8 send_rst_on_drain_fail, u8 *cleanup_session)
+				   u8 send_rst_on_drain_fail, u8 *cleanup_session, u8 *is_drain)
 {
   ASSERT (tc->cfg_flags & TCP_CFG_F_TRACKED);
 
   if (hsi_tcp_connection_is_committed (tc) || hsi_tcp_try_complete_drain (vm, tc))
     return hsi_tcp_handle_tracked_connection (vm, b, tc, ip_hdr, tcp_hdr, is_ip4, cleanup_session);
 
+  if (is_drain)
+    *is_drain = 1;
   return hsi_tcp_drain_cache_buffer (vm, b, tc, ip_hdr, tcp_hdr, is_ip4, send_rst_on_drain_fail,
 				     cleanup_session);
 }

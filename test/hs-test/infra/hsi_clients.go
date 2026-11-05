@@ -104,19 +104,22 @@ func StartHsiUdpEchoClient(addr string, port uint16, netNs string, pause time.Du
 				return "", err
 			}
 
+			// Local address shows if a flow reused another flow's port
+			var output strings.Builder
+			output.WriteString("local " + conn.LocalAddr().String() + "\n")
+
 			for _, payload := range payloads[:len(payloads)-1] {
 				if _, err := conn.Write([]byte(payload)); err != nil {
-					return "", err
+					return output.String(), err
 				}
 				time.Sleep(pause)
 			}
 
 			want := []byte(payloads[len(payloads)-1])
 			if _, err := conn.Write(want); err != nil {
-				return "", err
+				return output.String(), err
 			}
 
-			var output strings.Builder
 			for {
 				n, err := conn.Read(buf)
 				if err != nil {

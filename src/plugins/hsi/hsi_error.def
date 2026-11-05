@@ -14,3 +14,7 @@
  */
 
 hsi_error (NONE, "no error")
+hsi_error (TCP_TRACKED_DROP, "tcp tracked segments dropped")
+hsi_error (TCP_DRAIN_DROP, "tcp draining segments consumed or dropped")
+hsi_error (UDP_DRAIN_DROP, "udp draining datagrams dropped")
+hsi_error (UDP_MIGRATION_FAILED, "udp tracked migrations failed")
