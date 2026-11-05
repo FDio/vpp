@@ -427,14 +427,18 @@ func QuicStreamResetCloseTest(s *NoTopoSuite) {
 }
 
 func QuicPeerCertCloseTest(s *QuicSuite) {
-	tlsPeerCertClose(&s.VethsSuite, "quic")
+	uri := "quic://" + s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
+	a := s.CreateTlsCrlTestArtifacts("quic-peer-cert", s.Interfaces.Server.Ip4AddressString(),
+		s.Containers.ServerVpp, s.Containers.ClientVpp)
+	tlsPeerCertClose(s.Containers.ServerVpp.VppInstance, s.Containers.ClientVpp.VppInstance, uri, a)
 }
 
 func QuicCrlRejectThenAllowTest(s *QuicSuite) {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	clientVpp := s.Containers.ClientVpp.VppInstance
 	serverAddress := s.Interfaces.Server.Ip4AddressString() + ":" + s.Ports.Port1
-	a := s.CreateTlsCrlTestArtifacts("quic")
+	a := s.CreateTlsCrlTestArtifacts("quic", s.Interfaces.Server.Ip4AddressString(),
+		s.Containers.ServerVpp, s.Containers.ClientVpp)
 
 	Log(serverVpp.Vppctl("test tls server cert " + a.ServerCert + " key " + a.ServerKey + " uri quic://" + serverAddress))
 	checkCleanup := quicCleanupCheck(5*time.Second, clientVpp, serverVpp)
