@@ -7,7 +7,13 @@
 #include <vnet/sfdp/service.h>
 #include <vnet/sfdp/timer/timer.h>
 
-#define foreach_sfdp_tcp_check_error _ (DROP, "drop")
+#define foreach_sfdp_tcp_check_error                                                               \
+  _ (DROP, "drop")                                                                                 \
+  _ (FSOL_NON_SYN_REMOVE, "first packet non-syn removed")                                          \
+  _ (FSOL_NON_SYN_BLOCKED, "first packet non-syn blocked")                                         \
+  _ (UNEXPECTED_SYN, "unexpected syn")                                                             \
+  _ (RST, "tcp reset")                                                                             \
+  _ (FIN_COMPLETE, "tcp fin handshake complete")
 
 typedef enum
 {
@@ -49,7 +55,8 @@ format_sfdp_tcp_check_trace (u8 *s, va_list *args)
 
 SFDP_SERVICE_DECLARE (drop)
 static_always_inline void
-update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant, u8 fsol_non_syn_security,
+update_state_one_pkt (vlib_main_t *vm, vlib_node_runtime_t *node, sfdp_tw_t *tw,
+		      sfdp_tenant_t *tenant, u8 fsol_non_syn_security,
 		      sfdp_tcp_check_session_state_t *tcp_session, sfdp_session_t *session,
 		      f64 current_time, u8 dir, u16 *to_next, vlib_buffer_t **b, u32 *sf, u32 *nsf)
 {
@@ -97,6 +104,7 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant, u8 fsol_non_syn_secu
   u16 tcp_hdr_len = tcp_header_bytes (tcph);
   u32 next_timeout = 0;
   u8 remove_session = 0;
+  sfdp_tcp_check_error_t removal_reason = SFDP_TCP_CHECK_N_ERROR;
 
   if (session->type == SFDP_SESSION_TYPE_IP4)
     {
@@ -131,12 +139,15 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant, u8 fsol_non_syn_secu
 	      sfdp_buffer (b[0])->service_bitmap = SFDP_SERVICE_MASK (drop);
 	      tcp_session->flags = SFDP_TCP_CHECK_SESSION_FLAG_BLOCKED;
 	      sf[0] = nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_BLOCKED;
+	      vlib_node_increment_counter (vm, node->node_index,
+					   SFDP_TCP_CHECK_ERROR_FSOL_NON_SYN_BLOCKED, 1);
 	    }
 	  else
 	    {
 	      /* Abnormal, tag session for removal */
 	      sf[0] = nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_REMOVING;
 	      remove_session = 1;
+	      removal_reason = SFDP_TCP_CHECK_ERROR_FSOL_NON_SYN_REMOVE;
 	    }
 	  goto out;
 	}
@@ -160,6 +171,7 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant, u8 fsol_non_syn_secu
 	  else
 	    {
 	      remove_session = 1;
+	      removal_reason = SFDP_TCP_CHECK_ERROR_UNEXPECTED_SYN;
 	      goto out;
 	    }
 	}
@@ -187,6 +199,7 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant, u8 fsol_non_syn_secu
 	{
 	  /* Reason to kill the connection */
 	  remove_session = 1;
+	  removal_reason = SFDP_TCP_CHECK_ERROR_RST;
 	  goto out;
 	}
     }
@@ -232,6 +245,7 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant, u8 fsol_non_syn_secu
 	  /* Reason to kill the connection */
 	  nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_REMOVING;
 	  remove_session = 1;
+	  removal_reason = SFDP_TCP_CHECK_ERROR_RST;
 	  goto out;
 	}
     }
@@ -248,8 +262,11 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant, u8 fsol_non_syn_secu
     {
       nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_REMOVING;
       remove_session = 1;
+      removal_reason = SFDP_TCP_CHECK_ERROR_FIN_COMPLETE;
     }
 out:
+  if (removal_reason != SFDP_TCP_CHECK_N_ERROR)
+    vlib_node_increment_counter (vm, node->node_index, removal_reason, 1);
   tcp_session->flags = nsf[0];
   if (remove_session)
     next_timeout = 0;
@@ -298,11 +315,11 @@ VLIB_NODE_FN (sfdp_tcp_check_node)
       tcp_session = vec_elt_at_index (vtcm->state, session_idx);
       tenant = sfdp_tenant_at_index (sfdp, sfdp_buffer (b[0])->tenant_index);
       if (sfdp_direction_from_flow_index (b[0]->flow_id) == SFDP_FLOW_FORWARD)
-	update_state_one_pkt (tw, tenant, vtcm->fsol_non_syn_security, tcp_session, session,
-			      current_time, SFDP_FLOW_FORWARD, to_next, b, sf, nsf);
+	update_state_one_pkt (vm, node, tw, tenant, vtcm->fsol_non_syn_security, tcp_session,
+			      session, current_time, SFDP_FLOW_FORWARD, to_next, b, sf, nsf);
       else
-	update_state_one_pkt (tw, tenant, vtcm->fsol_non_syn_security, tcp_session, session,
-			      current_time, SFDP_FLOW_REVERSE, to_next, b, sf, nsf);
+	update_state_one_pkt (vm, node, tw, tenant, vtcm->fsol_non_syn_security, tcp_session,
+			      session, current_time, SFDP_FLOW_REVERSE, to_next, b, sf, nsf);
       n_left -= 1;
       b += 1;
       to_next += 1;
