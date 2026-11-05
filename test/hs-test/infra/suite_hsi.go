@@ -1,7 +1,9 @@
 package hst
 
 import (
+	"encoding/binary"
 	"fmt"
+	"net"
 	"os/exec"
 	"reflect"
 	"regexp"
@@ -11,6 +13,8 @@ import (
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
+	"golang.org/x/net/icmp"
+	"golang.org/x/net/ipv4"
 )
 
 type HsiSuite struct {
@@ -360,6 +364,41 @@ func (s *HsiSuite) DropServerDataSegments() func() {
 		AssertNil(err, string(output))
 		dropping = false
 	}
+}
+
+// SendServerIcmpPortUnreachable sends vpp, from the target host, an icmp port
+// unreachable error for the proxy-lite udp session to the target.
+func (s *HsiSuite) SendServerIcmpPortUnreachable() {
+	vpp := s.Containers.Vpp.VppInstance
+	vppAddr := s.Interfaces.Server.Ip4AddressString()
+	session := regexp.MustCompile(regexp.QuoteMeta("[U] "+vppAddr+":") + `(\d+)` +
+		regexp.QuoteMeta(fmt.Sprintf("->%s:%d", s.ServerAddr(), s.Ports.Server)))
+	sessions := vpp.Vppctl("show session verbose")
+	m := session.FindStringSubmatch(sessions)
+	AssertNotNil(m, "proxy-lite udp session to target not found:\n"+sessions)
+	lclPort, err := strconv.Atoi(m[1])
+	AssertNil(err)
+
+	// Datagram that triggered the error, ip header and first 8 bytes of udp
+	orig := make([]byte, 28)
+	orig[0] = 0x45
+	binary.BigEndian.PutUint16(orig[2:], 28)
+	orig[8] = 64
+	orig[9] = 17
+	copy(orig[12:16], net.ParseIP(vppAddr).To4())
+	copy(orig[16:20], net.ParseIP(s.ServerAddr()).To4())
+	binary.BigEndian.PutUint16(orig[20:], uint16(lclPort))
+	binary.BigEndian.PutUint16(orig[22:], s.Ports.Server)
+	binary.BigEndian.PutUint16(orig[24:], 8)
+
+	msg, err := (&icmp.Message{Type: ipv4.ICMPTypeDestinationUnreachable, Code: 3,
+		Body: &icmp.DstUnreach{Data: orig}}).Marshal(nil)
+	AssertNil(err)
+	conn, err := icmp.ListenPacket("ip4:icmp", s.ServerAddr())
+	AssertNil(err)
+	defer conn.Close()
+	_, err = conn.WriteTo(msg, &net.IPAddr{IP: net.ParseIP(vppAddr)})
+	AssertNil(err)
 }
 
 func WaitProxyLitePendingRx(vpp *VppInstance) {

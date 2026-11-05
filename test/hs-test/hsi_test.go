@@ -28,7 +28,7 @@ func init() {
 		HsiProxyLiteUdpDrainTimeoutTest, HsiProxyLiteNotifyCleanupTest,
 		HsiProxyLiteNotifyCleanupDrainTimeoutTest, HsiProxyLiteNotifyCleanupUdpIdleTest,
 		HsiProxyLiteDrainTransportClosedTest, HsiProxyLiteLossTest,
-		HsiProxyLiteDrainActiveSenderTest)
+		HsiProxyLiteDrainActiveSenderTest, HsiProxyLiteUdpDrainIcmpTest)
 	RegisterHsiMWTests(HsiProxyLiteOffloadMWTest, HsiProxyLiteRepeatedOffloadMWTest,
 		HsiProxyLiteDrainOffloadMWTest,
 		HsiProxyLiteUdpConnectedMWTest, HsiProxyLiteUdpDrainOffloadMWTest,
@@ -399,6 +399,36 @@ func HsiProxyLiteUdpDrainTimeoutTest(s *HsiSuite) {
 	Log(hsi)
 	hsi = AssertHsiUdpCleaned(vpp, 2)
 	Log(hsi)
+}
+
+// HsiProxyLiteUdpDrainIcmpTest checks that udp closing a draining connection on
+// an icmp error cleans up the pair
+func HsiProxyLiteUdpDrainIcmpTest(s *HsiSuite) {
+	remoteServerConn := StartUdpEchoServer(s.ServerAddr(), int(s.Ports.Server))
+	defer remoteServerConn.Close()
+
+	vpp := s.Containers.Vpp.VppInstance
+	Log(vpp.Vppctl("hsi udp drain-timeout 30"))
+	s.StartProxyLiteUdp4("hsi-offload-stall", "hsi-notify-cleanup", "fifo-size 4k")
+
+	finished := SendHsiUdpDatagrams(s.ServerAddr(), s.Ports.Server, s.NetNamespaces.Client,
+		0, "hsi-udp-icmp-warm")
+	AssertNil((<-finished).Err)
+	WaitProxyLiteTracked(vpp, func() {})
+	Log(WaitHsiCounterAtLeast(vpp, "udp-drain-started", 2))
+
+	s.SendServerIcmpPortUnreachable()
+	Log(WaitHsiCounterAtLeast(vpp, "udp-drain-transport-closed", 1))
+	hsi := AssertHsiUdpCleaned(vpp, 2)
+	Log(hsi)
+	AssertEqual(0, HsiCounterValue(hsi, "udp-drain-stalled"))
+	AssertProxyLiteHsiCleanups(vpp, 2)
+
+	sessions := vpp.Vppctl("show session verbose")
+	Log(sessions)
+	AssertNotContains(sessions, fmt.Sprintf("->%s:%d", s.ServerAddr(), s.Ports.Server))
+	AssertNotContains(sessions, fmt.Sprintf("[U] %s:%d->%s", s.ServerAddr(), s.Ports.Server,
+		s.Interfaces.Client.Host.Ip4AddressString()))
 }
 
 func HsiProxyLiteUdpIdleDisabledTest(s *HsiSuite) {
