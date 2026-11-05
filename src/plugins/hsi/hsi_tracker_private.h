@@ -55,6 +55,7 @@ typedef struct hsi_tcp_tracker_
   u8 pad_[3];
   u32 next_node_opaque;
   u32 peer_next_node_opaque;
+  u32 app_session_index;
 } hsi_tcp_tracker_t;
 
 #define HSI_TCP_TRACKER_OFFSET STRUCT_OFFSET_OF (tcp_connection_t, rcv_dupacks)
@@ -180,12 +181,14 @@ struct hsi_tcp_drain_
   u32 *cached_buffers;
   hsi_tcp_drain_flags_t flags;
   hsi_tcp_drain_state_t state;
+  u32 app_session_index;
 };
 
 struct hsi_tcp_drain_start_req_
 {
   session_handle_t session_handle;
   session_handle_t peer_session_handle;
+  u32 app_session_index;
 };
 
 struct hsi_udp_drain_
@@ -573,7 +576,7 @@ hsi_session_peer_get_if_valid (session_handle_tu_t sh)
 }
 
 int hsi_track_sessions_compatible (session_t *s, session_t *peer_s);
-int hsi_track_tcp (session_t *s, session_t *peer_s);
+int hsi_track_tcp (session_t *s, session_t *peer_s, u32 app_session_index);
 int hsi_track_udp (session_t *s, session_t *peer_s);
 
 void hsi_session_cleanup_fifos (session_t *s);

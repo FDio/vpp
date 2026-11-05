@@ -23,6 +23,17 @@ __clib_export void hsi_intercept_proto (transport_proto_t proto, u8 is_ip4,
  * using and closing them; on failure, ownership remains with the caller.
  */
 __clib_export int hsi_track_session_pair (session_t *s, session_handle_t peer_session_handle);
+__clib_export int hsi_track_session_pair_ext (session_t *s, session_handle_t peer_session_handle,
+					      u32 app_session_index);
+
+/* Application-level callbacks invoked by HSI during tracker lifecycle events.
+ * Registered by the application plugin via hsi_register_app_session_cbs. */
+typedef struct hsi_app_session_cbs_
+{
+  void (*cleanup) (u32 app_session_index);
+} hsi_app_session_cbs_t;
+
+__clib_export void hsi_register_app_session_cbs (hsi_app_session_cbs_t *cbs);
 
 struct hsi_tcp_tracker_;
 struct hsi_udp_tracker_;
@@ -31,7 +42,7 @@ struct hsi_udp_tracker_;
 typedef struct hsi_tracker_vft_
 {
   /* hand off a session pair to HSI for tracking; works for both TCP and UDP */
-  int (*track_session_pair) (session_t *s, session_handle_t peer_sh);
+  int (*track_session_pair) (session_t *s, session_handle_t peer_sh, u32 app_session_index);
   /* process a TCP packet on a tracked connection; returns tracked action */
   int (*tcp_tracked_action) (vlib_main_t *vm, vlib_buffer_t *b, tcp_connection_t *tc, void *ip_hdr,
 			     void *tcp_hdr, u8 is_ip4, u8 send_rst_on_drain_fail,

@@ -40,6 +40,7 @@ typedef struct hsi_tcp_track_commit_req_
 {
   session_handle_t session_handle;
   hsi_tcp_track_snapshot_t peer;
+  u32 app_session_index;
 } hsi_tcp_track_commit_req_t;
 
 typedef struct hsi_tcp_drain_ hsi_tcp_drain_t;
@@ -180,6 +181,8 @@ typedef struct hsi_main_
 
   /* ipv4 and ipv6 for tcp and udp */
   session_handle_t intercept_listeners[2][2];
+
+  struct hsi_app_session_cbs_ *app_session_cbs;
 } hsi_main_t;
 
 extern hsi_main_t hsi_main;

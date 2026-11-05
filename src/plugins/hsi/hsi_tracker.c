@@ -259,8 +259,21 @@ hsi_track_sessions_compatible (session_t *s, session_t *peer_s)
   return 1;
 }
 
+__clib_export void
+hsi_register_app_session_cbs (hsi_app_session_cbs_t *cbs)
+{
+  hsi_main.app_session_cbs = cbs;
+}
+
 __clib_export int
 hsi_track_session_pair (session_t *s, session_handle_t peer_session_handle)
+{
+  return hsi_track_session_pair_ext (s, peer_session_handle, (u32) ~0);
+}
+
+__clib_export int
+hsi_track_session_pair_ext (session_t *s, session_handle_t peer_session_handle,
+			    u32 app_session_index)
 {
   session_handle_tu_t peer_handle = { .handle = peer_session_handle };
   clib_thread_index_t thread_index = vlib_get_thread_index ();
@@ -292,7 +305,7 @@ hsi_track_session_pair (session_t *s, session_handle_t peer_session_handle)
   switch (proto)
     {
     case TRANSPORT_PROTO_TCP:
-      rv = hsi_track_tcp (s, peer_s);
+      rv = hsi_track_tcp (s, peer_s, app_session_index);
       break;
     case TRANSPORT_PROTO_UDP:
       rv = hsi_track_udp (s, peer_s);
@@ -357,7 +370,7 @@ hsi_udp_tracker_get_fn (udp_connection_t *uc)
 }
 
 static hsi_tracker_vft_t hsi_tracker_vft_ = {
-  .track_session_pair = hsi_track_session_pair,
+  .track_session_pair = hsi_track_session_pair_ext,
   .tcp_tracked_action = hsi_tcp_tracked_action_fn,
   .tcp_tracker_get = hsi_tcp_tracker_get_fn,
   .udp_tracked_action = hsi_udp_tracked_action_fn,
