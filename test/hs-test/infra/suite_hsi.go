@@ -291,6 +291,27 @@ func (s *HsiSuite) BlockServerReplies() func() {
 	return unblock
 }
 
+// AddClientNetem applies netem to the packets the client sends to vpp. The
+// returned function removes it.
+func (s *HsiSuite) AddClientNetem(args ...string) func() {
+	clientIf := s.Interfaces.Client.Host.Name()
+	run := func(args ...string) {
+		output, err := CommandInNetns(append([]string{"tc", "qdisc"}, args...),
+			s.NetNamespaces.Client).CombinedOutput()
+		AssertNil(err, string(output))
+	}
+	run(append([]string{"add", "dev", clientIf, "root", "netem"}, args...)...)
+
+	applied := true
+	return func() {
+		if !applied {
+			return
+		}
+		run("del", "dev", clientIf, "root")
+		applied = false
+	}
+}
+
 // AddHostLoss drops percent of the packets the client and the target send to
 // vpp. The returned function removes the loss.
 func (s *HsiSuite) AddHostLoss(percent int) func() {

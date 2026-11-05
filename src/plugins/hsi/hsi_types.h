@@ -9,7 +9,7 @@
 #include <vnet/ip/ip46_address.h>
 #include <vnet/session/session.h>
 
-#define HSI_TCP_DRAIN_CACHE_DEFAULT_PACKETS	  3
+#define HSI_TCP_DRAIN_CACHE_DEFAULT_PACKETS	  16
 #define HSI_TCP_DRAIN_NO_PROGRESS_DEFAULT_TIMEOUT 10.0
 #define HSI_UDP_DRAIN_CACHE_DEFAULT_PACKETS	  3
 #define HSI_UDP_DRAIN_NO_PROGRESS_DEFAULT_TIMEOUT 10.0
@@ -28,6 +28,7 @@ typedef struct hsi_tcp_track_snapshot_
   u16 rmt_port;
   u32 snd_nxt;
   u32 rcv_nxt;
+  u32 snd_wnd;
   u32 ts_now;
   u32 tsval_recent;
   clib_thread_index_t thread_index;
@@ -39,6 +40,7 @@ typedef struct hsi_tcp_track_snapshot_
 typedef struct hsi_tcp_track_commit_req_
 {
   session_handle_t session_handle;
+  hsi_tcp_track_snapshot_t self;
   hsi_tcp_track_snapshot_t peer;
 } hsi_tcp_track_commit_req_t;
 
