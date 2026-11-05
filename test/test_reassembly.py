@@ -18,6 +18,7 @@ from scapy.layers.inet6 import (
     IPv6ExtHdrFragment,
     IPv6ExtHdrHopByHop,
     IPv6ExtHdrDestOpt,
+    IPv6ExtHdrRouting,
     PadN,
     ICMPv6EchoRequest,
     ICMPv6EchoReply,
@@ -1933,6 +1934,42 @@ class TestIPv6Reassembly(VppTestCase):
         self.assertIn(ICMPv6ParamProblem, icmp)
         self.assert_equal(icmp[ICMPv6ParamProblem].code, 3, "ICMP code")
 
+    def test_first_fragment_at_chain_limit(self):
+        """A first fragment at the entry limit is reassembled
+
+        The fragment header fills the last chain slot and names a
+        destination options header. The walk stops at the entry limit,
+        but the fragment is valid. The node must complete the reassembly
+        and forward the packet."""
+        payload_first = b"A" * 16
+        payload_last = b"B" * 16
+        first = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6)
+            / IPv6ExtHdrHopByHop(nh=60)
+            / IPv6ExtHdrDestOpt(nh=43)
+            / IPv6ExtHdrRouting(nh=44)
+            / IPv6ExtHdrFragment(offset=0, m=1, nh=60)
+            / IPv6ExtHdrDestOpt(nh=17)
+            / UDP(sport=1234, dport=5678)
+            / Raw(payload_first)
+        )
+        last = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6)
+            / IPv6ExtHdrHopByHop(nh=60)
+            / IPv6ExtHdrDestOpt(nh=43)
+            / IPv6ExtHdrRouting(nh=44)
+            / IPv6ExtHdrFragment(offset=4, m=0, nh=60)
+            / Raw(payload_last)
+        )
+
+        self.pg_enable_capture()
+        self.src_if.add_stream([first, last])
+        self.pg_start()
+        c = self.dst_if.get_capture(1)
+        self.assertEqual(len(c), 1)
+
     def test_invalid_frag_size(self):
         """fragment size not a multiple of 8"""
         p = (
@@ -2736,6 +2773,85 @@ class TestIPv6SVReassembly(VppTestCase):
         )
         self.assertIn(ICMPv6ParamProblem, rx[0])
         self.assertEqual(rx[0][ICMPv6ParamProblem].code, 0)
+
+    def test_truncated_ext_header_pointer(self):
+        """A truncated extension header reports the erroneous header pointer
+
+        The hop-by-hop header ends before the destination options header,
+        whose length byte is not present. The node must report a Parameter
+        Problem with the erroneous header field code and point at the
+        truncated header."""
+        IP_PROTOCOL_IP6_DESTINATION_HEADER = 60
+
+        # 8-byte Hop-by-Hop header: next = Destination Options Header,
+        # Hdr Ext Len = 0. Followed by 1 byte of a truncated Destination
+        # Options header.
+        hbh = struct.pack("BB", IP_PROTOCOL_IP6_DESTINATION_HEADER, 0) + b"\x00" * 7
+
+        pkt = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(
+                src=self.src_if.remote_ip6,
+                dst=self.dst_if.remote_ip6,
+                nh="Hop-by-Hop Option Header",
+            )
+            / Raw(load=hbh)
+        )
+
+        rx = self.send_and_expect(
+            self.src_if,
+            [pkt],
+            self.src_if,
+        )
+        self.assertIn(ICMPv6ParamProblem, rx[0])
+        self.assertEqual(rx[0][ICMPv6ParamProblem].code, 0)
+        self.assertEqual(rx[0][ICMPv6ParamProblem].ptr, 48)
+
+    def test_ext_header_chain_over_limit(self):
+        """A packet with more extension headers than the chain limit is forwarded
+
+        The walk records at most four extension headers, so it cannot
+        classify a longer chain. The packet is valid, so the node must
+        pass it through instead of dropping it with an ICMP error."""
+        p = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6)
+            / IPv6ExtHdrHopByHop(nh=60)
+            / IPv6ExtHdrDestOpt(nh=43)
+            / IPv6ExtHdrRouting(nh=60)
+            / IPv6ExtHdrDestOpt(nh=60)
+            / IPv6ExtHdrDestOpt(nh=17)
+            / UDP(sport=1234, dport=5678)
+            / Raw(b"X" * 16)
+        )
+
+        self.pg_enable_capture()
+        self.src_if.add_stream([p])
+        self.pg_start()
+        c = self.dst_if.get_capture(1)
+        self.assertEqual(len(c), 1)
+
+    def test_first_fragment_at_chain_limit(self):
+        """A first fragment at the entry limit is not rejected
+
+        The fragment header fills the last chain slot and names a
+        destination options header. The walk stops at the entry limit,
+        but the fragment is valid and must not be answered with a
+        Parameter Problem."""
+        first = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6)
+            / IPv6ExtHdrHopByHop(nh=60)
+            / IPv6ExtHdrDestOpt(nh=43)
+            / IPv6ExtHdrRouting(nh=44)
+            / IPv6ExtHdrFragment(offset=0, m=1, nh=60)
+            / IPv6ExtHdrDestOpt(nh=17)
+            / UDP(sport=1234, dport=5678)
+            / Raw(b"X" * 16)
+        )
+
+        recvd = self.send_and_expect(self.src_if, [first], self.dst_if)
+        self.assertEqual(len(recvd), 1)
 
     def _get_buffer_count(self):
         """Get the number of allocated buffers from 'show buffers'"""
