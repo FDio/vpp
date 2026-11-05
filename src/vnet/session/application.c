@@ -1510,7 +1510,7 @@ vnet_shutdown_session (vnet_shutdown_args_t *a)
   /* We're peeking into another's thread pool. Make sure */
   ASSERT (s->session_index == session_index_from_handle (a->handle));
 
-  session_half_close (s);
+  session_half_close (s, 0 /* is_rx */);
   return 0;
 }
 

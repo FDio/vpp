@@ -269,9 +269,9 @@ quic_proto_on_close (u32 ctx_index, clib_thread_index_t thread_index)
 }
 
 static void
-quic_proto_on_half_close (u32 ctx_index, clib_thread_index_t thread_index)
+quic_proto_on_half_close (u32 ctx_index, clib_thread_index_t thread_index, u8 is_rx)
 {
-  quic_eng_proto_on_half_close (ctx_index, thread_index);
+  quic_eng_proto_on_half_close (ctx_index, thread_index, is_rx);
 }
 
 static void
@@ -716,6 +716,11 @@ quic_session_attribute (u32 ctx_index, clib_thread_index_t thread_index,
 	{
 	case TRANSPORT_ENDPT_ATTR_APP_PROTO_ERR_CODE:
 	  ctx->app_err_code = (quic_app_err_code_t) attr->app_proto_err_code;
+	  break;
+	case TRANSPORT_ENDPT_ATTR_APP_PROTO_ERR_CODE_RX:
+	  if (!quic_ctx_is_stream (ctx) || attr->app_proto_err_code_rx >= (1ULL << 62))
+	    return -1;
+	  ctx->app_err_code_rx = (quic_app_err_code_t) attr->app_proto_err_code_rx;
 	  break;
 	default:
 	  return -1;

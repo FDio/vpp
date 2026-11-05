@@ -541,7 +541,7 @@ quic_quicly_ack_rx_data (session_t *stream_session)
   sctx = quic_quicly_get_quic_ctx (stream_session->connection_index,
 				   stream_session->thread_index);
   ASSERT (quic_ctx_is_stream (sctx));
-  if (!sctx->stream)
+  if (!sctx->stream || (sctx->flags & QUIC_F_APP_CLOSED_RX))
     return;
   stream = sctx->stream;
   stream_data = (quic_stream_data_t *) stream->data;
@@ -580,6 +580,10 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
     quic_quicly_get_quic_ctx (stream_data->ctx_id, stream_data->thread_index);
   stream_session = session_get (sctx->c_s_index, stream_data->thread_index);
   f = stream_session->rx_fifo;
+
+  /* when rx was abandoned in-flight data and FIN must not notify the app */
+  if (sctx->flags & QUIC_F_APP_CLOSED_RX)
+    return;
 
   /* this happen only when we receive EOS without any data */
   if (PREDICT_FALSE (!len))
@@ -696,7 +700,8 @@ quic_quicly_on_receive_reset (quicly_stream_t *stream, quicly_error_t quicly_err
 	    session_handle (session_get (sctx->c_s_index, sctx->c_thread_index)), sctx->c_c_index,
 	    sctx->c_thread_index, sctx->flags, quic_quicly_format_err, quicly_error);
 
-  if (!(sctx->flags & QUIC_F_APP_CLOSED))
+  /* A RESET_STREAM solicited by our STOP_SENDING only completes RX. */
+  if (!(sctx->flags & (QUIC_F_APP_CLOSED | QUIC_F_APP_CLOSED_RX)))
     {
       sctx->app_err_code = QUICLY_ERROR_GET_ERROR_CODE (quicly_error);
       session_transport_reset_notify (&sctx->connection);
@@ -1209,7 +1214,7 @@ quic_quicly_on_app_closed (u32 ctx_index, clib_thread_index_t thread_index)
 }
 
 static void
-quic_quicly_on_app_closed_tx (u32 ctx_index, clib_thread_index_t thread_index)
+quic_quicly_on_app_half_closed (u32 ctx_index, clib_thread_index_t thread_index, u8 is_rx)
 {
   session_t *stream_session;
   quic_ctx_t *ctx;
@@ -1226,6 +1231,29 @@ quic_quicly_on_app_closed_tx (u32 ctx_index, clib_thread_index_t thread_index)
       return;
     }
   stream = ctx->stream;
+  if (!stream)
+    return;
+  if (is_rx)
+    {
+      if (!quicly_stream_has_receive_side (quicly_is_client (stream->conn), stream->stream_id))
+	{
+	  QUIC_ERR ("Trying to half-close stream without receive side");
+	  return;
+	}
+      if (ctx->flags & QUIC_F_APP_CLOSED_RX)
+	return;
+
+      ctx->flags |= QUIC_F_APP_CLOSED_RX;
+      if (!quicly_recvstate_transfer_complete (&stream->recvstate))
+	{
+	  quicly_request_stop (stream,
+			       QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (ctx->app_err_code_rx));
+	  quic_quicly_reschedule_ctx (
+	    quic_quicly_get_quic_ctx (ctx->quic_connection_ctx_id, ctx->c_thread_index));
+	}
+      return;
+    }
+
   if (!quicly_stream_has_send_side (quicly_is_client (stream->conn),
 				    stream->stream_id))
     {
@@ -2086,7 +2114,7 @@ const static quic_engine_vft_t quic_quicly_engine_vft = {
   .format_stream_stats = quic_quicly_format_stream_stats,
   .stream_get_stream_id = quic_quicly_stream_get_stream_id,
   .proto_on_close = quic_quicly_on_app_closed,
-  .proto_on_half_close = quic_quicly_on_app_closed_tx,
+  .proto_on_half_close = quic_quicly_on_app_half_closed,
   .proto_on_reset = quic_quicly_on_app_reset,
   .transport_closed = quic_quicly_transport_closed,
   .ctx_attribute = quic_quicly_ctx_attribute,

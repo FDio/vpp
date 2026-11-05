@@ -738,9 +738,12 @@ tls_connect (transport_endpoint_cfg_t * tep)
 }
 
 void
-tls_shutdown (u32 ctx_handle, clib_thread_index_t thread_index)
+tls_shutdown (u32 ctx_handle, clib_thread_index_t thread_index, u8 is_rx)
 {
   tls_ctx_t *ctx;
+
+  if (PREDICT_FALSE (is_rx))
+    return;
 
   TLS_DBG (1, "Disconnecting %x", ctx_handle);
 
