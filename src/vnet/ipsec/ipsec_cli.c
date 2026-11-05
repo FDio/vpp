@@ -722,12 +722,22 @@ ipsec_tun_protect_cmd (vlib_main_t * vm,
 				   format_unformat_error, line_input));
     }
 
+  int rv;
   if (!is_del)
-    ipsec_tun_protect_update (sw_if_index, &peer, sa_out, sa_ins);
+    {
+      rv = ipsec_tun_protect_update (sw_if_index, &peer, sa_out, sa_ins);
+      if (rv)
+	vec_free (sa_ins);
+    }
   else
-    ipsec_tun_protect_del (sw_if_index, &peer);
+    {
+      vec_free (sa_ins);
+      rv = ipsec_tun_protect_del (sw_if_index, &peer);
+    }
 
   unformat_free (line_input);
+  if (rv)
+    return clib_error_return (0, "IPsec tunnel protection failed: %d", rv);
   return NULL;
 }
 
