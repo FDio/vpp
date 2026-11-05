@@ -621,12 +621,19 @@ ipsec_tun_protect_add_cmd (vlib_main_t *vm, cli_ctx_t *ctx)
   u32 *sa_ins = 0;
   ip_address_t peer = {};
   cli_value_t *v;
+  int rv;
 
   ipsec_tun_protect_peer (ctx, &peer);
   cli_foreach (v, ctx, "sa-in") vec_add1 (sa_ins, v->u64);
 
-  ipsec_tun_protect_update (cli_index (ctx, "interface"), &peer, cli_u64 (ctx, "sa-out", 0),
-			    sa_ins);
+  rv = ipsec_tun_protect_update (cli_index (ctx, "interface"), &peer, cli_u64 (ctx, "sa-out", 0),
+				 sa_ins);
+  if (rv)
+    {
+      vec_free (sa_ins);
+      return clib_error_return (0, "IPsec tunnel protection failed: %d", rv);
+    }
+
   return 0;
 }
 
@@ -634,9 +641,14 @@ static clib_error_t *
 ipsec_tun_protect_del_cmd (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   ip_address_t peer = {};
+  int rv;
 
   ipsec_tun_protect_peer (ctx, &peer);
-  ipsec_tun_protect_del (cli_index (ctx, "interface"), &peer);
+
+  rv = ipsec_tun_protect_del (cli_index (ctx, "interface"), &peer);
+  if (rv)
+    return clib_error_return (0, "IPsec tunnel protection failed: %d", rv);
+
   return 0;
 }
 

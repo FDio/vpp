@@ -101,6 +101,8 @@ static void vl_api_ipsec_tunnel_protect_update_t_handler
 
   rv = ipsec_tun_protect_update (sw_if_index, &nh,
 				 ntohl (mp->tunnel.sa_out), sa_ins);
+  if (rv)
+    vec_free (sa_ins);
 
   BAD_SW_IF_INDEX_LABEL;
 
