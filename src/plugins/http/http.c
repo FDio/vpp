@@ -1544,8 +1544,10 @@ http_app_close (u32 rh, clib_thread_index_t thread_index, u8 is_shutdown)
 }
 
 static void
-http_transport_shutdown (u32 rh, clib_thread_index_t thread_index)
+http_transport_shutdown (u32 rh, clib_thread_index_t thread_index, u8 is_rx)
 {
+  if (PREDICT_FALSE (is_rx))
+    return;
   http_app_close (rh, thread_index, 1);
 }
 

@@ -1771,7 +1771,7 @@ session_event_dispatch_ctrl (session_worker_t * wrk, session_evt_elt_t * elt)
       s = session_get_from_handle_if_valid (e->session_handle);
       if (PREDICT_FALSE (!s))
 	break;
-      session_transport_half_close (s);
+      session_transport_half_close (s, !!(s->flags & SESSION_F_TX_READY));
       break;
     case SESSION_CTRL_EVT_CLOSE:
       s = session_get_from_handle_if_valid (e->session_handle);

@@ -456,7 +456,8 @@ typedef struct transport_endpt_ext_cfgs_
   _ (tls_profile_info_t, tls_profile_info, TLS_PROFILE_INFO)                                       \
   _ (u64, next_transport, NEXT_TRANSPORT)                                                          \
   _ (u64, app_proto_err_code, APP_PROTO_ERR_CODE)                                                  \
-  _ (u8 *, tls_server_name, TLS_SERVER_NAME)
+  _ (u8 *, tls_server_name, TLS_SERVER_NAME)                                                       \
+  _ (u64, app_proto_err_code_rx, APP_PROTO_ERR_CODE_RX)
 
 typedef enum transport_endpt_attr_type_
 {

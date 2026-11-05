@@ -725,9 +725,12 @@ ct_program_cleanup (ct_connection_t *ct)
 }
 
 static void
-ct_session_half_close (u32 ct_index, clib_thread_index_t thread_index)
+ct_session_half_close (u32 ct_index, clib_thread_index_t thread_index, u8 is_rx)
 {
   ct_connection_t *ct, *peer_ct;
+
+  if (PREDICT_FALSE (is_rx))
+    return;
 
   ct = ct_connection_get (ct_index, thread_index);
   if (!ct)

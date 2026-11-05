@@ -506,10 +506,10 @@ transport_connect_stream (transport_proto_t tp, transport_endpoint_cfg_t *tep,
 }
 
 void
-transport_half_close (transport_proto_t tp, u32 conn_index, u8 thread_index)
+transport_half_close (transport_proto_t tp, u32 conn_index, u8 thread_index, u8 is_rx)
 {
   if (tp_vfts[tp].half_close)
-    tp_vfts[tp].half_close (conn_index, thread_index);
+    tp_vfts[tp].half_close (conn_index, thread_index, is_rx);
 }
 
 void

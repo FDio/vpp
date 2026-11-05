@@ -271,6 +271,92 @@ done:
 }
 
 static clib_error_t *
+quicly_test_cancel_rx_complete (vlib_main_t *vm, quic_quicly_main_t *qqm,
+				const quicly_stream_callbacks_t *callbacks,
+				const quic_engine_vft_t *engine, u32 thread_index)
+{
+  quic_main_t *qm = qqm->qm;
+  session_worker_t *sw = &session_main.wrk[thread_index];
+  session_event_t rx_evt, close_evt;
+  session_evt_elt_t *head, *elt;
+  struct _st_quicly_conn_public_t conn = {};
+  quicly_stream_t stream = { .conn = (quicly_conn_t *) &conn };
+  quic_stream_data_t data = { .thread_index = thread_index };
+  transport_endpt_attr_t attr = { .type = TRANSPORT_ENDPT_ATTR_APP_PROTO_ERR_CODE_RX,
+				  .app_proto_err_code_rx = 0x100 };
+  session_t *session = session_alloc (thread_index);
+  u32 ctx_index = quic_ctx_alloc (qm, thread_index);
+  quic_ctx_t *ctx = pool_elt_at_index (qm->wrk_ctx[thread_index].ctx_pool, ctx_index);
+  int res = 0;
+
+  ctx->c_c_index = ctx_index;
+  ctx->c_s_index = session->session_index;
+  ctx->c_proto = TRANSPORT_PROTO_QUIC;
+  ctx->flags = QUIC_F_IS_STREAM;
+  ctx->stream = &stream;
+  ctx->app_err_code = 0x999;
+  session->connection_index = ctx_index;
+  session->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, 1);
+  session->session_state = SESSION_STATE_READY;
+  session->flags |= SESSION_F_RX_READY;
+  data.ctx_id = ctx_index;
+  stream.data = &data;
+  stream.sendstate.final_size = UINT64_MAX;
+  QUICLY_TEST (!session_transport_attribute (session, 0, &attr) && ctx->app_err_code_rx == 0x100,
+	       "RX error code can be configured");
+  QUICLY_TEST (ctx->flags == QUIC_F_IS_STREAM && ctx->app_err_code == 0x999,
+	       "setting RX error code does not close RX or change the other error code");
+  attr.app_proto_err_code_rx = 1ULL << 62;
+  QUICLY_TEST (session_transport_attribute (session, 0, &attr) < 0 && ctx->app_err_code_rx == 0x100,
+	       "invalid RX error code leaves the configured value intact");
+  session_half_close (session, 1 /* is_rx */);
+  QUICLY_TEST ((session->flags & (SESSION_F_RX_READY | SESSION_F_TX_READY)) == SESSION_F_TX_READY,
+	       "RX half-close disables RX notifications and preserves TX readiness");
+  session_half_close (session, 1 /* is_rx */);
+  head = clib_llist_elt (sw->event_elts, sw->ctrl_head);
+  elt = clib_llist_next (sw->event_elts, evt_list, head);
+  rx_evt = elt->evt;
+  clib_llist_remove (sw->event_elts, evt_list, elt);
+  clib_llist_put (sw->event_elts, elt);
+  QUICLY_TEST (rx_evt.event_type == SESSION_CTRL_EVT_HALF_CLOSE &&
+		 rx_evt.session_handle == session_handle (session) &&
+		 clib_llist_next (sw->event_elts, evt_list, head) == head,
+	       "RX half-close queues one event and repeated RX close queues none");
+  session_close (session);
+  elt = clib_llist_next (sw->event_elts, evt_list, head);
+  close_evt = elt->evt;
+  clib_llist_remove (sw->event_elts, evt_list, elt);
+  clib_llist_put (sw->event_elts, elt);
+  QUICLY_TEST (close_evt.event_type == SESSION_CTRL_EVT_CLOSE &&
+		 close_evt.session_handle == session_handle (session),
+	       "full close remains available after RX half-close");
+  QUICLY_TEST (ctx->flags == QUIC_F_IS_STREAM, "queuing half-close defers the transport operation");
+  attr.type = TRANSPORT_ENDPT_ATTR_APP_PROTO_ERR_CODE;
+  attr.app_proto_err_code = 0x777;
+  QUICLY_TEST (!session_transport_attribute (session, 0, &attr) && ctx->app_err_code_rx == 0x100,
+	       "a later reset error code does not overwrite the pending RX error code");
+  /* No receive ranges and eos == 0 model a request already received through FIN. */
+  engine->proto_on_half_close (ctx_index, thread_index, !!(session->flags & SESSION_F_TX_READY));
+  tp_vfts[TRANSPORT_PROTO_QUIC].half_close (ctx_index, thread_index, 1 /* is_rx */);
+  QUICLY_TEST (ctx->flags == (QUIC_F_IS_STREAM | QUIC_F_APP_CLOSED_RX),
+	       "receive cancellation preserves TX and session ownership");
+  QUICLY_TEST (!quicly_stop_requested (&stream),
+	       "completed receive side does not need STOP_SENDING");
+  session->session_state = SESSION_STATE_ACCEPTING;
+  callbacks->on_receive (&stream, 0, 0, 0);
+  callbacks->on_receive_reset (&stream, QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (0x100));
+  QUICLY_TEST (session->session_state == SESSION_STATE_ACCEPTING,
+	       "late FIN/reset after cancellation does not notify the application");
+  QUICLY_TEST (ctx->app_err_code == 0x777 && stream.sendstate.final_size == UINT64_MAX,
+	       "receive cancellation leaves the send state and error code intact");
+
+done:
+  quic_ctx_free (qm, ctx);
+  session_free (session);
+  return res ? clib_error_return (0, "receive cancellation test failed") : 0;
+}
+
+static clib_error_t *
 quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   quic_main_t *qm, *saved_qm;
@@ -285,6 +371,7 @@ quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
   u32 counter_index;
   u64 saved_counter;
   u64 saved_closed_connections;
+  clib_error_t *cancel_error = 0;
   const u64 stream_ids[] = { 0, 2, 3 }; /* bidi, sending uni, receiving uni */
   int res = 0;
   enum
@@ -292,6 +379,7 @@ quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
     TEST_NONE,
     TEST_STREAM_CLOSE,
     TEST_RX,
+    TEST_CANCEL_RX,
     TEST_ALL,
   } test = TEST_NONE;
 
@@ -299,10 +387,12 @@ quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
     test = TEST_STREAM_CLOSE;
   else if (unformat (input, "rx"))
     test = TEST_RX;
+  else if (unformat (input, "cancel-rx"))
+    test = TEST_CANCEL_RX;
   else if (unformat (input, "all"))
     test = TEST_ALL;
   if (test == TEST_NONE || unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    return clib_error_return (0, "expected exactly one of stream-close, rx or all");
+    return clib_error_return (0, "expected exactly one of stream-close, rx, cancel-rx or all");
   QUIC_LOAD_SYMBOL_FROM_PLUGIN_TO ("quic_plugin.so", quic_main, qm);
   QUIC_LOAD_SYMBOL_FROM_PLUGIN_TO ("quic_plugin.so", quic_engine_vfts, engines);
   QUIC_LOAD_SYMBOL_FROM_PLUGIN_TO ("quic_quicly_plugin.so", quic_quicly_main, qqm);
@@ -333,6 +423,7 @@ quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 			  CLIB_CACHE_LINE_BYTES);
       pool_alloc_aligned (sessions[i].sessions, 2 * POOL_REALLOC_SAFE_ELT_THRESH,
 			  CLIB_CACHE_LINE_BYTES);
+      sessions[i].ctrl_head = clib_llist_make_head (sessions[i].event_elts, evt_list);
     }
   /* CLI worker barrier protects the temporary session/context pools. */
   qm->wrk_ctx = workers;
@@ -348,6 +439,13 @@ quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 					  thread_index, stream_ids[i], order);
   if (!res && (test == TEST_RX || test == TEST_ALL))
     res = quicly_test_retired_rx (vm, qqm, &(*engines)[QUIC_ENGINE_QUICLY]);
+  if (test == TEST_CANCEL_RX || test == TEST_ALL)
+    for (u32 thread_index = 0; thread_index < 2 && !res; thread_index++)
+      {
+	cancel_error = quicly_test_cancel_rx_complete (
+	  vm, qqm, callbacks, &(*engines)[QUIC_ENGINE_QUICLY], thread_index);
+	res = cancel_error != 0;
+      }
   qm->wrk_ctx = saved_workers;
   qm->quic_input_node = saved_node;
   session_main.wrk = saved_sessions;
@@ -360,10 +458,13 @@ quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
     {
       pool_free (workers[i].ctx_pool);
       pool_free (sessions[i].sessions);
+      clib_llist_free (sessions[i].event_elts);
     }
   vec_free (workers);
   vec_free (sessions);
   vec_free (stats);
+  if (cancel_error)
+    return cancel_error;
   if (res)
     return clib_error_return (0, "quicly unit test failed");
   vlib_cli_output (vm, "SUCCESS");
@@ -372,7 +473,7 @@ quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 
 VLIB_CLI_COMMAND (quicly_test_command, static) = {
   .path = "test quicly",
-  .short_help = "test quicly [stream-close|rx|all]",
+  .short_help = "test quicly [stream-close|rx|cancel-rx|all]",
   .function = quicly_test,
 };
 
