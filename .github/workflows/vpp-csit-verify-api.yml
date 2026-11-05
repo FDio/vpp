@@ -84,6 +84,10 @@ permissions:
   contents: read
   actions: read
 
+concurrency:
+  group: vpp-csit-verify-api-${{ github.workflow }}-${{ inputs.GERRIT_PROJECT }}-${{ inputs.GERRIT_BRANCH }}-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.FDIO_NAMESPACE }}
+  cancel-in-progress: true
+
 jobs:
   csit-verify-api:
     name: ${{ matrix.build_type }}_${{ matrix.os }}_${{ matrix.executor_arch }}

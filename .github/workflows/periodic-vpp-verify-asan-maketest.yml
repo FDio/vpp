@@ -50,6 +50,10 @@ jobs:
             class: 'builder'
 
     env:
+      MATRIX_BUILD_TYPE: ${{ matrix.build_type }}
+      MATRIX_CLASS: ${{ matrix.class }}
+      MATRIX_OS: ${{ matrix.os }}
+      MATRIX_EXECUTOR_ARCH: ${{ matrix.executor_arch }}
       FDIO_NAMESPACE: ${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}
       LOG_NAME: ""
       LOG_DIR: ""
@@ -74,7 +78,7 @@ jobs:
         run: |
           set -euxo pipefail
           ts="$(date -u +%Y_%m_%d_%H%M%S_UTC)"
-          LOG_NAME="gha-vpp-periodic/vpp-verify-asan-maketest-master-${ts}-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ env.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
+          LOG_NAME="gha-vpp-periodic/vpp-verify-asan-maketest-master-${ts}-${MATRIX_BUILD_TYPE}-${MATRIX_CLASS}-${MATRIX_OS}-${FDIO_NAMESPACE}-${MATRIX_EXECUTOR_ARCH}"
           echo "LOG_NAME=$LOG_NAME" >> "$GITHUB_ENV"
           LOG_DIR="$WORKSPACE/logs/$LOG_NAME"
           echo "LOG_DIR=$LOG_DIR" >> "$GITHUB_ENV"

@@ -62,6 +62,7 @@ permissions:
 
 jobs:
   notify-start:
+    name: Notify Start
     runs-on: ubuntu-latest
     outputs:
       log_prefix: ${{ steps.start-time.outputs.log_prefix }}
@@ -69,28 +70,43 @@ jobs:
     steps:
       - name: Start Time
         id: start-time
+        env:
+          GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+          GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+          GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+          GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
         run: |
           set -euxo pipefail
           timestamp=$(date -u +%Y_%m_%d_%H%M%S_UTC)
-          log_prefix="gha-vpp-gerrit-patchset/csit-perf-${{ inputs.GERRIT_BRANCH }}-${timestamp}-gerrit-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.GERRIT_PATCHSET_NUMBER}}"
+          log_prefix="gha-vpp-gerrit-patchset/csit-perf-${GERRIT_BRANCH}-${timestamp}-gerrit-${GERRIT_CHANGE_NUMBER}-${GERRIT_PATCHSET_NUMBER}"
           echo "log_prefix=$log_prefix" >> "$GITHUB_OUTPUT"
-          echo "Gerrit Change: ${{ inputs.GERRIT_CHANGE_URL }}"
+          echo "Gerrit Change: $GERRIT_CHANGE_URL"
 
       - name: Job Details
+        env:
+          GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+          GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+          GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+          GERRIT_CHANGE_ID: ${{ inputs.GERRIT_CHANGE_ID }}
+          GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
+          GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+          GERRIT_EVENT_TYPE: ${{ inputs.GERRIT_EVENT_TYPE }}
+          GERRIT_COMMENT: ${{ inputs.GERRIT_COMMENT }}
+          FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
         run: |
           {
             echo "### Gerrit Comment Handler"
             echo
             echo "| Field | Value |"
             echo "| --- | --- |"
-            echo "| Gerrit change | ${{ inputs.GERRIT_CHANGE_URL }}/${{ inputs.GERRIT_PATCHSET_NUMBER }} |"
-            echo "| Branch | ${{ inputs.GERRIT_BRANCH }} |"
-            echo "| Gerrit Change ID | ${{ inputs.GERRIT_CHANGE_ID }} |"
-            echo "| Patchset Revision | ${{ inputs.GERRIT_PATCHSET_REVISION }} |"
-            echo "| Refspec | ${{ inputs.GERRIT_REFSPEC }} |"
-            echo "| Gerrit Event | ${{ inputs.GERRIT_EVENT_TYPE }} |"
-            echo "| Gerrit Comment | ${{ inputs.GERRIT_COMMENT }} |"
-            echo "| Namespace | ${{ inputs.FDIO_NAMESPACE }} |"
+            echo "| Gerrit change | $GERRIT_CHANGE_URL/$GERRIT_PATCHSET_NUMBER |"
+            echo "| Branch | $GERRIT_BRANCH |"
+            echo "| Gerrit Change ID | $GERRIT_CHANGE_ID |"
+            echo "| Patchset Revision | $GERRIT_PATCHSET_REVISION |"
+            echo "| Refspec | $GERRIT_REFSPEC |"
+            echo "| Gerrit Event | $GERRIT_EVENT_TYPE |"
+            echo "| Gerrit Comment | $GERRIT_COMMENT |"
+            echo "| Namespace | $FDIO_NAMESPACE |"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Clear Gerrit vote
@@ -107,6 +123,7 @@ jobs:
           comment-only: true
 
   dispatch:
+    name: Dispatch Comment
     runs-on: ubuntu-latest
 
     outputs:
@@ -199,6 +216,7 @@ jobs:
           archives_path: ${{ env.CSIT_WORKSPACE }}/archives
 
   vote:
+    name: Gerrit Vote
     if: ${{ always() }}
     needs:
       - notify-start

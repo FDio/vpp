@@ -107,6 +107,10 @@ permissions:
   contents: read
   actions: read
 
+concurrency:
+  group: vpp-verify-gcc-${{ github.workflow }}-${{ inputs.GERRIT_PROJECT }}-${{ inputs.GERRIT_BRANCH }}-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.FDIO_NAMESPACE }}
+  cancel-in-progress: true
+
 jobs:
   verify-gcc:
     name: ${{ matrix.build_type }}_${{ matrix.os }}_${{ matrix.executor_arch }}

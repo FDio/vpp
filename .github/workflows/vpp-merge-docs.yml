@@ -106,6 +106,10 @@ permissions:
   contents: read
   actions: read
 
+concurrency:
+  group: vpp-merge-docs-${{ github.workflow }}-${{ inputs.GERRIT_PROJECT }}-${{ inputs.GERRIT_BRANCH }}-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.FDIO_NAMESPACE }}
+  cancel-in-progress: true
+
 jobs:
   merge-docs:
     name: ${{ matrix.build_type }}_${{ matrix.os }}_${{ matrix.executor_arch }}
