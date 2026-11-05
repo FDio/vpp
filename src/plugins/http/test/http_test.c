@@ -1744,6 +1744,84 @@ http_test_qpack (vlib_main_t *vm)
   vec_free (buf);
   vec_free (headers);
 
+  vlib_cli_output (vm, "qpack field section prefix");
+
+  const struct
+  {
+    char *name;
+    u8 *prefix;
+    u32 prefix_len;
+    u8 append_fields;
+    http3_error_t error;
+    uword delta_base;
+  } prefix_tests[] = {
+#define _(name, prefix, fields, error, base)                                                       \
+  { name, (u8 *) prefix, sizeof (prefix) - 1, fields, error, base }
+    _ ("zero Base", "\x00\x00", 1, HTTP3_ERROR_NO_ERROR, 0),
+    _ ("nonzero Base", "\x00\x01", 1, HTTP3_ERROR_NO_ERROR, 1),
+    _ ("largest single-byte Base", "\x00\x7e", 1, HTTP3_ERROR_NO_ERROR, 126),
+    _ ("extended Base", "\x00\x7f\x00", 1, HTTP3_ERROR_NO_ERROR, 127),
+    _ ("multi-byte Base", "\x00\x7f\x81\x01", 1, HTTP3_ERROR_NO_ERROR, 256),
+    _ ("nonzero Required Insert Count", "\x01\x00", 1, HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED, 0),
+    _ ("extended Required Insert Count", "\xff\x00\x00", 1, HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED,
+       0),
+    _ ("negative Base with zero Delta Base", "\x00\x80", 1, HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED,
+       0),
+    _ ("negative Base with nonzero Delta Base", "\x00\x81", 1,
+       HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED, 0),
+    _ ("negative Base with extended Delta Base", "\x00\xff\x00", 1,
+       HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED, 0),
+    _ ("missing prefix", "", 0, HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED, 0),
+    _ ("missing Delta Base", "\x00", 0, HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED, 0),
+    _ ("truncated Required Insert Count", "\xff\x80\x80", 0, HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED,
+       0),
+    _ ("missing Delta Base after extended integer", "\xff\x80\x00", 0,
+       HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED, 0),
+    _ ("truncated Delta Base", "\x00\x7f\x80", 0, HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED, 0),
+    _ ("overflowing Delta Base", "\x00\x7f\xff\xff\xff\xff\xff\xff\xff\xff\xff\x01", 0,
+       HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED, 0),
+#undef _
+  };
+
+  vec_validate_init_empty (buf, 254, 0);
+  for (u32 i = 0; i < ARRAY_LEN (prefix_tests); i++)
+    {
+      vec_add (input, prefix_tests[i].prefix, prefix_tests[i].prefix_len);
+      if (prefix_tests[i].append_fields)
+	vec_add (input, req + 2, sizeof (req) - 2);
+      memset (&decoder_ctx, 0, sizeof (decoder_ctx));
+      memset (&req_control_data, 0, sizeof (req_control_data));
+      err = _qpack_parse_request (input, vec_len (input), buf, vec_len (buf), &req_control_data,
+				  &headers, &decoder_ctx);
+      HTTP_TEST (err == prefix_tests[i].error, "request %s: %U", prefix_tests[i].name,
+		 format_http3_error, err);
+      if (err == HTTP3_ERROR_NO_ERROR)
+	HTTP_TEST (req_control_data.parsed_bitmap == parsed_bitmap &&
+		     decoder_ctx.delta_base == prefix_tests[i].delta_base,
+		   "request fields decoded with %s", prefix_tests[i].name);
+      vec_free (headers);
+      vec_reset_length (input);
+
+      vec_add (input, prefix_tests[i].prefix, prefix_tests[i].prefix_len);
+      if (prefix_tests[i].append_fields)
+	vec_add (input, resp + 2, sizeof (resp) - 2);
+      memset (&decoder_ctx, 0, sizeof (decoder_ctx));
+      memset (&resp_control_data, 0, sizeof (resp_control_data));
+      err = _qpack_parse_response (input, vec_len (input), buf, vec_len (buf), &resp_control_data,
+				   &headers, &decoder_ctx);
+      HTTP_TEST (err == prefix_tests[i].error, "response %s: %U", prefix_tests[i].name,
+		 format_http3_error, err);
+      if (err == HTTP3_ERROR_NO_ERROR)
+	HTTP_TEST (resp_control_data.parsed_bitmap == HPACK_PSEUDO_HEADER_STATUS_PARSED &&
+		     resp_control_data.sc == HTTP_STATUS_OK &&
+		     decoder_ctx.delta_base == prefix_tests[i].delta_base,
+		   "response fields decoded with %s", prefix_tests[i].name);
+      vec_free (headers);
+      vec_reset_length (input);
+    }
+  vec_free (input);
+  vec_free (buf);
+
   vlib_cli_output (vm, "qpack_encode_header");
 
   static u8 *(*_qpack_encode_header) (u8 * dst, http_header_name_t name, const u8 *value,
