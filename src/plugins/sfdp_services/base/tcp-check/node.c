@@ -142,6 +142,14 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant, u8 fsol_non_syn_secu
 	}
     }
   nsf[0] = (sf[0] = tcp_session->flags);
+  if (session->state == SFDP_SESSION_STATE_TIME_WAIT)
+    {
+      /* Retain teardown state without extending its close-grace deadline. */
+      if (flags == SFDP_TCP_CHECK_TCP_FLAGS_SYN)
+	sfdp_buffer (b[0])->service_bitmap = SFDP_SERVICE_MASK (drop);
+      sfdp_next (b[0], to_next);
+      return;
+    }
   if (dir == SFDP_FLOW_FORWARD)
     {
       if (sf[0] & SFDP_TCP_CHECK_SESSION_FLAG_BLOCKED)
@@ -242,17 +250,25 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant, u8 fsol_non_syn_secu
       session->state = SFDP_SESSION_STATE_ESTABLISHED;
     }
 
-  /* If all FINs are ACKED, game over */
+  /* If all FINs are ACKED, remove immediately or retain close grace. */
   if ((nsf[0] & (SFDP_TCP_CHECK_SESSION_FLAG_SEEN_ACK_TO_FIN_INIT)) &&
       (nsf[0] & SFDP_TCP_CHECK_SESSION_FLAG_SEEN_ACK_TO_FIN_RESP))
     {
-      nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_REMOVING;
-      remove_session = 1;
+      if (tenant->timeouts[SFDP_TIMEOUT_INDEX (
+	    TCP_CLOSE_GRACE)]) /* verify if close grace timeout is zero/disabled */
+	session->state = SFDP_SESSION_STATE_TIME_WAIT;
+      else
+	{
+	  nsf[0] = SFDP_TCP_CHECK_SESSION_FLAG_REMOVING;
+	  remove_session = 1;
+	}
     }
 out:
   tcp_session->flags = nsf[0];
   if (remove_session)
     next_timeout = 0;
+  else if (session->state == SFDP_SESSION_STATE_TIME_WAIT)
+    next_timeout = tenant->timeouts[SFDP_TIMEOUT_INDEX (TCP_CLOSE_GRACE)];
   else if (nsf[0] & SFDP_TCP_CHECK_SESSION_FLAG_ESTABLISHED)
     next_timeout = tenant->timeouts[SFDP_TIMEOUT_INDEX (TCP_ESTABLISHED)];
   else if (nsf[0] & SFDP_TCP_CHECK_SESSION_FLAG_BLOCKED)

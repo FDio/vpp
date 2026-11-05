@@ -352,6 +352,7 @@ typedef struct
   _ (EMBRYONIC, 5, "embryonic")                                                                    \
   _ (ESTABLISHED, 120, "established")                                                              \
   _ (TCP_ESTABLISHED, 3600, "tcp-established")                                                     \
+  _ (TCP_CLOSE_GRACE, 2, "tcp-close-grace")                                                        \
   _ (SECURITY, 30, "security")
 
 enum

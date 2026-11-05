@@ -199,6 +199,86 @@ class TestSfdpL4LifecycleBase(BaseSfdpTest):
             session_type,
         )
 
+    def _tcp_close(self, sport, responder_first=False):
+        if self.is_ip6:
+            tcp_packet_fn = self.create_tcp6_packet
+            src_ip, dst_ip = self.pg0.remote_ip6, self.pg1.remote_ip6
+            rev_src_ip, rev_dst_ip = self.pg1.remote_ip6, self.pg0.remote_ip6
+        else:
+            tcp_packet_fn = self.create_tcp_packet
+            src_ip, dst_ip = self.pg0.remote_ip4, self.pg1.remote_ip4
+            rev_src_ip, rev_dst_ip = self.pg1.remote_ip4, self.pg0.remote_ip4
+
+        initiator_fin = tcp_packet_fn(
+            self.pg0.remote_mac,
+            self.pg0.local_mac,
+            src_ip,
+            dst_ip,
+            sport=sport,
+            dport=80,
+            flags="FA",
+            seq=1001,
+            ack=2001,
+            payload=b"",
+        )
+        responder_fin = tcp_packet_fn(
+            self.pg1.remote_mac,
+            self.pg1.local_mac,
+            rev_src_ip,
+            rev_dst_ip,
+            sport=80,
+            dport=sport,
+            flags="FA",
+            seq=2001,
+            ack=1002,
+            payload=b"",
+        )
+        final_ack = tcp_packet_fn(
+            self.pg0.remote_mac,
+            self.pg0.local_mac,
+            src_ip,
+            dst_ip,
+            sport=sport,
+            dport=80,
+            flags="A",
+            seq=1002,
+            ack=2002,
+            payload=b"",
+        )
+
+        if responder_first:
+            responder_fin["TCP"].ack = 1001
+            initiator_fin["TCP"].ack = 2002
+            final_ack = tcp_packet_fn(
+                self.pg1.remote_mac,
+                self.pg1.local_mac,
+                rev_src_ip,
+                rev_dst_ip,
+                sport=80,
+                dport=sport,
+                flags="A",
+                seq=2002,
+                ack=1002,
+                payload=b"",
+            )
+            self.send_and_expect(self.pg1, responder_fin, self.pg0)
+            self.send_and_expect(self.pg0, initiator_fin, self.pg1)
+            self.send_and_expect(self.pg1, final_ack, self.pg0)
+        else:
+            self.send_and_expect(self.pg0, initiator_fin, self.pg1)
+            self.send_and_expect(self.pg1, responder_fin, self.pg0)
+            self.send_and_expect(self.pg0, final_ack, self.pg1)
+
+        return responder_fin
+
+    def _assert_tcp_time_wait(self):
+        sessions = self.sessions()
+        self.assertEqual(len(sessions), 1)
+        self.assertEqual(
+            sessions[0].state,
+            VppEnum.vl_api_sfdp_session_state_t.SFDP_API_SESSION_STATE_TIME_WAIT,
+        )
+
 
 @unittest.skipIf(
     "sfdp_services" in config.excluded_plugins,
@@ -494,6 +574,72 @@ class TestSfdpL4LifecycleIp4(TestSfdpL4LifecycleBase):
         )
 
         # Session should be expired during next execution of sfdp-expire
+        self.wait_no_sessions()
+
+    def test_tcp_close_grace(self):
+        """TCP - retain completed close in TIME_WAIT for close grace"""
+        sport = 20012
+        self.set_timeout("tcp-close-grace", 2)
+        self._tcp_establish(sport=sport)
+        responder_fin = self._tcp_close(sport)
+        self._assert_tcp_time_wait()
+
+        # Teardown retransmissions continue forwarding during the fixed grace period.
+        self.send_and_expect(self.pg1, responder_fin.copy(), self.pg0)
+
+        # Tuple reuse is suppressed until close grace expires.
+        self.send_and_assert_no_replies(
+            self.pg0,
+            self.create_tcp_packet(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                self.pg0.remote_ip4,
+                self.pg1.remote_ip4,
+                sport=sport,
+                dport=80,
+                flags="S",
+                seq=3000,
+                payload=b"",
+            ),
+        )
+        self.assertEqual(len(self.sessions()), 1)
+
+        self.virtual_sleep(3)
+        self.wait_no_sessions()
+
+    def test_tcp_close_grace_default(self):
+        """TCP - default close grace retains completed close in TIME_WAIT"""
+        sport = 20016
+        self._tcp_establish(sport=sport)
+        self._tcp_close(sport)
+        self._assert_tcp_time_wait()
+
+    def test_tcp_close_grace_fixed_deadline(self):
+        """TCP - teardown packets do not extend close grace"""
+        sport = 20013
+        self.set_timeout("tcp-close-grace", 2)
+        self._tcp_establish(sport=sport)
+        responder_fin = self._tcp_close(sport)
+
+        self.virtual_sleep(1)
+        self.send_and_expect(self.pg1, responder_fin, self.pg0)
+        self.virtual_sleep(2)
+        self.wait_no_sessions()
+
+    def test_tcp_close_grace_responder_closes(self):
+        """TCP - responder-initiated close enters TIME_WAIT"""
+        sport = 20014
+        self.set_timeout("tcp-close-grace", 2)
+        self._tcp_establish(sport=sport)
+        self._tcp_close(sport, responder_first=True)
+        self._assert_tcp_time_wait()
+
+    def test_tcp_close_grace_zero_removes_immediately(self):
+        """TCP - zero close grace preserves immediate removal"""
+        sport = 20015
+        self.set_timeout("tcp-close-grace", 0)
+        self._tcp_establish(sport=sport)
+        self._tcp_close(sport)
         self.wait_no_sessions()
 
     def test_tcp_fsol_non_syn_pkt_security(self):
@@ -925,6 +1071,33 @@ class TestSfdpL4LifecycleIp6(TestSfdpL4LifecycleBase):
             ),
             self.pg0,
         )
+        self.wait_no_sessions()
+
+    def test_tcp_close_grace(self):
+        """TCP - retain IPv6 completed close in TIME_WAIT"""
+        sport = 30012
+        self.set_timeout("tcp-close-grace", 2)
+        self._tcp_establish(sport=sport)
+        self._tcp_close(sport)
+        self._assert_tcp_time_wait()
+
+        self.send_and_assert_no_replies(
+            self.pg0,
+            self.create_tcp6_packet(
+                self.pg0.remote_mac,
+                self.pg0.local_mac,
+                self.pg0.remote_ip6,
+                self.pg1.remote_ip6,
+                sport=sport,
+                dport=80,
+                flags="S",
+                seq=3000,
+                payload=b"",
+            ),
+        )
+        self.assertEqual(len(self.sessions()), 1)
+
+        self.virtual_sleep(3)
         self.wait_no_sessions()
 
     def test_tcp_fsol_non_syn_pkt_security(self):
