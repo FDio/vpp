@@ -434,10 +434,13 @@ tcp_connection_close (tcp_connection_t * tc)
 }
 
 static void
-tcp_session_half_close (u32 conn_index, clib_thread_index_t thread_index)
+tcp_session_half_close (u32 conn_index, clib_thread_index_t thread_index, u8 is_rx)
 {
   tcp_worker_ctx_t *wrk;
   tcp_connection_t *tc;
+
+  if (PREDICT_FALSE (is_rx))
+    return;
 
   wrk = tcp_get_worker (thread_index);
   tc = tcp_worker_connection_get (wrk, conn_index);

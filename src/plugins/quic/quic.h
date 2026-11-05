@@ -180,6 +180,7 @@ typedef enum quic_ctx_flags_
   QUIC_F_APP_CLOSED = (1 << 5),
   QUIC_F_APP_CLOSED_TX = (1 << 6),
   QUIC_F_STREAM_TX_CLOSED = (1 << 7),
+  QUIC_F_APP_CLOSED_RX = (1 << 8),
 } quic_ctx_flags_t;
 
 typedef enum quic_cc_type
@@ -255,8 +256,9 @@ typedef struct quic_ctx_
   } ingress_keys;
   void *peer_cert; /* X509 * stored as void * to avoid including openssl headers */
   quic_app_err_code_t app_err_code;
+  quic_app_err_code_t app_err_code_rx;
   u64 opaque; /* engine can store something here */
-  /* 16-byte left to next cache line */
+  /* 8 bytes left to next cache line */
 } quic_ctx_t;
 
 /* Make sure our custom fields don't overlap with the fields we use in
@@ -475,8 +477,7 @@ typedef struct quic_engine_vft_
   u8 *(*format_stream_stats) (u8 *s, va_list *args);
   quic_stream_id_t (*stream_get_stream_id) (quic_ctx_t *ctx);
   void (*proto_on_close) (u32 ctx_index, clib_thread_index_t thread_index);
-  void (*proto_on_half_close) (u32 ctx_index,
-			       clib_thread_index_t thread_index);
+  void (*proto_on_half_close) (u32 ctx_index, clib_thread_index_t thread_index, u8 is_rx);
   void (*proto_on_reset) (u32 ctx_index, clib_thread_index_t thread_index);
   void (*transport_closed) (quic_ctx_t *ctx);
   int (*ctx_attribute) (quic_ctx_t *ctx, u8 is_get, transport_endpt_attr_t *attr);
