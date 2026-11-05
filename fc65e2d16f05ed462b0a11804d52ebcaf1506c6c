@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "aa795577_aec3f56d",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-05T16:35:12Z",
+      "side": 1,
+      "message": "Updated staging to loop over partial source and destination mappings until the requested count is copied, draining only the bytes copied on each iteration.\nExtended the FIFO regression to force more than two source segments and verify complete transfer, exact draining, and unpublished app data.",
+      "parentUuid": "6053d8bd_9aa9efea",
+      "revId": "fc65e2d16f05ed462b0a11804d52ebcaf1506c6c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "743eb055_c3a1a1b3",
@@ -66,6 +84,24 @@
       "writtenOn": "2026-11-04T15:21:01Z",
       "side": 1,
       "message": "Done",
+      "parentUuid": "743eb055_c3a1a1b3",
+      "revId": "fc65e2d16f05ed462b0a11804d52ebcaf1506c6c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3db61c33_f728c159",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 262,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-05T16:35:12Z",
+      "side": 1,
+      "message": "Implemented unpublished staging with svm_fifo_provision_chunks_at_offset(). Partial headers no longer advance the app RX FIFO tail. After parsing completes, metadata is\nwritten and the complete staged message is published with one svm_fifo_enqueue_nocopy() call.\nAdded one u32 staged-byte count. Cleanup now discards the reservation without draining previously published messages.\nThe polling-consumer regression and all 11 affected integration tests passed, including chunk and index wraparound checks.",
       "parentUuid": "743eb055_c3a1a1b3",
       "revId": "fc65e2d16f05ed462b0a11804d52ebcaf1506c6c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"

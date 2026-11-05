@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "97e53df2_1230cb8e",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1293,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-05T16:35:12Z",
+      "side": 1,
+      "message": "Fixed both request and response parsing: in HEADER_CHECK, the size check uses the parser offset to exclude the pending terminator while \nthe other states still count all received field bytes.\nExpanded the limit test to cover 127, 128, and 129-byte field sections with the final CRLF arriving together, separately, or split between CR and LF.\nTest updated to reproduce the bug.",
+      "parentUuid": "3f438301_08dcab90",
+      "revId": "65e29f5047f8bc8ea7464f3c8d3cf7fdf4f93535",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "3c2a294c_b650cc49",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a8b2ec87_a5734d93",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 2345,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-05T16:35:12Z",
+      "side": 1,
+      "message": "The current early-response path sets HTTP_REQ_F_TX_EOF without setting hc-\u003estate to CLOSED, so subsequent FIN handling remains active.\nAdded HttpCliClientEarlyResponseFinTest. All 24 combinations passed: fixed-length/streamed uploads, complete/truncated replies, whole/fragmented delivery, and empty/small/FIFO-spanning bodies.\nTruncated replies returned “transport closed” before the timeout.",
+      "parentUuid": "3c2a294c_b650cc49",
+      "revId": "65e29f5047f8bc8ea7464f3c8d3cf7fdf4f93535",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "476b3bba_0e47c98a",
@@ -48,6 +84,24 @@
       "writtenOn": "2026-11-04T15:21:01Z",
       "side": 1,
       "message": "for incomplete request, rx processing move data from transport rx fifo into unpublished space in app rx fifo. after peer FIN transport rx fifo is empty, but request is still in HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD with HTTP_CONN_F_NO_APP_SESSION set because accept notification is deferred. this handle only WAIT_TRANSPORT_REPLY and notification below is correctly suppressed for unaccepted session, leaving no teardown action. we need to handle end of received data during partial request parsing, so reset parser and call http_disconnect_transport(hc), this trigger existing cleanup path to free the unaccepted session. keep app notifications suppressed until accept event towards app",
+      "revId": "65e29f5047f8bc8ea7464f3c8d3cf7fdf4f93535",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "575e8830_8ee96012",
+        "filename": "src/plugins/http/http1.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 2351,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-05T16:35:12Z",
+      "side": 1,
+      "message": "FIN during an unaccepted partial request now resets the parser and disconnects transport. Existing cleanup frees the\npending session and FIFOs; application notifications remain suppressed.\nAdded HttpPartialRequestPeerFinTest, covering ten parsing positions and verifying prompt EOF, session cleanup, and no acceptance or timeout.",
+      "parentUuid": "476b3bba_0e47c98a",
       "revId": "65e29f5047f8bc8ea7464f3c8d3cf7fdf4f93535",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
