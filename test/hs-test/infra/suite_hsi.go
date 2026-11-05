@@ -172,6 +172,7 @@ func (s *HsiSuite) TeardownTest() {
 	vpp := s.Containers.Vpp.VppInstance
 	if CurrentSpecReport().Failed() {
 		Log(vpp.Vppctl("show session verbose 2"))
+		Log(vpp.Vppctl("show interface"))
 		Log(vpp.Vppctl("show error"))
 		Log(vpp.Vppctl("show tcp stats"))
 		Log(vpp.Vppctl("show proxy-lite"))
@@ -289,6 +290,27 @@ func (s *HsiSuite) BlockServerReplies() func() {
 		blocked = false
 	}
 	return unblock
+}
+
+// AddClientNetem applies netem to the packets the client sends to vpp. The
+// returned function removes it.
+func (s *HsiSuite) AddClientNetem(args ...string) func() {
+	clientIf := s.Interfaces.Client.Host.Name()
+	run := func(args ...string) {
+		output, err := CommandInNetns(append([]string{"tc", "qdisc"}, args...),
+			s.NetNamespaces.Client).CombinedOutput()
+		AssertNil(err, string(output))
+	}
+	run(append([]string{"add", "dev", clientIf, "root", "netem"}, args...)...)
+
+	applied := true
+	return func() {
+		if !applied {
+			return
+		}
+		run("del", "dev", clientIf, "root")
+		applied = false
+	}
 }
 
 // AddHostLoss drops percent of the packets the client and the target send to

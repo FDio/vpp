@@ -136,6 +136,9 @@ hsi_session_cleanup_fifos (session_t *s)
   if (!s->rx_fifo && !s->tx_fifo)
     return;
 
+  if (session_get_transport_proto (s) == TRANSPORT_PROTO_TCP)
+    hsi_tcp_session_restore_fifos (s);
+
   ASSERT (s->rx_fifo && s->tx_fifo);
 
   rx_fifo = s->rx_fifo;
@@ -373,7 +376,8 @@ hsi_tcp_tracked_action_fn (vlib_main_t *vm, vlib_buffer_t *b, tcp_connection_t *
 			   void *tcp_hdr, u8 is_ip4, u8 send_rst_on_drain_fail, u8 *cleanup_session)
 {
   return (int) hsi_tcp_tracked_connection_action (vm, b, tc, ip_hdr, (tcp_header_t *) tcp_hdr,
-						  is_ip4, send_rst_on_drain_fail, cleanup_session);
+						  is_ip4, send_rst_on_drain_fail, cleanup_session,
+						  0 /* is_drain */);
 }
 
 static hsi_tcp_tracker_t *

@@ -179,8 +179,8 @@ hsi_tcp_lookup (vlib_main_t *vm, vlib_buffer_t *b, void *ip_hdr, tcp_header_t **
 }
 
 always_inline hsi_lookup_result_t
-hsi_tcp_lookup_handler (vlib_main_t *vm, vlib_buffer_t *b, void *ip_hdr, u32 *next, u8 is_ip4,
-			u8 is_input)
+hsi_tcp_lookup_handler (vlib_main_t *vm, vlib_buffer_t *b, void *ip_hdr, u32 *next, u8 *error,
+			u8 is_ip4, u8 is_input)
 {
   tcp_header_t *tcp_hdr = 0;
   tcp_connection_t *tc;
@@ -233,6 +233,7 @@ hsi_tcp_lookup_handler (vlib_main_t *vm, vlib_buffer_t *b, void *ip_hdr, u32 *ne
       if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_TRACKED))
 	{
 	  hsi_tcp_tracked_action_t action;
+	  u8 is_drain = 0;
 
 	  if (!is_input && !hsi_tcp_connection_is_committed (tc))
 	    {
@@ -240,7 +241,11 @@ hsi_tcp_lookup_handler (vlib_main_t *vm, vlib_buffer_t *b, void *ip_hdr, u32 *ne
 	      return HSI_LOOKUP_RESULT_PASS;
 	    }
 
-	  action = hsi_tcp_tracked_connection_action (vm, b, tc, ip_hdr, tcp_hdr, is_ip4, 1, 0);
+	  action =
+	    hsi_tcp_tracked_connection_action (vm, b, tc, ip_hdr, tcp_hdr, is_ip4, 1, 0, &is_drain);
+	  /* Drain consumes pure acks, also the one that commits the connection */
+	  if (PREDICT_FALSE (action == HSI_TCP_TRACKED_ACTION_DROP))
+	    *error = is_drain ? HSI_ERROR_TCP_DRAIN_DROP : HSI_ERROR_TCP_TRACKED_DROP;
 	  return hsi_tracked_action_to_lookup_result (action, next);
 	}
       /* Lookup already done, use result */
@@ -254,7 +259,7 @@ hsi_tcp_lookup_handler (vlib_main_t *vm, vlib_buffer_t *b, void *ip_hdr, u32 *ne
 always_inline hsi_lookup_result_t
 hsi_udp_tracked_lookup_handler (vlib_main_t *vm, vlib_buffer_t *b, session_t *s,
 				udp_connection_t *uc, void *ip_hdr, udp_header_t *udp_hdr,
-				u32 *next, u8 is_ip4, u8 is_input)
+				u32 *next, u8 *error, u8 is_ip4, u8 is_input)
 {
   hsi_udp_tracked_action_t action;
 
@@ -269,12 +274,15 @@ hsi_udp_tracked_lookup_handler (vlib_main_t *vm, vlib_buffer_t *b, session_t *s,
 	    }
 
 	  action = hsi_udp_drain_cache_buffer_remote (vm, b, s, uc, ip_hdr, udp_hdr, is_ip4);
+	  if (PREDICT_FALSE (action == HSI_UDP_TRACKED_ACTION_DROP))
+	    *error = HSI_ERROR_UDP_DRAIN_DROP;
 	  return hsi_drain_cache_action_to_lookup_result (action, next);
 	}
 
       uc = hsi_udp_migrate_tracked_connection (&s, uc);
       if (!uc)
 	{
+	  *error = HSI_ERROR_UDP_MIGRATION_FAILED;
 	  *next = HSI_INPUT_NEXT_DROP;
 	  return HSI_LOOKUP_RESULT_INTERCEPT;
 	}
@@ -287,12 +295,14 @@ hsi_udp_tracked_lookup_handler (vlib_main_t *vm, vlib_buffer_t *b, session_t *s,
     }
 
   action = hsi_udp_tracked_connection_action (vm, b, uc, ip_hdr, udp_hdr, is_ip4);
+  if (PREDICT_FALSE (action == HSI_UDP_TRACKED_ACTION_DROP))
+    *error = HSI_ERROR_UDP_DRAIN_DROP;
   return hsi_tracked_action_to_lookup_result (action, next);
 }
 
 always_inline hsi_lookup_result_t
-hsi_udp_lookup_handler (vlib_main_t *vm, vlib_buffer_t *b, void *ip_hdr, u32 *next, u8 is_ip4,
-			u8 is_input)
+hsi_udp_lookup_handler (vlib_main_t *vm, vlib_buffer_t *b, void *ip_hdr, u32 *next, u8 *error,
+			u8 is_ip4, u8 is_input)
 {
   udp_header_t *udp_hdr = 0;
   udp_connection_t *uc;
@@ -304,7 +314,7 @@ hsi_udp_lookup_handler (vlib_main_t *vm, vlib_buffer_t *b, void *ip_hdr, u32 *ne
     {
       uc = udp_connection_get (s->connection_index, s->thread_index);
       if (uc && (uc->cfg_flags & UDP_CFG_F_TRACKED))
-	return hsi_udp_tracked_lookup_handler (vm, b, s, uc, ip_hdr, udp_hdr, next, is_ip4,
+	return hsi_udp_tracked_lookup_handler (vm, b, s, uc, ip_hdr, udp_hdr, next, error, is_ip4,
 					       is_input);
     }
   else
@@ -327,7 +337,8 @@ hsi_udp_lookup_handler (vlib_main_t *vm, vlib_buffer_t *b, void *ip_hdr, u32 *ne
 }
 
 always_inline u8
-hsi_lookup_and_update (vlib_main_t *vm, vlib_buffer_t *b, u32 *next, u8 is_ip4, u8 is_input)
+hsi_lookup_and_update (vlib_main_t *vm, vlib_buffer_t *b, u32 *next, u8 *error, u8 is_ip4,
+		       u8 is_input)
 {
   u32 l3_offset = 0;
   hsi_lookup_result_t result;
@@ -371,9 +382,9 @@ hsi_lookup_and_update (vlib_main_t *vm, vlib_buffer_t *b, u32 *next, u8 is_ip4, 
     }
 
   if (proto == IP_PROTOCOL_TCP)
-    result = hsi_tcp_lookup_handler (vm, b, ip_hdr, next, is_ip4, is_input);
+    result = hsi_tcp_lookup_handler (vm, b, ip_hdr, next, error, is_ip4, is_input);
   else
-    result = hsi_udp_lookup_handler (vm, b, ip_hdr, next, is_ip4, is_input);
+    result = hsi_udp_lookup_handler (vm, b, ip_hdr, next, error, is_ip4, is_input);
 
   if (!is_input)
     {
@@ -401,6 +412,14 @@ hsi_input_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node, u32 *buffer_i
       t = vlib_add_trace (vm, node, b, sizeof (*t));
       t->next_node = nexts[i];
     }
+}
+
+/* Drops without an error are reported as blackholed by null-node */
+always_inline void
+hsi_set_drop_error (vlib_node_runtime_t *node, vlib_buffer_t *b, u8 error, u8 enqueue)
+{
+  if (PREDICT_FALSE (error != HSI_ERROR_NONE) && enqueue)
+    b->error = node->errors[error];
 }
 
 always_inline void
@@ -434,6 +453,7 @@ hsi46_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fr
   while (n_left_from >= 4)
     {
       u32 next0 = 0, next1 = 0;
+      u8 error0 = HSI_ERROR_NONE, error1 = HSI_ERROR_NONE;
       u8 enqueue0, enqueue1;
 
       vlib_prefetch_buffer_header (b[2], LOAD);
@@ -442,10 +462,12 @@ hsi46_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fr
       vlib_prefetch_buffer_header (b[3], LOAD);
       CLIB_PREFETCH (b[3]->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
 
-      enqueue0 = hsi_lookup_and_update (vm, b[0], &next0, is_ip4, is_input);
+      enqueue0 = hsi_lookup_and_update (vm, b[0], &next0, &error0, is_ip4, is_input);
+      hsi_set_drop_error (node, b[0], error0, enqueue0);
       hsi_enqueue_if_owned (&to_next, &next, &n_to_next, from[0], next0, enqueue0);
 
-      enqueue1 = hsi_lookup_and_update (vm, b[1], &next1, is_ip4, is_input);
+      enqueue1 = hsi_lookup_and_update (vm, b[1], &next1, &error1, is_ip4, is_input);
+      hsi_set_drop_error (node, b[1], error1, enqueue1);
       hsi_enqueue_if_owned (&to_next, &next, &n_to_next, from[1], next1, enqueue1);
 
       b += 2;
@@ -456,9 +478,11 @@ hsi46_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *fr
   while (n_left_from)
     {
       u32 next0 = 0;
+      u8 error0 = HSI_ERROR_NONE;
       u8 enqueue0;
 
-      enqueue0 = hsi_lookup_and_update (vm, b[0], &next0, is_ip4, is_input);
+      enqueue0 = hsi_lookup_and_update (vm, b[0], &next0, &error0, is_ip4, is_input);
+      hsi_set_drop_error (node, b[0], error0, enqueue0);
       hsi_enqueue_if_owned (&to_next, &next, &n_to_next, from[0], next0, enqueue0);
 
       b += 1;
