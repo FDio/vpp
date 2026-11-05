@@ -234,7 +234,7 @@ hsi_tcp_lookup_handler (vlib_main_t *vm, vlib_buffer_t *b, void *ip_hdr, u32 *ne
 	{
 	  hsi_tcp_tracked_action_t action;
 
-	  if (!is_input && tc->state != TCP_STATE_CLOSED)
+	  if (!is_input && !hsi_tcp_connection_is_committed (tc))
 	    {
 	      vnet_feature_next (next, b);
 	      return HSI_LOOKUP_RESULT_PASS;

@@ -7,6 +7,23 @@
 #include <vnet/session/segment_manager.h>
 #include <vnet/session/transport.h>
 
+/*
+ * Hand session back to the session layer, after which it's no longer hsi owned.
+ * Session layer frees it, or hands it to the app for cleanup notifications, once
+ * the transport connection is deleted.
+ */
+void
+hsi_session_release (session_t *s)
+{
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+  ASSERT (!s->rx_fifo && !s->tx_fifo);
+
+  hsi_worker_proto_counter_inc (hsi_worker_get (s->thread_index), session_get_transport_proto (s),
+				cleanup_completed);
+  hsi_session_restore_app_wrk (s);
+  s->session_state = SESSION_STATE_CLOSED;
+}
+
 static void
 hsi_session_transport_cleanup (session_t *s)
 {
@@ -15,22 +32,15 @@ hsi_session_transport_cleanup (session_t *s)
   u32 conn_index = s->connection_index;
   transport_connection_t *tc = 0;
 
-  ASSERT (s->thread_index == vlib_get_thread_index ());
-  ASSERT (!s->rx_fifo && !s->tx_fifo);
-
-  hsi_worker_proto_counter_inc (hsi_worker_get (thread_index), proto, cleanup_completed);
-
-  /* Hand session back to app worker, if app asked for cleanup notifications.
-   * Session layer frees the session once the app is notified or immediately
-   * if there is no app worker to notify. */
-  hsi_session_restore_app_wrk (s);
-
   /* Transport might have been deleted while hsi owned the session, e.g., tcp
    * reset while draining. Session state cannot be relied on because fifos
    * cleanup moves session to transport closed. Session layer already removed
    * the session from the lookup table when the transport was deleted. */
   if (s->session_state != SESSION_STATE_TRANSPORT_DELETED)
     tc = session_get_transport (s);
+
+  hsi_session_release (s);
+
   if (!tc || tc->s_index != s->session_index)
     {
       s->session_state = SESSION_STATE_TRANSPORT_DELETED;
@@ -38,7 +48,6 @@ hsi_session_transport_cleanup (session_t *s)
       return;
     }
 
-  s->session_state = SESSION_STATE_CLOSED;
   session_transport_delete_notify (tc);
 
   /* Session might be freed */

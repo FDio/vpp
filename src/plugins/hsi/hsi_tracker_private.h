@@ -141,6 +141,7 @@ typedef enum hsi_tcp_drain_flags_
   HSI_TCP_DRAIN_F_WND_CLAMPED = 1 << 2,
   HSI_TCP_DRAIN_F_ABORT_SENT = 1 << 3,
   HSI_TCP_DRAIN_F_COMMIT_SENT = 1 << 4,
+  HSI_TCP_DRAIN_F_HSI_CLOSED = 1 << 5,
 } hsi_tcp_drain_flags_t;
 
 typedef enum hsi_udp_drain_state_
@@ -311,10 +312,11 @@ hsi_session_take_ownership (session_t *s)
   s->app_wrk_index = APP_INVALID_INDEX;
 }
 
+/* Closed sessions were handed back to the session layer for cleanup */
 static_always_inline u8
 hsi_session_is_hsi_owned (session_t *s)
 {
-  return s->app_wrk_index == APP_INVALID_INDEX;
+  return s->app_wrk_index == APP_INVALID_INDEX && s->session_state != SESSION_STATE_CLOSED;
 }
 
 /*
@@ -358,7 +360,7 @@ static inline hsi_tcp_tracker_t *
 hsi_tcp_tracker_get (tcp_connection_t *tc)
 {
   ASSERT (tc->cfg_flags & TCP_CFG_F_TRACKED);
-  ASSERT (tc->state == TCP_STATE_CLOSED);
+  ASSERT (hsi_tcp_connection_is_committed (tc));
   return hsi_tcp_tracker_from_connection (tc);
 }
 
@@ -618,6 +620,7 @@ int hsi_track_tcp (session_t *s, session_t *peer_s, hsi_track_flags_t flags);
 int hsi_track_udp (session_t *s, session_t *peer_s, hsi_track_flags_t flags);
 
 void hsi_session_cleanup_fifos (session_t *s);
+void hsi_session_release (session_t *s);
 void hsi_session_program_cleanup (session_t *s);
 void hsi_session_cleanup (session_t *s);
 void hsi_session_send_cleanup_pair (session_handle_t first);

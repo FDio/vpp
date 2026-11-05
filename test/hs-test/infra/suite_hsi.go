@@ -291,18 +291,51 @@ func (s *HsiSuite) BlockServerReplies() func() {
 	return unblock
 }
 
+// DropServerDataSegments drops full size TCP segments sent to the target, i.e.,
+// IPv4 total length between 1024 and 2047, so handshakes and acks pass but
+// data is never acked. The returned function removes the filter.
+func (s *HsiSuite) DropServerDataSegments() func() {
+	serverIf := s.Interfaces.Server.Host.Name()
+	output, err := exec.Command("tc", "qdisc", "add", "dev", serverIf, "handle", "ffff:",
+		"ingress").CombinedOutput()
+	AssertNil(err, string(output))
+	output, err = exec.Command("tc", "filter", "add", "dev", serverIf, "parent", "ffff:",
+		"protocol", "ip", "prio", "1", "u32", "match", "ip", "protocol", "6", "0xff",
+		"match", "u16", "0x0400", "0xfc00", "at", "2", "action", "drop").CombinedOutput()
+	AssertNil(err, string(output))
+
+	dropping := true
+	return func() {
+		if !dropping {
+			return
+		}
+		output, err := exec.Command("tc", "qdisc", "del", "dev", serverIf, "ingress").CombinedOutput()
+		AssertNil(err, string(output))
+		dropping = false
+	}
+}
+
 func WaitProxyLitePendingRx(vpp *VppInstance) {
-	pendingRx := regexp.MustCompile(`(?m)^\s*Rx fifo: cursize [1-9][0-9]*\b`)
+	WaitProxyLitePendingRxAtLeast(vpp, 1)
+}
+
+// WaitProxyLitePendingRxAtLeast waits until a proxy-lite session has at least
+// minBytes queued in its rx fifo
+func WaitProxyLitePendingRxAtLeast(vpp *VppInstance, minBytes int) {
+	pendingRx := regexp.MustCompile(`(?m)^\s*Rx fifo: cursize (\d+)\b`)
 	var lastOutput string
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
 		lastOutput = vpp.Vppctl("show session verbose 2")
-		if pendingRx.MatchString(lastOutput) {
-			return
+		for _, m := range pendingRx.FindAllStringSubmatch(lastOutput, -1) {
+			if n, err := strconv.Atoi(m[1]); err == nil && n >= minBytes {
+				return
+			}
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	AssertFail("timed out waiting for proxy-lite RX data:\n%s", lastOutput)
+	AssertFail("timed out waiting for %d bytes of proxy-lite RX data:\n%s", minBytes,
+		lastOutput)
 }
 
 func WaitProxyLiteTrackedCount(vpp *VppInstance, count int, cancel func()) string {
@@ -352,8 +385,13 @@ func WaitHsiContains(vpp *VppInstance, want string) string {
 }
 
 func WaitHsiCounterAtLeast(vpp *VppInstance, name string, want int) string {
+	return WaitHsiCounterAtLeastWithin(vpp, name, want, 10*time.Second)
+}
+
+func WaitHsiCounterAtLeastWithin(vpp *VppInstance, name string, want int,
+	timeout time.Duration) string {
 	var lastOutput string
-	deadline := time.Now().Add(10 * time.Second)
+	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		output := vpp.Vppctl("show hsi")
 		if output != "" {
