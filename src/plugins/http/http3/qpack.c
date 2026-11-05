@@ -1314,12 +1314,19 @@ qpack_parse_headers_prefix (u8 **src, u8 *end, qpack_decoder_ctx_t *ctx)
   p = *src;
 
   ctx->req_insert_count = hpack_decode_int (&p, end, 8);
-  if (ctx->req_insert_count == HPACK_INVALID_INT || p == end)
+  /* We don't suport dynamic table, so only zero is valid for Required Insert Count
+   * (RFC9204, 4.5.1.1). */
+  if (ctx->req_insert_count != 0 || p == end)
     return HPACK_ERROR_COMPRESSION;
 
   ctx->delta_base_sign = *p & 0x80;
   ctx->delta_base = hpack_decode_int (&p, end, 7);
-  if (ctx->req_insert_count == HPACK_INVALID_INT)
+  if (ctx->delta_base == HPACK_INVALID_INT)
+    return HPACK_ERROR_COMPRESSION;
+
+  /* Base must not be negative (RFC 9204, 4.5.1.2). Positive Delta Base
+   * with zero sign is valid even without dynamic table references. */
+  if (ctx->delta_base_sign && ctx->req_insert_count <= ctx->delta_base)
     return HPACK_ERROR_COMPRESSION;
 
   *src = p;
