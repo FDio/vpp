@@ -56,6 +56,7 @@ typedef struct
 {
   int fd;
   u32 clib_file_index;
+  u8 enabled;
   union
   {
     pci_intx_handler_function_t *intx_handler;
@@ -98,6 +99,9 @@ typedef struct
   linux_pci_irq_t intx_irq;
   linux_pci_irq_t *msix_irqs;
   linux_pci_irq_t *msi_irqs;
+
+  /* Number of MSI-X vectors allocated by the kernel */
+  u16 n_msix_vectors;
 
   /* private data */
   uword private_data;
@@ -636,6 +640,7 @@ vfio_set_irqs (vlib_main_t * vm, linux_pci_device_t * p, u32 index, u32 start,
   int data_len = efds ? count * sizeof (int) : 0;
   u8 buf[sizeof (struct vfio_irq_set) + data_len];
   struct vfio_irq_set *irq_set = (struct vfio_irq_set *) buf;
+  int rv;
 
   if (efds)
     {
@@ -656,10 +661,18 @@ vfio_set_irqs (vlib_main_t * vm, linux_pci_device_t * p, u32 index, u32 start,
   irq_set->count = count;
   irq_set->flags = flags;
 
-  if (ioctl (p->fd, VFIO_DEVICE_SET_IRQS, irq_set) < 0)
+  rv = ioctl (p->fd, VFIO_DEVICE_SET_IRQS, irq_set);
+  if (rv < 0)
     return clib_error_return_unix (0, "%U:ioctl(VFIO_DEVICE_SET_IRQS)\n%U",
 				   format_vlib_pci_addr, &p->addr,
 				   format_vfio_irq_set, irq_set);
+
+  /* kernel returns number of available vectors if it cannot allocate all */
+  if (rv > 0)
+    return clib_error_return (0,
+			      "%U:ioctl(VFIO_DEVICE_SET_IRQS) only %d vectors "
+			      "available\n%U",
+			      format_vlib_pci_addr, &p->addr, rv, format_vfio_irq_set, irq_set);
 
   log_debug (p, "%s:\n%U", __func__, format_vfio_irq_set, irq_set);
   return 0;
@@ -964,6 +977,7 @@ vlib_pci_unregister_msix_handler (vlib_main_t *vm, vlib_pci_dev_handle_t h,
     {
       linux_pci_irq_t *irq = vec_elt_at_index (p->msix_irqs, i);
 
+      irq->enabled = 0;
       if (irq->fd != -1)
 	{
 	  clib_file_del_by_index (&file_main, irq->clib_file_index);
@@ -1057,11 +1071,83 @@ vlib_pci_unregister_msi_handler (vlib_main_t *vm, vlib_pci_dev_handle_t h,
   return err;
 }
 
+static int
+linux_pci_vfio_msix_is_noresize (linux_pci_device_t *p)
+{
+  struct vfio_irq_info ii = {
+    .argsz = sizeof (struct vfio_irq_info),
+    .index = VFIO_PCI_MSIX_IRQ_INDEX,
+  };
+
+  if (ioctl (p->fd, VFIO_DEVICE_GET_IRQ_INFO, &ii) < 0)
+    return 0;
+
+  return (ii.flags & VFIO_IRQ_INFO_NORESIZE) != 0;
+}
+
+static clib_error_t *
+linux_pci_vfio_msix_set_enabled (vlib_main_t *vm, linux_pci_device_t *p, u16 n_vectors)
+{
+  int fds[n_vectors];
+
+  for (u16 i = 0; i < n_vectors; i++)
+    {
+      linux_pci_irq_t *irq = vec_elt_at_index (p->msix_irqs, i);
+      fds[i] = irq->enabled ? irq->fd : -1;
+    }
+
+  return vfio_set_irqs (vm, p, VFIO_PCI_MSIX_IRQ_INDEX, 0, n_vectors, VFIO_IRQ_SET_ACTION_TRIGGER,
+			fds);
+}
+
+/* Kernel cannot add vectors to enabled MSI-X if interrupt domain doesn't
+   support dynamic allocation, so all of them need to be disabled first and
+   then allocated again. */
+static clib_error_t *
+linux_pci_vfio_msix_realloc (vlib_main_t *vm, linux_pci_device_t *p, u16 n_vectors)
+{
+  clib_error_t *err, *restore_err;
+  u64 val = 1;
+
+  log_debug (p, "%s: growing from %u to %u vectors", __func__, p->n_msix_vectors, n_vectors);
+
+  if ((err = vfio_set_irqs (vm, p, VFIO_PCI_MSIX_IRQ_INDEX, 0, 0, VFIO_IRQ_SET_ACTION_TRIGGER, 0)))
+    return err;
+
+  if ((err = linux_pci_vfio_msix_set_enabled (vm, p, n_vectors)))
+    {
+      restore_err = linux_pci_vfio_msix_set_enabled (vm, p, p->n_msix_vectors);
+      if (restore_err)
+	{
+	  log_err (p, "%s: failed to restore %u vectors: %U", __func__, p->n_msix_vectors,
+		   format_clib_error, restore_err);
+	  clib_error_free (restore_err);
+	  p->n_msix_vectors = 0;
+	}
+      return err;
+    }
+
+  p->n_msix_vectors = n_vectors;
+
+  /* interrupt raised while vectors were disabled is lost, so call handlers
+     of enabled vectors to give them chance to catch up and rearm */
+  for (u16 i = 0; i < n_vectors; i++)
+    {
+      linux_pci_irq_t *irq = vec_elt_at_index (p->msix_irqs, i);
+      if (irq->enabled && write (irq->fd, &val, sizeof (val)) != sizeof (val))
+	log_err (p, "%s: failed to signal vector %u", __func__, i);
+    }
+
+  return 0;
+}
+
 clib_error_t *
 vlib_pci_enable_msix_irq (vlib_main_t * vm, vlib_pci_dev_handle_t h,
 			  u16 start, u16 count)
 {
   linux_pci_device_t *p = linux_pci_get_device (h);
+  clib_error_t *err;
+  u16 end = start + count;
   int fds[count];
   int i;
 
@@ -1075,8 +1161,20 @@ vlib_pci_enable_msix_irq (vlib_main_t * vm, vlib_pci_dev_handle_t h,
       fds[i] = irq->fd;
     }
 
-  return vfio_set_irqs (vm, p, VFIO_PCI_MSIX_IRQ_INDEX, start, count,
-			VFIO_IRQ_SET_ACTION_TRIGGER, fds);
+  if (p->n_msix_vectors && end > p->n_msix_vectors && linux_pci_vfio_msix_is_noresize (p))
+    if ((err = linux_pci_vfio_msix_realloc (vm, p, end)))
+      return err;
+
+  if ((err = vfio_set_irqs (vm, p, VFIO_PCI_MSIX_IRQ_INDEX, start, count,
+			    VFIO_IRQ_SET_ACTION_TRIGGER, fds)))
+    return err;
+
+  for (i = 0; i < count; i++)
+    vec_elt_at_index (p->msix_irqs, start + i)->enabled = 1;
+
+  p->n_msix_vectors = clib_max (p->n_msix_vectors, end);
+
+  return 0;
 }
 
 uword
@@ -1095,6 +1193,7 @@ vlib_pci_disable_msix_irq (vlib_main_t * vm, vlib_pci_dev_handle_t h,
 			   u16 start, u16 count)
 {
   linux_pci_device_t *p = linux_pci_get_device (h);
+  clib_error_t *err;
   int i, fds[count];
 
   if (p->type != LINUX_PCI_DEVICE_TYPE_VFIO)
@@ -1104,8 +1203,14 @@ vlib_pci_disable_msix_irq (vlib_main_t * vm, vlib_pci_dev_handle_t h,
   for (i = 0; i < count; i++)
     fds[i] = -1;
 
-  return vfio_set_irqs (vm, p, VFIO_PCI_MSIX_IRQ_INDEX, start, count,
-			VFIO_IRQ_SET_ACTION_TRIGGER, fds);
+  if ((err = vfio_set_irqs (vm, p, VFIO_PCI_MSIX_IRQ_INDEX, start, count,
+			    VFIO_IRQ_SET_ACTION_TRIGGER, fds)))
+    return err;
+
+  for (i = 0; i < count; i++)
+    vec_elt_at_index (p->msix_irqs, start + i)->enabled = 0;
+
+  return 0;
 }
 
 clib_error_t *
