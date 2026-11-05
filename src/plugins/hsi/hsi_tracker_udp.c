@@ -11,6 +11,24 @@
 
 static int hsi_udp_drain_transport_closed (session_t *s, hsi_udp_drain_t *drain);
 
+/*
+ * Committed connections are claimed by migrations, which clone them on other
+ * threads, and by owner cleanups, which free them. Only the first claim
+ * succeeds.
+ */
+static_always_inline u8
+hsi_udp_connection_claim (udp_connection_t *uc)
+{
+  return clib_atomic_fetch_and ((u8 *) &uc->c_flags, (u8) ~TRANSPORT_CONNECTION_F_SPLICED) &
+	 TRANSPORT_CONNECTION_F_SPLICED;
+}
+
+static_always_inline void
+hsi_udp_connection_set_committed (udp_connection_t *uc)
+{
+  clib_atomic_fetch_or ((u8 *) &uc->c_flags, (u8) TRANSPORT_CONNECTION_F_SPLICED);
+}
+
 int
 hsi_udp_session_is_cleanup_ready (session_t *s)
 {
@@ -22,6 +40,10 @@ hsi_udp_session_is_cleanup_ready (session_t *s)
     return 0;
 
   uc = hsi_udp_connection_at_session (s);
+  /* If migration claimed it, migrated session cleanup frees it */
+  if (!drain)
+    return hsi_udp_connection_claim (uc);
+
   return uc->cfg_flags & UDP_CFG_F_TRACKED;
 }
 
@@ -261,8 +283,7 @@ hsi_udp_send_cleanup_pair_once (session_handle_t session_handle,
     }
 
   s = session_get_from_handle_if_valid (session_handle);
-  if (!s || session_get_transport_proto (s) != TRANSPORT_PROTO_UDP ||
-      !hsi_session_is_hsi_owned (s) || !hsi_udp_session_is_cleanup_ready (s))
+  if (!s || session_get_transport_proto (s) != TRANSPORT_PROTO_UDP || !hsi_session_is_hsi_owned (s))
     session_handle = peer_session_handle;
 
   hsi_session_send_cleanup_pair (session_handle);
@@ -292,9 +313,26 @@ hsi_udp_track_peer_update (session_handle_t session_handle, session_handle_t pee
     return 0;
 
   hsi_udp_track_peer_set (s, peer_handle);
-  if (!drain)
-    hsi_udp_connection_peer_handle_set (uc, peer_handle);
-  return 1;
+  /* Commit uses the drain's peer, not the peer's pre-migration snapshot */
+  if (drain)
+    {
+      drain->peer_session_handle = peer_handle;
+      return 1;
+    }
+
+  hsi_udp_connection_peer_handle_set (uc, peer_handle);
+  CLIB_MEMORY_BARRIER ();
+  /* Migration claims the connection before cloning it. If it did, the clone
+   * might have missed the update */
+  return hsi_udp_connection_is_committed (uc);
+}
+
+/* Peer is gone or migrated too, so cleanup the migrated session's pair */
+static void
+hsi_udp_track_peer_update_failed (session_handle_t migrated_handle)
+{
+  hsi_worker_counter_inc (hsi_worker_get (vlib_get_thread_index ()), udp_track_peer_rpc_failed);
+  hsi_session_send_cleanup_pair (migrated_handle);
 }
 
 static void
@@ -309,10 +347,7 @@ hsi_udp_peer_update_rpc (void *arg)
   hsi_udp_peer_update_req_t *a = hsi_udp_peer_update_req_get (arg);
 
   if (!hsi_udp_track_peer_update (a->session_handle, a->peer_session_handle))
-    {
-      hsi_worker_counter_inc (hsi_worker_get (vlib_get_thread_index ()), udp_track_peer_rpc_failed);
-      hsi_udp_send_cleanup_pair_once (a->session_handle, a->peer_session_handle);
-    }
+    hsi_udp_track_peer_update_failed (a->peer_session_handle);
   session_send_rpc_evt_to_thread (hsi_rpc_req_thread (arg), hsi_udp_peer_update_req_free_rpc, arg);
 }
 
@@ -328,7 +363,8 @@ hsi_udp_track_peer_update_on_thread (session_handle_t session_handle,
 
   if (sh.thread_index == thread_index)
     {
-      hsi_udp_track_peer_update (session_handle, peer_session_handle);
+      if (!hsi_udp_track_peer_update (session_handle, peer_session_handle))
+	hsi_udp_track_peer_update_failed (peer_session_handle);
       return;
     }
 
@@ -385,7 +421,9 @@ hsi_udp_migrate_tracked_connection (session_t **ps, udp_connection_t *uc)
   if (old_thread == thread_index)
     return uc;
 
-  if (hsi_udp_drain_get (old_thread, hsi_udp_session_conn_key_from_connection (uc)))
+  /* Fails if not committed, or if another migration or the owner's cleanup
+   * claimed the connection first */
+  if (!hsi_udp_connection_claim (uc))
     {
       hsi_worker_counter_inc (hsi_worker_get (thread_index), udp_track_migration_failed);
       return 0;
@@ -395,10 +433,7 @@ hsi_udp_migrate_tracked_connection (session_t **ps, udp_connection_t *uc)
   old_handle = session_handle (s);
   peer_handle = hsi_udp_connection_peer_handle (uc);
   if (peer_handle == SESSION_INVALID_HANDLE)
-    {
-      hsi_worker_counter_inc (hsi_worker_get (thread_index), udp_track_migration_failed);
-      return 0;
-    }
+    goto failed;
 
   new_uc = udp_connection_clone_safe (s->connection_index, old_thread);
   new_s = session_clone_safe (s->session_index, old_thread);
@@ -411,6 +446,7 @@ hsi_udp_migrate_tracked_connection (session_t **ps, udp_connection_t *uc)
   new_s->flags &= ~SESSION_F_IS_MIGRATING;
 
   new_uc->c_s_index = new_s->session_index;
+  new_uc->c_flags |= TRANSPORT_CONNECTION_F_SPLICED;
   new_handle = session_handle (new_s);
   hsi_udp_track_peer_set (new_s, peer_handle);
   hsi_udp_connection_peer_handle_set (new_uc, peer_handle);
@@ -423,8 +459,7 @@ hsi_udp_migrate_tracked_connection (session_t **ps, udp_connection_t *uc)
       hsi_udp_track_peer_unset (new_s);
       udp_connection_free (new_uc);
       session_free (new_s);
-      hsi_worker_counter_inc (hsi_worker_get (thread_index), udp_track_migration_failed);
-      return 0;
+      goto failed;
     }
 
   hsi_udp_track_peer_update_on_thread (peer_handle, new_handle);
@@ -434,6 +469,12 @@ hsi_udp_migrate_tracked_connection (session_t **ps, udp_connection_t *uc)
 
   *ps = new_s;
   return new_uc;
+
+failed:
+  /* Flow stays on the old connection */
+  hsi_udp_connection_set_committed (uc);
+  hsi_worker_counter_inc (hsi_worker_get (thread_index), udp_track_migration_failed);
+  return 0;
 }
 void
 hsi_udp_session_cleanup_state (session_t *s)
@@ -1077,12 +1118,19 @@ hsi_udp_track_commit (session_t *s, hsi_udp_track_snapshot_t *peer)
       return;
     }
 
+  /* Peer might have migrated while this side was draining */
+  if (drain)
+    peer->session_handle = drain->peer_session_handle;
+
   hsi_session_take_ownership (s);
   hsi_udp_track_peer_set (s, peer->session_handle);
   hsi_udp_track_commit_connection (uc, peer);
   s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
   if (s->rx_fifo || s->tx_fifo)
     hsi_session_cleanup_fifos (s);
+
+  /* Other threads can migrate the connection from now on */
+  hsi_udp_connection_set_committed (uc);
 }
 
 static void
