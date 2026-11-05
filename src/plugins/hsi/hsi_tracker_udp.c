@@ -263,7 +263,7 @@ hsi_udp_track_peer_update (session_handle_t session_handle, session_handle_t pee
   session_t *s;
   udp_connection_t *uc;
 
-  s = session_get_from_handle_if_valid (sh);
+  s = hsi_session_get_owned_if_valid (sh);
   if (!s)
     return 0;
 
@@ -337,7 +337,7 @@ hsi_udp_migrated_session_cleanup_rpc (void *arg)
   udp_connection_t *uc;
   session_t *s;
 
-  s = session_get_from_handle_if_valid (sh);
+  s = hsi_session_get_owned_if_valid (sh);
   if (!s)
     return;
 
@@ -422,6 +422,10 @@ void
 hsi_udp_session_cleanup_state (session_t *s)
 {
   udp_connection_t *uc = hsi_udp_connection_at_session (s);
+
+  /* Flow continues on the migrated session, which reports the cleanup */
+  if (uc->flags & UDP_CONN_F_MIGRATED)
+    s->al_index = APP_INVALID_INDEX;
 
   hsi_udp_drain_stop (uc);
   hsi_udp_idle_del (uc);
@@ -704,7 +708,7 @@ hsi_udp_drain_cache_rpc (void *arg)
   void *ip_hdr;
 
   wrk = hsi_worker_get (vm->thread_index);
-  s = session_get_from_handle_if_valid (sh);
+  s = hsi_session_get_owned_if_valid (sh);
   if (!s || session_get_transport_proto (s) != TRANSPORT_PROTO_UDP)
     goto drop;
 
@@ -901,6 +905,7 @@ hsi_udp_drain_start_rpc (void *arg)
   ASSERT (!(uc->cfg_flags & UDP_CFG_F_TRACKED));
   ASSERT (peer_uc->cfg_flags & UDP_CFG_F_TRACKED);
   ASSERT (hsi_udp_track_connections_compatible (uc, peer_uc));
+  hsi_session_save_app_wrk (s, a->flags);
   hsi_udp_drain_start (s, peer_s, uc, peer_uc);
 
 done:
@@ -908,7 +913,7 @@ done:
 }
 
 static int
-hsi_udp_track_send_drain_start (session_t *s, session_t *peer_s)
+hsi_udp_track_send_drain_start (session_t *s, session_t *peer_s, hsi_track_flags_t flags)
 {
   hsi_udp_drain_start_req_t *a;
   hsi_worker_t *wrk;
@@ -921,6 +926,7 @@ hsi_udp_track_send_drain_start (session_t *s, session_t *peer_s)
 
   a->session_handle = session_handle (peer_s);
   a->peer_session_handle = session_handle (s);
+  a->flags = flags;
   session_send_rpc_evt_to_thread (peer_s->thread_index, hsi_udp_drain_start_rpc, arg);
 
   return 0;
@@ -1032,7 +1038,7 @@ hsi_udp_track_commit_rpc (void *arg)
   session_handle_tu_t sh = { .handle = a->session_handle };
   session_t *s;
 
-  s = session_get_from_handle_if_valid (sh);
+  s = hsi_session_get_owned_if_valid (sh);
   if (s)
     hsi_udp_track_commit (s, &a->peer);
   else
@@ -1229,7 +1235,7 @@ hsi_udp_drain_update_time (f64 time_now, u8 thread_index)
 }
 
 int
-hsi_track_udp (session_t *s, session_t *peer_s)
+hsi_track_udp (session_t *s, session_t *peer_s, hsi_track_flags_t flags)
 {
   hsi_udp_track_snapshot_t snap0, snap1;
   udp_connection_t *uc0, *uc1;
@@ -1242,13 +1248,17 @@ hsi_track_udp (session_t *s, session_t *peer_s)
   if (!hsi_udp_track_is_possible (uc0, uc1))
     return -1;
 
+  hsi_session_save_app_wrk (s, flags);
+
   if (!is_same_thread)
     {
       hsi_udp_drain_start (s, peer_s, uc0, uc1);
-      if (hsi_udp_track_send_drain_start (s, peer_s))
+      if (hsi_udp_track_send_drain_start (s, peer_s, flags))
 	return -1;
       return 0;
     }
+
+  hsi_session_save_app_wrk (peer_s, flags);
 
   if (hsi_udp_track_needs_drain (s) || hsi_udp_track_needs_drain (peer_s))
     {

@@ -5,32 +5,44 @@
 
 #include <hsi/hsi_tracker_private.h>
 #include <vnet/session/segment_manager.h>
-#include <vnet/session/session_lookup.h>
 #include <vnet/session/transport.h>
-
-static_always_inline void
-hsi_session_free (session_t *s)
-{
-  transport_proto_t proto = session_get_transport_proto (s);
-  clib_thread_index_t thread_index = s->thread_index;
-
-  s->rx_fifo = 0;
-  s->tx_fifo = 0;
-  session_free (s);
-  hsi_worker_proto_counter_inc (hsi_worker_get (thread_index), proto, cleanup_completed);
-}
 
 static void
 hsi_session_transport_cleanup (session_t *s)
 {
+  transport_proto_t proto = session_get_transport_proto (s);
+  clib_thread_index_t thread_index = s->thread_index;
+  u32 conn_index = s->connection_index;
+  transport_connection_t *tc = 0;
+
   ASSERT (s->thread_index == vlib_get_thread_index ());
   ASSERT (!s->rx_fifo && !s->tx_fifo);
 
-  session_lookup_del_session (s);
-  if (s->session_state != SESSION_STATE_TRANSPORT_DELETED)
-    transport_cleanup (session_get_transport_proto (s), s->connection_index, s->thread_index);
+  hsi_worker_proto_counter_inc (hsi_worker_get (thread_index), proto, cleanup_completed);
 
-  hsi_session_free (s);
+  /* Hand session back to app worker, if app asked for cleanup notifications.
+   * Session layer frees the session once the app is notified or immediately
+   * if there is no app worker to notify. */
+  hsi_session_restore_app_wrk (s);
+
+  /* Transport might have been deleted while hsi owned the session, e.g., tcp
+   * reset while draining. Session state cannot be relied on because fifos
+   * cleanup moves session to transport closed. Session layer already removed
+   * the session from the lookup table when the transport was deleted. */
+  if (s->session_state != SESSION_STATE_TRANSPORT_DELETED)
+    tc = session_get_transport (s);
+  if (!tc || tc->s_index != s->session_index)
+    {
+      s->session_state = SESSION_STATE_TRANSPORT_DELETED;
+      session_program_cleanup (s);
+      return;
+    }
+
+  s->session_state = SESSION_STATE_CLOSED;
+  session_transport_delete_notify (tc);
+
+  /* Session might be freed */
+  transport_cleanup (proto, conn_index, thread_index);
 }
 
 static_always_inline int
@@ -139,6 +151,10 @@ hsi_session_cleanup (session_t *s)
 
   ASSERT (s->thread_index == vlib_get_thread_index ());
 
+  /* Already handed back to app worker for cleanup notifications */
+  if (!hsi_session_is_hsi_owned (s))
+    return;
+
   if (!hsi_session_is_cleanup_ready (s))
     return;
 
@@ -226,7 +242,7 @@ hsi_session_cleanup_pair_rpc (void *arg)
   session_handle_t peer_handle = SESSION_INVALID_HANDLE;
   session_t *s;
 
-  s = session_get_from_handle_if_valid (sh);
+  s = hsi_session_get_owned_if_valid (sh);
   if (!s)
     return;
 
@@ -260,12 +276,12 @@ hsi_track_sessions_compatible (session_t *s, session_t *peer_s)
 }
 
 __clib_export int
-hsi_track_session_pair (session_t *s, session_handle_t peer_session_handle)
+hsi_track_pair (hsi_track_args_t *a)
 {
-  session_handle_tu_t peer_handle = { .handle = peer_session_handle };
+  session_handle_tu_t peer_handle = { .handle = a->peer_session_handle };
   clib_thread_index_t thread_index = vlib_get_thread_index ();
+  session_t *peer_s, *s = a->s;
   hsi_worker_t *wrk;
-  session_t *peer_s;
   transport_proto_t proto;
   int rv;
 
@@ -274,7 +290,7 @@ hsi_track_session_pair (session_t *s, session_handle_t peer_session_handle)
    * application must stop using or closing them. Any non-zero return leaves
    * ownership with the caller.
    */
-  if (!s || peer_session_handle == SESSION_INVALID_HANDLE)
+  if (!s || a->peer_session_handle == SESSION_INVALID_HANDLE)
     return -1;
 
   if (thread_index != s->thread_index)
@@ -292,10 +308,10 @@ hsi_track_session_pair (session_t *s, session_handle_t peer_session_handle)
   switch (proto)
     {
     case TRANSPORT_PROTO_TCP:
-      rv = hsi_track_tcp (s, peer_s);
+      rv = hsi_track_tcp (s, peer_s, a->flags);
       break;
     case TRANSPORT_PROTO_UDP:
-      rv = hsi_track_udp (s, peer_s);
+      rv = hsi_track_udp (s, peer_s, a->flags);
       break;
     default:
       rv = -1;
@@ -311,6 +327,20 @@ hsi_track_session_pair (session_t *s, session_handle_t peer_session_handle)
   hsi_worker_proto_counter_inc (wrk, proto, track_accepted);
 
   return 0;
+}
+
+static int
+hsi_track_session_pair_compat (session_t *s, session_handle_t peer_session_handle)
+{
+  hsi_track_args_t a = { .s = s, .peer_session_handle = peer_session_handle };
+
+  return hsi_track_pair (&a);
+}
+
+__clib_export int
+hsi_track_session_pair (session_t *s, session_handle_t peer_session_handle)
+{
+  return hsi_track_session_pair_compat (s, peer_session_handle);
 }
 
 void
@@ -357,11 +387,12 @@ hsi_udp_tracker_get_fn (udp_connection_t *uc)
 }
 
 static hsi_tracker_vft_t hsi_tracker_vft_ = {
-  .track_session_pair = hsi_track_session_pair,
+  .track_session_pair = hsi_track_session_pair_compat,
   .tcp_tracked_action = hsi_tcp_tracked_action_fn,
   .tcp_tracker_get = hsi_tcp_tracker_get_fn,
   .udp_tracked_action = hsi_udp_tracked_action_fn,
   .udp_tracker_get = hsi_udp_tracker_get_fn,
+  .track_pair = hsi_track_pair,
 };
 
 __clib_export hsi_tracker_vft_t *
