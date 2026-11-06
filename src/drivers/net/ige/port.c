@@ -135,6 +135,90 @@ ige_rx_irq_map (vnet_dev_port_t *port)
     ige_reg_wr (port->dev, IGE_REG_IVAR (i), ivar[i]);
 }
 
+static vnet_dev_rv_t
+ige_rss_validate (vnet_dev_port_t *port, const vnet_dev_rss_config_t *config)
+{
+  if ((config->set_key && config->key_len != IGE_RSS_KEY_SIZE) ||
+      (config->set_lut && config->lut_len != IGE_RSS_LUT_SIZE))
+    return VNET_DEV_ERR_INVALID_DATA;
+
+  if (config->set_lut)
+    for (u32 i = 0; i < IGE_RSS_LUT_SIZE; i++)
+      {
+	vnet_dev_rx_queue_t *rxq = vnet_dev_get_port_rx_queue_by_id (port, config->lut[i]);
+
+	if (!rxq || !rxq->enabled)
+	  return VNET_DEV_ERR_INVALID_VALUE;
+      }
+
+  return VNET_DEV_OK;
+}
+
+static void
+ige_rss_apply (vnet_dev_port_t *port, const vnet_dev_rss_config_t *config)
+{
+  vnet_dev_t *dev = port->dev;
+
+  if (config->set_key)
+    for (u32 i = 0; i < IGE_RSS_KEY_SIZE / 4; i++)
+      {
+	u32 w;
+
+	clib_memcpy (&w, config->key + i * 4, 4);
+	ige_reg_wr (dev, IGE_REG_RSSRK (i), w);
+      }
+
+  if (config->set_lut)
+    for (u32 i = 0; i < IGE_RSS_LUT_SIZE / 4; i++)
+      ige_reg_wr (dev, IGE_REG_RETA (i),
+		  config->lut[i * 4] | config->lut[i * 4 + 1] << 8 | config->lut[i * 4 + 2] << 16 |
+		    (u32) config->lut[i * 4 + 3] << 24);
+}
+
+static void
+ige_rss_start (vnet_dev_port_t *port)
+{
+  vnet_dev_t *dev = port->dev;
+  vnet_dev_rss_config_t config = port->rss_config;
+  u16 queue_ids[IGE_RSS_LUT_SIZE];
+  u32 n_queues = 0;
+  ige_reg_mrqc_t mrqc = {
+    .mq_enable = 2,
+    .ipv4_tcp = 1,
+    .ipv4 = 1,
+    .ipv6 = 1,
+    .ipv6_tcp = 1,
+    .ipv4_udp = 1,
+    .ipv6_udp = 1,
+  };
+  ige_reg_rxcsum_t rxcsum;
+
+  foreach_vnet_dev_port_rx_queue (q, port)
+    if (q->enabled && n_queues < ARRAY_LEN (queue_ids))
+      queue_ids[n_queues++] = q->queue_id;
+
+  if (n_queues == 0)
+    return;
+
+  if (config.set_lut && ige_rss_validate (port, &config) != VNET_DEV_OK)
+    config.set_lut = 0;
+
+  if (!config.set_lut)
+    {
+      for (u32 i = 0; i < IGE_RSS_LUT_SIZE; i++)
+	config.lut[i] = queue_ids[i % n_queues];
+
+      config.set_lut = 1;
+    }
+
+  ige_rss_apply (port, &config);
+
+  ige_reg_rd (dev, IGE_REG_RXCSUM, &rxcsum.as_u32);
+  rxcsum.pcsd = 1;
+  ige_reg_wr (dev, IGE_REG_RXCSUM, rxcsum.as_u32);
+  ige_reg_wr (dev, IGE_REG_MRQC, mrqc.as_u32);
+}
+
 vnet_dev_rv_t
 ige_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 {
@@ -323,6 +407,8 @@ ige_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
       txctl.tx_desc_wb_relax_order_en = 0;
       ige_reg_wr (dev, IGE_REG_TXCTL (q), txctl.as_u32);
     }
+
+  ige_rss_start (port);
 
   rctl.rx_enable = 1;
   rctl.store_bad_packets = 0;
@@ -608,6 +694,10 @@ ige_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,
 	rv = VNET_DEV_OK;
       break;
 
+    case VNET_DEV_PORT_CFG_SET_RSS_CONFIG:
+      rv = ige_rss_validate (port, &req->rss_config);
+      break;
+
     case VNET_DEV_PORT_CFG_PROMISC_MODE:
     case VNET_DEV_PORT_CFG_CHANGE_PRIMARY_HW_ADDR:
     case VNET_DEV_PORT_CFG_ADD_SECONDARY_HW_ADDR:
@@ -633,6 +723,10 @@ ige_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
       break;
     case VNET_DEV_PORT_CFG_SET_LINK_SPEED:
       rv = ige_phy_set_speed (vm, port->dev, req->link_speed);
+      break;
+    case VNET_DEV_PORT_CFG_SET_RSS_CONFIG:
+      if (port->started)
+	ige_rss_apply (port, &req->rss_config);
       break;
     case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_ENABLE:
     case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_DISABLE:
