@@ -363,13 +363,15 @@ hsi_tcp_segment_in_rcv_wnd (tcp_connection_t *tc, u32 seq, u32 seq_end, u32 rcv_
  * Tracked connections only splice segments and endpoints validate them, so
  * accept anything within a max window of the highest seq seen. That includes
  * out of order segments, retransmits, keepalives and window probes. Resets
- * tear down the pair, so they must be within the window advertised at commit.
+ * tear down the pair, so they must be within the window advertised at commit
+ * of the highest seq seen. Below it too, as receivers ack below it if segments
+ * were lost and endpoints that lost the connection reset with that ack.
  */
 static_always_inline u8
 hsi_tcp_tracked_segment_in_wnd (tcp_connection_t *tc, u32 seq, u32 seq_end, u8 rst)
 {
   if (PREDICT_FALSE (rst))
-    return seq_geq (seq, tc->rcv_nxt) && seq_leq (seq, tc->rcv_nxt + tc->rcv_wnd);
+    return seq_geq (seq, tc->rcv_nxt - tc->rcv_wnd) && seq_leq (seq, tc->rcv_nxt + tc->rcv_wnd);
 
   return seq_gt (seq_end, tc->rcv_nxt - HSI_TCP_TRACKED_MAX_WND) &&
 	 seq_leq (seq, tc->rcv_nxt + HSI_TCP_TRACKED_MAX_WND);
@@ -683,7 +685,8 @@ hsi_tcp_track_send_drain_start (session_t *s, session_t *peer_s, hsi_track_flags
 }
 
 static void
-hsi_tcp_tracker_init (hsi_tcp_tracker_t *trk, tcp_connection_t *tc, hsi_tcp_track_snapshot_t *peer)
+hsi_tcp_tracker_init (hsi_tcp_tracker_t *trk, tcp_connection_t *tc, hsi_tcp_track_snapshot_t *self,
+		      hsi_tcp_track_snapshot_t *peer)
 {
   clib_memset (trk, 0, sizeof (*trk));
 
@@ -703,8 +706,9 @@ hsi_tcp_tracker_init (hsi_tcp_tracker_t *trk, tcp_connection_t *tc, hsi_tcp_trac
    */
   trk->seq_delta = (i32) (peer->snd_nxt - tc->rcv_nxt);
   trk->ack_delta = (i32) (peer->rcv_nxt - tc->snd_nxt);
-  trk->tsval_delta = (i32) (peer->ts_now - tc->tsval_recent);
-  trk->tsecr_delta = (i32) (peer->tsval_recent - tcp_tstamp (tc));
+  /* Peer maps timestamps with the same snapshots, so echoes map back exactly */
+  trk->tsval_delta = (i32) (peer->ts_now - self->tsval_recent);
+  trk->tsecr_delta = (i32) (peer->tsval_recent - self->ts_now);
   trk->wnd_delta = (i8) tc->snd_wscale - (i8) peer->rcv_wscale;
   trk->next_node_opaque = tc->next_node_opaque;
   trk->peer_next_node_opaque = peer->next_node_opaque;
@@ -816,10 +820,11 @@ hsi_tcp_drain_flush_cached_buffers (tcp_connection_t *tc)
 }
 
 static void
-hsi_tcp_track_commit_connection (tcp_connection_t *tc, hsi_tcp_track_snapshot_t *peer)
+hsi_tcp_track_commit_connection (tcp_connection_t *tc, hsi_tcp_track_snapshot_t *self,
+				 hsi_tcp_track_snapshot_t *peer)
 {
   hsi_tcp_track_cleanup_tcp_state (tc);
-  hsi_tcp_tracker_init (hsi_tcp_tracker_from_connection (tc), tc, peer);
+  hsi_tcp_tracker_init (hsi_tcp_tracker_from_connection (tc), tc, self, peer);
 
   tc->cfg_flags |= TCP_CFG_F_TRACKED;
   tc->c_flags |= TRANSPORT_CONNECTION_F_SPLICED;
@@ -856,6 +861,10 @@ hsi_tcp_send_window_update (tcp_connection_t *tc, hsi_tcp_track_snapshot_t *self
   vlib_buffer_t *b;
   vlib_frame_t *f;
 
+  /* Tracker validates resets against the reopened window */
+  wnd = clib_min (peer->snd_wnd >> self->rcv_wscale, TCP_WND_MAX);
+  tc->rcv_wnd = wnd << self->rcv_wscale;
+
   if (PREDICT_FALSE (vlib_buffer_alloc (vm, &bi, 1) != 1))
     return;
 
@@ -873,7 +882,6 @@ hsi_tcp_send_window_update (tcp_connection_t *tc, hsi_tcp_track_snapshot_t *self
       opts_len = TCP_OPTION_LEN_TIMESTAMP + 2 * TCP_OPTION_LEN_NOOP;
     }
 
-  wnd = clib_min (peer->snd_wnd >> self->rcv_wscale, TCP_WND_MAX);
   th = vlib_buffer_push_tcp (b, self->lcl_port, self->rmt_port, self->snd_nxt, self->rcv_nxt,
 			     sizeof (tcp_header_t) + opts_len, TCP_FLAG_ACK, wnd);
   tcp_options_write ((u8 *) (th + 1), opts);
@@ -944,7 +952,7 @@ hsi_tcp_track_commit_no_flush (session_t *s, hsi_tcp_track_snapshot_t *self,
   hsi_session_take_ownership (s);
   tcp_connection_timers_reset (tc);
   hsi_tcp_track_cleanup_pending_tx (s, tc);
-  hsi_tcp_track_commit_connection (tc, peer);
+  hsi_tcp_track_commit_connection (tc, self, peer);
   s->session_state = SESSION_STATE_TRANSPORT_CLOSED;
   hsi_session_cleanup_fifos (s);
 
@@ -1460,7 +1468,7 @@ hsi_tcp_track_arm_fin_wait (tcp_connection_t *tc, hsi_tcp_tracker_t *trk)
   if (trk->flags & (HSI_TRACKER_F_FIN_WAIT | HSI_TRACKER_F_CLEANUP_PENDING))
     return;
 
-  trk->flags |= HSI_TRACKER_F_FIN_WAIT;
+  clib_atomic_fetch_or (&trk->flags, HSI_TRACKER_F_FIN_WAIT);
   trk->fin_wait_start = vlib_time_now (vlib_get_main ());
   hsi_worker_counter_inc (hsi_worker_get (tc->c_thread_index), tcp_fin_wait_started);
   hsi_tcp_fin_wait_add (tc);
@@ -1592,7 +1600,7 @@ hsi_tcp_mark_fin_acked (tcp_connection_t *tc, u32 ack)
 
   trk = hsi_tcp_tracker_get (tc);
   if ((trk->flags & HSI_TRACKER_F_FIN_RCVD) && seq_geq (ack, tc->rcv_nxt))
-    trk->flags |= HSI_TRACKER_F_FIN_ACKED;
+    clib_atomic_fetch_or (&trk->flags, HSI_TRACKER_F_FIN_ACKED);
 
   hsi_tcp_track_maybe_cleanup_pair (tc, trk);
 }
@@ -1661,7 +1669,7 @@ hsi_tcp_track_pending_peer_fin_ack_update (hsi_tcp_tracker_t *trk, u32 ack,
   if (seq_lt (ack, trk->peer_fin_ack))
     return;
 
-  trk->flags &= ~HSI_TRACKER_F_PEER_FIN_PENDING;
+  clib_atomic_fetch_and (&trk->flags, ~HSI_TRACKER_F_PEER_FIN_PENDING);
   hsi_tcp_track_peer_fin_acked (trk, ack, thread_index);
 }
 
@@ -1687,7 +1695,7 @@ hsi_tcp_mark_peer_fin_pending (tcp_connection_t *tc, u32 ack)
 
   trk = hsi_tcp_tracker_get (tc);
   trk->peer_fin_ack = ack - trk->ack_delta;
-  trk->flags |= HSI_TRACKER_F_PEER_FIN_PENDING;
+  clib_atomic_fetch_or (&trk->flags, HSI_TRACKER_F_PEER_FIN_PENDING);
 
   hsi_tcp_track_pending_peer_fin_ack_update (trk, tc->snd_una, tc->c_thread_index);
 }
@@ -1784,7 +1792,7 @@ hsi_tcp_validate_and_update_state (tcp_connection_t *tc, hsi_tcp_tracker_t *trk,
     tc->rcv_nxt = seq_end;
 
   if (PREDICT_FALSE (tcp_fin (tcp_hdr)))
-    trk->flags |= HSI_TRACKER_F_FIN_RCVD;
+    clib_atomic_fetch_or (&trk->flags, HSI_TRACKER_F_FIN_RCVD);
 
   return 1;
 }

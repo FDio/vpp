@@ -40,6 +40,7 @@ typedef struct hsi_tcp_tracker_
   u64 packets;
   u64 bytes;
   u32 magic;
+  /* Updated atomically, peer's thread sets cleanup pending */
   hsi_tracker_flags_t flags;
   u32 peer_fin_ack;
   u32 peer_conn_index;

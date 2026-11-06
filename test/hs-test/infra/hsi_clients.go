@@ -485,6 +485,90 @@ func StartHsiTcpInvalidRstClient(addr string, port uint16, netNs, readyPath,
 	return finished
 }
 
+// StartHsiTcpOldSeqRstClient queues a request while the target is blocked, so
+// tracking drains, and once signaled sends a reset with the seq of its next
+// request, i.e., below the highest seq hsi saw. Endpoints that lost the
+// connection reset like that, with the ack of the receiver.
+func StartHsiTcpOldSeqRstClient(addr string, port uint16, netNs, ifName, readyPath,
+	signalPath string) <-chan HsiClientResult {
+	finished := make(chan HsiClientResult, 1)
+	go func() {
+		defer GinkgoRecover()
+		output, err := runInNetns(netNs, func() (string, error) {
+			request := []byte("GET /64B HTTP/1.1\r\nHost: hsi\r\nConnection: keep-alive\r\n\r\n")
+			conn, reader, err := hsiTcpClientConnect(addr, port)
+			if err != nil {
+				return "", err
+			}
+			defer conn.Close()
+
+			var output bytes.Buffer
+			if _, err := conn.Write(request); err != nil {
+				return output.String(), err
+			}
+			local := conn.LocalAddr().(*net.TCPAddr)
+			if err := writeReady(readyPath, local.Port); err != nil {
+				return output.String(), err
+			}
+			if err := waitForSignal(signalPath, 20*time.Second); err != nil {
+				return output.String(), err
+			}
+			response, err := readHsiHTTPResponse(reader)
+			if err != nil {
+				return output.String(), err
+			}
+			output.Write(response)
+
+			dst := net.ParseIP(addr)
+			src := local.IP.To4()
+			if src == nil || src.IsUnspecified() {
+				src, err = tcpharness.IPv4AddrOnInterface(ifName)
+				if err != nil {
+					return output.String(), err
+				}
+			}
+			fd, err := tcpharness.OpenIPv4PacketSocket(ifName)
+			if err != nil {
+				return output.String(), err
+			}
+			defer unix.Close(fd)
+
+			done := make(chan struct{})
+			dataCh := make(chan tcpharness.PcapIPv4TCPPacket, 1)
+			defer close(done)
+			go tcpharness.CaptureIPv4TCPData(fd, src, dst, uint16(local.Port), port, done, dataCh)
+
+			if _, err := conn.Write(request); err != nil {
+				return output.String(), err
+			}
+			var data tcpharness.PcapIPv4TCPPacket
+			select {
+			case data = <-dataCh:
+			case <-time.After(2 * time.Second):
+				return output.String(), fmt.Errorf("timed out capturing request")
+			}
+			response, err = readHsiHTTPResponse(reader)
+			if err != nil {
+				return output.String(), err
+			}
+			output.Write(response)
+
+			packet, err := tcpharness.BuildIPv4TCPControl(src, dst, uint16(local.Port), port,
+				data.Seq, 0, 0x04)
+			if err != nil {
+				return output.String(), err
+			}
+			if err := tcpharness.SendIPv4RawPacket(packet, dst); err != nil {
+				return output.String(), err
+			}
+			fmt.Fprintf(&output, "reset seq %d, request len %d\n", data.Seq, data.PayloadLen)
+			return output.String(), nil
+		})
+		finished <- HsiClientResult{Output: output, Err: err}
+	}()
+	return finished
+}
+
 func MakeProxyLiteUploadFile() string {
 	uploadFile, err := os.CreateTemp("", "hsi-proxy-lite-upload-*")
 	AssertNil(err)
