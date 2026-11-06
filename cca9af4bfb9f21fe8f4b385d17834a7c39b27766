@@ -33,6 +33,24 @@
       "message": "The check for `NULL \u003d\u003d mfib_table-\u003emft_src_route_counts` is unnecessary. `vec_len(NULL)` will return 0 so `(u32) source \u003e\u003d vec_len(mfib_table-\u003emft_src_route_counts)` will evaluate true when `mfib_table-\u003emft_src_route_counts` is NULL.",
       "revId": "cca9af4bfb9f21fe8f4b385d17834a7c39b27766",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2c0ff601_7150fd93",
+        "filename": "src/vnet/mfib/mfib_table.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 847,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-11-06T22:17:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6e0dd75b_d3dea093",
+      "revId": "cca9af4bfb9f21fe8f4b385d17834a7c39b27766",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
