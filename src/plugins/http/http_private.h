@@ -124,7 +124,9 @@ typedef enum http_target_form_ : u8
   _ (TX_STREAMING, "tx-streaming")                                                                 \
   _ (TX_EOF, "tx-eof")                                                                             \
   _ (RX_STREAMING, "rx-streaming")                                                                 \
-  _ (RX_EOF, "rx-eof")
+  _ (RX_EOF, "rx-eof")                                                                             \
+  _ (RX_PROCESSING, "rx-processing")                                                               \
+  _ (RX_HEADERS_RECEIVED, "rx-headers-received")
 
 typedef enum http_req_flags_bit_
 {
