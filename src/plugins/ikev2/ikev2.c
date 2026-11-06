@@ -4147,6 +4147,19 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 	  if (p)
 	    {
 	      sa0 = pool_elt_at_index (km->sas, p[0]);
+	      /* RFC 7296 section 1.3: CREATE_CHILD_SA is only valid after the
+		 initial exchanges complete. Until the peer is authenticated the
+		 keys come from an unverified peer, so drop the request without
+		 a response rather than process it or answer under those keys.
+		 An SA whose IKE_AUTH succeeded but whose first Child SA was
+		 refused (TS_UNACCEPTABLE, NO_PROPOSAL_CHOSEN) is established
+		 (section 2.21.2) and its requests are still answered. */
+	      if (sa0->state == IKEV2_STATE_UNKNOWN || sa0->state == IKEV2_STATE_SA_INIT ||
+		  sa0->state == IKEV2_STATE_AUTH_FAILED)
+		{
+		  vlib_node_increment_counter (vm, node->node_index, IKEV2_ERROR_IKE_REQ_IGNORE, 1);
+		  goto dispatch0;
+		}
 	      slen = ikev2_retransmit_resp (sa0, ike0);
 	      if (slen)
 		{
