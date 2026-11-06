@@ -308,6 +308,9 @@ atl_rx_one_queue (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queue_
   aq->stats_rx_packets += n_pkts;
   aq->stats_rx_bytes += n_rx_bytes;
 
+  if (PREDICT_FALSE (rxq->interrupt_mode) && aq->descs[aq->head & mask].qw1.dd)
+    vlib_node_set_interrupt_pending (vm, node->node_index);
+
   return n_pkts;
 }
 
@@ -318,11 +321,16 @@ VNET_DEV_NODE_FN (atl_rx_node)
 
   foreach_vnet_dev_rx_queue_runtime (rxq, node)
     {
+      atl_rxq_t *aq = vnet_dev_get_rx_queue_data (rxq);
+
       n_rx += atl_rx_one_queue (vm, node, rxq);
       if (rxq->port->dev->va_dma)
 	atl_rxq_refill (vm, rxq, 1);
       else
 	atl_rxq_refill (vm, rxq, 0);
+
+      if (PREDICT_FALSE (rxq->interrupt_mode) && aq->tail == aq->head)
+	vlib_node_set_interrupt_pending (vm, node->node_index);
     }
 
   return n_rx;

@@ -4,6 +4,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/dev/dev.h>
+#include <vnet/dev/bus/pci.h>
 #include <atlantic.h>
 
 VLIB_REGISTER_LOG_CLASS (atl_log, static) = {
@@ -569,6 +570,63 @@ atl_buffers_init (vnet_dev_port_t *port)
   log_debug (dev, "buffers init done");
 }
 
+#define ATL_IRQ_MAP_VALID 0x80
+
+static void
+atl_rx_msix_handler (vlib_main_t *vm __clib_unused, vnet_dev_t *dev, u16 line)
+{
+  vnet_dev_port_t *port = vnet_dev_get_port_by_id (dev, 0);
+
+  if (!port || !port->interfaces || !port->rx_node_assigned)
+    return;
+
+  atl_reg_wr_u32 (dev, ATL_REG_INTR_MASK_SET, 1U << line);
+  vlib_node_set_interrupt_pending (vlib_get_main_by_index (line - 1),
+				   vnet_dev_get_port_rx_node_index (port));
+}
+
+static u16
+atl_rxq_vector (atl_port_t *ap, vnet_dev_rx_queue_t *rxq)
+{
+  return clib_min (rxq->rx_thread_index + 1, ap->n_rx_vectors);
+}
+
+static void
+atl_rx_irq_apply (vnet_dev_port_t *port, vnet_dev_rx_queue_t *target, int override)
+{
+  atl_port_t *ap = vnet_dev_get_port_data (port);
+  u32 all = pow2_mask (ap->n_rx_vectors) << 1;
+  u32 mask = 0;
+
+  foreach_vnet_dev_port_rx_queue (q, port)
+    {
+      int is_intr = q->interrupt_mode;
+
+      if (override >= 0 && (target == 0 || target == q))
+	is_intr = override;
+
+      if (is_intr)
+	mask |= 1U << atl_rxq_vector (ap, q);
+    }
+
+  atl_reg_wr_u32 (port->dev, ATL_REG_INTR_MASK_CLEAR, all & ~mask);
+  atl_reg_wr_u32 (port->dev, ATL_REG_INTR_MASK_SET, mask);
+}
+
+static void
+atl_rx_irq_map (vnet_dev_port_t *port)
+{
+  atl_port_t *ap = vnet_dev_get_port_data (port);
+  u32 map[2] = {};
+
+  foreach_vnet_dev_port_rx_queue (q, port)
+    map[q->queue_id >> 1] |= (u32) (atl_rxq_vector (ap, q) | ATL_IRQ_MAP_VALID)
+			     << (q->queue_id & 1 ? 0 : 8);
+
+  for (u32 i = 0; i < ARRAY_LEN (map); i++)
+    atl_reg_wr_u32 (port->dev, ATL_REG_INTR_MAP (i), map[i]);
+}
+
 static void
 atl_interrupts_init (vnet_dev_port_t *port)
 {
@@ -579,7 +637,8 @@ atl_interrupts_init (vnet_dev_port_t *port)
 	      (atl_reg_t){
 		.aq_intr_ctrl = {
 		  .reset_dis = 1,
-		  .irqmode = 0,
+		  .irqmode = port->attr.caps.interrupt_mode ? 2 : 0,
+		  .multivec = port->attr.caps.interrupt_mode,
 		},
 	      });
 
@@ -615,7 +674,7 @@ atl_interrupts_init (vnet_dev_port_t *port)
 }
 
 vnet_dev_rv_t
-atl_port_init (vlib_main_t *vm __clib_unused, vnet_dev_port_t *port)
+atl_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 {
   vnet_dev_t *dev = port->dev;
   vnet_dev_rv_t rv;
@@ -658,14 +717,54 @@ atl_port_init (vlib_main_t *vm __clib_unused, vnet_dev_port_t *port)
   atl_reg_wr (dev, ATL_REG_TX_DMA_INT_DESC_WRWB_EN, r);
 
   r = atl_reg_rd (dev, ATL_REG_RX_DMA_INT_DESC_WRWB_EN);
-  r.rx_dma_int_desc_wrwb_en.wrwb_en = 0;
+  r.rx_dma_int_desc_wrwb_en.wrwb_en = port->attr.caps.interrupt_mode;
   atl_reg_wr (dev, ATL_REG_RX_DMA_INT_DESC_WRWB_EN, r);
   r.rx_dma_int_desc_wrwb_en.moderate_en = 0;
   atl_reg_wr (dev, ATL_REG_RX_DMA_INT_DESC_WRWB_EN, r);
 
   atl_port_counters_init (vlib_get_main (), port);
 
+  if (port->attr.caps.interrupt_mode)
+    {
+      atl_port_t *ap = vnet_dev_get_port_data (port);
+
+      ap->n_rx_vectors = vlib_get_n_threads ();
+
+      rv = vnet_dev_pci_msix_add_handler (vm, dev, &atl_rx_msix_handler, 1, ap->n_rx_vectors);
+      if (rv != VNET_DEV_OK)
+	return rv;
+
+      ap->irq_registered = 1;
+
+      rv = vnet_dev_pci_msix_enable (vm, dev, 1, ap->n_rx_vectors);
+      if (rv != VNET_DEV_OK)
+	return rv;
+
+      for (u16 i = 0; i < ap->n_rx_vectors; i++)
+	vnet_dev_pci_msix_set_polling_thread (vm, dev, i + 1, i);
+    }
+
   return VNET_DEV_OK;
+}
+
+void
+atl_port_deinit (vlib_main_t *vm, vnet_dev_port_t *port)
+{
+  atl_port_t *ap = vnet_dev_get_port_data (port);
+  vnet_dev_rv_t rv;
+
+  if (!ap->irq_registered)
+    return;
+
+  rv = vnet_dev_pci_msix_disable (vm, port->dev, 1, ap->n_rx_vectors);
+  if (rv == VNET_DEV_OK)
+    rv = vnet_dev_pci_msix_remove_handler (vm, port->dev, 1, ap->n_rx_vectors);
+
+  if (rv != VNET_DEV_OK)
+    log_err (port->dev, "port %u RX interrupt cleanup failed: %U", port->port_id,
+	     format_vnet_dev_rv, rv);
+  else
+    ap->irq_registered = 0;
 }
 
 static vnet_dev_rv_t
@@ -919,6 +1018,12 @@ atl_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
       ap->last_link_status.as_u32 = 0;
       vnet_dev_poll_port_add (vm, port, 1, atl_port_counter_poll);
       vnet_dev_poll_port_add (vm, port, 1, atl_port_status_poll);
+
+      if (port->attr.caps.interrupt_mode)
+	{
+	  atl_rx_irq_map (port);
+	  atl_rx_irq_apply (port, 0, -1);
+	}
     }
 
 done:
@@ -975,6 +1080,10 @@ atl_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
   vnet_dev_t *dev = port->dev;
   atl_device_t *ad = vnet_dev_get_data (dev);
   atl_reg_t r;
+  atl_port_t *ap = vnet_dev_get_port_data (port);
+
+  if (port->attr.caps.interrupt_mode)
+    atl_reg_wr_u32 (dev, ATL_REG_INTR_MASK_CLEAR, pow2_mask (ap->n_rx_vectors) << 1);
 
   r = atl_reg_rd (dev, ATL_REG_AQ2_FW_INTERFACE_IN_LINK_OPTIONS);
   r.aq2_fw_interface_in_link_options.link_up = 0;
@@ -1097,6 +1206,12 @@ atl_port_cfg_change_validate (vlib_main_t *vm __clib_unused, vnet_dev_port_t *po
       rv = port->started ? VNET_DEV_ERR_PORT_STARTED : VNET_DEV_OK;
       break;
 
+    case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_ENABLE:
+    case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_DISABLE:
+      if (port->attr.caps.interrupt_mode)
+	rv = VNET_DEV_OK;
+      break;
+
     case VNET_DEV_PORT_CFG_SET_LINK_SPEED:
       {
 	u8 rate;
@@ -1131,6 +1246,18 @@ atl_port_cfg_change (vlib_main_t *vm __clib_unused, vnet_dev_port_t *port,
   switch (req->type)
     {
     case VNET_DEV_PORT_CFG_MAX_RX_FRAME_SIZE:
+      break;
+    case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_ENABLE:
+    case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_DISABLE:
+      if (port->started)
+	{
+	  vnet_dev_rx_queue_t *rxq = 0;
+
+	  if (!req->all_queues)
+	    rxq = vnet_dev_get_port_rx_queue_by_id (port, req->queue_id);
+
+	  atl_rx_irq_apply (port, rxq, req->type == VNET_DEV_PORT_CFG_RXQ_INTR_MODE_ENABLE);
+	}
       break;
     case VNET_DEV_PORT_CFG_SET_LINK_SPEED:
       {

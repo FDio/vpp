@@ -239,6 +239,8 @@ typedef struct
   u8 link_status_fail : 1;
   u8 stats_fetch_fail : 1;
   u8 forced_rate;
+  u16 n_rx_vectors;
+  u8 irq_registered : 1;
 } atl_port_t;
 
 typedef struct
@@ -318,6 +320,7 @@ typedef enum
 } atl_tx_node_counter_t;
 
 vnet_dev_rv_t atl_port_init (vlib_main_t *vm, vnet_dev_port_t *port);
+void atl_port_deinit (vlib_main_t *vm, vnet_dev_port_t *port);
 vnet_dev_rv_t atl_port_start (vlib_main_t *vm, vnet_dev_port_t *port);
 void atl_port_stop (vlib_main_t *vm, vnet_dev_port_t *port);
 vnet_dev_rv_t atl_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,

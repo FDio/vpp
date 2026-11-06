@@ -442,6 +442,8 @@ ATL_REG_STRUCT (atl_reg_aq2_device_caps_t);
   _ (0x00f08, AQ2_MCP_HOST_REQ_INT_CLR, )                                                          \
   _ (0x00e00, AQ2_MIF_HOST_FINISHED_STATUS_WRITE, )                                                \
   _ (0x00e04, AQ2_MIF_HOST_FINISHED_STATUS_READ, )                                                 \
+  _ (0x02060, INTR_MASK_SET, )                                                                     \
+  _ (0x02070, INTR_MASK_CLEAR, )                                                                   \
   _ (0x02090, INTR_AUTOMASK, )                                                                     \
   _ (0x02300, INTR_CTRL, atl_reg_aq_intr_ctrl_t_fields)                                            \
   _ (0x03040, AQ2_MIF_BOOT, atl_reg_aq2_mif_boot_t_fields)                                         \
@@ -637,6 +639,7 @@ typedef union
 } atl_reg_t;
 
 #define ATL_REG_AQ_GEN_INTR_MAP(i)	      (0x2180 + (i) *4)
+#define ATL_REG_INTR_MAP(i)		      (0x2100 + (i) * 4)
 #define ATL_REG_RPF_L2UC_LSW(i)		      (ATL_REG_RPF_L2UC_LSW0 + (i) *8)
 #define ATL_REG_RPF_L2UC_MSW(i)		      (ATL_REG_RPF_L2UC_MSW0 + (i) *8)
 #define ATL_REG_AQ2_RPF_ACT_ART_REQ_TAG(i)    (ATL_REG_AQ2_RPF_ACT_ART_REQ_TAG0 + (i) *0x10)
