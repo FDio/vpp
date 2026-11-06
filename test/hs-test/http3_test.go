@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -35,6 +36,8 @@ func init() {
 		Http3QpackDecompressionFailedTest, Http3ClientOpenPushStreamTest, Http3DataBeforeHeadersTest,
 		Http3LongerDataThanContentLengthTest, Http3HalfClosedBeforeAllDataTest, Http3StaticGetTest,
 		Http3MaxHeaderListSizeTest, Http3ServerHeadersFrameTooLargeTest, Http3ClientHeadersFrameTooLargeTest,
+		Http3Early431UploadTest, Http3Early431DecodedUploadTest, Http3Early501UploadTest,
+		Http3Early501CompletedRequestTest, Http3EarlyApplicationUploadTest,
 		Http3ServerMemLeakTest, Http3ClientMemLeakTest)
 	RegisterH3MWTests(Http3ClientFailedConnectMWTest, Http3TsFifoMemPressureMWTest)
 	RegisterVethTests(Http3CliTest, Http3ClientPostTest, Http3ClientPostPtrTest)
@@ -333,6 +336,253 @@ func Http3ClientPostTest(s *VethsSuite) {
 
 func Http3ClientPostPtrTest(s *VethsSuite) {
 	http3ClientPostFile(s, true)
+}
+
+// Withhold ACKs and the solicited RESET_STREAM until STOP_SENDING is retransmitted.
+// This also keeps the response unacknowledged while request cancellation completes.
+type http3EarlyPacketConn struct {
+	net.PacketConn
+	mu      sync.Mutex
+	retry   bool
+	stops   []quic.StreamErrorCode
+	dropped int
+	changed chan struct{}
+}
+
+type http3EarlyRecorder struct{ conn *http3EarlyPacketConn }
+
+func (c *http3EarlyPacketConn) AddProducer() qlogwriter.Recorder {
+	return http3EarlyRecorder{conn: c}
+}
+
+func (c *http3EarlyPacketConn) SupportsSchemas(string) bool { return true }
+func (r http3EarlyRecorder) Close() error                   { return nil }
+
+func (r http3EarlyRecorder) RecordEvent(event qlogwriter.Event) {
+	packet, ok := event.(qlog.PacketReceived)
+	if !ok {
+		return
+	}
+	c := r.conn
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, frame := range packet.Frames {
+		if stop, ok := frame.Frame.(*qlog.StopSendingFrame); ok && stop.StreamID == 0 {
+			c.stops = append(c.stops, quic.StreamErrorCode(stop.ErrorCode))
+			select {
+			case c.changed <- struct{}{}:
+			default:
+			}
+		}
+	}
+}
+
+func (c *http3EarlyPacketConn) WriteTo(p []byte, addr net.Addr) (int, error) {
+	c.mu.Lock()
+	drop := c.retry && len(c.stops) == 1
+	if drop {
+		c.dropped++
+	}
+	c.mu.Unlock()
+	if drop {
+		return len(p), nil
+	}
+	return c.PacketConn.WriteTo(p, addr)
+}
+
+func http3EarlyHeaders(fields []qpack.HeaderField) []byte {
+	var headers bytes.Buffer
+	encoder := qpack.NewEncoder(&headers)
+	for _, field := range fields {
+		AssertNil(encoder.WriteField(field))
+	}
+	frame := quicvarint.Append(nil, 0x01)
+	frame = quicvarint.Append(frame, uint64(headers.Len()))
+	return append(frame, headers.Bytes()...)
+}
+
+func http3ReadEarlyResponse(stream *quic.Stream, status string) []byte {
+	reader := quicvarint.NewReader(stream)
+	frameType, err := quicvarint.Read(reader)
+	AssertNil(err)
+	AssertEqual(uint64(0x01), frameType)
+	length, err := quicvarint.Read(reader)
+	AssertNil(err)
+	AssertEqual(true, length < 4096)
+	headers := make([]byte, int(length))
+	_, err = io.ReadFull(stream, headers)
+	AssertNil(err)
+	decode := qpack.NewDecoder().Decode(headers)
+	actual := ""
+	for {
+		field, err := decode()
+		if err == io.EOF {
+			break
+		}
+		AssertNil(err)
+		if field.Name == ":status" {
+			actual = field.Value
+		}
+	}
+	AssertEqual(status, actual)
+	body, err := io.ReadAll(stream)
+	AssertNil(err, "response must finish with FIN, without RESET_STREAM")
+	return body
+}
+
+func http3EarlyResponseTest(s *Http3Suite, mode string, complete bool, retry bool) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	Log(vpp.Vppctl("http tps fifo-size 8k no-zc h3 uri https://" + address))
+	cleanup := quicCleanupCheck(5*time.Second, vpp)
+	socket, err := net.ListenPacket("udp4", net.JoinHostPort(s.HostAddr(), "0"))
+	AssertNil(err)
+	defer socket.Close()
+	packets := &http3EarlyPacketConn{PacketConn: socket, retry: retry, changed: make(chan struct{}, 1)}
+	transport := quic.Transport{Conn: packets}
+	defer transport.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	remote, err := net.ResolveUDPAddr("udp4", address)
+	AssertNil(err)
+	conn, err := transport.Dial(ctx, remote,
+		&tls.Config{InsecureSkipVerify: true, NextProtos: []string{"h3"}},
+		&quic.Config{DisablePathMTUDiscovery: true,
+			InitialStreamReceiveWindow: 4096, MaxStreamReceiveWindow: 4096,
+			Tracer: func(context.Context, bool, quic.ConnectionID) qlogwriter.Trace { return packets }})
+	AssertNil(err)
+	defer conn.CloseWithError(0, "")
+	control, err := conn.OpenUniStream()
+	AssertNil(err)
+	_, err = control.Write([]byte{0x00, 0x04, 0x00})
+	AssertNil(err)
+	stream, err := conn.OpenStream()
+	AssertNil(err)
+	deadline, _ := ctx.Deadline()
+	AssertNil(stream.SetDeadline(deadline))
+	fields := []qpack.HeaderField{{Name: ":method", Value: "GET"}, {Name: ":scheme", Value: "https"},
+		{Name: ":authority", Value: address}, {Name: ":path", Value: "/test_file_64"}}
+	healthyRequest := http3EarlyHeaders(fields)
+	status := "431"
+	if mode == "501" {
+		status = "501"
+		fields[0].Value = "CONNECT"
+		fields = append(fields, qpack.HeaderField{Name: ":protocol", Value: "unsupported"})
+	} else if mode == "decoded" {
+		fields = append(fields, qpack.HeaderField{Name: "x-test", Value: strings.Repeat("A", 8192)})
+	} else if mode == "application" {
+		status = "200"
+		fields[3].Value = "/test_file_1M"
+		fields = append(fields, qpack.HeaderField{Name: "content-length", Value: "2097152"})
+	}
+	request := http3EarlyHeaders(fields)
+	if mode == "encoded" {
+		request = quicvarint.Append(nil, 0x01)
+		request = quicvarint.Append(request, 512<<10+1)
+	} else if mode == "application" {
+		request = quicvarint.Append(request, 0x00)
+		request = quicvarint.Append(request, 2<<20)
+	}
+	_, err = stream.Write(request)
+	AssertNil(err)
+	if complete {
+		AssertNil(stream.Close())
+	} else {
+		finished := make(chan error, 1)
+		go func() {
+			// The upload exceeds the transport receive window and must be interrupted.
+			_, err := stream.Write(make([]byte, 2<<20))
+			finished <- err
+		}()
+		var writeErr error
+		select {
+		case writeErr = <-finished:
+		case <-ctx.Done():
+			AssertNil(ctx.Err(), "upload was not cancelled")
+		}
+		AssertMatchError(writeErr, &quic.StreamError{StreamID: stream.StreamID(),
+			ErrorCode: quic.StreamErrorCode(http3.ErrCodeNoError), Remote: true})
+	}
+	// Exercise another stream before reading the early response.
+	healthy, err := conn.OpenStream()
+	AssertNil(err)
+	AssertNil(healthy.SetDeadline(deadline))
+	_, err = healthy.Write(healthyRequest)
+	AssertNil(err)
+	AssertNil(healthy.Close())
+	body := http3ReadEarlyResponse(stream, status)
+	if mode == "application" {
+		// The response cannot fit in the peer's receive window before we start reading.
+		// Verify all DATA bytes survive the request's solicited RESET_STREAM.
+		reader := quicvarint.NewReader(bytes.NewReader(body))
+		var received int64
+		for {
+			frameType, err := quicvarint.Read(reader)
+			if err == io.EOF {
+				break
+			}
+			AssertNil(err)
+			AssertEqual(uint64(0x00), frameType)
+			length, err := quicvarint.Read(reader)
+			AssertNil(err)
+			n, err := io.CopyN(io.Discard, reader, int64(length))
+			AssertNil(err)
+			received += n
+		}
+		AssertEqual(int64(1<<20), received)
+	} else {
+		AssertEmpty(body)
+	}
+	AssertNotEmpty(http3ReadEarlyResponse(healthy, "200"))
+	if retry {
+		for {
+			packets.mu.Lock()
+			done := len(packets.stops) >= 2
+			packets.mu.Unlock()
+			if done {
+				break
+			}
+			select {
+			case <-packets.changed:
+			case <-ctx.Done():
+				AssertNil(ctx.Err(), "STOP_SENDING was not retransmitted")
+			}
+		}
+	}
+	packets.mu.Lock()
+	stops := append([]quic.StreamErrorCode(nil), packets.stops...)
+	dropped := packets.dropped
+	packets.mu.Unlock()
+	for _, code := range stops {
+		AssertEqual(quic.StreamErrorCode(http3.ErrCodeNoError), code)
+	}
+	if retry {
+		AssertNotEqual(0, dropped, "expected lost ACK / RESET_STREAM packets")
+	}
+	AssertNil(context.Cause(conn.Context()))
+	AssertContains(vpp.Vppctl("show http stats"), "2 responses sent")
+	AssertNil(conn.CloseWithError(0, ""))
+	cleanup()
+}
+
+func Http3Early431UploadTest(s *Http3Suite) {
+	http3EarlyResponseTest(s, "encoded", false, true)
+}
+
+func Http3Early431DecodedUploadTest(s *Http3Suite) {
+	http3EarlyResponseTest(s, "decoded", false, false)
+}
+
+func Http3Early501UploadTest(s *Http3Suite) {
+	http3EarlyResponseTest(s, "501", false, false)
+}
+
+func Http3Early501CompletedRequestTest(s *Http3Suite) {
+	http3EarlyResponseTest(s, "501", true, false)
+}
+
+func Http3EarlyApplicationUploadTest(s *Http3Suite) {
+	http3EarlyResponseTest(s, "application", false, false)
 }
 
 func Http3MaxHeaderListSizeTest(s *Http3Suite) {
