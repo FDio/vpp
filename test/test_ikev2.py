@@ -3562,6 +3562,15 @@ class TestResponderParallelChildInbound(TestResponderPsk):
             0
         ].tun.n_sa_in
 
+    def inbound_spis(self):
+        """SPIs of the installed inbound SAs. VPP's inbound SA carries the SPI
+        VPP chose, which the peer (the test, acting as initiator) tracks as the
+        Child's rspi."""
+        inbound = VppEnum.vl_api_ipsec_sad_flags_t.IPSEC_API_SAD_FLAG_IS_INBOUND
+        return {
+            sa.entry.spi for sa in self.vapi.ipsec_sa_dump() if sa.entry.flags & inbound
+        }
+
     def test_responder(self):
         super().test_responder()
         first = self.sa.child_sas[0]
@@ -3571,12 +3580,18 @@ class TestResponderParallelChildInbound(TestResponderPsk):
         sa_index = self.vapi.ikev2_sa_dump()[0].sa.sa_index
         self.assertEqual(len(self.vapi.ikev2_child_sa_dump(sa_index=sa_index)), 2)
         self.assertEqual(len(self.vapi.ipsec_sa_dump()), 4)
-        # RFC 7296 2.8: the first Child's inbound SA must still be protected.
+        # RFC 7296 2.8: both Children's inbound SAs must stay protected, not just
+        # the count: the first Child's own inbound SA must be present.
         self.assertEqual(self.n_sa_in(), 2)
+        self.assertEqual(
+            self.inbound_spis(),
+            {int.from_bytes(first.rspi, "big"), int.from_bytes(second.rspi, "big")},
+        )
 
-        # Deleting the second Child must leave the first able to receive.
+        # Deleting the first Child must leave the second able to receive.
         self.delete_child(first)
         self.assertEqual(self.n_sa_in(), 1)
+        self.assertEqual(self.inbound_spis(), {int.from_bytes(second.rspi, "big")})
         self.assertEqual(len(self.vapi.ipsec_sa_dump()), 2)
         self.sa.child_sas[0] = second
 
@@ -3630,7 +3645,8 @@ class TestResponderRekeyOldSaGrace(TestResponderRekeyParallelChild):
 
     def test_responder(self):
         super(TestResponderParallelChildInbound, self).test_responder()
-        a_ispi = self.sa.child_sas[0].ispi
+        first = self.sa.child_sas[0]
+        a_ispi = first.ispi
         second = self.add_parallel_child()
         replacement = self.rekey_child(second)
         # Grace window: first (2) + new (2) + old inbound (1) = 5 SAs, 3 inbound.
@@ -3646,6 +3662,14 @@ class TestResponderRekeyOldSaGrace(TestResponderRekeyParallelChild):
         self.assertEqual(self.n_sa_in(), 2)
         self.assertEqual(len(self.vapi.ipsec_sa_dump()), 4)
         self.assertEqual(self.child_ispis(), {a_ispi, replacement.ispi})
+        # The removed SA must be the old one; the first Child and the new one stay.
+        self.assertEqual(
+            self.inbound_spis(),
+            {
+                int.from_bytes(first.rspi, "big"),
+                int.from_bytes(replacement.rspi, "big"),
+            },
+        )
         self.sa.child_sas[0] = replacement
 
 
