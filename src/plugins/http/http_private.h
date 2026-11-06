@@ -179,7 +179,8 @@ typedef struct
   _ (UDP_TUNNEL_DGRAM, "udp-tunnel-dgram")                                                         \
   _ (CONNECT_UDP_DRAFT03, "connect-udp-draft03")                                                   \
   _ (TUNNEL_RX_CLOSED, "tunnel-rx-closed")                                                         \
-  _ (PENDING_LAST_CHUNK, "pending-last-chunk")
+  _ (PENDING_LAST_CHUNK, "pending-last-chunk")                                                     \
+  _ (RX_CANCELLED, "rx-cancelled")
 
 typedef enum http_conn_flags_bit_
 {
@@ -756,6 +757,9 @@ int http_connect_transport_stream (u32 parent_index, clib_thread_index_t thread_
  * @param stream Stream ctx.
  */
 void http_reset_transport_stream (http_ctx_t *stream);
+
+/** Stop receiving without closing TX or releasing the transport session. */
+int http_cancel_transport_stream_rx (http_ctx_t *stream, u64 error_code);
 
 /**
  * Close stream.

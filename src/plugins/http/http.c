@@ -428,6 +428,22 @@ http_close_transport_stream (http_ctx_t *stream)
     clib_warning ("disconnect returned");
 }
 
+int
+http_cancel_transport_stream_rx (http_ctx_t *stream, u64 error_code)
+{
+  transport_endpt_attr_t attr = { .type = TRANSPORT_ENDPT_ATTR_APP_PROTO_ERR_CODE_RX,
+				  .app_proto_err_code_rx = error_code };
+  session_t *ts;
+  int rv;
+
+  ASSERT (http_ctx_is_stream (stream));
+  ts = session_get_from_handle (stream->hc_tc_session_handle);
+  if ((rv = session_transport_attribute (ts, 0 /* is_set */, &attr)))
+    return rv;
+  session_half_close (ts, 1 /* is_rx */);
+  return 0;
+}
+
 void
 http_half_close_transport_stream (http_ctx_t *stream)
 {
