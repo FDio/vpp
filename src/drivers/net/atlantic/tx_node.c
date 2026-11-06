@@ -4,7 +4,31 @@
 
 #include <vnet/vnet.h>
 #include <vnet/dev/dev.h>
+#include <vnet/ip/ip4_packet.h>
 #include <atlantic.h>
+
+#define ATL_TX_CSO_IP4 1
+#define ATL_TX_CSO_L4  2
+
+static_always_inline u32
+atl_tx_prepare_offload (vlib_buffer_t *b)
+{
+  vnet_buffer_oflags_t oflags = vnet_buffer (b)->oflags;
+  u32 cso = 0;
+
+  if (oflags & (VNET_BUFFER_OFFLOAD_F_TCP_CKSUM | VNET_BUFFER_OFFLOAD_F_UDP_CKSUM))
+    cso |= ATL_TX_CSO_L4;
+
+  if ((b->flags & VNET_BUFFER_F_IS_IP4) && (oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM))
+    {
+      ip4_header_t *ip4 = (void *) (b->data + vnet_buffer (b)->l3_hdr_offset);
+
+      ip4->checksum = 0;
+      cso |= ATL_TX_CSO_IP4;
+    }
+
+  return cso;
+}
 
 static_always_inline u32
 atl_tx_one_batch (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_t *dev,
@@ -18,6 +42,7 @@ atl_tx_one_batch (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_t *dev,
   u32 seg_bi[8 * 32];
   u16 pkt_first_seg[32];
   u32 pkt_len[32];
+  u8 pkt_cso[32];
   u32 n_drop = *n_drop_ptr;
   u32 n = 0;
   u16 tail = *tail_ptr;
@@ -34,6 +59,10 @@ atl_tx_one_batch (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_t *dev,
 
       if (n_free < ((b0->flags & VLIB_BUFFER_NEXT_PRESENT) ? 8 : 1))
 	break;
+
+      pkt_cso[n_enq] = 0;
+      if (PREDICT_FALSE (b0->flags & VNET_BUFFER_F_OFFLOAD))
+	pkt_cso[n_enq] = atl_tx_prepare_offload (b0);
 
       pkt_first_seg[n_enq] = n_seg;
 
@@ -70,12 +99,14 @@ atl_tx_one_batch (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_t *dev,
 	  u16 slot = tail & mask;
 	  u32 bi = seg_bi[seg_index];
 
-	  desc = (atl_tx_desc_t){
+	  desc = (atl_tx_desc_t) {
 	    .addr = dma_addr,
 	    .type_txd = 1,
 	    .blen = seg_len[seg_index],
 	    .eop = is_last,
 	    .len = pkt_len[n_enq],
+	    .ip4csum = (i == 0) & (pkt_cso[n_enq] & ATL_TX_CSO_IP4),
+	    .l4csum = (i == 0) & !!(pkt_cso[n_enq] & ATL_TX_CSO_L4),
 	  };
 
 	  aq->descs[slot] = desc;

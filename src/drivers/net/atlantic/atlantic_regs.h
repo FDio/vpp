@@ -253,6 +253,12 @@
   __ (1, v6_v4_select)                                                                             \
   __ (8, _reserved_24_31)
 
+#define atl_reg_tpo_offload_ctrl_t_fields                                                          \
+  __ (1, tcp_udp_crc_en)                                                                           \
+  __ (3, _reserved_1_3)                                                                            \
+  __ (1, ipv4_hdr_crc_en)                                                                          \
+  __ (27, _reserved_5_31)
+
 #define atl_reg_tx_dma_ctrl_t_fields                                                               \
   __ (29, _reserved_0_28)                                                                          \
   __ (1, en)                                                                                       \
@@ -385,6 +391,7 @@ ATL_REG_STRUCT (atl_reg_rx_dma_desc_len_t);
 ATL_REG_STRUCT (atl_reg_rx_dma_desc_data_hdr_size_t);
 ATL_REG_STRUCT (atl_reg_rx_dma_int_desc_wrwb_en_t);
 ATL_REG_STRUCT (atl_reg_rpf_l3_v6_v4_select_t);
+ATL_REG_STRUCT (atl_reg_tpo_offload_ctrl_t);
 ATL_REG_STRUCT (atl_reg_tx_dma_ctrl_t);
 ATL_REG_STRUCT (atl_reg_tx_dma_desc_len_t);
 ATL_REG_STRUCT (atl_reg_tx_dma_int_desc_wrwb_en_t);
@@ -471,6 +478,7 @@ ATL_REG_STRUCT (atl_reg_aq2_device_caps_t);
   _ (0x06500, RPF_L3_V6_V4_SELECT, atl_reg_rpf_l3_v6_v4_select_t_fields)                           \
   _ (0x06ff0, AQ2_RPF_REC_TAB_ENABLE, atl_reg_aq2_rpf_rec_tab_enable_t_fields)                     \
   _ (0x07000, TX_DMA_CTRL, atl_reg_tx_dma_ctrl_t_fields)                                           \
+  _ (0x07800, TPO_OFFLOAD_CTRL, atl_reg_tpo_offload_ctrl_t_fields)                                 \
   _ (0x07820, THM_LSO_TCP_FLAG1, atl_reg_thm_lso_tcp_flag_t_fields)                                \
   _ (0x07824, THM_LSO_TCP_FLAG2, atl_reg_thm_lso_tcp_flag_t_fields)                                \
   _ (0x07900, TPB_TX_BUF, atl_reg_tpb_tx_buf_t_fields)                                             \
@@ -615,6 +623,7 @@ typedef union
   atl_reg_rx_dma_int_desc_wrwb_en_t rx_dma_int_desc_wrwb_en;
   atl_reg_rpf_l3_v6_v4_select_t rpf_l3_v6_v4_select;
   atl_reg_tx_dma_ctrl_t tx_dma_ctrl;
+  atl_reg_tpo_offload_ctrl_t tpo_offload_ctrl;
   atl_reg_tx_dma_desc_len_t tx_dma_desc_len;
   atl_reg_tx_dma_int_desc_wrwb_en_t tx_dma_int_desc_wrwb_en;
   atl_reg_intr_moderation_ctl_t intr_moderation_ctl;

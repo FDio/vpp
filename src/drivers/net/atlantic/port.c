@@ -225,6 +225,12 @@ atl_tx_path_init (vnet_dev_port_t *port)
   atl_reg_wr (dev, ATL_REG_TX_DMA_CTRL, r);
 
   atl_reg_wr (dev, ATL_REG_TDM_DCA, (atl_reg_t){});
+
+  r = atl_reg_rd (dev, ATL_REG_TPO_OFFLOAD_CTRL);
+  r.tpo_offload_ctrl.tcp_udp_crc_en = 1;
+  r.tpo_offload_ctrl.ipv4_hdr_crc_en = 1;
+  atl_reg_wr (dev, ATL_REG_TPO_OFFLOAD_CTRL, r);
+
   log_debug (dev, "tx path init done");
 }
 
