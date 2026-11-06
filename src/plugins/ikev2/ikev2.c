@@ -2509,9 +2509,9 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
   /* ipsec_tun_protect_update replaces the whole inbound SA set, so a parallel
      Child SA must carry the inbound SAs of its siblings forward or they stop
      receiving (RFC 7296 section 2.8). Seed from the current set; a fresh tunnel
-     has none. Protection holds at most ITP_MAX_N_SA_IN inbound SAs, so append
-     the old (rekey grace) then the new one last and drop the oldest past the
-     limit, keeping the newest Child SAs protected. */
+     has none, and a rekey already has the old SA in it. Protection holds at
+     most ITP_MAX_N_SA_IN inbound SAs; add the new one (and the old on a rekey)
+     if absent and, only if that overflows the limit, drop from the front. */
   if (ipsec_tun_protect_get_sa_ids (sw_if_index, &existing_out, &sas_in))
     sas_in = NULL;
   u32 new_ids[2];
@@ -3087,6 +3087,10 @@ ikev2_delete_tunnel_interface (vnet_main_t *vnm, ikev2_sa_t *sa, ikev2_child_sa_
       log_err ("deleting Child SA 0x%x failed: %d", child->local_sa_id, a.status);
       return a.status;
     }
+  /* The delete unlocked and removed the rekey-grace SA, so the manager and any
+     later Delete in this batch must not unlock it again. */
+  if (a.old_remote_sa_id)
+    sa->old_remote_id_present = 0;
   /* Later Deletes in the same batch must not select this Child as a survivor. */
   child->local_sa_id = 0;
   return 0;
@@ -5880,8 +5884,57 @@ VLIB_INIT_FUNCTION (ikev2_init) = {
   .runs_after = VLIB_INITS ("ipsec_init", "ipsec_punt_init", "ipip_init"),
 };
 
+/* Remove the inbound SA kept for a rekey grace once it expires. Runs once per
+   IKE SA, not per Child, and drops only the old SA from the protection so any
+   sibling Child SAs keep receiving (RFC 7296 section 2.8). */
+static void
+ikev2_mngr_process_del_old_remote_id (vlib_main_t *vm, ikev2_sa_t *sa)
+{
+  ikev2_main_t *km = &ikev2_main;
+  u32 sw_if_index = sa->is_tun_itf_set ? sa->tun_itf : INDEX_INVALID;
+
+  if (INDEX_INVALID == sw_if_index)
+    {
+      ip46_address_t local_ip, remote_ip;
+      if (sa->is_initiator)
+	{
+	  local_ip = to_ip46 (ip_addr_version (&sa->iaddr), ip_addr_bytes (&sa->iaddr));
+	  remote_ip = to_ip46 (ip_addr_version (&sa->raddr), ip_addr_bytes (&sa->raddr));
+	}
+      else
+	{
+	  local_ip = to_ip46 (ip_addr_version (&sa->raddr), ip_addr_bytes (&sa->raddr));
+	  remote_ip = to_ip46 (ip_addr_version (&sa->iaddr), ip_addr_bytes (&sa->iaddr));
+	}
+      ipip_tunnel_key_t key = {
+	.src = local_ip,
+	.dst = remote_ip,
+	.transport = IPIP_TRANSPORT_IP4,
+	.fib_index = 0,
+      };
+      sw_if_index = km->ipip_tunnel_db_find_sw_if_index_fn_ptr (&key);
+      if (INDEX_INVALID == sw_if_index)
+	return;
+    }
+
+  u32 sa_out, *sas_in = 0;
+  if (ipsec_tun_protect_get_sa_ids (sw_if_index, &sa_out, &sas_in))
+    return;
+  for (u32 i = vec_len (sas_in); i > 0; i--)
+    if (sas_in[i - 1] == sa->old_remote_id)
+      vec_del1 (sas_in, i - 1);
+  vlib_worker_thread_barrier_sync (vm);
+  int rv = ipsec_tun_protect_update (sw_if_index, NULL, sa_out, sas_in);
+  if (rv)
+    vec_free (sas_in); /* update frees sas_in only on success */
+  ipsec_sa_unlock_id (sa->old_remote_id);
+  vlib_worker_thread_barrier_release (vm);
+  if (rv)
+    log_err ("removing old inbound SA 0x%x failed: %d", sa->old_remote_id, rv);
+}
+
 static u8
-ikev2_mngr_process_child_sa (vlib_main_t *vm, ikev2_sa_t *sa, ikev2_child_sa_t *csa, u8 del_old_ids)
+ikev2_mngr_process_child_sa (vlib_main_t *vm, ikev2_sa_t *sa, ikev2_child_sa_t *csa)
 {
   ikev2_main_t *km = &ikev2_main;
   ikev2_profile_t *p = 0;
@@ -5928,50 +5981,6 @@ ikev2_mngr_process_child_sa (vlib_main_t *vm, ikev2_sa_t *sa, ikev2_child_sa_t *
 	  res |= 1;
 	  return res;
 	}
-    }
-
-  if (del_old_ids && vec_len (sa->childs) == 1)
-    {
-      u32 sw_if_index = sa->is_tun_itf_set ? sa->tun_itf : INDEX_INVALID;
-      if (INDEX_INVALID == sw_if_index)
-	{
-	  ip46_address_t local_ip;
-	  ip46_address_t remote_ip;
-	  if (sa->is_initiator)
-	    {
-	      local_ip = to_ip46 (ip_addr_version (&sa->iaddr),
-				  ip_addr_bytes (&sa->iaddr));
-	      remote_ip = to_ip46 (ip_addr_version (&sa->raddr),
-				   ip_addr_bytes (&sa->raddr));
-	    }
-	  else
-	    {
-	      local_ip = to_ip46 (ip_addr_version (&sa->raddr), ip_addr_bytes (&sa->raddr));
-	      remote_ip = to_ip46 (ip_addr_version (&sa->iaddr), ip_addr_bytes (&sa->iaddr));
-	    }
-
-       ipip_tunnel_key_t key = {
-         .src = local_ip,
-         .dst = remote_ip,
-         .transport = IPIP_TRANSPORT_IP4,
-         .fib_index = 0,
-       };
-
-       sw_if_index = km->ipip_tunnel_db_find_sw_if_index_fn_ptr (&key);
-
-       if (INDEX_INVALID == sw_if_index)
-	 return res;
-	}
-
-      u32 *sas_in = NULL;
-      vec_add1 (sas_in, csa->remote_sa_id);
-      vlib_worker_thread_barrier_sync (vm);
-      int rv = ipsec_tun_protect_update (sw_if_index, NULL,
-					 csa->local_sa_id, sas_in);
-      if (rv)
-	vec_free (sas_in);
-      ipsec_sa_unlock_id (sa->old_remote_id);
-      vlib_worker_thread_barrier_release (vm);
     }
 
   return res;
@@ -6270,7 +6279,10 @@ ikev2_mngr_process_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	    sa->old_id_expiration -= 1;
 
 	  vec_foreach_backwards (c, sa->childs)
-	    ikev2_mngr_process_child_sa (vm, sa, c, del_old_ids);
+	    ikev2_mngr_process_child_sa (vm, sa, c);
+
+	  if (del_old_ids)
+	    ikev2_mngr_process_del_old_remote_id (vm, sa);
 
 	  if (!km->dpd_disabled && ikev2_mngr_process_responder_sas (vm, sa))
 	    vec_add1 (to_be_deleted, sa - km->sas);
