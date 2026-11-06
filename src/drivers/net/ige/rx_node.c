@@ -46,9 +46,9 @@ ige_rxq_refill (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq, int use_va_dma)
 }
 
 static_always_inline u32
-ige_rx_deq_64_desc (vlib_main_t *vm, vlib_node_runtime_t *node,
-		    vnet_dev_rx_queue_t *rxq, vlib_buffer_template_t bt,
-		    u32 *to, u32 max_pkts, u32 *n_rx_bytes, u32 *n_trace)
+ige_rx_deq_64_desc (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queue_t *rxq,
+		    vlib_buffer_template_t bt, u32 *to, u32 max_pkts, u32 *n_rx_bytes, u32 *n_trace,
+		    u32 *ip4_bad)
 {
   u16 mask = rxq->size - 1;
   ige_rxq_t *iq = vnet_dev_get_rx_queue_data (rxq);
@@ -89,6 +89,19 @@ ige_rx_deq_64_desc (vlib_main_t *vm, vlib_node_runtime_t *node,
       vlib_buffer_copy_template (buffers[i], &bt);
       buffers[i]->current_length = len;
       *n_rx_bytes += len;
+    }
+
+  for (u32 i = 0, hi = 0; i < n_descs; i++)
+    {
+      u32 l4i = dc[i].l4i;
+
+      if (dc[i].eop == 0)
+	continue;
+
+      buffers[hi]->flags |= l4i * VNET_BUFFER_F_L4_CHECKSUM_COMPUTED |
+			    (l4i & !dc[i].l4e) * VNET_BUFFER_F_L4_CHECKSUM_CORRECT;
+      *ip4_bad |= dc[i].ipv4 & (!dc[i].ipcs | dc[i].ipe);
+      hi = i + 1;
     }
 
   if (n_pkts < n_descs)
@@ -166,7 +179,7 @@ ige_rx_one_queue (vlib_main_t *vm, vlib_node_runtime_t *node,
   u16 next_index = vnet_dev_get_rx_queue_if_next_index (rxq);
   vlib_buffer_template_t bt;
   vnet_main_t *vnm;
-  u32 n_trace, sw_if_index, n_rx = 0, n_rx_bytes = 0, *to_next, n;
+  u32 n_trace, sw_if_index, n_rx = 0, n_rx_bytes = 0, *to_next, n, ip4_bad = 0;
   uword n_left_to_next;
   u16 mask = rxq->size - 1;
   u16 slot = iq->head & mask;
@@ -190,8 +203,7 @@ ige_rx_one_queue (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   while (n_left_to_next >= 64)
     {
-      n = ige_rx_deq_64_desc (vm, node, rxq, bt, to_next, 64, &n_rx_bytes,
-			      &n_trace);
+      n = ige_rx_deq_64_desc (vm, node, rxq, bt, to_next, 64, &n_rx_bytes, &n_trace, &ip4_bad);
 
       n_rx += n;
 
@@ -203,8 +215,8 @@ ige_rx_one_queue (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   if (n_left_to_next > 0)
     {
-      n = ige_rx_deq_64_desc (vm, node, rxq, bt, to_next, n_left_to_next,
-			      &n_rx_bytes, &n_trace);
+      n = ige_rx_deq_64_desc (vm, node, rxq, bt, to_next, n_left_to_next, &n_rx_bytes, &n_trace,
+			      &ip4_bad);
 
       n_rx += n;
 
@@ -226,13 +238,13 @@ rxq_empty:
       nf = vlib_node_runtime_get_next_frame (vm, node, next_index);
       f = vlib_get_frame (vm, nf->frame);
       f->flags = ETH_INPUT_FRAME_F_SINGLE_SW_IF_IDX;
+      if (ip4_bad == 0)
+	f->flags |= ETH_INPUT_FRAME_F_IP4_CKSUM_OK;
 
       ef = vlib_frame_scalar_args (f);
       ef->sw_if_index = sw_if_index;
       ef->hw_if_index = vnet_dev_get_rx_queue_if_hw_if_index (rxq);
 
-      // if ((or_qw1 & mask_ipe.as_u64) == 0) f->flags |=
-      // ETH_INPUT_FRAME_F_IP4_CKSUM_OK;
       vlib_frame_no_append (f);
     }
 
