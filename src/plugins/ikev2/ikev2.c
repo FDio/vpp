@@ -2051,8 +2051,20 @@ ikev2_process_create_child_sa_req (vlib_main_t *vm, ikev2_sa_t *sa, ike_header_t
 	  rekey->notify_type = 0;
 	  rekey->kex = 0;
 	  rekey->use_transport_mode = use_transport_mode;
-	  if (!ikev2_process_create_child_sa_rekey (
-		sa, &sar, rekey, proposal, tsi, tsr, nonce, nonce_len))
+	  /* Tunnel protection holds ITP_MAX_N_SA_IN inbound SAs and a rekey needs
+	     one of them for its grace period, so refuse a Child SA past that
+	     capacity instead of evicting a live one (RFC 7296 section 1.3). The
+	     reused slot may hold pointers owned by a live Child: clear it. */
+	  if (vec_len (sa->childs) >= ITP_MAX_N_SA_IN - 1)
+	    {
+	      clib_memset (rekey, 0, sizeof (*rekey));
+	      rekey->notify_type = IKEV2_NOTIFY_MSG_NO_ADDITIONAL_SAS;
+	      ikev2_sa_free_proposal_vector (&proposal);
+	      vec_free (tsr);
+	      vec_free (tsi);
+	    }
+	  else if (!ikev2_process_create_child_sa_rekey (sa, &sar, rekey, proposal, tsi, tsr, nonce,
+							 nonce_len))
 	    {
 	      ikev2_sa_free_proposal_vector (&proposal);
 	      vec_free (tsr);
@@ -2509,9 +2521,11 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
   /* ipsec_tun_protect_update replaces the whole inbound SA set, so a parallel
      Child SA must carry the inbound SAs of its siblings forward or they stop
      receiving (RFC 7296 section 2.8). Seed from the current set; a fresh tunnel
-     has none, and a rekey already has the old SA in it. Protection holds at
-     most ITP_MAX_N_SA_IN inbound SAs; add the new one (and the old on a rekey)
-     if absent and, only if that overflows the limit, drop from the front. */
+     has none, and a rekey already has the old SA in it. Add the new one (and
+     the old on a rekey) if absent. The responder caps parallel Child SAs below
+     ITP_MAX_N_SA_IN; any remaining overflow, such as two IKE SAs sharing one
+     tunnel, makes ipsec_tun_protect_update fail and the install roll back with
+     an error rather than drop a live SA. */
   if (ipsec_tun_protect_get_sa_ids (sw_if_index, &existing_out, &sas_in))
     sas_in = NULL;
   u32 new_ids[2];
@@ -2531,8 +2545,6 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
       if (!present)
 	vec_add1 (sas_in, new_ids[i]);
     }
-  while (vec_len (sas_in) > ITP_MAX_N_SA_IN)
-    vec_delete (sas_in, 1, 0);
 
   rv = ipsec_sa_add_and_lock (a->local_sa_id, a->local_spi, IPSEC_PROTOCOL_ESP,
 			      a->encr_type, &a->loc_ckey, a->integ_type,
