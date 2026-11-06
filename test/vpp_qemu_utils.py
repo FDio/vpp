@@ -375,6 +375,24 @@ def del_namespace_link(ns, ifname):
             ) from e
 
 
+def exec_namespace_batch(ns, commands):
+    """Run a batch of ip commands in a single invocation."""
+    with net_helper_lock():
+        try:
+            cmd = ["ip", "netns", "exec", ns, "ip", "-batch", "-"]
+            subprocess.run(
+                cmd,
+                input="\n".join(commands) + "\n",
+                text=True,
+                capture_output=True,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            raise Exception(
+                f"Error running ip command batch in namespace {ns}: " f"{e.stderr}"
+            ) from e
+
+
 def delete_all_host_interfaces(history_file):
     """Delete all host interfaces whose names have been added to the history file."""
 
