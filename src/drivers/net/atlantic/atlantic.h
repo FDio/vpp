@@ -341,6 +341,12 @@ format_function_t format_atl_rpf_info;
 format_function_t format_atl_mac_addr_table;
 format_function_t format_atl_cable_diag;
 format_function_t format_atl_rss_info;
+static_always_inline u32
+atl_rx_buf_units (u32 data_size)
+{
+  return clib_min (data_size / 1024, 31);
+}
+
 vnet_dev_rv_t atl_get_speed_caps (vnet_dev_t *dev, u32 *speed_caps);
 format_function_t format_atl_link_capa;
 format_function_t format_atl_partner_link_capa;
