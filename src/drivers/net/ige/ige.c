@@ -85,6 +85,7 @@ ige_init (vlib_main_t *vm, vnet_dev_t *dev)
   vnet_dev_rv_t rv;
   u32 match, mask, tmp;
   u32 speed_caps = VNET_HW_IF_SPEED_10M | VNET_HW_IF_SPEED_100M | VNET_HW_IF_SPEED_1G;
+  u32 interrupt_mode;
 
   rv = vnet_dev_pci_read_config_header (vm, dev, &pci_hdr);
   if (rv != VNET_DEV_OK)
@@ -148,6 +149,13 @@ ige_init (vlib_main_t *vm, vnet_dev_t *dev)
   if (id->config.supports_2_5g)
     speed_caps |= VNET_HW_IF_SPEED_2_5G;
 
+  interrupt_mode = vlib_get_n_threads () <= vnet_dev_get_pci_n_msix_interrupts (dev) - 1;
+  if (!interrupt_mode)
+    log_notice (dev,
+		"number of threads (%u) exceeds number of available interrupt vectors (%u), "
+		"RX interrupt-mode capability disabled",
+		vlib_get_n_threads (), vnet_dev_get_pci_n_msix_interrupts (dev));
+
   rv = ige_phy_init (vm, dev);
 
   if (rv != VNET_DEV_OK)
@@ -165,6 +173,7 @@ ige_init (vlib_main_t *vm, vnet_dev_t *dev)
         .max_supported_rx_frame_size = 9728,
         .caps = {
           .change_max_rx_frame_size = 1,
+          .interrupt_mode = interrupt_mode,
         },
         .rx_offloads = {
           .ip4_cksum = 1,
@@ -179,6 +188,7 @@ ige_init (vlib_main_t *vm, vnet_dev_t *dev)
       },
       .ops = {
         .init = ige_port_init,
+        .deinit = ige_port_deinit,
         .start = ige_port_start,
         .stop = ige_port_stop,
         .format_status = format_ige_port_status,
