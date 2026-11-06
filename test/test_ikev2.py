@@ -2923,6 +2923,78 @@ class TestInitiatorPeerAdditionalChildRejected(TestInitiatorPeerAdditionalChild)
     delete_new_child = True
 
 
+class TestInitiatorEarlyCreateChild(TestInitiatorPsk):
+    """RFC 7296 1.3: a CREATE_CHILD_SA before IKE_AUTH must not be processed.
+
+    VPP is the original initiator. After IKE_SA_INIT the peer that answered it
+    holds SK_* but, with PSK, cannot complete IKE_AUTH. An injected
+    CREATE_CHILD_SA at this point must install no Child SA and draw no reply,
+    and the legitimate IKE_AUTH must still complete afterwards.
+    """
+
+    def test_initiator(self):
+        self.initiate_sa_init()
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
+        self.assertEqual(len(self.vapi.ikev2_sa_dump()), 1)
+        # The initiator holds one proposed (not installed) Child before auth.
+        children = len(self.vapi.ikev2_child_sa_dump(sa_index=0))
+
+        tr_attr = self.sa.esp_crypto_attr()
+        trans = self.sa.encr_transform(self.sa.esp_crypto, tr_attr)
+        trans_nb = 3
+        integ = self.sa.integ_transform(self.sa.esp_integ)
+        if integ is not None:
+            trans /= integ
+            trans_nb += 1
+        trans /= ikev2.IKEv2_payload_Transform(
+            transform_type="Extended Sequence Number", transform_id="No ESN"
+        )
+        trans /= ikev2.IKEv2_payload_Transform(
+            transform_type="Extended Sequence Number", transform_id="ESN"
+        )
+        proposal = ikev2.IKEv2_payload_Proposal(
+            proposal=1,
+            proto="ESP",
+            SPIsize=4,
+            SPI=os.urandom(4),
+            trans_nb=trans_nb,
+            trans=trans,
+        )
+        tsi, tsr = self.sa.generate_ts(self.p.ts_is_ip4)
+        plain = (
+            ikev2.IKEv2_payload_Nonce(load=os.urandom(32), next_payload="SA")
+            / ikev2.IKEv2_payload_SA(prop=proposal, next_payload="TSi")
+            / ikev2.IKEv2_payload_TSi(
+                number_of_TSs=len(tsr), traffic_selector=tsr, next_payload="TSr"
+            )
+            / ikev2.IKEv2_payload_TSr(number_of_TSs=len(tsi), traffic_selector=tsi)
+        )
+        header = ikev2.IKEv2(
+            init_SPI=self.sa.ispi,
+            resp_SPI=self.sa.rspi,
+            id=self.sa.new_msg_id(),
+            flags=0,
+            exch_type="CREATE_CHILD_SA",
+        )
+        packet = self.create_packet(
+            self.pg0, self.encrypt_ike_msg(header, plain, "Nonce")
+        )
+        self.send_and_assert_no_replies(self.pg0, packet)
+        self.assert_counter(1, "ike_req_ignore", "ip4")
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
+        self.assertEqual(len(self.vapi.ikev2_child_sa_dump(sa_index=0)), children)
+        self.assertEqual(len(self.vapi.ikev2_sa_dump()), 1)
+
+        # The real IKE_AUTH exchange still completes.
+        self.sa.msg_id -= 1
+        self.sa.auth_init()
+        self.sa.calc_child_keys()
+        self.send_auth_response()
+        self.verify_ike_sas()
+        self.verify_ike_sas_v2()
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 2)
+
+
 class TestInitiatorDelSAFromResponder(TemplateInitiator, Ikev2Params):
     """test ikev2 initiator - delete IKE SA from responder"""
 
@@ -3890,6 +3962,65 @@ class TestInitiatorInvalidModp(TestInitiatorPsk):
         response = self.create_init_response(dh_pub_key=key)
         self.send_and_assert_no_replies(self.pg0, response)
         self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
+
+
+class TestResponderChildAfterTsUnacceptable(TestResponderPsk):
+    """A CREATE_CHILD_SA after a refused first Child SA is answered.
+
+    IKE_AUTH succeeds but the traffic selectors are unacceptable, so the IKE SA
+    is established without a Child SA (RFC 7296 section 2.21.2). A later
+    request on that IKE SA must get a response (section 2.21.3).
+    """
+
+    def test_responder(self):
+        self.send_sa_init_req()
+        plain, first_payload = self.generate_auth_payload(last_payload="Notify")
+        plain = plain / self.last_notify("INITIAL_CONTACT")
+        tsi = plain[ikev2.IKEv2_payload_TSi]
+        tsi.traffic_selector = [ts.copy() for ts in tsi.traffic_selector]
+        tsi.traffic_selector[0].starting_address_v4 = "10.1.0.0"
+        header = ikev2.IKEv2(
+            init_SPI=self.sa.ispi,
+            resp_SPI=self.sa.rspi,
+            id=self.sa.new_msg_id(),
+            flags="Initiator",
+            exch_type="IKE_AUTH",
+        )
+        packet = self.create_packet(
+            self.pg0, self.encrypt_ike_msg(header, plain, first_payload)
+        )
+        reply = self.get_ike_header(self.send_and_expect(self.pg0, packet, self.pg0)[0])
+        notify = ikev2.IKEv2_payload_Notify(self.sa.hmac_and_decrypt(reply))
+        self.assertEqual(notify.type, 38)  # TS_UNACCEPTABLE
+        self.assertIn(ikev2.IKEv2_payload_AUTH, notify)
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
+
+        child, _ = self.generate_auth_payload()
+        proposal = child[ikev2.IKEv2_payload_Proposal].copy()
+        proposal.SPI = os.urandom(4)
+        tsi, tsr = self.sa.generate_ts(self.p.ts_is_ip4)
+        request = (
+            ikev2.IKEv2_payload_Nonce(load=os.urandom(32), next_payload="SA")
+            / ikev2.IKEv2_payload_SA(prop=proposal, next_payload="TSi")
+            / ikev2.IKEv2_payload_TSi(
+                number_of_TSs=len(tsi), traffic_selector=tsi, next_payload="TSr"
+            )
+            / ikev2.IKEv2_payload_TSr(number_of_TSs=len(tsr), traffic_selector=tsr)
+        )
+        header = ikev2.IKEv2(
+            init_SPI=self.sa.ispi,
+            resp_SPI=self.sa.rspi,
+            id=self.sa.new_msg_id(),
+            flags="Initiator",
+            exch_type="CREATE_CHILD_SA",
+        )
+        packet = self.create_packet(
+            self.pg0, self.encrypt_ike_msg(header, request, "Nonce")
+        )
+        reply = self.get_ike_header(self.send_and_expect(self.pg0, packet, self.pg0)[0])
+        self.assertEqual(reply.exch_type, 36)  # CREATE_CHILD_SA
+        self.assertIn("Response", reply.flags)
+        self.assertEqual(reply.id, header.id)
 
 
 @unittest.skipIf(
