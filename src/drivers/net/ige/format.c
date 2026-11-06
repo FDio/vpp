@@ -204,6 +204,16 @@ format_ige_tx_desc (u8 *s, va_list *args)
 
 #define _(b) ((b) ? '+' : '-')
 
+  if (d->dtyp == 2)
+    {
+      ige_tx_ctx_desc_t c = {
+	.qwords = { d->qwords[0], d->qwords[1] },
+      };
+
+      return format (s, "context maclen %u iplen %u ipv4%c l4t %u l4len %u mss %u idx %u", c.maclen,
+		     c.iplen, _ (c.ipv4), c.l4t, c.l4len, c.mss, c.idx);
+    }
+
   s = format (
     s,
     "addr 0x%016llx dtalen %u paylen %u dtyp 0x%x ptp1 %u ptp2 %u popts 0x%x",

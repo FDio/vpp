@@ -170,6 +170,11 @@ ige_init (vlib_main_t *vm, vnet_dev_t *dev)
           .ip4_cksum = 1,
           .l4_cksum = 1,
         },
+        .tx_offloads = {
+          .ip4_cksum = 1,
+          .tcp_cksum = 1,
+          .udp_cksum = 1,
+        },
         .speed_caps = speed_caps,
       },
       .ops = {
