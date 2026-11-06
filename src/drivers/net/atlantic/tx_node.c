@@ -9,18 +9,16 @@
 static_always_inline u32
 atl_tx_one_batch (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_t *dev,
 		  vnet_dev_tx_queue_t *txq, u32 *bi_ring, u16 mask, u32 *from, u32 n_pkts,
-		  u16 *tail_ptr, u32 *n_trace)
+		  u16 *tail_ptr, u32 *drop_indices, u32 *n_drop_ptr)
 {
   atl_txq_t *aq = vnet_dev_get_tx_queue_data (txq);
   atl_tx_desc_t desc;
   u16 seg_len[8 * 32];
   void *seg_data[8 * 32];
-  vlib_buffer_t *seg_buf[8 * 32];
   u32 seg_bi[8 * 32];
   u16 pkt_first_seg[32];
   u32 pkt_len[32];
-  u32 drop_indices[32];
-  u32 n_drop = 0;
+  u32 n_drop = *n_drop_ptr;
   u32 n = 0;
   u16 tail = *tail_ptr;
   u16 n_free = txq->size - 1 - (tail - aq->head_index);
@@ -42,7 +40,6 @@ atl_tx_one_batch (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_t *dev,
       for (;;)
 	{
 	  seg_bi[n_seg] = buffer_index;
-	  seg_buf[n_seg] = b0;
 	  seg_len[n_seg] = b0->current_length;
 	  seg_data[n_seg] = vlib_buffer_get_current (b0);
 	  total_len += b0->current_length;
@@ -72,7 +69,6 @@ atl_tx_one_batch (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_t *dev,
 	  u64 dma_addr = vnet_dev_get_dma_addr (vm, dev, seg_data[seg_index]);
 	  u16 slot = tail & mask;
 	  u32 bi = seg_bi[seg_index];
-	  vlib_buffer_t *b = seg_buf[seg_index];
 
 	  desc = (atl_tx_desc_t){
 	    .addr = dma_addr,
@@ -85,16 +81,6 @@ atl_tx_one_batch (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_t *dev,
 	  aq->descs[slot] = desc;
 	  bi_ring[slot] = bi;
 	  tail++;
-
-	  if (*n_trace && vlib_trace_buffer (vm, node, VNET_INTERFACE_OUTPUT_NEXT_DROP, b, 0))
-	    {
-	      atl_tx_trace_t *t = vlib_add_trace (vm, node, b, sizeof (*t));
-	      t->buffer_index = bi;
-	      t->sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_TX];
-	      t->queue_id = txq->queue_id;
-	      t->desc = desc;
-	      (*n_trace)--;
-	    }
 	}
 
       n_free -= n_desc;
@@ -107,14 +93,53 @@ atl_tx_one_batch (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_t *dev,
     next_pkt:;
     }
 
-  if (n_drop)
-    {
-      vlib_buffer_free (vm, drop_indices, n_drop);
-      vlib_error_count (vm, node->node_index, ATL_TX_NODE_CTR_CHAIN_TOO_LONG, n_drop);
-    }
-
+  *n_drop_ptr = n_drop;
   *tail_ptr = tail;
   return n;
+}
+
+static void
+atl_tx_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_tx_queue_t *txq, u32 *from,
+		    u32 n_bufs, u32 n_processed, u16 first, u16 tail)
+{
+  atl_txq_t *aq = vnet_dev_get_tx_queue_data (txq);
+  vlib_node_t *n = vlib_get_node (vm, node->node_index);
+  u16 mask = txq->size - 1;
+
+  for (u32 i = 0; i < n_bufs; i++)
+    {
+      vlib_buffer_t *b = vlib_get_buffer (vm, from[i]);
+      u16 n_desc = 0;
+      atl_tx_trace_t *t;
+
+      if (first != tail && aq->buffer_indices[first & mask] == from[i])
+	{
+	  do
+	    n_desc++;
+	  while (aq->descs[(first + n_desc - 1) & mask].eop == 0);
+	}
+
+      if ((b->flags & VLIB_BUFFER_IS_TRACED) == 0)
+	{
+	  first += n_desc;
+	  continue;
+	}
+
+      t = vlib_add_trace (vm, node, b, sizeof (*t) + n_desc * sizeof (t->desc[0]));
+      t->sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_TX];
+      t->buffer_index = from[i];
+      t->queue_id = txq->queue_id;
+      t->n_desc = n_desc;
+      if (n_desc)
+	t->error = 0;
+      else if (i >= n_processed)
+	t->error = n->error_heap_index + ATL_TX_NODE_CTR_NO_FREE_SLOTS;
+      else
+	t->error = n->error_heap_index + ATL_TX_NODE_CTR_CHAIN_TOO_LONG;
+      for (u32 j = 0; j < n_desc; j++)
+	t->desc[j] = aq->descs[(first + j) & mask];
+      first += n_desc;
+    }
 }
 
 VNET_DEV_NODE_FN (atl_tx_node)
@@ -125,8 +150,11 @@ VNET_DEV_NODE_FN (atl_tx_node)
   vnet_dev_t *dev = txq->port->dev;
   atl_txq_t *aq = vnet_dev_get_tx_queue_data (txq);
   u32 *from = vlib_frame_vector_args (frame);
+  u32 *const frame_from = from;
   u32 *bi_ring = aq->buffer_indices;
   u32 n_left = frame->n_vectors;
+  u32 drop_indices[VLIB_FRAME_SIZE];
+  u32 n_drop = 0;
   u32 n;
   u16 mask = txq->size - 1;
   u16 head;
@@ -134,7 +162,6 @@ VNET_DEV_NODE_FN (atl_tx_node)
   u16 old_tail;
   u16 n_used;
   u16 n_free;
-  u32 n_trace = 0;
 
   vnet_dev_tx_queue_lock_if_needed (txq);
   head = atl_reg_rd_u32 (dev, ATL_REG_TX_DMA_DESC_HEAD_PTR (txq->queue_id));
@@ -148,17 +175,16 @@ VNET_DEV_NODE_FN (atl_tx_node)
   n_used = aq->tail_index - aq->head_index;
   n_free = txq->size - 1 - n_used;
 
+  old_tail = aq->tail_index;
+  tail = old_tail;
+
   if (n_free == 0)
     goto no_space;
 
-  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
-    n_trace = vlib_get_trace_count (vm, node);
-
-  old_tail = aq->tail_index;
-  tail = old_tail;
   while (n_left >= 32)
     {
-      n = atl_tx_one_batch (vm, node, dev, txq, bi_ring, mask, from, 32, &tail, &n_trace);
+      n = atl_tx_one_batch (vm, node, dev, txq, bi_ring, mask, from, 32, &tail, drop_indices,
+			    &n_drop);
       from += n;
       n_left -= n;
       if (n < 32)
@@ -167,7 +193,8 @@ VNET_DEV_NODE_FN (atl_tx_node)
 
   if (n_left)
     {
-      n = atl_tx_one_batch (vm, node, dev, txq, bi_ring, mask, from, n_left, &tail, &n_trace);
+      n = atl_tx_one_batch (vm, node, dev, txq, bi_ring, mask, from, n_left, &tail, drop_indices,
+			    &n_drop);
       from += n;
       n_left -= n;
     }
@@ -176,9 +203,17 @@ VNET_DEV_NODE_FN (atl_tx_node)
   if (tail != old_tail)
     __atomic_store_n (aq->tail_reg, tail & mask, __ATOMIC_RELEASE);
 
-  vlib_set_trace_count (vm, node, n_trace);
-
 no_space:
+  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
+    atl_tx_trace_frame (vm, node, txq, frame_from, frame->n_vectors, frame->n_vectors - n_left,
+			old_tail, tail);
+
+  if (n_drop)
+    {
+      vlib_buffer_free (vm, drop_indices, n_drop);
+      vlib_error_count (vm, node->node_index, ATL_TX_NODE_CTR_CHAIN_TOO_LONG, n_drop);
+    }
+
   if (n_left)
     {
       vlib_buffer_free (vm, from, n_left);

@@ -14,7 +14,6 @@
 
 #define PCI_VENDOR_ID_AQUANTIA 0x1d6a
 #define ATL_RX_REFILL_BATCH_SZ 8
-#define ATL_RX_TRACE_N_DESC    5
 
 typedef union
 {
@@ -269,18 +268,22 @@ typedef struct
 typedef struct
 {
   u32 sw_if_index;
-  u8 queue_id;
-  u16 head_slot;
-  atl_rx_desc_t desc[ATL_RX_TRACE_N_DESC];
   u32 buffer_index;
+  u32 packet_length;
+  u16 queue_id;
+  u16 head_slot;
+  u16 n_desc;
+  atl_rx_desc_t desc[];
 } atl_rx_trace_t;
 
 typedef struct
 {
   u32 sw_if_index;
-  u8 queue_id;
-  atl_tx_desc_t desc;
   u32 buffer_index;
+  u16 queue_id;
+  u16 n_desc;
+  vlib_error_t error;
+  atl_tx_desc_t desc[];
 } atl_tx_trace_t;
 
 #define foreach_atl_tx_node_counter                                                                \
