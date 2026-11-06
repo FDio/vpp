@@ -1,0 +1,8 @@
+Code-Review+1: Aritra Basu <aritrbas@cisco.com>
+Verified+1: FDio GitHub Actions <releng+fdio-github@linuxfoundation.org>
+Code-Review+2: Dave Wallace <dwallacelf@gmail.com>
+Submitted-by: Dave Wallace <dwallacelf@gmail.com>
+Submitted-at: Fri, 06 Nov 2026 16:50:16 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/47207
+Project: vpp
+Branch: refs/heads/master
