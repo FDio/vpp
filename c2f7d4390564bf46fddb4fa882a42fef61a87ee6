@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fa483ecf_dce29f67",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3395
+      },
+      "writtenOn": "2026-11-06T15:08:36Z",
+      "side": 1,
+      "message": "Hi Dave,\n\nAdding you as a reviewer. This is a small fix for mss_clamp: the plugin\nkeeps per-interface state after the interface is deleted, so a new\ninterface that reuses the sw_if_index looks clamped but isn\u0027t, and\nre-enabling with the same parameters is a no-op.\n\nI ran into this when re-creating GRE tunnels in VPP: the new tunnels got\nthe sw_if_index of the deleted ones and silently lost MSS clamping, so\nTCP SYNs went through with MSS 1460 over a 1476-byte tunnel MTU. The\nonly workaround was ip4 disable/enable on the affected interfaces.\n\nCI is green. Once it\u0027s merged, would it be possible to cherry-pick it\nto stable/2610 and stable/2606?\n\nThanks!",
+      "revId": "c2f7d4390564bf46fddb4fa882a42fef61a87ee6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
