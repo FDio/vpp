@@ -232,10 +232,16 @@ atl_init (vlib_main_t *vm, vnet_dev_t *dev)
 	    ad->caps.l4_base_index, ad->caps.l4_count, ad->caps.l4_flex_base_index,
 	    ad->caps.l4_flex_count, ad->caps.resolver_base_index, ad->caps.resolver_count);
 
+  u32 speed_caps = 0;
+  rv = atl_get_speed_caps (dev, &speed_caps);
+  if (rv != VNET_DEV_OK)
+    return rv;
+
   vnet_dev_port_add_args_t port = {
     .port = {
       .attr = {
 	.type = VNET_DEV_PORT_TYPE_ETHERNET,
+	.speed_caps = speed_caps,
 	.max_rx_queues = 4,
 	.max_tx_queues = 4,
 	.max_supported_rx_frame_size = 16352,

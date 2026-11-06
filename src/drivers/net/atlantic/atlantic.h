@@ -239,6 +239,7 @@ typedef struct
   atl_reg_aq2_fw_interface_out_link_status_t last_link_status;
   u8 link_status_fail : 1;
   u8 stats_fetch_fail : 1;
+  u8 forced_rate;
 } atl_port_t;
 
 typedef struct
@@ -340,6 +341,7 @@ format_function_t format_atl_rpf_info;
 format_function_t format_atl_mac_addr_table;
 format_function_t format_atl_cable_diag;
 format_function_t format_atl_rss_info;
+vnet_dev_rv_t atl_get_speed_caps (vnet_dev_t *dev, u32 *speed_caps);
 format_function_t format_atl_link_capa;
 format_function_t format_atl_partner_link_capa;
 format_function_t atl_rx_trace;
