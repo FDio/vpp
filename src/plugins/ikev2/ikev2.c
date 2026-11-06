@@ -2016,6 +2016,9 @@ ikev2_process_create_child_sa_req (vlib_main_t *vm, ikev2_sa_t *sa, ike_header_t
 	  rekey->use_transport_mode = use_transport_mode;
 	  rekey->protocol_id = n->protocol_id;
 	  rekey->spi = n->spi;
+	  /* the Child being rekeyed, matched by its initiator SPI like a
+	     locally initiated rekey, so the dispatcher replaces this Child */
+	  rekey->ispi = n->spi;
 	  if (sa->old_remote_id_present)
 	    {
 	      rekey->notify_type = IKEV2_NOTIFY_MSG_TEMPORARY_FAILURE;
@@ -4212,7 +4215,19 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 		    {
 		      u32 old_local_sa_id = 0, old_remote_sa_id = 0;
 		      ikev2_child_sa_t replacement = { 0 }, *child;
-		      uword replace_index = peer.child.protocol_id ? peer.child_index : 0;
+		      uword replace_index = 0;
+		      if (peer.child.protocol_id)
+			replace_index = peer.child_index;
+		      else
+			{
+			  /* RFC 7296 section 1.3.3: REKEY_SA names the Child to
+			     replace; with parallel Child SAs it is not always the
+			     first one. */
+			  ikev2_child_sa_t *rc =
+			    ikev2_sa_get_child (sa0, rekey->ispi, IKEV2_PROTOCOL_ESP, 1);
+			  if (rc)
+			    replace_index = rc - sa0->childs;
+			}
 		      if (replace_index < vec_len (sa0->childs))
 			{
 			  child = &sa0->childs[replace_index];

@@ -3646,6 +3646,47 @@ class TestResponderParallelChildInbound(TestResponderPsk):
         self.sa.child_sas[0] = second
 
 
+class TestResponderRekeyParallelChild(TestResponderParallelChildInbound):
+    """RFC 7296 1.3.3: a rekey replaces the Child named by REKEY_SA, not childs[0]."""
+
+    def child_ispis(self):
+        sa_index = self.vapi.ikev2_sa_dump()[0].sa.sa_index
+        return {
+            c.child_sa.i_spi.to_bytes(4, "big")
+            for c in self.vapi.ikev2_child_sa_dump(sa_index=sa_index)
+        }
+
+    def test_responder(self):
+        super(TestResponderParallelChildInbound, self).test_responder()
+        a_ispi = self.sa.child_sas[0].ispi
+        second = self.add_parallel_child()
+        b_ispi = second.ispi
+        self.assertEqual(self.child_ispis(), {a_ispi, b_ispi})
+
+        # Rekey the second Child only; REKEY_SA names its SPI.
+        replacement = IKEv2ChildSA(second.local_ts, second.remote_ts, True)
+        self.sa.child_sas[0] = replacement
+        self.sa.i_nonce = os.urandom(32)
+        self.pg0.add_stream(
+            self.create_rekey_request(rekey_notify=True, rekey_spi=b_ispi)
+        )
+        self.pg0.enable_capture()
+        self.pg_start()
+        reply = self.get_ike_header(self.pg0.get_capture(1)[0])
+        self.assertEqual(reply.exch_type, 36)
+        sa_payload = ikev2.IKEv2_payload_SA(self.sa.hmac_and_decrypt(reply))
+        replacement.rspi = sa_payload[ikev2.IKEv2_payload_Proposal].SPI
+
+        # The rekey must replace the second Child and leave the first in place.
+        ispis = self.child_ispis()
+        self.assertIn(a_ispi, ispis)
+        self.assertIn(replacement.ispi, ispis)
+        self.assertNotIn(b_ispi, ispis)
+        # The first Child, the new one, and the old one kept for the grace.
+        self.assertEqual(self.n_sa_in(), 3)
+        self.sa.child_sas[0] = replacement
+
+
 @unittest.skipIf(
     "gre" in config.excluded_plugins, "Exclude tests depending on GRE plugin"
 )
