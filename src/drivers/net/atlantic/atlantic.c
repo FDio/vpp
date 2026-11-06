@@ -233,9 +233,17 @@ atl_init (vlib_main_t *vm, vnet_dev_t *dev)
 	    ad->caps.l4_flex_count, ad->caps.resolver_base_index, ad->caps.resolver_count);
 
   u32 speed_caps = 0;
+  u32 interrupt_mode = vlib_get_n_threads () <= vnet_dev_get_pci_n_msix_interrupts (dev) - 1;
+
   rv = atl_get_speed_caps (dev, &speed_caps);
   if (rv != VNET_DEV_OK)
     return rv;
+
+  if (!interrupt_mode)
+    log_notice (dev,
+		"number of threads (%u) exceeds number of available interrupt vectors (%u), "
+		"RX interrupt-mode capability disabled",
+		vlib_get_n_threads (), vnet_dev_get_pci_n_msix_interrupts (dev));
 
   vnet_dev_port_add_args_t port = {
     .port = {
@@ -248,6 +256,7 @@ atl_init (vlib_main_t *vm, vnet_dev_t *dev)
 	.caps = {
 	  .rss = 1,
 	  .change_max_rx_frame_size = 1,
+	  .interrupt_mode = interrupt_mode,
 	},
 	.rx_offloads = {
 	  .ip4_cksum = 1,
@@ -261,6 +270,7 @@ atl_init (vlib_main_t *vm, vnet_dev_t *dev)
       },
       .ops = {
 	.init = atl_port_init,
+	.deinit = atl_port_deinit,
 	.start = atl_port_start,
 	.stop = atl_port_stop,
 	.format_status = format_atl_port_status,
