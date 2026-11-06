@@ -30,6 +30,12 @@ vnet_dev_node_t ige_tx_node = {
   .format_trace = format_ige_tx_trace,
 };
 
+static const u8 ige_default_rss_key[IGE_RSS_KEY_SIZE] = {
+  0x6d, 0x5a, 0x56, 0xda, 0x25, 0x5b, 0x0e, 0xc2, 0x41, 0x67, 0x25, 0x3d, 0x43, 0xa3,
+  0x8f, 0xb0, 0xd0, 0xca, 0x2b, 0xcb, 0xae, 0x7b, 0x30, 0xb4, 0x77, 0xcb, 0x2d, 0xa3,
+  0x80, 0x30, 0xf2, 0x0c, 0x6a, 0x42, 0xb7, 0x3b, 0xbe, 0xac, 0x01, 0xfa,
+};
+
 static ige_dev_config_t config_by_type[] = {
   [IGE_DEV_TYPE_I211] = { .phy_type = IGE_PHY_TYPE_I210_INTERNAL },
   [IGE_DEV_TYPE_I225] = { .phy_type = IGE_PHY_TYPE_GPY211,
@@ -174,6 +180,7 @@ ige_init (vlib_main_t *vm, vnet_dev_t *dev)
         .caps = {
           .change_max_rx_frame_size = 1,
           .interrupt_mode = interrupt_mode,
+          .rss = 1,
         },
         .rx_offloads = {
           .ip4_cksum = 1,
@@ -196,6 +203,10 @@ ige_init (vlib_main_t *vm, vnet_dev_t *dev)
         .config_change_validate = ige_port_cfg_change_validate,
       },
       .data_size = sizeof (ige_port_t),
+      .default_rss_config = {
+        .key_len = IGE_RSS_KEY_SIZE,
+        .set_key = 1,
+      },
     },
     .rx_node = &ige_rx_node,
     .tx_node = &ige_tx_node,
@@ -228,6 +239,7 @@ ige_init (vlib_main_t *vm, vnet_dev_t *dev)
   };
 
   ige_reg_rd (dev, IGE_REG_RAL0, &tmp);
+  clib_memcpy (port.port.default_rss_config.key, ige_default_rss_key, IGE_RSS_KEY_SIZE);
   clib_memcpy (&port.port.attr.hw_addr.eth_mac[0], &tmp, 4);
   ige_reg_rd (dev, IGE_REG_RAH0, &tmp);
   clib_memcpy (&port.port.attr.hw_addr.eth_mac[4], &tmp, 2);
