@@ -191,6 +191,22 @@ http3_stream_error_terminate_conn (http_ctx_t *stream, http_ctx_t *req, http3_er
   http3_conn_terminate (hc, err);
 }
 
+static int
+http3_stream_cancel_rx (http_ctx_t *stream, http_ctx_t *req)
+{
+  if (stream->flags & HTTP_CONN_F_RX_CANCELLED)
+    return 0;
+
+  if (http_cancel_transport_stream_rx (stream, HTTP3_ERROR_NO_ERROR))
+    {
+      /* The transport cannot preserve the response while protecting RX resources. */
+      http3_stream_terminate (stream, req, HTTP3_ERROR_EXCESSIVE_LOAD);
+      return -1;
+    }
+  stream->flags |= HTTP_CONN_F_RX_CANCELLED;
+  return 0;
+}
+
 static_always_inline void
 http3_stream_ctx_reset (http_ctx_t *old_stream, http_ctx_t *req)
 {
@@ -835,6 +851,9 @@ http3_req_state_udp_tunnel_draft03_tx (http_ctx_t *stream, http_ctx_t *req,
 static_always_inline void
 http3_stream_resp_not_implemented (http_ctx_t *stream, http_ctx_t *req)
 {
+  if (http3_stream_cancel_rx (stream, req))
+    return;
+
   u8 fh_buf[HTTP3_FRAME_HEADER_MAX_LEN];
   u8 fh_len;
   u32 headers_len, n_written;
@@ -898,6 +917,9 @@ http3_send_431 (http_ctx_t *stream, http_ctx_t *req)
   u32 headers_len;
 
   ASSERT (stream->flags & HTTP_CONN_F_IS_SERVER);
+  if (http3_stream_cancel_rx (stream, req))
+    return;
+
   vec_reset_length (http_tx_buf (stream));
   date = format (0, "%U", format_http_time_now, stream);
   control_data.content_len = HPACK_ENCODER_SKIP_CONTENT_LEN;
@@ -920,8 +942,6 @@ http3_send_431 (http_ctx_t *stream, http_ctx_t *req)
     session_transport_reset_notify (&req->connection);
   session_transport_closed_notify (&req->connection);
   http_close_transport_stream (stream);
-  http_io_ts_after_write (stream, 0);
-  http_stats_responses_sent_inc (stream->c_thread_index);
 }
 
 static http_sm_result_t
@@ -2143,6 +2163,8 @@ http3_app_tx_callback (http_ctx_t *stream, u32 req_index, transport_send_params_
 	  (stream->flags & HTTP_CONN_F_IS_SERVER))
 	{
 	  /* server app might send error earlier */
+	  if (http3_stream_cancel_rx (stream, req))
+	    return;
 	  http_req_state_change (req, HTTP_REQ_STATE_WAIT_APP_REPLY);
 	}
       else
@@ -2174,6 +2196,12 @@ http3_app_rx_evt_callback (http_ctx_t *stream, u32 req_index, clib_thread_index_
   HTTP_DBG (1, "stream [%u]%x req %x", stream->c_thread_index, stream->hc_hc_index, req_index);
 
   ASSERT (http_ctx_is_stream (stream));
+
+  if (stream->flags & HTTP_CONN_F_RX_CANCELLED)
+    {
+      http_io_ts_drain_all (stream);
+      return;
+    }
 
   req = http_ctx_get_w_thread (req_index, thread_index);
   n_deq = req->transport_rx_cb (req, stream);
@@ -2291,6 +2319,12 @@ http3_transport_rx_callback (http_ctx_t *stream)
   clib_thread_index_t thread_index = stream->c_thread_index;
 
   ASSERT (http_ctx_is_stream (stream));
+
+  if (stream->flags & HTTP_CONN_F_RX_CANCELLED)
+    {
+      http_io_ts_drain_all (stream);
+      return;
+    }
 
   HTTP_DBG (1, "stream [%u]%x req %x", stream->c_thread_index, stream->hc_hc_index,
 	    stream->http_req_index);
