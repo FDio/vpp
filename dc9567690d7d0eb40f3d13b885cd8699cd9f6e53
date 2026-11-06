@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4b2c0d82_b3d9378f",
+        "filename": "src/plugins/http/http1/http1.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-06T13:46:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5885393f_14b10bed",
+      "revId": "dc9567690d7d0eb40f3d13b885cd8699cd9f6e53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6f9ce978_1b3704e0",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a5affb5d_e4ca6c2d",
+        "filename": "src/plugins/http/http1/http1.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1236,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-06T13:46:34Z",
+      "side": 1,
+      "message": "METHOD → TARGET → VERSION → CRLF now resumes across RX callbacks, retaining offsets in req. No fields were added to http_ctx_t.\n  • Invalid methods and oversized targets fail before CRLF arrives.\n  • Delimiter scans use bounded 256-byte peeks; validation copies only control data, excluding the body.\n  • Preserved fragmented HTTP/2 handoff and fixed a timeout deadlock exposed by retaining partial prefixes.",
+      "parentUuid": "6f9ce978_1b3704e0",
+      "revId": "dc9567690d7d0eb40f3d13b885cd8699cd9f6e53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "87b437c3_506237d5",
@@ -48,6 +84,24 @@
       "writtenOn": "2026-11-05T22:54:43Z",
       "side": 1,
       "message": "listener was validated in http_conn_prepare_request(), but it can disappear while the first request is incomplete. prepared app session is already SESSION_STATE_ACCEPTING, whereas app_worker_stop_listen_session() only cancels CREATED sessions. completing the headers can therefore queue SESSION_CTRL_EVT_ACCEPTED with a stale listener_handle.\nplease revalidate the listener before notifying acceptance. if it disappeared, keep HTTP_CONN_F_NO_APP_SESSION set, disconnect transport, and let existing cleanup path release pending session and fifos without app notifications.",
+      "revId": "dc9567690d7d0eb40f3d13b885cd8699cd9f6e53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e1548d53_af4492cd",
+        "filename": "src/plugins/http/http1/http1.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1323,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-06T13:46:34Z",
+      "side": 1,
+      "message": "Fixed http1.c (src/plugins/http/http1/http1.c:1323) to verify the listener still exists and is listening before acceptance. Otherwise, it resets parsing and disconnects while\npreserving HTTP_CONN_F_NO_APP_SESSION; existing cleanup releases the pending session and FIFOs without app notifications.\nAdded HttpPartialRequestListenerRemovedTest (test/hs-test/http1_test.go:3528), covering five fragmentation points, cleanup after TIME_WAIT, and continued operation of another\nlistener.",
+      "parentUuid": "87b437c3_506237d5",
       "revId": "dc9567690d7d0eb40f3d13b885cd8699cd9f6e53",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
