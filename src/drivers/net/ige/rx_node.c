@@ -255,6 +255,9 @@ rxq_empty:
     vnm->interface_main.combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
     vm->thread_index, sw_if_index, n_rx, n_rx_bytes);
 
+  if (PREDICT_FALSE (rxq->interrupt_mode) && iq->descs[iq->head & mask].dd)
+    vlib_node_set_interrupt_pending (vm, node->node_index);
+
   return n_rx;
 }
 
@@ -266,6 +269,8 @@ VNET_DEV_NODE_FN (ige_rx_node)
     {
       vnet_dev_t *dev = rxq->port->dev;
 
+      ige_rxq_t *iq = vnet_dev_get_rx_queue_data (rxq);
+
       rv += ige_rx_one_queue (vm, node, rxq);
 
       /* refill RX queue */
@@ -273,6 +278,9 @@ VNET_DEV_NODE_FN (ige_rx_node)
 	ige_rxq_refill (vm, rxq, /*use_va_dma */ 1);
       else
 	ige_rxq_refill (vm, rxq, /*use_va_dma */ 0);
+
+      if (PREDICT_FALSE (rxq->interrupt_mode) && iq->tail == iq->head)
+	vlib_node_set_interrupt_pending (vm, node->node_index);
     }
 
   return rv;

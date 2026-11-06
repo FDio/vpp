@@ -179,6 +179,8 @@ typedef struct
 typedef struct
 {
   ige_reg_status_t last_status;
+  u16 n_rx_vectors;
+  u8 irq_registered : 1;
 } ige_port_t;
 
 typedef struct
@@ -242,6 +244,7 @@ vnet_dev_rv_t ige_phy_set_speed (vlib_main_t *, vnet_dev_t *, u32);
 
 /* port.c */
 vnet_dev_rv_t ige_port_init (vlib_main_t *, vnet_dev_port_t *);
+void ige_port_deinit (vlib_main_t *, vnet_dev_port_t *);
 vnet_dev_rv_t ige_port_start (vlib_main_t *, vnet_dev_port_t *);
 void ige_port_stop (vlib_main_t *, vnet_dev_port_t *);
 vnet_dev_rv_t ige_port_cfg_change_validate (vlib_main_t *, vnet_dev_port_t *,
