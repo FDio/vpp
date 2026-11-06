@@ -15,11 +15,11 @@
 
 #include <ige.h>
 
+#define IGE_TX_MAX_SEGS 16
+
 static_always_inline void
-ige_enq_txd (vlib_main_t *vm, vlib_node_runtime_t *n, vnet_dev_tx_queue_t *txq,
-	     vlib_buffer_t *b, u32 bi, int first, int last,
-	     ige_tx_desc_t *descs, u32 *buffer_indices, u16 *tail, u16 mask,
-	     int use_va, int trace)
+ige_enq_txd (vlib_main_t *vm, vlib_buffer_t *b, u32 bi, int first, int last, u32 pkt_len,
+	     ige_tx_desc_t *descs, u32 *buffer_indices, u16 *tail, u16 mask, int use_va)
 {
   u32 len = b->current_length;
   u32 slot = *tail & mask;
@@ -33,16 +33,7 @@ ige_enq_txd (vlib_main_t *vm, vlib_node_runtime_t *n, vnet_dev_tx_queue_t *txq,
   d.addr = use_va ? vlib_buffer_get_current_va (b) :
 		    vlib_buffer_get_current_pa (vm, b);
   if (first)
-    d.paylen = last ? len : len + b->total_length_not_including_first_buffer;
-
-  if (trace && b->flags & VLIB_BUFFER_IS_TRACED)
-    {
-      ige_tx_trace_t *t = vlib_add_trace (vm, n, b, sizeof (*t));
-      t->desc = d;
-      t->hw_if_index = vnet_dev_get_tx_queue_if_hw_if_index (txq);
-      t->queue_id = txq->queue_id;
-      t->buffer_index = bi;
-    }
+    d.paylen = pkt_len;
 
   descs[slot] = d;
   buffer_indices[slot] = bi;
@@ -76,8 +67,8 @@ ige_txq_complete (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
 }
 
 static_always_inline u32
-ige_txq_enq (vlib_main_t *vm, vlib_node_runtime_t *node,
-	     vnet_dev_tx_queue_t *txq, u32 *from, u32 max_pkts, int va, int tr)
+ige_txq_enq (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_tx_queue_t *txq, u32 *from,
+	     u32 max_pkts, int va, u32 *drop_too_long, u32 *n_drop_too_long)
 {
   ige_txq_t *const itq = vnet_dev_get_tx_queue_data (txq);
   ige_tx_desc_t *const d = itq->descs;
@@ -85,67 +76,63 @@ ige_txq_enq (vlib_main_t *vm, vlib_node_runtime_t *node,
   const u16 size = txq->size;
   const u16 mask = size - 1;
   u16 n_pkts = 0;
-  u32 drop_too_long[VLIB_FRAME_SIZE], n_drop_too_long = 0;
 
   ige_txq_complete (vm, txq);
 
   u16 head = itq->head;
   u16 tail = itq->tail;
-  const u32 max_tail = head + size;
+  u16 n_free = size - 1 - (u16) (tail - head);
 
-  while (n_pkts < max_pkts && tail < max_tail)
+  while (n_pkts < max_pkts && n_free)
     {
       u32 hbi = from[n_pkts];
       vlib_buffer_t *b = vlib_get_buffer (vm, hbi);
-      u32 i;
 
       if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
 	{
-	  u32 tbi[4] = {
-	    [0] = b->next_buffer,
-	  };
-	  vlib_buffer_t *tb[4] = {
-	    [0] = vlib_get_buffer (vm, b->next_buffer),
-	  };
-	  u32 n = 1;
+	  vlib_buffer_t *tb = b;
+	  u32 pkt_len = b->current_length;
+	  u32 n = 1, tbi;
 
-	  while (tb[n - 1]->flags & VLIB_BUFFER_NEXT_PRESENT)
+	  while (tb->flags & VLIB_BUFFER_NEXT_PRESENT)
 	    {
-	      if (n >= ARRAY_LEN (tbi))
+	      if (n >= IGE_TX_MAX_SEGS)
 		{
-		  drop_too_long[n_drop_too_long++] = hbi;
+		  drop_too_long[(*n_drop_too_long)++] = hbi;
 		  goto next;
 		}
-
-	      tbi[n] = tb[n - 1]->next_buffer;
-	      tb[n] = vlib_get_buffer (vm, tbi[n]);
+	      tb = vlib_get_buffer (vm, tb->next_buffer);
+	      pkt_len += tb->current_length;
 	      n++;
 	    }
 
-	  if (tail + n + 1 > max_tail)
+	  if (n > n_free)
 	    break;
 
-	  ige_enq_txd (vm, node, txq, b, hbi, 1, 0, d, bi, &tail, mask, va,
-		       tr);
-	  for (i = 0; i + 1 < n; i++)
-	    ige_enq_txd (vm, node, txq, tb[i], tbi[i], 0, 0, d, bi, &tail,
-			 mask, va, tr);
-	  ige_enq_txd (vm, node, txq, tb[i], tbi[i], 0, 1, d, bi, &tail, mask,
-		       va, tr);
+	  ige_enq_txd (vm, b, hbi, 1, 0, pkt_len, d, bi, &tail, mask, va);
+	  tbi = b->next_buffer;
+	  tb = vlib_get_buffer (vm, tbi);
+	  for (u32 i = 1; i < n; i++)
+	    {
+	      u32 nbi = tb->next_buffer;
+	      int last = (i == n - 1);
+	      ige_enq_txd (vm, tb, tbi, 0, last, 0, d, bi, &tail, mask, va);
+	      if (!last)
+		{
+		  tbi = nbi;
+		  tb = vlib_get_buffer (vm, tbi);
+		}
+	    }
+	  n_free -= n;
 	}
       else
-	ige_enq_txd (vm, node, txq, b, hbi, 1, 1, d, bi, &tail, mask, va, tr);
+	{
+	  ige_enq_txd (vm, b, hbi, 1, 1, b->current_length, d, bi, &tail, mask, va);
+	  n_free--;
+	}
 
     next:
       n_pkts++;
-    }
-
-  if (n_drop_too_long)
-    {
-      vlib_error_count (vm, node->node_index,
-			IGE_TX_NODE_CTR_BUFFER_CHAIN_TOO_LONG,
-			n_drop_too_long);
-      vlib_buffer_free (vm, drop_too_long, n_drop_too_long);
     }
 
   if (itq->tail != tail)
@@ -157,42 +144,97 @@ ige_txq_enq (vlib_main_t *vm, vlib_node_runtime_t *node,
   return n_pkts;
 }
 
+static void
+ige_tx_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_tx_queue_t *txq, u32 *from,
+		    u32 n_bufs, u32 n_processed, u16 first)
+{
+  ige_txq_t *itq = vnet_dev_get_tx_queue_data (txq);
+  vlib_node_t *n = vlib_get_node (vm, node->node_index);
+  u16 mask = txq->size - 1;
+  u16 end = itq->tail;
+
+  for (u32 i = 0; i < n_bufs; i++)
+    {
+      vlib_buffer_t *b = vlib_get_buffer (vm, from[i]);
+      u16 start = first;
+      u16 n_desc = 0;
+      ige_tx_trace_t *t;
+
+      if (first != end && itq->buffer_indices[first & mask] == from[i])
+	{
+	  do
+	    n_desc++;
+	  while (itq->descs[(first + n_desc - 1) & mask].eop == 0);
+	  first += n_desc;
+	}
+
+      if ((b->flags & VLIB_BUFFER_IS_TRACED) == 0)
+	continue;
+
+      t = vlib_add_trace (vm, node, b, sizeof (*t) + n_desc * sizeof (t->desc[0]));
+      t->hw_if_index = vnet_dev_get_tx_queue_if_hw_if_index (txq);
+      t->queue_id = txq->queue_id;
+      t->buffer_index = from[i];
+      t->n_desc = n_desc;
+      if (n_desc)
+	t->error = 0;
+      else if (i >= n_processed)
+	t->error = n->error_heap_index + IGE_TX_NODE_CTR_NO_FREE_SLOTS;
+      else
+	t->error = n->error_heap_index + IGE_TX_NODE_CTR_BUFFER_CHAIN_TOO_LONG;
+      for (u32 j = 0; j < n_desc; j++)
+	t->desc[j] = itq->descs[(start + j) & mask];
+    }
+}
+
 VNET_DEV_NODE_FN (ige_tx_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   vnet_dev_tx_node_runtime_t *rt = vnet_dev_get_tx_node_runtime (node);
   vnet_dev_tx_queue_t *txq = rt->tx_queue;
   vnet_dev_t *dev = txq->port->dev;
+  ige_txq_t *itq = vnet_dev_get_tx_queue_data (txq);
   u32 *from = vlib_frame_vector_args (frame);
-  u16 n, n_left;
+  u32 *const frame_from = from;
+  u32 drop_too_long[VLIB_FRAME_SIZE];
+  u32 n_drop_too_long = 0;
+  u16 n, n_left, first_tail;
   int n_reties = 2;
 
   n_left = frame->n_vectors;
 
   vnet_dev_tx_queue_lock_if_needed (txq);
+  first_tail = itq->tail;
 
   while (n_reties--)
     {
-      if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
-	n = ige_txq_enq (vm, node, txq, from, n_left, dev->va_dma != 0, 1);
-      else if (dev->va_dma)
-	n = ige_txq_enq (vm, node, txq, from, n_left, 1, 0);
+      if (dev->va_dma)
+	n = ige_txq_enq (vm, node, txq, from, n_left, 1, drop_too_long, &n_drop_too_long);
       else
-	n = ige_txq_enq (vm, node, txq, from, n_left, 0, 0);
+	n = ige_txq_enq (vm, node, txq, from, n_left, 0, drop_too_long, &n_drop_too_long);
 
       from += n;
       n_left -= n;
 
-      if (n == 0 || n == n_left)
+      if (n == 0 || n_left == 0)
 	break;
+    }
+
+  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
+    ige_tx_trace_frame (vm, node, txq, frame_from, frame->n_vectors, frame->n_vectors - n_left,
+			first_tail);
+
+  if (n_drop_too_long)
+    {
+      vlib_error_count (vm, node->node_index, IGE_TX_NODE_CTR_BUFFER_CHAIN_TOO_LONG,
+			n_drop_too_long);
+      vlib_buffer_free (vm, drop_too_long, n_drop_too_long);
     }
 
   if (n_left)
     {
-      fformat (stderr, "no_free_slots %u\n", n_left);
       vlib_buffer_free (vm, from, n_left);
-      vlib_error_count (vm, node->node_index, IGE_TX_NODE_CTR_NO_FREE_SLOTS,
-			n_left);
+      vlib_error_count (vm, node->node_index, IGE_TX_NODE_CTR_NO_FREE_SLOTS, n_left);
     }
 
   vnet_dev_tx_queue_unlock_if_needed (txq);
