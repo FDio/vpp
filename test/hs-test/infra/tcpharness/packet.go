@@ -388,6 +388,41 @@ func CaptureIPv4TCPFin(fd int, src, dst net.IP, sport, dport uint16,
 	}
 }
 
+// CaptureIPv4TCPData returns the first data segment of the flow
+func CaptureIPv4TCPData(fd int, src, dst net.IP, sport, dport uint16,
+	done <-chan struct{}, dataCh chan<- PcapIPv4TCPPacket) {
+	buf := make([]byte, 4096)
+	for {
+		select {
+		case <-done:
+			return
+		default:
+		}
+		_ = unix.SetNonblock(fd, true)
+		n, _, err := unix.Recvfrom(fd, buf, 0)
+		if err != nil {
+			if err == unix.EAGAIN || err == unix.EWOULDBLOCK {
+				time.Sleep(10 * time.Millisecond)
+				continue
+			}
+			return
+		}
+		packet, ok := parseLinkIPv4TCPPacket(layers.LinkTypeRaw, buf[:n])
+		if !ok {
+			packet, ok = parseLinkIPv4TCPPacket(layers.LinkTypeEthernet, buf[:n])
+		}
+		if !ok || packet.PayloadLen == 0 || packet.SrcPort != sport || packet.DstPort != dport ||
+			!packet.SrcIP.Equal(src.To4()) || !packet.DstIP.Equal(dst.To4()) {
+			continue
+		}
+		select {
+		case dataCh <- packet:
+		default:
+		}
+		return
+	}
+}
+
 func parseRawIPv4TCPPacket(data []byte) (PcapIPv4TCPPacket, bool) {
 	return parseLinkIPv4TCPPacket(layers.LinkTypeRaw, data)
 }
