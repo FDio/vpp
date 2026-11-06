@@ -350,15 +350,26 @@ typedef struct
 
 extern dpdk_main_t dpdk_main;
 
+/*
+ * vlib_add_trace () returns record data that is aligned to 16 bytes only
+ * (vlib_trace_header_t is 16 bytes). struct rte_mbuf and vlib_buffer_t are
+ * cache line aligned, so a trace record that holds them by value asks for
+ * alignment 64, and the compiler may use aligned 32 or 64 byte stores to
+ * copy into it. On a 16 byte aligned record such a store faults. Hold the
+ * two through types of alignment 16.
+ */
+typedef struct rte_mbuf dpdk_trace_mbuf_t __attribute__ ((aligned (16)));
+typedef vlib_buffer_t dpdk_trace_vlib_buffer_t __attribute__ ((aligned (16)));
+
 typedef struct
 {
   u32 buffer_index;
   u16 device_index;
   u8 queue_index;
-  struct rte_mbuf mb;
+  dpdk_trace_mbuf_t mb;
   u8 data[256];			/* First 256 data bytes, used for hexdump */
   /* Copy of VLIB buffer; packet data stored in pre_data. */
-  vlib_buffer_t buffer;
+  dpdk_trace_vlib_buffer_t buffer;
 } dpdk_tx_trace_t;
 
 typedef struct
@@ -366,10 +377,16 @@ typedef struct
   u32 buffer_index;
   u16 device_index;
   u16 queue_index;
-  struct rte_mbuf mb;
+  dpdk_trace_mbuf_t mb;
   u8 data[256];			/* First 256 data bytes, used for hexdump */
-  vlib_buffer_t buffer;		/* Copy of VLIB buffer; pkt data stored in pre_data. */
+  /* Copy of VLIB buffer; pkt data stored in pre_data. */
+  dpdk_trace_vlib_buffer_t buffer;
 } dpdk_rx_trace_t;
+
+STATIC_ASSERT (__alignof__ (dpdk_tx_trace_t) <= sizeof (vlib_trace_header_t),
+	       "dpdk_tx_trace_t must not be aligned beyond the trace header");
+STATIC_ASSERT (__alignof__ (dpdk_rx_trace_t) <= sizeof (vlib_trace_header_t),
+	       "dpdk_rx_trace_t must not be aligned beyond the trace header");
 
 void dpdk_device_setup (dpdk_device_t * xd);
 void dpdk_device_start (dpdk_device_t * xd);
