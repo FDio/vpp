@@ -505,21 +505,12 @@ http1_parse_field_name (u8 **pos, u8 *end, u8 **field_name_start,
   u32 name_len = 0;
   u8 *p;
 
-  static uword tchar[4] = {
-    /* !#$%'*+-.0123456789 */
-    0x03ff6cba00000000,
-    /* ABCDEFGHIJKLMNOPQRSTUVWXYZ^_`abcdefghijklmnopqrstuvwxyz|~ */
-    0x57ffffffc7fffffe,
-    0x0000000000000000,
-    0x0000000000000000,
-  };
-
   p = *pos;
 
   *field_name_start = p;
   while (p != end)
     {
-      if (clib_bitmap_get_no_check (tchar, *p))
+      if (http_token_char_is_valid (*p))
 	{
 	  name_len++;
 	  p++;

@@ -859,8 +859,7 @@ qpack_get_static_table_entry (uword index, http_token_t *name,
   name->len = e->name_len;
   if (value_is_indexed)
     {
-      if (e->value_len == 0)
-	return HPACK_ERROR_COMPRESSION;
+      /* Static entries can have empty values (RFC 9204, 3.1). */
       value->base = e->value;
       value->len = e->value_len;
     }

@@ -15,27 +15,105 @@
 #include <http/http3/qpack.h>
 #include <http/http3/frame.h>
 
-#define HTTP_TEST_I(_cond, _comment, _args...)                                \
-  ({                                                                          \
-    int _evald = (_cond);                                                     \
-    if (!(_evald))                                                            \
-      {                                                                       \
-	vlib_cli_output (vm, "FAIL:%d: " _comment "\n", __LINE__, ##_args);   \
-      }                                                                       \
-    else                                                                      \
-      {                                                                       \
-	vlib_cli_output (vm, "PASS:%d: " _comment "\n", __LINE__, ##_args);   \
-      }                                                                       \
-    _evald;                                                                   \
+#define HTTP_TEST_I(_cond, _comment, _args...)                                                     \
+  ({                                                                                               \
+    int _evald = (_cond);                                                                          \
+    if (!(_evald))                                                                                 \
+      {                                                                                            \
+	vlib_cli_output (vm, "FAIL:%d: " _comment "\n", __LINE__, ##_args);                        \
+      }                                                                                            \
+    else                                                                                           \
+      {                                                                                            \
+	vlib_cli_output (vm, "PASS:%d: " _comment "\n", __LINE__, ##_args);                        \
+      }                                                                                            \
+    _evald;                                                                                        \
   })
 
-#define HTTP_TEST(_cond, _comment, _args...)                                  \
-  {                                                                           \
-    if (!HTTP_TEST_I (_cond, _comment, ##_args))                              \
-      {                                                                       \
-	return 1;                                                             \
-      }                                                                       \
+#define HTTP_TEST(_cond, _comment, _args...)                                                       \
+  {                                                                                                \
+    if (!HTTP_TEST_I (_cond, _comment, ##_args))                                                   \
+      {                                                                                            \
+	return 1;                                                                                  \
+      }                                                                                            \
   }
+
+static int
+http_test_parse_ip6 (vlib_main_t *vm)
+{
+  const struct
+  {
+    const char *text;
+    u8 valid;
+    u16 quads[8];
+  } cases[] = {
+    { "::", 1, {} },
+    { "::1", 1, { 0, 0, 0, 0, 0, 0, 0, 1 } },
+    { "1::", 1, { 1 } },
+    { "2001:DB8::a:B", 1, { 0x2001, 0xdb8, 0, 0, 0, 0, 0xa, 0xb } },
+    { "1:2:3:4:5:6:7:8", 1, { 1, 2, 3, 4, 5, 6, 7, 8 } },
+    { "1:2:3:4:5:6:7::", 1, { 1, 2, 3, 4, 5, 6, 7 } },
+    { "::ffff:192.0.2.1", 1, { 0, 0, 0, 0, 0, 0xffff, 0xc000, 0x201 } },
+    { "1:2:3:4:5:6:192.0.2.1", 1, { 1, 2, 3, 4, 5, 6, 0xc000, 0x201 } },
+    { "1:2:3:4:5::192.0.2.1", 1, { 1, 2, 3, 4, 5, 0, 0xc000, 0x201 } },
+    { "::0.0.0.0", 1, {} },
+    { "::255.255.255.255", 1, { 0, 0, 0, 0, 0, 0, 0xffff, 0xffff } },
+    { "", 0, {} },
+    { ":", 0, {} },
+    { ":1:2:3:4:5:6:7:8", 0, {} },
+    { "1:2:3:4:5:6:7:8:", 0, {} },
+    { "1:2:3:4:5:6:7:8::", 0, {} },
+    { "1::2:3:4:5:6:7:8", 0, {} },
+    { "1:2:3:4:5:6:7", 0, {} },
+    { "1:2:3:4:5:6:7:8:9", 0, {} },
+    { ":::1", 0, {} },
+    { ":::", 0, {} },
+    { "1::2::3", 0, {} },
+    { "12345::1", 0, {} },
+    { "gg::1", 0, {} },
+    { "fe80::1%eth0", 0, {} },
+    { "::1junk", 0, {} },
+    { "192.0.2.1", 0, {} },
+    { "::ffff:192.0.2", 0, {} },
+    { "::ffff:192.0.2.1.2", 0, {} },
+    { "::ffff:192.0.2.1:", 0, {} },
+    { "::ffff:256.0.2.1", 0, {} },
+    { "::ffff:192.00.2.1", 0, {} },
+    { "::ffff:0192.0.2.1", 0, {} },
+    { "::ffff:192..2.1", 0, {} },
+    { "::ffff:c0.0.2.1", 0, {} },
+    { "1:2:3:4:5:6::192.0.2.1", 0, {} },
+    { "1:2:3:4:5:6:7:192.0.2.1", 0, {} },
+  };
+  for (u32 i = 0; i < ARRAY_LEN (cases); i++)
+    {
+      u8 *p = (u8 *) cases[i].text;
+      u32 len = strlen (cases[i].text);
+      ip6_address_t ip6;
+      int rv = _http_parse_ip6 (&p, p + len, &ip6);
+      HTTP_TEST ((rv == 0 && p == (u8 *) cases[i].text + len) == cases[i].valid, "IPv6 '%s' syntax",
+		 cases[i].text);
+      if (cases[i].valid)
+	{
+	  for (u32 j = 0; j < ARRAY_LEN (cases[i].quads); j++)
+	    HTTP_TEST (ip6.as_u16[j] == clib_host_to_net_u16 (cases[i].quads[j]),
+		       "IPv6 '%s' quad %u", cases[i].text, j);
+	}
+
+      u8 *authority = format (0, "[%s]:443", cases[i].text);
+      hpack_authority_t parsed;
+      u8 valid = hpack_authority_parse (authority, vec_len (authority), 1, 0, &parsed);
+      HTTP_TEST (valid == cases[i].valid, "pseudo-header authority '%v' syntax", authority);
+      if (valid)
+	HTTP_TEST (parsed.is_ip6 && !memcmp (&parsed.ip6, &ip6, sizeof (ip6)),
+		   "pseudo-header authority '%v' address", authority);
+
+      http_uri_authority_t uri;
+      rv = http_parse_authority (authority, vec_len (authority), &uri);
+      HTTP_TEST ((rv == 0) == cases[i].valid, "URI authority '%v' syntax", authority);
+      vec_free (authority);
+    }
+  return 0;
+}
 
 static int
 http_test_parse_authority (vlib_main_t *vm)
@@ -43,6 +121,9 @@ http_test_parse_authority (vlib_main_t *vm)
   u8 *authority = 0, *formated = 0;
   http_uri_authority_t parsed;
   int rv;
+
+  if (http_test_parse_ip6 (vm))
+    return 1;
 
   /* IPv4 address */
   authority = format (0, "10.10.2.45:20");
@@ -865,10 +946,419 @@ http_test_parse_response (const char *first_resp, uword first_resp_len,
   return 0;
 }
 
+static u8 *
+http_test_literal_field (u8 *dst, const char *name, const char *value, u8 qpack)
+{
+  u32 n = strlen (name), v = strlen (value);
+  if (qpack)
+    {
+      vec_add1 (dst, 0x20 | clib_min (n, 7));
+      if (n >= 7)
+	vec_add1 (dst, n - 7);
+    }
+  else
+    {
+      vec_add1 (dst, 0);
+      vec_add1 (dst, n);
+    }
+  vec_add (dst, name, n);
+  vec_add1 (dst, v);
+  vec_add (dst, value, v);
+  return dst;
+}
+
+static int
+http_test_validation (vlib_main_t *vm)
+{
+  const char token_chars[] =
+    "!#$%&'*+-.^_`|~0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  const char reg_name_chars[] =
+    "-._~!$&'()*+,;=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  const char *component_chars[] = { "", ":", ":@/", ":@/?" };
+  u8 value[] = { 'x', 0, 'y' };
+  u32 token_failure = ~0U, name_failure = ~0U;
+  for (u32 byte = 0; byte < 256; byte++)
+    {
+      value[1] = byte;
+      u8 expected = memchr (token_chars, byte, sizeof (token_chars) - 1) != 0;
+      if (http_token_char_is_valid (byte) != expected ||
+	  http_token_is_valid (value, sizeof (value)) != expected)
+	token_failure = byte;
+      expected = expected && !(byte >= 'A' && byte <= 'Z');
+      if (hpack_header_name_is_valid (value, sizeof (value)) != expected)
+	name_failure = byte;
+    }
+  HTTP_TEST (token_failure == ~0U, "all 256 token bytes (failure 0x%x)", token_failure);
+  HTTP_TEST (name_failure == ~0U, "all 256 lowercase field-name bytes (failure 0x%x)",
+	     name_failure);
+  HTTP_TEST (!http_token_is_valid (value, 0) && !hpack_header_name_is_valid (value, 0),
+	     "empty tokens and field names are invalid");
+
+  for (u32 component = 0; component < ARRAY_LEN (component_chars); component++)
+    {
+      u32 failed_byte = ~0U;
+      for (u32 byte = 0; byte < 256; byte++)
+	{
+	  value[1] = byte;
+	  u8 expected =
+	    memchr (reg_name_chars, byte, sizeof (reg_name_chars) - 1) ||
+	    memchr (component_chars[component], byte, strlen (component_chars[component]));
+	  int encoded = -1;
+	  int rv = http_validate_uri_component (value, sizeof (value), component, &encoded);
+	  if ((rv == 0) != expected || (rv == 0 && encoded != 0))
+	    failed_byte = byte;
+	}
+      HTTP_TEST (failed_byte == ~0U, "all 256 URI component %u bytes (failure 0x%x)", component,
+		 failed_byte);
+    }
+
+  const struct
+  {
+    const char *text;
+    u8 valid, encoded;
+  } escaped[] = {
+    { "plain", 1, 0 }, { "%00", 1, 1 }, { "%ff%2F%7e", 1, 1 }, { "x%3Ay", 1, 1 }, { "%", 0, 0 },
+    { "%0", 0, 0 },    { "%0g", 0, 0 }, { "%g0", 0, 0 },       { "%%20", 0, 0 },
+  };
+  for (u32 i = 0; i < ARRAY_LEN (escaped); i++)
+    for (u32 component = 0; component < ARRAY_LEN (component_chars); component++)
+      {
+	int encoded = -1;
+	int rv = http_validate_uri_component ((u8 *) escaped[i].text, strlen (escaped[i].text),
+					      component, &encoded);
+	HTTP_TEST ((rv == 0) == escaped[i].valid &&
+		     encoded == (escaped[i].valid ? escaped[i].encoded : -1),
+		   "URI component %u percent syntax '%s'", component, escaped[i].text);
+      }
+  u8 target[] = "/path?query/?%2f";
+  int encoded = 0;
+  HTTP_TEST (http_validate_target_syntax (target, sizeof (target) - 1, 0, 0) != 0 &&
+	       !http_validate_target_syntax (target, sizeof (target) - 1, 1, &encoded) && encoded,
+	     "path and combined path/query delimiters remain distinct");
+
+  const struct
+  {
+    const char *text;
+    u32 consumed;
+    u16 port;
+    u8 valid;
+  } ports[] = {
+    { "", 0, 0, 0 },	      { "0", 1, 0, 1 },	     { "443", 3, 443, 1 },
+    { "65535", 5, 65535, 1 }, { "65536", 0, 0, 0 },  { "00000000000000443", 17, 443, 1 },
+    { "443/", 3, 443, 1 },    { "443x", 3, 443, 1 }, { "-1", 0, 0, 0 },
+    { " 443", 0, 0, 0 },
+  };
+  for (u32 i = 0; i < ARRAY_LEN (ports); i++)
+    {
+      u8 *p = (u8 *) ports[i].text;
+      u32 len = strlen (ports[i].text);
+      u16 port;
+      int rv = _http_parse_port (&p, p + len, &port);
+      HTTP_TEST ((rv == 0) == ports[i].valid &&
+		   (!ports[i].valid || (p == (u8 *) ports[i].text + ports[i].consumed &&
+					clib_net_to_host_u16 (port) == ports[i].port)),
+		 "port '%s' bounds, byte order and delimiter", ports[i].text);
+      u8 *authority = format (0, "example.com:%s", ports[i].text);
+      for (u32 required = 0; required < 2; required++)
+	{
+	  hpack_authority_t parsed;
+	  u8 expected = len ? ports[i].valid && ports[i].consumed == len : !required;
+	  u8 valid = hpack_authority_parse (authority, vec_len (authority), required, 0, &parsed);
+	  HTTP_TEST (valid == expected &&
+		       (!valid || (parsed.has_port == (len != 0) && parsed.port == ports[i].port)),
+		     "authority '%v' port policy %u", authority, required);
+	}
+      vec_free (authority);
+    }
+  return 0;
+}
+
+static int
+http_test_schemes (vlib_main_t *vm)
+{
+  const char first_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  const char later_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-.";
+  u8 name[] = ":scheme", value[2] = { 'a', 'a' };
+  for (u32 position = 0; position < 2; position++)
+    {
+      u32 failed_byte = ~0;
+      for (u32 byte = 0; byte < 256; byte++)
+	{
+	  hpack_request_control_data_t cd = {};
+	  value[0] = position ? 'a' : byte;
+	  value[1] = byte;
+	  const char *allowed = position ? later_chars : first_chars;
+	  u8 expected = memchr (allowed, byte, strlen (allowed)) != 0;
+	  hpack_error_t rv =
+	    hpack_parse_req_pseudo_header (name, sizeof (name) - 1, value, position + 1, &cd);
+	  if ((rv == HPACK_ERROR_NONE) != expected ||
+	      (expected && cd.scheme != HTTP_URL_SCHEME_UNKNOWN))
+	    {
+	      failed_byte = byte;
+	      break;
+	    }
+	}
+      HTTP_TEST (
+	failed_byte == ~0U,
+	"scheme %s character: all 256 byte values classified before enum mapping (failure 0x%x)",
+	position ? "continuation" : "initial", failed_byte);
+    }
+
+  static http2_error_t (*parse_h2) (u8 *, u32, u8 *, u32, hpack_request_control_data_t *,
+				    http_field_line_t **, hpack_dynamic_table_t *);
+  static http3_error_t (*parse_h3) (u8 *, u32, u8 *, u32, hpack_request_control_data_t *,
+				    http_field_line_t **, qpack_decoder_ctx_t *);
+  static void (*table_init) (hpack_dynamic_table_t *, u32);
+  static void (*table_free) (hpack_dynamic_table_t *);
+  parse_h2 = vlib_get_plugin_symbol ("http_plugin.so", "hpack_parse_request");
+  parse_h3 = vlib_get_plugin_symbol ("http_plugin.so", "qpack_parse_request");
+  table_init = vlib_get_plugin_symbol ("http_plugin.so", "hpack_dynamic_table_init");
+  table_free = vlib_get_plugin_symbol ("http_plugin.so", "hpack_dynamic_table_free");
+  const struct
+  {
+    const char *value;
+    http_url_scheme_t scheme;
+    u8 malformed;
+  } cases[] = {
+    { "http", HTTP_URL_SCHEME_HTTP, 0 },	{ "https", HTTP_URL_SCHEME_HTTPS, 0 },
+    { "masque", HTTP_URL_SCHEME_MASQUE, 0 },	{ "HtTp", HTTP_URL_SCHEME_HTTP, 0 },
+    { "HTTPS", HTTP_URL_SCHEME_HTTPS, 0 },	{ "MaSqUe", HTTP_URL_SCHEME_MASQUE, 0 },
+    { "web+demo", HTTP_URL_SCHEME_UNKNOWN, 0 }, { "x", HTTP_URL_SCHEME_UNKNOWN, 0 },
+    { "A0+.-", HTTP_URL_SCHEME_UNKNOWN, 0 },	{ "", HTTP_URL_SCHEME_UNKNOWN, 1 },
+    { "1https", HTTP_URL_SCHEME_UNKNOWN, 1 },	{ "ht:tps", HTTP_URL_SCHEME_UNKNOWN, 1 },
+    { "http_", HTTP_URL_SCHEME_UNKNOWN, 1 },	{ "https ", HTTP_URL_SCHEME_UNKNOWN, 1 },
+    { "+http", HTTP_URL_SCHEME_UNKNOWN, 1 },	{ 0, HTTP_URL_SCHEME_UNKNOWN, 1 },
+  };
+  for (u32 qpack = 0; qpack < 2; qpack++)
+    for (u32 i = 0; i < ARRAY_LEN (cases); i++)
+      {
+	u8 *input = 0, *buf = 0;
+	http_field_line_t *headers = 0;
+	hpack_request_control_data_t cd;
+	hpack_dynamic_table_t table;
+	qpack_decoder_ctx_t decoder = {};
+	if (qpack)
+	  {
+	    vec_add1 (input, 0);
+	    vec_add1 (input, 0);
+	  }
+	input = http_test_literal_field (input, ":method", "GET", qpack);
+	if (cases[i].value)
+	  input = http_test_literal_field (input, ":scheme", cases[i].value, qpack);
+	input = http_test_literal_field (input, ":authority", "example.com", qpack);
+	input = http_test_literal_field (input, ":path", "/", qpack);
+	vec_validate (buf, 1023);
+	table_init (&table, 4096);
+	u32 rv = qpack ?
+		   parse_h3 (input, vec_len (input), buf, vec_len (buf), &cd, &headers, &decoder) :
+		   parse_h2 (input, vec_len (input), buf, vec_len (buf), &cd, &headers, &table);
+	u32 no_error = qpack ? HTTP3_ERROR_NO_ERROR : HTTP2_ERROR_NO_ERROR;
+	u32 message_error = qpack ? HTTP3_ERROR_MESSAGE_ERROR : HTTP2_ERROR_PROTOCOL_ERROR;
+	if (rv == no_error && hpack_validate_request_pseudo_headers (&cd, 1))
+	  rv = message_error;
+	u8 ok = rv == (cases[i].malformed ? message_error : no_error) &&
+		(cases[i].malformed || cd.scheme == cases[i].scheme);
+	table_free (&table);
+	vec_free (input);
+	vec_free (buf);
+	vec_free (headers);
+	HTTP_TEST (ok, "%s scheme '%s': syntax and support classified independently (error %u)",
+		   qpack ? "QPACK" : "HPACK", cases[i].value ? cases[i].value : "(missing)", rv);
+      }
+  return 0;
+}
+
+static int
+http_test_pseudo_headers (vlib_main_t *vm)
+{
+  const struct
+  {
+    char *method, *scheme, *authority, *path, *protocol;
+    u8 enable_connect, valid;
+  } requests[] = {
+    { "GET", "https", "example.com", "/", 0, 0, 1 },
+    { "GET", "HTTPS", "example.com", "/?q=%2f", 0, 0, 1 },
+    { "OPTIONS", "https", "example.com", "*", 0, 0, 1 },
+    { "X-NEW", "new+scheme", 0, "/", 0, 0, 1 },
+    { "CONNECT", 0, "example.com:443", 0, 0, 0, 1 },
+    { "CONNECT", 0, "[::1]:443", 0, 0, 0, 1 },
+    { "CONNECT", "https", "example.com", "/", "websocket", 1, 1 },
+    { "CONNECT", "https", "example.com", "/", "unknown", 1, 1 },
+    { "CONNECT", "https", "example.com", "/", "websocket", 0, 0 },
+    { "CONNECT", 0, "example.com:443", "/", 0, 1, 0 },
+    { "CONNECT", "https", "example.com:443", 0, 0, 1, 0 },
+    { "CONNECT", "https", "example.com", 0, "websocket", 1, 0 },
+    { "CONNECT", 0, "example.com", "/", "websocket", 1, 0 },
+    { "CONNECT", 0, "example.com", 0, 0, 0, 0 },
+    { "CONNECT", 0, "x", 0, 0, 0, 0 },
+    { "CONNECT", 0, "", 0, 0, 0, 0 },
+    { "CONNECT", 0, ":443", 0, 0, 0, 0 },
+    { "GET", "https", "user@example.com", "/", 0, 0, 0 },
+    { "GET", "https", "example.com", "relative", 0, 0, 0 },
+    { "GET", "https", "example.com", "*", 0, 0, 0 },
+    { "GET", "https", "example.com", "/#fragment", 0, 0, 0 },
+    { "GET", "https", "example.com", "/%XX", 0, 0, 0 },
+    { "GET", "https", "example.com", "/", "websocket", 1, 0 },
+    { "GET", "1https", "example.com", "/", 0, 0, 0 },
+    { "GET", "", "example.com", "/", 0, 0, 0 },
+    { "GET", "https", "", "/", 0, 0, 0 },
+    { "", "https", "example.com", "/", 0, 0, 0 },
+    { 0, "https", "example.com", "/", 0, 0, 0 },
+    { "CONNECT-UDP", "masque", "example.com:443", "/", 0, 0, 1 },
+    { "CONNECT-UDP", 0, "example.com:443", "/", 0, 0, 0 },
+  };
+  const char *names[] = { ":method", ":scheme", ":authority", ":path", ":protocol" };
+  for (u32 i = 0; i < ARRAY_LEN (requests); i++)
+    {
+      hpack_request_control_data_t cd = {};
+      cd.method = HTTP_REQ_UNKNOWN;
+      cd.scheme = HTTP_URL_SCHEME_UNKNOWN;
+      const char *values[] = { requests[i].method, requests[i].scheme, requests[i].authority,
+			       requests[i].path, requests[i].protocol };
+      hpack_error_t rv = HPACK_ERROR_NONE;
+      for (u32 j = 0; j < ARRAY_LEN (names); j++)
+	if (values[j])
+	  {
+	    rv = hpack_parse_req_pseudo_header ((u8 *) names[j], strlen (names[j]),
+						(u8 *) values[j], strlen (values[j]), &cd);
+	    if (rv)
+	      break;
+	  }
+      if (!rv)
+	rv = hpack_validate_request_pseudo_headers (&cd, requests[i].enable_connect);
+      HTTP_TEST ((rv == HPACK_ERROR_NONE) == requests[i].valid,
+		 "request pseudo-header presence/value rules, case %u", i);
+    }
+
+  static http2_error_t (*parse_h2) (u8 *, u32, u8 *, u32, hpack_response_control_data_t *,
+				    http_field_line_t **, hpack_dynamic_table_t *);
+  static http3_error_t (*parse_h3) (u8 *, u32, u8 *, u32, hpack_response_control_data_t *,
+				    http_field_line_t **, qpack_decoder_ctx_t *);
+  static void (*table_init) (hpack_dynamic_table_t *, u32);
+  static void (*table_free) (hpack_dynamic_table_t *);
+  parse_h2 = vlib_get_plugin_symbol ("http_plugin.so", "hpack_parse_response");
+  parse_h3 = vlib_get_plugin_symbol ("http_plugin.so", "qpack_parse_response");
+  table_init = vlib_get_plugin_symbol ("http_plugin.so", "hpack_dynamic_table_init");
+  table_free = vlib_get_plugin_symbol ("http_plugin.so", "hpack_dynamic_table_free");
+  const struct
+  {
+    char *name, *value, *extra_name, *extra_value;
+    u8 valid, bad_index;
+  } responses[] = {
+    { ":status", "200", 0, 0, 1, 0 },
+    { ":status", "100", 0, 0, 1, 0 },
+    { ":status", "103", 0, 0, 1, 0 },
+    { ":status", "599", "server", "", 1, 0 },
+    { 0, 0, 0, 0, 0, 0 },
+    { "server", "", 0, 0, 0, 0 },
+    { ":status", "", 0, 0, 0, 0 },
+    { ":status", "20", 0, 0, 0, 0 },
+    { ":status", "2000", 0, 0, 0, 0 },
+    { ":status", "2x0", 0, 0, 0, 0 },
+    { ":status", "099", 0, 0, 0, 0 },
+    { ":status", "600", 0, 0, 0, 0 },
+    { ":status", "101", 0, 0, 0, 0 },
+    { ":status", "200", ":status", "200", 0, 0 },
+    { ":status", "200", ":method", "GET", 0, 0 },
+    { ":method", "GET", 0, 0, 0, 0 },
+    { ":foobar", "200", 0, 0, 0, 0 },
+    { ":abcdefgh", "", 0, 0, 0, 0 },
+    { "server", "", ":status", "200", 0, 0 },
+    { ":foobar", "200", 0, 0, 0, 1 },
+  };
+  for (u32 qpack = 0; qpack < 2; qpack++)
+    for (u32 i = 0; i < ARRAY_LEN (responses); i++)
+      {
+	u8 *input = 0, *buf = 0;
+	http_field_line_t *headers = 0;
+	hpack_response_control_data_t cd;
+	hpack_dynamic_table_t table;
+	qpack_decoder_ctx_t decoder = {};
+	vec_validate (input, 1);
+	vec_reset_length (input);
+	vec_validate (buf, 1023);
+	if (qpack)
+	  {
+	    vec_add1 (input, 0);
+	    vec_add1 (input, 0);
+	  }
+	if (responses[i].name)
+	  input = http_test_literal_field (input, responses[i].name, responses[i].value, qpack);
+	if (responses[i].extra_name)
+	  input = http_test_literal_field (input, responses[i].extra_name, responses[i].extra_value,
+					   qpack);
+	if (responses[i].bad_index)
+	  {
+	    vec_add1 (input, qpack ? 0xff : 0x80);
+	    if (qpack)
+	      vec_add1 (input, 0x24);
+	  }
+	table_init (&table, 4096);
+	u32 rv = qpack ?
+		   parse_h3 (input, vec_len (input), buf, vec_len (buf), &cd, &headers, &decoder) :
+		   parse_h2 (input, vec_len (input), buf, vec_len (buf), &cd, &headers, &table);
+	u32 expected =
+	  responses[i].valid ?
+	    (qpack ? HTTP3_ERROR_NO_ERROR : HTTP2_ERROR_NO_ERROR) :
+	  responses[i].bad_index ?
+	    (qpack ? HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED : HTTP2_ERROR_COMPRESSION_ERROR) :
+	    (qpack ? HTTP3_ERROR_MESSAGE_ERROR : HTTP2_ERROR_PROTOCOL_ERROR);
+	table_free (&table);
+	vec_free (input);
+	vec_free (buf);
+	vec_free (headers);
+	HTTP_TEST (rv == expected, "%s response pseudo-header case %u: %u, expected %u",
+		   qpack ? "QPACK" : "HPACK", i, rv, expected);
+      }
+  return 0;
+}
+
 static int
 http_test_hpack (vlib_main_t *vm)
 {
-  vlib_cli_output (vm, "hpack_decode_int");
+  if (http_test_validation (vm))
+    return 1;
+  if (http_test_schemes (vm))
+    return 1;
+  if (http_test_pseudo_headers (vm))
+    return 1;
+  vlib_cli_output (vm, "method syntax and mapping");
+
+  hpack_request_control_data_t method_cd;
+  hpack_error_t method_rv;
+  u8 method_name[] = ":method";
+  u8 method_value[] = "X?Y";
+  const char token_chars[] =
+    "!#$%&'*+-.^_`|~0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+  /* Exercise every byte inside a method, including NUL and non-ASCII. */
+  for (u32 i = 0; i < 256; i++)
+    {
+      method_value[1] = i;
+      clib_memset (&method_cd, 0, sizeof (method_cd));
+      method_rv = hpack_parse_req_pseudo_header (
+	method_name, sizeof (method_name) - 1, method_value, sizeof (method_value) - 1, &method_cd);
+      u8 valid = memchr (token_chars, i, sizeof (token_chars) - 1) != 0;
+      HTTP_TEST (method_rv == (valid ? HPACK_ERROR_NONE : HPACK_ERROR_PROTOCOL),
+		 "method containing byte 0x%02x: %s", i, valid ? "valid" : "invalid");
+      if (valid)
+	HTTP_TEST (method_cd.method == HTTP_REQ_UNKNOWN, "valid extension method");
+    }
+  clib_memset (&method_cd, 0, sizeof (method_cd));
+  method_rv = hpack_parse_req_pseudo_header (method_name, sizeof (method_name) - 1, method_value, 0,
+					     &method_cd);
+  HTTP_TEST (method_rv == HPACK_ERROR_PROTOCOL, "empty method is invalid");
+
+#define _(sym, str)                                                                                \
+  clib_memset (&method_cd, 0, sizeof (method_cd));                                                 \
+  method_rv = hpack_parse_req_pseudo_header (method_name, sizeof (method_name) - 1, (u8 *) str,    \
+					     sizeof (str) - 1, &method_cd);                        \
+  HTTP_TEST (method_rv == HPACK_ERROR_NONE && method_cd.method == HTTP_REQ_##sym,                  \
+	     "method mapping: %s", str);
+  foreach_http_method
+#undef _
+
+    vlib_cli_output (vm, "hpack_decode_int");
 
   u8 *pos, *end, *input = 0;
   uword value;
@@ -1674,6 +2164,15 @@ http_test_qpack (vlib_main_t *vm)
   TEST ("\x71\x0B\x2F\x69\x6E\x64\x65\x78\x2E\x68\x74\x6D\x6C", ":path", "/index.html", 1);
   /* indexed field line, static table */
   TEST ("\xC1", ":path", "/", 0);
+  /* Empty static values are valid indexed field lines, including index zero
+   * and entries whose indices require an extension byte (RFC 9204, Appendix A). */
+  TEST ("\xC0", ":authority", "", 0);
+  TEST ("\xC5", "cookie", "", 0);
+  TEST ("\xC6", "date", "", 0);
+  TEST ("\xC7", "etag", "", 0);
+  TEST ("\xFF\x09", "accept-language", "", 0);
+  TEST ("\xFF\x1D", "server", "", 0);
+  TEST ("\xFF\x20", "user-agent", "", 0);
   /* literal field line with literal name */
   TEST ("\x23\x61\x62\x63\x01\x5A", "abc", "Z", 0);
   /* literal field line with literal name, never indexed */
@@ -1719,6 +2218,41 @@ http_test_qpack (vlib_main_t *vm)
   vec_free (buf);
   vec_free (headers);
   memset (&decoder_ctx, 0, sizeof (decoder_ctx));
+
+  /* Compression must preserve an indexed empty authority for HTTP validation. */
+  u8 empty_authority[] = { 0x00, 0x00, 0xd1, 0xd7, 0xc0, 0xc1 };
+  vec_validate_init_empty (buf, 254, 0);
+  clib_memset (&req_control_data, 0, sizeof (req_control_data));
+  err = _qpack_parse_request (empty_authority, sizeof (empty_authority), buf, vec_len (buf),
+			      &req_control_data, &headers, &decoder_ctx);
+  HTTP_TEST (err == HTTP3_ERROR_NO_ERROR && req_control_data.parsed_bitmap == parsed_bitmap &&
+	       req_control_data.authority_len == 0,
+	     "indexed empty authority decodes without a compression error");
+  vec_free (headers);
+
+  /* The first index beyond the static table still causes a connection error. */
+  u8 invalid_static_index[] = { 0x00, 0x00, 0xff, 0x24 };
+  err = _qpack_parse_request (invalid_static_index, sizeof (invalid_static_index), buf,
+			      vec_len (buf), &req_control_data, &headers, &decoder_ctx);
+  HTTP_TEST (err == HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED,
+	     "static index 99 remains a compression error");
+  vec_free (buf);
+  vec_free (headers);
+
+  /* Empty method values are valid QPACK strings, with or without Huffman
+   * encoding, but invalid HTTP methods. Keep the error scoped to the stream. */
+  u8 empty_method[] = { 0x00, 0x00, 0x5f, 0x00, 0x00, 0xd7, 0x50, 0x01, 0x61, 0xc1 };
+  vec_validate_init_empty (buf, 254, 0);
+  for (u8 huffman = 0; huffman < 2; huffman++)
+    {
+      empty_method[4] = huffman ? 0x80 : 0;
+      err = _qpack_parse_request (empty_method, sizeof (empty_method), buf, vec_len (buf),
+				  &req_control_data, &headers, &decoder_ctx);
+      HTTP_TEST (err == HTTP3_ERROR_MESSAGE_ERROR, "empty %s method is a message error",
+		 huffman ? "Huffman" : "literal");
+    }
+  vec_free (buf);
+  vec_free (headers);
 
   vlib_cli_output (vm, "qpack_parse_response");
 

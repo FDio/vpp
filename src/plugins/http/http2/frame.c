@@ -264,6 +264,8 @@ http2_frame_read_headers (u8 **headers, u32 *headers_len, u8 *payload,
 
   if (flags & HTTP2_FRAME_FLAG_PADED)
     {
+      if (!payload_len)
+	return HTTP2_ERROR_FRAME_SIZE_ERROR;
       u8 pad_len = *payload++;
       if ((u32) pad_len >= payload_len)
 	return HTTP2_ERROR_PROTOCOL_ERROR;
@@ -272,7 +274,7 @@ http2_frame_read_headers (u8 **headers, u32 *headers_len, u8 *payload,
 
   if (flags & HTTP2_FRAME_FLAG_PRIORITY)
     {
-      if (*headers_len <= PRIORITY_DATA_LEN)
+      if (*headers_len < PRIORITY_DATA_LEN)
 	return HTTP2_ERROR_FRAME_SIZE_ERROR;
       /* just skip, priority scheme defined in RFC7540 is deprecated */
       *headers_len -= PRIORITY_DATA_LEN;

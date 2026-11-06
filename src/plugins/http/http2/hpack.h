@@ -33,6 +33,10 @@ typedef struct
   http_url_scheme_t scheme;
   u8 *authority;
   u32 authority_len;
+  u8 *host;
+  u32 host_len;
+  u8 host_parsed;
+  u8 is_options;
   u8 *path;
   u32 path_len;
   u8 *headers;

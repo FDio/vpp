@@ -6,6 +6,7 @@
 #include <vppinfra/ring.h>
 #include <http/http2/http2_inlines.h>
 #include <http/http2/hpack.h>
+#include <http/http2/hpack_inlines.h>
 #include <http/http2/frame.h>
 #include <http/http_timer.h>
 #include <http/http_status_codes.h>
@@ -1014,8 +1015,8 @@ http2_sched_dispatch_continuation (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissi
 }
 
 static int
-http_sched_dispatch_431 (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions,
-			 clib_llist_index_t *next_ri)
+http_sched_dispatch_early_response (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions,
+				    clib_llist_index_t *next_ri)
 {
   u8 *date;
   u32 headers_len;
@@ -1029,7 +1030,7 @@ http_sched_dispatch_431 (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions,
   control_data.server_name_len = vec_len (hc->app_name);
   control_data.date = date;
   control_data.date_len = vec_len (date);
-  control_data.sc = HTTP_STATUS_REQUEST_HEADER_FIELDS_TOO_LARGE;
+  control_data.sc = req->status_code;
   hpack_serialize_response (0, 0, &control_data, &http_tx_buf (hc));
   vec_free (date);
   headers_len = vec_len (http_tx_buf (hc));
@@ -1044,12 +1045,26 @@ http_sched_dispatch_431 (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions,
   *n_emissions += HTTP2_SCHED_WEIGHT_HEADERS_PTR;
   *next_ri = clib_llist_next_index (req, stream_sched_list);
   http_stats_responses_sent_inc (hc->c_thread_index);
+  if (!(req->req_flags & HTTP_REQ_F_PEER_CLOSED))
+    http2_schedule_rst_stream (hc, req->stream_id, HTTP2_ERROR_NO_ERROR);
   /* notify app that nothing will happen and free request */
   if (!(req->req_flags & HTTP_REQ_F_APP_CLOSED))
     session_transport_reset_notify (&req->connection);
   session_transport_closed_notify (&req->connection);
   http2_conn_free_req (hc, req, hc->c_thread_index);
   return 0;
+}
+
+static void
+http2_respond_early (http_ctx_t *hc, http_ctx_t *req, http_status_code_t status)
+{
+  http_worker_t *wrk = http_worker_get (hc->c_thread_index);
+  http_ctx_t *head = clib_llist_elt (wrk->ctx_pool, hc->new_tx_streams);
+  req->status_code = status;
+  req->dispatch_headers_cb = http_sched_dispatch_early_response;
+  http_req_state_change (req, HTTP_REQ_STATE_TRANSPORT_IO_DROP);
+  clib_llist_add_tail (wrk->ctx_pool, stream_sched_list, req, head);
+  http2_conn_schedule (hc, hc->c_thread_index);
 }
 
 static_always_inline void
@@ -1654,6 +1669,12 @@ http2_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
 				 &hc->decoder_dynamic_table);
   if (*error != HTTP2_ERROR_NO_ERROR)
     {
+      if (*error == HTTP2_ERROR_PROTOCOL_ERROR)
+	{
+	  http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR);
+	  *error = HTTP2_ERROR_NO_ERROR;
+	  return HTTP_SM_STOP;
+	}
       HTTP_DBG (1, "hpack_parse_response failed");
       return HTTP_SM_ERROR;
     }
@@ -1744,43 +1765,14 @@ http2_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
   return HTTP_SM_STOP;
 }
 
-#define http2_verify_port_in_authority()                                                           \
-  do                                                                                               \
-    {                                                                                              \
-      p = control_data.authority + control_data.authority_len;                                     \
-      p--;                                                                                         \
-      if (!isdigit (*p))                                                                           \
-	{                                                                                          \
-	  HTTP_DBG (1, "port not present in authority");                                           \
-	  http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR);                                \
-	  return HTTP_SM_STOP;                                                                     \
-	}                                                                                          \
-      p--;                                                                                         \
-      for (; p > control_data.authority; p--)                                                      \
-	{                                                                                          \
-	  if (!isdigit (*p))                                                                       \
-	    break;                                                                                 \
-	}                                                                                          \
-      if (*p != ':')                                                                               \
-	{                                                                                          \
-	  HTTP_DBG (1, "port not present in authority");                                           \
-	  http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR);                                \
-	  return HTTP_SM_STOP;                                                                     \
-	}                                                                                          \
-    }                                                                                              \
-  while (0);
-
 static http_sm_result_t
 http2_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transport_send_params_t *sp,
 				       http2_error_t *error)
 {
   hpack_request_control_data_t control_data;
   http_msg_t msg;
-  u8 *p;
-  int rv;
   http_req_state_t new_state = HTTP_REQ_STATE_WAIT_APP_REPLY;
   http_worker_t *wrk = http_worker_get (hc->c_thread_index);
-  http_ctx_t *he;
 
   http_stats_requests_received_inc (hc->c_thread_index);
 
@@ -1789,19 +1781,18 @@ http2_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
 				&hc->decoder_dynamic_table);
   if (*error != HTTP2_ERROR_NO_ERROR)
     {
+      if (*error == HTTP2_ERROR_PROTOCOL_ERROR)
+	{
+	  http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR);
+	  *error = HTTP2_ERROR_NO_ERROR;
+	  return HTTP_SM_STOP;
+	}
       /* internal error is returned only when uncompressed headers exceeded maximum value, in this
        * case we should response with 431 (Request Header Fields Too Large) status code */
       if (*error == HTTP2_ERROR_INTERNAL_ERROR)
 	{
-	  HTTP_DBG (1, "MAX_HEADER_LIST_SIZE exceeded");
 	  *error = HTTP2_ERROR_NO_ERROR;
-	  req->dispatch_headers_cb = http_sched_dispatch_431;
-	  /* in case we receive data meanwhile */
-	  http_req_state_change (req, HTTP_REQ_STATE_TRANSPORT_IO_DROP);
-	  /* schedule response */
-	  he = clib_llist_elt (wrk->ctx_pool, hc->new_tx_streams);
-	  clib_llist_add_tail (wrk->ctx_pool, stream_sched_list, req, he);
-	  http2_conn_schedule (hc, hc->c_thread_index);
+	  http2_respond_early (hc, req, HTTP_STATUS_REQUEST_HEADER_FIELDS_TOO_LARGE);
 	  return HTTP_SM_STOP;
 	}
       HTTP_DBG (1, "hpack_parse_request failed");
@@ -1817,42 +1808,29 @@ http2_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
 
   req->app_reply_next_state = HTTP_REQ_STATE_APP_IO_MORE_DATA;
 
-  if (!(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_METHOD_PARSED))
+  if (hpack_validate_request_pseudo_headers (&control_data, hc->settings.enable_connect_protocol))
     {
-      HTTP_DBG (1, ":method pseudo-header missing in request");
       http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR);
+      return HTTP_SM_STOP;
+    }
+  if (control_data.content_len_header_index != ~0)
+    {
+      req->content_len_header_index = control_data.content_len_header_index;
+      if (http_parse_content_length (req, wrk->header_list))
+	{
+	  http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR);
+	  return HTTP_SM_STOP;
+	}
+    }
+  if ((control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_SCHEME_PARSED) &&
+      control_data.scheme == HTTP_URL_SCHEME_UNKNOWN)
+    {
+      http2_respond_early (hc, req, HTTP_STATUS_MISDIRECTED_REQUEST);
       return HTTP_SM_STOP;
     }
   if (control_data.method == HTTP_REQ_UNKNOWN)
     {
-      HTTP_DBG (1, "unsupported method");
-      http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR);
-      return HTTP_SM_STOP;
-    }
-  if (!(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_SCHEME_PARSED) &&
-      control_data.method != HTTP_REQ_CONNECT)
-    {
-      HTTP_DBG (1, ":scheme pseudo-header missing in request");
-      http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR);
-      return HTTP_SM_STOP;
-    }
-  if (control_data.scheme == HTTP_URL_SCHEME_UNKNOWN && control_data.method != HTTP_REQ_CONNECT)
-    {
-      HTTP_DBG (1, "unsupported scheme");
-      http2_stream_error (hc, req, HTTP2_ERROR_INTERNAL_ERROR);
-      return HTTP_SM_STOP;
-    }
-  if (!(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PATH_PARSED) &&
-      control_data.method != HTTP_REQ_CONNECT)
-    {
-      HTTP_DBG (1, ":path pseudo-header missing in request");
-      http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR);
-      return HTTP_SM_STOP;
-    }
-  if (!(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_AUTHORITY_PARSED))
-    {
-      HTTP_DBG (1, ":authority pseudo-header missing in request");
-      http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR);
+      http2_respond_early (hc, req, HTTP_STATUS_NOT_IMPLEMENTED);
       return HTTP_SM_STOP;
     }
   if (control_data.method == HTTP_REQ_CONNECT)
@@ -1860,18 +1838,7 @@ http2_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
       req->app_reply_next_state = HTTP_REQ_STATE_TUNNEL;
       if (control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PROTOCOL_PARSED)
 	{
-	  /* extended CONNECT (RFC8441) */
-	  if (!(control_data.parsed_bitmap &
-		HPACK_PSEUDO_HEADER_SCHEME_PARSED) ||
-	      !(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PATH_PARSED))
-	    {
-	      HTTP_DBG (1,
-			":scheme and :path pseudo-header must be present for "
-			"extended CONNECT method");
-	      http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR);
-	      return HTTP_SM_STOP;
-	    }
-	  /* parse protocol header value */
+	  /* extended CONNECT (RFC8441), parse protocol header value */
 	  if (0)
 	    ;
 #define _(sym, str)                                                                                \
@@ -1885,7 +1852,7 @@ http2_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
 	    HTTP_DBG (1, "unsupported extended connect protocol %U",
 		      format_http_bytes, control_data.protocol,
 		      control_data.protocol_len);
-	    http2_stream_error (hc, req, HTTP2_ERROR_INTERNAL_ERROR);
+	    http2_respond_early (hc, req, HTTP_STATUS_NOT_IMPLEMENTED);
 	    return HTTP_SM_STOP;
 	  }
 	  if (req->upgrade_proto == HTTP_UPGRADE_PROTO_CONNECT_UDP &&
@@ -1894,17 +1861,6 @@ http2_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
 	}
       else
 	{
-	  if (control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_SCHEME_PARSED ||
-	      control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PATH_PARSED)
-	    {
-	      HTTP_DBG (1,
-			":scheme and :path pseudo-header must be omitted for "
-			"CONNECT method");
-	      http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR);
-	      return HTTP_SM_STOP;
-	    }
-	  /* quick check if port is present */
-	  http2_verify_port_in_authority ();
 	  req->upgrade_proto = HTTP_UPGRADE_PROTO_NA;
 	}
 
@@ -1916,11 +1872,9 @@ http2_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
       if (!(hc->flags & HTTP_CONN_F_CONNECT_UDP_DRAFT03))
 	{
 	  HTTP_DBG (1, "CONNECT-UDP method but masque-connect-udp-draft-03 not enabled");
-	  http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR);
+	  http2_respond_early (hc, req, HTTP_STATUS_NOT_IMPLEMENTED);
 	  return HTTP_SM_STOP;
 	}
-      /* quick check if port is present */
-      http2_verify_port_in_authority ();
       req->req_flags |= HTTP_REQ_F_IS_TUNNEL;
       req->req_flags |= HTTP_REQ_F_CONNECT_UDP_DRAFT03;
       req->app_reply_next_state = HTTP_REQ_STATE_UDP_TUNNEL_DRAFT03;
@@ -1930,13 +1884,6 @@ http2_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
 
   if (control_data.content_len_header_index != ~0)
     {
-      req->content_len_header_index = control_data.content_len_header_index;
-      rv = http_parse_content_length (req, wrk->header_list);
-      if (rv)
-	{
-	  http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR);
-	  return HTTP_SM_STOP;
-	}
       new_state = HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA;
       http_io_as_add_want_read_ntf (req);
     }
@@ -2451,7 +2398,7 @@ http2_discard_headers (http_ctx_t *hc, u8 *payload, u32 payload_len)
 				 &hc->decoder_dynamic_table);
     }
   vec_free (headers);
-  return rv;
+  return rv == HTTP2_ERROR_PROTOCOL_ERROR ? HTTP2_ERROR_NO_ERROR : rv;
 }
 
 static http2_error_t
@@ -2462,12 +2409,6 @@ http2_handle_headers_frame (http_ctx_t *hc, http2_frame_header_t *fh)
   u32 headers_len, stream_id_ho;
   uword n_del, n_dec;
   http2_error_t rv;
-
-  if (fh->length < 1)
-    {
-      HTTP_DBG (1, "zero length payload");
-      return HTTP2_ERROR_FRAME_SIZE_ERROR;
-    }
 
   if (hc->flags & HTTP_CONN_F_IS_SERVER)
     {
@@ -2556,8 +2497,10 @@ http2_handle_headers_frame (http_ctx_t *hc, http2_frame_header_t *fh)
       HTTP_DBG (1, "fragmented headers stream id %u", clib_net_to_host_u32 (fh->stream_id));
       hc->rx_expect = HTTP2_RX_EXPECT_CONTINUATION;
       hc->continuation_stream_id = fh->stream_id;
-      vec_validate (hc->unparsed_headers, fh->length - 1);
-      http_io_ts_read (hc, hc->unparsed_headers, fh->length, 0);
+      vec_validate (hc->unparsed_headers, clib_max (fh->length, 1) - 1);
+      vec_set_len (hc->unparsed_headers, fh->length);
+      if (fh->length)
+	http_io_ts_read (hc, hc->unparsed_headers, fh->length, 0);
       rv = http2_frame_read_headers (&headers_start, &headers_len, hc->unparsed_headers, fh->length,
 				     fh->flags);
       if (rv != HTTP2_ERROR_NO_ERROR)
@@ -2576,8 +2519,9 @@ http2_handle_headers_frame (http_ctx_t *hc, http2_frame_header_t *fh)
       return HTTP2_ERROR_EXPECT_CONTINUATION;
     }
 
-  rx_buf = http_get_rx_buf_len (hc, fh->length);
-  http_io_ts_read (hc, rx_buf, fh->length, 0);
+  rx_buf = http_get_rx_buf_len (hc, clib_max (fh->length, 1));
+  if (fh->length)
+    http_io_ts_read (hc, rx_buf, fh->length, 0);
 
   rv = http2_frame_read_headers (&headers_start, &headers_len, rx_buf, fh->length, fh->flags);
   if (rv != HTTP2_ERROR_NO_ERROR)
@@ -2599,12 +2543,6 @@ http2_handle_continuation_frame (http_ctx_t *hc, http2_frame_header_t *fh)
   u8 *p;
   http2_error_t rv = HTTP2_ERROR_NO_ERROR;
 
-  if (fh->length < 1)
-    {
-      HTTP_DBG (1, "zero length payload");
-      return HTTP2_ERROR_FRAME_SIZE_ERROR;
-    }
-
   if (fh->stream_id != hc->continuation_stream_id)
     {
       HTTP_DBG (1, "invalid stream id %u", clib_net_to_host_u32 (fh->stream_id));
@@ -2620,7 +2558,8 @@ http2_handle_continuation_frame (http_ctx_t *hc, http2_frame_header_t *fh)
     }
 
   vec_add2 (hc->unparsed_headers, p, fh->length);
-  http_io_ts_read (hc, p, fh->length, 0);
+  if (fh->length)
+    http_io_ts_read (hc, p, fh->length, 0);
 
   if (fh->flags & HTTP2_FRAME_FLAG_END_HEADERS)
     {

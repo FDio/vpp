@@ -150,6 +150,9 @@ hpack_decode_huffman (u8 **src, u8 *end, u8 **buf, uword *buf_len)
   hpack_huffman_code_t *code;
 
   p = *src;
+  /* An empty Huffman string is valid, semantic validation handles empty fields. */
+  if (p == end)
+    return HPACK_ERROR_NONE;
   while (1)
     {
       /* out of space?  */
@@ -324,18 +327,11 @@ hpack_encode_huffman (u8 *dst, const u8 *value, uword value_len)
 always_inline u8
 hpack_header_name_is_valid (u8 *name, u32 name_len)
 {
-  u32 i;
-  static uword tchar[4] = {
-    /* !#$%'*+-.0123456789 */
-    0x03ff6cba00000000,
-    /* ^_`abcdefghijklmnopqrstuvwxyz|~ */
-    0x57ffffffc0000000,
-    0x0000000000000000,
-    0x0000000000000000,
-  };
-  for (i = 0; i < name_len; i++)
+  if (!name_len)
+    return 0;
+  for (u32 i = 0; i < name_len; i++)
     {
-      if (!clib_bitmap_get_no_check (tchar, name[i]))
+      if (!http_token_char_is_valid (name[i]) || (name[i] >= 'A' && name[i] <= 'Z'))
 	return 0;
     }
   return 1;
@@ -377,6 +373,8 @@ hpack_parse_method (u8 *value, u32 value_len)
     case 3:
       if (!memcmp (value, "GET", 3))
 	return HTTP_REQ_GET;
+      if (!memcmp (value, "PUT", 3))
+	return HTTP_REQ_PUT;
       break;
     case 4:
       if (!memcmp (value, "POST", 4))
@@ -393,7 +391,7 @@ hpack_parse_method (u8 *value, u32 value_len)
     default:
       break;
     }
-  /* HPACK should return only connection errors, this one is stream error */
+  /* Method support is decided after validating the request. */
   return HTTP_REQ_UNKNOWN;
 }
 
@@ -403,22 +401,194 @@ hpack_parse_scheme (u8 *value, u32 value_len)
   switch (value_len)
     {
     case 4:
-      if (!memcmp (value, "http", 4))
+      if (http_token_is_case ((char *) value, value_len, http_token_lit ("http")))
 	return HTTP_URL_SCHEME_HTTP;
       break;
     case 5:
-      if (!memcmp (value, "https", 5))
+      if (http_token_is_case ((char *) value, value_len, http_token_lit ("https")))
 	return HTTP_URL_SCHEME_HTTPS;
       break;
     case 6:
-      if (!memcmp (value, "masque", 6))
+      if (http_token_is_case ((char *) value, value_len, http_token_lit ("masque")))
 	return HTTP_URL_SCHEME_MASQUE;
       break;
     default:
       break;
     }
-  /* HPACK should return only connection errors, this one is stream error */
+  /* A valid scheme can be unsupported by the application. */
   return HTTP_URL_SCHEME_UNKNOWN;
+}
+
+typedef struct
+{
+  u8 *host;
+  u32 host_len;
+  u32 port;
+  u8 has_port;
+  u8 is_ip6;
+  ip6_address_t ip6;
+} hpack_authority_t;
+
+always_inline u8
+hpack_authority_parse (u8 *value, u32 len, u8 require_port, u8 allow_userinfo,
+		       hpack_authority_t *out)
+{
+  u8 *p, *end, *host = value;
+  clib_memset (out, 0, sizeof (*out));
+  if (!len)
+    return 0;
+  end = value + len;
+  p = memchr (value, '@', len);
+  if (p)
+    {
+      if (!allow_userinfo ||
+	  http_validate_uri_component (value, p - value, HTTP_URI_COMPONENT_USERINFO, 0))
+	return 0;
+      host = p + 1;
+    }
+  if (host == end)
+    return 0;
+  if (*host == '[')
+    {
+      u8 *close = memchr (host, ']', end - host);
+      if (!close || close - host < 3)
+	return 0;
+      p = host + 1;
+      if (*p == 'v' || *p == 'V')
+	{
+	  /* IPvFuture = 'v' 1*HEXDIG '.' 1*(unreserved / sub-delims / ':') */
+	  u8 *version = ++p;
+	  while (p < close && isxdigit (*p))
+	    p++;
+	  if (p == version || p == close || *p++ != '.' || p == close)
+	    return 0;
+	  for (; p < close; p++)
+	    if (!http_uri_reg_name_char_is_valid (*p) && *p != ':')
+	      return 0;
+	}
+      else
+	{
+	  if (_http_parse_ip6 (&p, close, &out->ip6) || p != close)
+	    return 0;
+	  out->is_ip6 = 1;
+	}
+      out->host_len = close + 1 - host;
+      p = close + 1;
+    }
+  else
+    {
+      p = memchr (host, ':', end - host);
+      if (!p)
+	p = end;
+      out->host_len = p - host;
+      if (!out->host_len ||
+	  http_validate_uri_component (host, out->host_len, HTTP_URI_COMPONENT_REG_NAME, 0))
+	return 0;
+    }
+  out->host = host;
+  if (p != end)
+    {
+      if (*p++ != ':')
+	return 0;
+      out->has_port = p != end;
+      if (out->has_port)
+	{
+	  u16 port;
+	  if (_http_parse_port (&p, end, &port) || p != end)
+	    return 0;
+	  out->port = clib_net_to_host_u16 (port);
+	}
+    }
+  return !require_port || out->has_port;
+}
+
+always_inline u8
+hpack_normalized_host_byte (u8 **p, u8 *end)
+{
+  u8 c = *(*p)++;
+  if (c == '%' && end - *p >= 2)
+    {
+      u8 decoded = (htoi ((*p)[0]) << 4) | htoi ((*p)[1]);
+      if (http_uri_unreserved_char_is_valid (decoded))
+	{
+	  *p += 2;
+	  c = decoded;
+	}
+    }
+  return c < 0x80 ? tolower (c) : c;
+}
+
+always_inline u8
+hpack_authority_hosts_equal (hpack_authority_t *a, hpack_authority_t *b)
+{
+  if (a->is_ip6 && b->is_ip6)
+    return !memcmp (&a->ip6, &b->ip6, sizeof (a->ip6));
+  u8 *pa = a->host, *pb = b->host;
+  u8 *ea = pa + a->host_len, *eb = pb + b->host_len;
+  while (pa < ea && pb < eb)
+    if (hpack_normalized_host_byte (&pa, ea) != hpack_normalized_host_byte (&pb, eb))
+      return 0;
+  return pa == ea && pb == eb;
+}
+
+always_inline hpack_error_t
+hpack_validate_request_pseudo_headers (hpack_request_control_data_t *cd, u8 enable_connect)
+{
+  const u16 method = HPACK_PSEUDO_HEADER_METHOD_PARSED;
+  const u16 scheme_path = HPACK_PSEUDO_HEADER_SCHEME_PARSED | HPACK_PSEUDO_HEADER_PATH_PARSED;
+  const u16 authority = HPACK_PSEUDO_HEADER_AUTHORITY_PARSED;
+  const u16 protocol = HPACK_PSEUDO_HEADER_PROTOCOL_PARSED;
+  hpack_authority_t a, h;
+  u8 connect = cd->method == HTTP_REQ_CONNECT;
+  u8 extended = (cd->parsed_bitmap & protocol) != 0;
+
+  if (!(cd->parsed_bitmap & method) || (extended && (!connect || !enable_connect)))
+    return HPACK_ERROR_PROTOCOL;
+  if (cd->method == HTTP_REQ_CONNECT_UDP && !(cd->parsed_bitmap & authority))
+    return HPACK_ERROR_PROTOCOL;
+  if (connect && !extended)
+    {
+      if ((cd->parsed_bitmap & scheme_path) || !(cd->parsed_bitmap & authority))
+	return HPACK_ERROR_PROTOCOL;
+    }
+  else
+    {
+      if ((cd->parsed_bitmap & scheme_path) != scheme_path)
+	return HPACK_ERROR_PROTOCOL;
+      if (!cd->path_len ||
+	  (cd->path[0] != '/' && !(cd->is_options && cd->path_len == 1 && cd->path[0] == '*')) ||
+	  http_validate_target_syntax (cd->path, cd->path_len, 1, 0))
+	return HPACK_ERROR_PROTOCOL;
+      if (extended && !(cd->parsed_bitmap & authority))
+	return HPACK_ERROR_PROTOCOL;
+    }
+
+  if (cd->host_parsed && !hpack_authority_parse (cd->host, cd->host_len, 0, 0, &h))
+    return HPACK_ERROR_PROTOCOL;
+  if (cd->parsed_bitmap & authority)
+    {
+      u8 require_port = (connect && !extended) || cd->method == HTTP_REQ_CONNECT_UDP;
+      u8 userinfo = !connect && cd->scheme == HTTP_URL_SCHEME_UNKNOWN;
+      if (!hpack_authority_parse (cd->authority, cd->authority_len, require_port, userinfo, &a))
+	return HPACK_ERROR_PROTOCOL;
+      if (cd->host_parsed)
+	{
+	  u32 default_port = cd->scheme == HTTP_URL_SCHEME_HTTPS ? 443 :
+			     cd->scheme == HTTP_URL_SCHEME_HTTP	 ? 80 :
+								   ~0U;
+	  if (!hpack_authority_hosts_equal (&a, &h) ||
+	      (a.has_port ? a.port : default_port) != (h.has_port ? h.port : default_port))
+	    return HPACK_ERROR_PROTOCOL;
+	}
+    }
+  else if (cd->host_parsed)
+    {
+      cd->authority = cd->host;
+      cd->authority_len = cd->host_len;
+    }
+  else if (cd->scheme != HTTP_URL_SCHEME_UNKNOWN)
+    return HPACK_ERROR_PROTOCOL;
+  return HPACK_ERROR_NONE;
 }
 
 always_inline hpack_error_t
@@ -434,7 +604,7 @@ hpack_parse_status_code (u8 *value, u32 value_len, http_status_code_t *sc)
   parse_int (status_code, 100);
   parse_int (status_code, 10);
   parse_int (status_code, 1);
-  if (status_code < 100 || status_code > 599)
+  if (status_code < 100 || status_code > 599 || status_code == 101)
     {
       HTTP_DBG (1, "invalid status code %d", status_code);
       return HPACK_ERROR_PROTOCOL;
@@ -472,19 +642,20 @@ hpack_parse_req_pseudo_header (u8 *name, u32 name_len, u8 *value,
 	case 'm':
 	  if (!memcmp (name + 2, "ethod", 5))
 	    {
-	      if (control_data->parsed_bitmap &
-		  HPACK_PSEUDO_HEADER_METHOD_PARSED)
+	      if (control_data->parsed_bitmap & HPACK_PSEUDO_HEADER_METHOD_PARSED ||
+		  !http_token_is_valid (value, value_len))
 		return HPACK_ERROR_PROTOCOL;
 	      control_data->parsed_bitmap |= HPACK_PSEUDO_HEADER_METHOD_PARSED;
 	      control_data->method = hpack_parse_method (value, value_len);
+	      control_data->is_options = value_len == 7 && !memcmp (value, "OPTIONS", 7);
 	      break;
 	    }
 	  return HPACK_ERROR_PROTOCOL;
 	case 's':
 	  if (!memcmp (name + 2, "cheme", 5))
 	    {
-	      if (control_data->parsed_bitmap &
-		  HPACK_PSEUDO_HEADER_SCHEME_PARSED)
+	      if (control_data->parsed_bitmap & HPACK_PSEUDO_HEADER_SCHEME_PARSED ||
+		  !http_scheme_is_valid (value, value_len))
 		return HPACK_ERROR_PROTOCOL;
 	      control_data->parsed_bitmap |= HPACK_PSEUDO_HEADER_SCHEME_PARSED;
 	      control_data->scheme = hpack_parse_scheme (value, value_len);
@@ -498,15 +669,15 @@ hpack_parse_req_pseudo_header (u8 *name, u32 name_len, u8 *value,
     case 9:
       if (!memcmp (name + 1, "protocol", 8))
 	{
-	  if (control_data->parsed_bitmap &
-	      HPACK_PSEUDO_HEADER_PROTOCOL_PARSED)
+	  if (control_data->parsed_bitmap & HPACK_PSEUDO_HEADER_PROTOCOL_PARSED ||
+	      !http_token_is_valid (value, value_len))
 	    return HPACK_ERROR_PROTOCOL;
 	  control_data->parsed_bitmap |= HPACK_PSEUDO_HEADER_PROTOCOL_PARSED;
 	  control_data->protocol = value;
 	  control_data->protocol_len = value_len;
 	  break;
 	}
-      break;
+      return HPACK_ERROR_PROTOCOL;
     case 10:
       if (!memcmp (name + 1, "authority", 9))
 	{
@@ -543,7 +714,7 @@ hpack_parse_resp_pseudo_header (u8 *name, u32 name_len, u8 *value,
 	  control_data->parsed_bitmap |= HPACK_PSEUDO_HEADER_STATUS_PARSED;
 	  return hpack_parse_status_code (value, value_len, &control_data->sc);
 	}
-      break;
+      return HPACK_ERROR_PROTOCOL;
     default:
       return HPACK_ERROR_PROTOCOL;
     }
@@ -611,22 +782,20 @@ hpack_preprocess_header (u8 *name, u32 name_len, u8 *value, u32 value_len,
 
 always_inline hpack_error_t
 hpack_decode_request (u8 *src, u8 *end, u8 *dst, u32 dst_len,
-		      hpack_request_control_data_t *control_data,
-		      http_field_line_t **headers, void *decoder_ctx,
-		      hpack_header_decoder_fn *decoder_fn)
+		      hpack_request_control_data_t *control_data, http_field_line_t **headers,
+		      void *decoder_ctx, hpack_header_decoder_fn *decoder_fn)
 {
-  u8 *p, *b, *name, *value;
-  u8 regular_header_parsed = 0, never_index;
+  u8 *p = src, *b = dst, *name, *value;
+  u8 regular_header_parsed = 0, never_index, message_error = 0;
   u32 name_len, value_len;
-  uword b_left;
+  uword b_left = dst_len;
   http_field_line_t *header;
   hpack_error_t rv;
 
-  p = src;
-  b = dst;
-  b_left = dst_len;
-  control_data->parsed_bitmap = 0;
-  control_data->headers_len = 0;
+  clib_memset (control_data, 0, sizeof (*control_data));
+  control_data->method = HTTP_REQ_UNKNOWN;
+  control_data->scheme = HTTP_URL_SCHEME_UNKNOWN;
+  control_data->headers = dst;
   control_data->content_len_header_index = ~0;
 
   while (p != end)
@@ -635,86 +804,70 @@ hpack_decode_request (u8 *src, u8 *end, u8 *dst, u32 dst_len,
       name = b;
       rv = decoder_fn (&p, end, &b, &b_left, &name_len, &value_len, decoder_ctx, &never_index);
       if (rv)
-	{
-	  HTTP_DBG (1, "decode_header: %d", rv);
-	  return rv;
-	}
+	return rv;
+      if (message_error)
+	continue;
       value = name + name_len;
-
-      /* pseudo header */
-      if (name[0] == ':')
+      if (!name_len)
 	{
-	  /* all pseudo-headers must be before regular headers */
-	  if (regular_header_parsed)
-	    {
-	      HTTP_DBG (1, "pseudo-headers after regular header");
-	      return HPACK_ERROR_PROTOCOL;
-	    }
-	  rv = hpack_parse_req_pseudo_header (name, name_len, value, value_len,
-					      control_data);
-	  if (rv)
-	    {
-	      HTTP_DBG (1, "hpack_parse_req_pseudo_header: %d", rv);
-	      return rv;
-	    }
+	  message_error = 1;
 	  continue;
 	}
-      else
+      if (name[0] == ':')
 	{
-	  if (!hpack_header_name_is_valid (name, name_len))
-	    return HPACK_ERROR_PROTOCOL;
-	  if (!regular_header_parsed)
-	    {
-	      regular_header_parsed = 1;
-	      control_data->headers = name;
-	    }
+	  if (regular_header_parsed ||
+	      hpack_parse_req_pseudo_header (name, name_len, value, value_len, control_data))
+	    message_error = 1;
+	  continue;
 	}
-      if (!hpack_header_value_is_valid (value, value_len))
-	return HPACK_ERROR_PROTOCOL;
+      if (!hpack_header_name_is_valid (name, name_len) ||
+	  !hpack_header_value_is_valid (value, value_len))
+	{
+	  message_error = 1;
+	  continue;
+	}
+      if (!regular_header_parsed)
+	{
+	  regular_header_parsed = 1;
+	  control_data->headers = name;
+	}
+      if (name_len == 4 && !memcmp (name, "host", 4))
+	{
+	  if (control_data->host_parsed)
+	    message_error = 1;
+	  control_data->host_parsed = 1;
+	  control_data->host = value;
+	  control_data->host_len = value_len;
+	}
       vec_add2 (*headers, header, 1);
-      HTTP_DBG (2, "%U: %U", format_http_bytes, name, name_len,
-		format_http_bytes, value, value_len);
       header->name_offset = name - control_data->headers;
       header->name_len = name_len;
       header->value_offset = value - control_data->headers;
       header->value_len = value_len;
       header->flags = never_index ? HTTP_FIELD_LINE_F_NEVER_INDEX : 0;
-      control_data->headers_len += name_len;
-      control_data->headers_len += value_len;
-      if (regular_header_parsed)
-	{
-	  rv = hpack_preprocess_header (
-	    name, name_len, value, value_len, header - *headers,
-	    &control_data->content_len_header_index);
-	  if (rv)
-	    {
-	      HTTP_DBG (1, "connection-specific header present");
-	      return rv;
-	    }
-	}
+      control_data->headers_len += name_len + value_len;
+      if (hpack_preprocess_header (name, name_len, value, value_len, header - *headers,
+				   &control_data->content_len_header_index))
+	message_error = 1;
     }
   control_data->control_data_len = dst_len - b_left;
-  return HPACK_ERROR_NONE;
+  return message_error ? HPACK_ERROR_PROTOCOL : HPACK_ERROR_NONE;
 }
 
 always_inline hpack_error_t
 hpack_decode_response (u8 *src, u8 *end, u8 *dst, u32 dst_len,
-		       hpack_response_control_data_t *control_data,
-		       http_field_line_t **headers, void *decoder_ctx,
-		       hpack_header_decoder_fn *decoder_fn)
+		       hpack_response_control_data_t *control_data, http_field_line_t **headers,
+		       void *decoder_ctx, hpack_header_decoder_fn *decoder_fn)
 {
-  u8 *p, *b, *name, *value;
-  u8 regular_header_parsed = 0, never_index;
+  u8 *p = src, *b = dst, *name, *value;
+  u8 regular_header_parsed = 0, never_index, message_error = 0;
   u32 name_len, value_len;
-  uword b_left;
+  uword b_left = dst_len;
   http_field_line_t *header;
   hpack_error_t rv;
 
-  p = src;
-  b = dst;
-  b_left = dst_len;
-  control_data->parsed_bitmap = 0;
-  control_data->headers_len = 0;
+  clib_memset (control_data, 0, sizeof (*control_data));
+  control_data->headers = dst;
   control_data->content_len_header_index = ~0;
 
   while (p != end)
@@ -723,66 +876,48 @@ hpack_decode_response (u8 *src, u8 *end, u8 *dst, u32 dst_len,
       name = b;
       rv = decoder_fn (&p, end, &b, &b_left, &name_len, &value_len, decoder_ctx, &never_index);
       if (rv)
-	{
-	  HTTP_DBG (1, "decode_header: %d", rv);
-	  return rv;
-	}
+	return rv;
+      if (message_error)
+	continue;
       value = name + name_len;
-
-      /* pseudo header */
-      if (name[0] == ':')
+      if (!name_len)
 	{
-	  /* all pseudo-headers must be before regular headers */
-	  if (regular_header_parsed)
-	    {
-	      HTTP_DBG (1, "pseudo-headers after regular header");
-	      return HPACK_ERROR_PROTOCOL;
-	    }
-	  rv = hpack_parse_resp_pseudo_header (name, name_len, value,
-					       value_len, control_data);
-	  if (rv)
-	    {
-	      HTTP_DBG (1, "hpack_parse_resp_pseudo_header: %d", rv);
-	      return rv;
-	    }
+	  message_error = 1;
 	  continue;
 	}
-      else
+      if (name[0] == ':')
 	{
-	  if (!hpack_header_name_is_valid (name, name_len))
-	    return HPACK_ERROR_PROTOCOL;
-	  if (!regular_header_parsed)
-	    {
-	      regular_header_parsed = 1;
-	      control_data->headers = name;
-	    }
+	  if (regular_header_parsed ||
+	      hpack_parse_resp_pseudo_header (name, name_len, value, value_len, control_data))
+	    message_error = 1;
+	  continue;
 	}
-      if (!hpack_header_value_is_valid (value, value_len))
-	return HPACK_ERROR_PROTOCOL;
+      if (!hpack_header_name_is_valid (name, name_len) ||
+	  !hpack_header_value_is_valid (value, value_len))
+	{
+	  message_error = 1;
+	  continue;
+	}
+      if (!regular_header_parsed)
+	{
+	  regular_header_parsed = 1;
+	  control_data->headers = name;
+	}
       vec_add2 (*headers, header, 1);
-      HTTP_DBG (2, "%U: %U", format_http_bytes, name, name_len,
-		format_http_bytes, value, value_len);
       header->name_offset = name - control_data->headers;
       header->name_len = name_len;
       header->value_offset = value - control_data->headers;
       header->value_len = value_len;
       header->flags = never_index ? HTTP_FIELD_LINE_F_NEVER_INDEX : 0;
-      control_data->headers_len += name_len;
-      control_data->headers_len += value_len;
-      if (regular_header_parsed)
-	{
-	  rv = hpack_preprocess_header (
-	    name, name_len, value, value_len, header - *headers,
-	    &control_data->content_len_header_index);
-	  if (rv)
-	    {
-	      HTTP_DBG (1, "connection-specific header present");
-	      return rv;
-	    }
-	}
+      control_data->headers_len += name_len + value_len;
+      if (hpack_preprocess_header (name, name_len, value, value_len, header - *headers,
+				   &control_data->content_len_header_index))
+	message_error = 1;
     }
   control_data->control_data_len = dst_len - b_left;
-  return HPACK_ERROR_NONE;
+  if (!(control_data->parsed_bitmap & HPACK_PSEUDO_HEADER_STATUS_PARSED))
+    message_error = 1;
+  return message_error ? HPACK_ERROR_PROTOCOL : HPACK_ERROR_NONE;
 }
 
 #endif /* SRC_PLUGINS_HTTP_HPACK_INLINES_H_ */
