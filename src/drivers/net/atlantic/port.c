@@ -658,8 +658,6 @@ atl_port_init (vlib_main_t *vm __clib_unused, vnet_dev_port_t *port)
   atl_reg_wr (dev, ATL_REG_RX_DMA_INT_DESC_WRWB_EN, r);
 
   atl_port_counters_init (vlib_get_main (), port);
-  vnet_dev_poll_port_add (vlib_get_main (), port, 1, atl_port_counter_poll);
-  vnet_dev_poll_port_add (vlib_get_main (), port, 1, atl_port_status_poll);
 
   return VNET_DEV_OK;
 }
@@ -877,6 +875,7 @@ atl_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
   atl_reg_t lc = atl_reg_rd (dev, ATL_REG_AQ2_FW_INTERFACE_IN_LINK_CONTROL);
   lc.aq2_fw_interface_in_link_control.mode = 1; /* MODE_ACTIVE */
   atl_reg_wr (dev, ATL_REG_AQ2_FW_INTERFACE_IN_LINK_CONTROL, lc);
+  atl_aq2_fw_wait_shared_ack (dev);
 
   atl_port_apply_link_options (port);
 
@@ -902,6 +901,14 @@ atl_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
     }
 
   rv = atl_aq2_fw_wait_shared_ack (dev);
+
+  if (rv == VNET_DEV_OK)
+    {
+      atl_port_t *ap = vnet_dev_get_port_data (port);
+      ap->last_link_status.as_u32 = 0;
+      vnet_dev_poll_port_add (vm, port, 1, atl_port_counter_poll);
+      vnet_dev_poll_port_add (vm, port, 1, atl_port_status_poll);
+    }
 
 done:
   if (rv != VNET_DEV_OK)
@@ -957,13 +964,6 @@ atl_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
   vnet_dev_t *dev = port->dev;
   atl_device_t *ad = vnet_dev_get_data (dev);
   atl_reg_t r;
-
-  atl_reg_wr (dev, ATL_REG_AQ2_FW_INTERFACE_IN_LINK_CONTROL,
-	      (atl_reg_t){
-		.aq2_fw_interface_in_link_control = {
-		  .mode = 4, /* MODE_SHUTDOWN */
-		},
-	      });
 
   r = atl_reg_rd (dev, ATL_REG_AQ2_FW_INTERFACE_IN_LINK_OPTIONS);
   r.aq2_fw_interface_in_link_options.link_up = 0;
@@ -1082,6 +1082,10 @@ atl_port_cfg_change_validate (vlib_main_t *vm __clib_unused, vnet_dev_port_t *po
 
   switch (req->type)
     {
+    case VNET_DEV_PORT_CFG_MAX_RX_FRAME_SIZE:
+      rv = port->started ? VNET_DEV_ERR_PORT_STARTED : VNET_DEV_OK;
+      break;
+
     case VNET_DEV_PORT_CFG_SET_LINK_SPEED:
       {
 	u8 rate;
@@ -1115,6 +1119,8 @@ atl_port_cfg_change (vlib_main_t *vm __clib_unused, vnet_dev_port_t *port,
 
   switch (req->type)
     {
+    case VNET_DEV_PORT_CFG_MAX_RX_FRAME_SIZE:
+      break;
     case VNET_DEV_PORT_CFG_SET_LINK_SPEED:
       {
 	atl_port_t *ap = vnet_dev_get_port_data (port);

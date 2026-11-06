@@ -186,20 +186,24 @@ atl_rx_one_queue (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queue_
 	  u16 head_slot = desc_ring_indices[i];
 	  u32 bi = aq->buffer_indices[head_slot];
 	  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
+	  u16 n_desc = 1;
+
+	  while (descs[(head_slot + n_desc - 1) & mask].qw1.eop == 0)
+	    n_desc++;
+
 	  if (PREDICT_TRUE (vlib_trace_buffer (vm, node, next_index, b, 0)))
 	    {
-	      atl_rx_trace_t *tr = vlib_add_trace (vm, node, b, sizeof (*tr));
+	      u32 size = sizeof (atl_rx_trace_t) + n_desc * sizeof (atl_rx_desc_t);
+	      atl_rx_trace_t *tr = vlib_add_trace (vm, node, b, size);
+
 	      tr->sw_if_index = sw_if_index;
 	      tr->queue_id = rxq->queue_id;
 	      tr->head_slot = head_slot;
 	      tr->buffer_index = bi;
-	      for (u32 j = 0, slot = head_slot; j < ATL_RX_TRACE_N_DESC;
-		   j++, slot = (slot + 1) & mask)
-		{
-		  tr->desc[j] = descs[slot];
-		  if (tr->desc[j].qw1.eop)
-		    break;
-		}
+	      tr->n_desc = n_desc;
+	      tr->packet_length = descs[(head_slot + n_desc - 1) & mask].qw1.pkt_len;
+	      for (u32 j = 0; j < n_desc; j++)
+		tr->desc[j] = descs[(head_slot + j) & mask];
 	      n_trace--;
 	    }
 	}
