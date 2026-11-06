@@ -205,6 +205,7 @@ format_function_t format_ige_receive_addr_table;
 
 /* phy.c */
 vnet_dev_rv_t ige_phy_init (vlib_main_t *, vnet_dev_t *);
+vnet_dev_rv_t ige_phy_set_speed (vlib_main_t *, vnet_dev_t *, u32);
 
 /* port.c */
 vnet_dev_rv_t ige_port_init (vlib_main_t *, vnet_dev_port_t *);

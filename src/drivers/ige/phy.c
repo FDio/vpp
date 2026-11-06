@@ -307,3 +307,71 @@ ige_phy_init (vlib_main_t *vm, vnet_dev_t *dev)
 done:
   return ige_phy_release (vm, dev);
 }
+
+vnet_dev_rv_t
+ige_phy_set_speed (vlib_main_t *vm, vnet_dev_t *dev, u32 speed_kbps)
+{
+  ige_device_t *id = vnet_dev_get_data (dev);
+  u16 anar, gctrl, ctrl;
+  u16 adv_10_100 = 0, adv_1g = 0, adv_2g5 = 0;
+  vnet_dev_rv_t rv;
+
+  switch (speed_kbps)
+    {
+    case 0:
+      adv_10_100 = 0x1e0;
+      adv_1g = 0x200;
+      adv_2g5 = 1;
+      break;
+    case 10000:
+      adv_10_100 = 0x40;
+      break;
+    case 100000:
+      adv_10_100 = 0x100;
+      break;
+    case 1000000:
+      adv_1g = 0x200;
+      break;
+    case 2500000:
+      if (!id->config.supports_2_5g)
+	return VNET_DEV_ERR_NOT_SUPPORTED;
+      adv_2g5 = 1;
+      break;
+    default:
+      return VNET_DEV_ERR_NOT_SUPPORTED;
+    }
+
+  if (adv_2g5 && !id->config.supports_2_5g)
+    adv_2g5 = 0;
+
+  if ((rv = ige_phy_acquire (vm, dev)) != VNET_DEV_OK)
+    return rv;
+
+  if ((rv = ige_phy_read (vm, dev, IGE_PHY_REG_AN_ADV, &anar)) != VNET_DEV_OK)
+    goto done;
+  anar = (anar & ~0x1e0) | adv_10_100;
+  if ((rv = ige_phy_write (vm, dev, IGE_PHY_REG_AN_ADV, anar)) != VNET_DEV_OK)
+    goto done;
+
+  if ((rv = ige_phy_read (vm, dev, IGE_PHY_REG_GCTRL, &gctrl)) != VNET_DEV_OK)
+    goto done;
+  gctrl = (gctrl & ~0x300) | adv_1g;
+  if ((rv = ige_phy_write (vm, dev, IGE_PHY_REG_GCTRL, gctrl)) != VNET_DEV_OK)
+    goto done;
+
+  if (id->config.phy_type == IGE_PHY_TYPE_GPY211)
+    {
+      rv = ige_phy_mmd_write (vm, dev, 7, 0x20, 0x22 | (adv_2g5 ? 0x80 : 0));
+      if (rv != VNET_DEV_OK)
+	goto done;
+    }
+
+  if ((rv = ige_phy_read (vm, dev, IGE_PHY_REG_CTRL, &ctrl)) != VNET_DEV_OK)
+    goto done;
+  ctrl |= 0x1000 | 0x0200;
+  rv = ige_phy_write (vm, dev, IGE_PHY_REG_CTRL, ctrl);
+
+done:
+  ige_phy_release (vm, dev);
+  return rv;
+}
