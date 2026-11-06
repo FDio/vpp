@@ -163,6 +163,9 @@ ige_init (vlib_main_t *vm, vnet_dev_t *dev)
         .max_rx_queues = 4,
         .max_tx_queues = 4,
         .max_supported_rx_frame_size = 9728,
+        .caps = {
+          .change_max_rx_frame_size = 1,
+        },
         .speed_caps = speed_caps,
       },
       .ops = {

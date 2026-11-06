@@ -89,6 +89,7 @@ ige_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 {
   vnet_dev_t *dev = port->dev;
   ige_device_t *id = vnet_dev_get_data (port->dev);
+  ige_port_t *ip = vnet_dev_get_port_data (port);
   ige_rxq_t *iq;
   ige_txq_t *tq;
   ige_reg_rctl_t rctl;
@@ -96,6 +97,8 @@ ige_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
   vnet_dev_rv_t rv = VNET_DEV_OK;
 
   log_debug (dev, "port %u", port->port_id);
+
+  ip->last_status.as_u32 = 0;
 
   ige_reg_rd (dev, IGE_REG_RCTL, &rctl.as_u32);
   if (rctl.rx_enable)
@@ -444,8 +447,7 @@ ige_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,
   switch (req->type)
     {
     case VNET_DEV_PORT_CFG_MAX_RX_FRAME_SIZE:
-      if (port->started)
-	rv = VNET_DEV_ERR_PORT_STARTED;
+      rv = port->started ? VNET_DEV_ERR_PORT_STARTED : VNET_DEV_OK;
       break;
 
     case VNET_DEV_PORT_CFG_SET_LINK_SPEED:
