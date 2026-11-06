@@ -249,6 +249,10 @@ atl_init (vlib_main_t *vm, vnet_dev_t *dev)
 	  .rss = 1,
 	  .change_max_rx_frame_size = 1,
 	},
+	.rx_offloads = {
+	  .ip4_cksum = 1,
+	  .l4_cksum = 1,
+	},
       },
       .ops = {
 	.init = atl_port_init,

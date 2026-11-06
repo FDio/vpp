@@ -121,6 +121,7 @@ atl_rx_one_queue (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queue_
   u16 frame_max = atl_rx_buf_units (vnet_dev_get_rx_queue_buffer_data_size (vm, rxq)) * 1024;
   atl_rx_desc_t all_desc_or = {};
   u32 *pkt_buffer_indices = buffer_indices;
+  vlib_buffer_t *pkt_head_b = 0;
   n_trace = vlib_get_trace_count (vm, node);
 
   qw1.as_u64 = __atomic_load_n (&next->qw1.as_u64, __ATOMIC_ACQUIRE);
@@ -131,7 +132,10 @@ atl_rx_one_queue (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queue_
       vlib_buffer_t *b = vlib_get_buffer (vm, bi);
 
       if (n_pkt_descs == 0)
-	pkt_head_slot = slot;
+	{
+	  pkt_head_slot = slot;
+	  pkt_head_b = b;
+	}
       pkt_desc_or.as_u64x2 |= d.as_u64x2;
       pkt_buffer_indices[n_pkt_descs] = bi;
       vlib_buffer_copy_template (b, &bt);
@@ -149,6 +153,11 @@ atl_rx_one_queue (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queue_
 	    }
 	  else
 	    {
+	      u32 l4_ok = pkt_desc_or.qw1.l4_sum_ok;
+
+	      pkt_head_b->flags |=
+		l4_ok * VNET_BUFFER_F_L4_CHECKSUM_COMPUTED |
+		(l4_ok & !pkt_desc_or.qw1.l4_sum_err) * VNET_BUFFER_F_L4_CHECKSUM_CORRECT;
 	      desc_ring_indices[n_pkts] = pkt_head_slot;
 	      all_desc_or.as_u64x2 |= pkt_desc_or.as_u64x2;
 	      n_rx_bytes += d.qw1.pkt_len;
