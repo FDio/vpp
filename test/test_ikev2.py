@@ -3656,19 +3656,12 @@ class TestResponderRekeyParallelChild(TestResponderParallelChildInbound):
             for c in self.vapi.ikev2_child_sa_dump(sa_index=sa_index)
         }
 
-    def test_responder(self):
-        super(TestResponderParallelChildInbound, self).test_responder()
-        a_ispi = self.sa.child_sas[0].ispi
-        second = self.add_parallel_child()
-        b_ispi = second.ispi
-        self.assertEqual(self.child_ispis(), {a_ispi, b_ispi})
-
-        # Rekey the second Child only; REKEY_SA names its SPI.
-        replacement = IKEv2ChildSA(second.local_ts, second.remote_ts, True)
+    def rekey_child(self, old_child):
+        replacement = IKEv2ChildSA(old_child.local_ts, old_child.remote_ts, True)
         self.sa.child_sas[0] = replacement
         self.sa.i_nonce = os.urandom(32)
         self.pg0.add_stream(
-            self.create_rekey_request(rekey_notify=True, rekey_spi=b_ispi)
+            self.create_rekey_request(rekey_notify=True, rekey_spi=old_child.ispi)
         )
         self.pg0.enable_capture()
         self.pg_start()
@@ -3676,6 +3669,16 @@ class TestResponderRekeyParallelChild(TestResponderParallelChildInbound):
         self.assertEqual(reply.exch_type, 36)
         sa_payload = ikev2.IKEv2_payload_SA(self.sa.hmac_and_decrypt(reply))
         replacement.rspi = sa_payload[ikev2.IKEv2_payload_Proposal].SPI
+        return replacement
+
+    def test_responder(self):
+        super(TestResponderParallelChildInbound, self).test_responder()
+        a_ispi = self.sa.child_sas[0].ispi
+        second = self.add_parallel_child()
+        b_ispi = second.ispi
+        self.assertEqual(self.child_ispis(), {a_ispi, b_ispi})
+
+        replacement = self.rekey_child(second)
 
         # The rekey must replace the second Child and leave the first in place.
         ispis = self.child_ispis()
@@ -3684,6 +3687,30 @@ class TestResponderRekeyParallelChild(TestResponderParallelChildInbound):
         self.assertNotIn(b_ispi, ispis)
         # The first Child, the new one, and the old one kept for the grace.
         self.assertEqual(self.n_sa_in(), 3)
+        self.sa.child_sas[0] = replacement
+
+
+class TestResponderRekeyOldSaGrace(TestResponderRekeyParallelChild):
+    """RFC 7296 2.8: the old inbound SA is removed after the grace with >1 Child."""
+
+    def test_responder(self):
+        super(TestResponderParallelChildInbound, self).test_responder()
+        a_ispi = self.sa.child_sas[0].ispi
+        second = self.add_parallel_child()
+        replacement = self.rekey_child(second)
+        # Grace window: first (2) + new (2) + old inbound (1) = 5 SAs, 3 inbound.
+        self.assertEqual(self.n_sa_in(), 3)
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 5)
+
+        # After the grace the old inbound SA must be removed and unlocked, not
+        # leaked just because a second Child is present.
+        self.vapi.ikev2_plugin_set_sleep_interval(timeout=0.1)
+        deadline = time.time() + 15
+        while time.time() < deadline and self.n_sa_in() != 2:
+            time.sleep(0.2)
+        self.assertEqual(self.n_sa_in(), 2)
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 4)
+        self.assertEqual(self.child_ispis(), {a_ispi, replacement.ispi})
         self.sa.child_sas[0] = replacement
 
 
