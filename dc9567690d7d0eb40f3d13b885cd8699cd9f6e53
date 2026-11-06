@@ -121,6 +121,24 @@
       "message": "session_alloc() requires initialized session workers, on a fresh VPP instance, test http rx-publication and test http all reach this allocation with session_main.wrk \u003d\u003d NULL. enable sessions before allocating test resources using vnet_session_enable_disable(), see tcp test",
       "revId": "dc9567690d7d0eb40f3d13b885cd8699cd9f6e53",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "aef2fa24_f804fc33",
+        "filename": "src/plugins/http/test/http_test.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2211,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-06T15:07:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "373639fb_43c0fc66",
+      "revId": "dc9567690d7d0eb40f3d13b885cd8699cd9f6e53",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
