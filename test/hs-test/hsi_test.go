@@ -28,7 +28,8 @@ func init() {
 		HsiProxyLiteUdpDrainTimeoutTest, HsiProxyLiteNotifyCleanupTest,
 		HsiProxyLiteNotifyCleanupDrainTimeoutTest, HsiProxyLiteNotifyCleanupUdpIdleTest,
 		HsiProxyLiteDrainTransportClosedTest, HsiProxyLiteLossTest,
-		HsiProxyLiteDrainActiveSenderTest, HsiProxyLiteUdpDrainIcmpTest)
+		HsiProxyLiteDrainActiveSenderTest, HsiProxyLiteUdpDrainIcmpTest,
+		HsiTrackerTcpDrainedRstTest)
 	RegisterHsiMWTests(HsiProxyLiteOffloadMWTest, HsiProxyLiteRepeatedOffloadMWTest,
 		HsiProxyLiteDrainOffloadMWTest,
 		HsiProxyLiteUdpConnectedMWTest, HsiProxyLiteUdpDrainOffloadMWTest,
@@ -798,6 +799,37 @@ func HsiTrackerTcpInvalidRstTest(s *HsiSuite) {
 	hsi := WaitHsiContains(vpp, "tcp-fin-cleanup 1")
 	Log(hsi)
 	AssertEqual(0, HsiCounterValue(hsi, "tcp-rst-cleanup"))
+	AssertProxyLiteSessionsCleaned(s)
+}
+
+// Resets below the highest seq seen must tear down drained pairs. The drain
+// closed the window, so commit must restore it for reset validation.
+func HsiTrackerTcpDrainedRstTest(s *HsiSuite) {
+	s.SetupNginxServer()
+	vpp := s.Containers.Vpp.VppInstance
+	unblock := s.BlockServerReplies()
+	defer unblock()
+	s.StartProxyLiteTcp4("hsi-offload")
+
+	readyPath, signalPath := HsiTempSignalPaths()
+	defer os.Remove(readyPath)
+	defer os.Remove(signalPath)
+
+	finished := StartHsiTcpOldSeqRstClient(s.ServerAddr(), s.Ports.Server, s.NetNamespaces.Client,
+		s.Interfaces.Client.Host.Name(), readyPath, signalPath)
+	WaitForFile(readyPath, 5*time.Second)
+	WaitProxyLitePendingRx(vpp)
+	unblock()
+	WaitProxyLiteTracked(vpp, func() {})
+	Log(WaitHsiCounterAtLeast(vpp, "tcp-drain-completed", 2))
+	AssertNil(os.WriteFile(signalPath, []byte("go"), 0644))
+
+	result := <-finished
+	Log(result.Output)
+	AssertNil(result.Err, result.Output)
+
+	hsi := WaitHsiCounterAtLeast(vpp, "tcp-rst-cleanup", 1)
+	Log(hsi)
 	AssertProxyLiteSessionsCleaned(s)
 }
 
