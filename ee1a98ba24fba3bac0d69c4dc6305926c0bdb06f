@@ -22,6 +22,30 @@
       },
       "revId": "ee1a98ba24fba3bac0d69c4dc6305926c0bdb06f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "81043c3c_319f7608",
+        "filename": ".github/workflows/gerrit-merge.yml",
+        "patchSetId": 2
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-06T12:59:05Z",
+      "side": 1,
+      "message": "Excellent.  I figured something like that was required, but didn\u0027t have the cycles to look into it last night.  Thanks!",
+      "parentUuid": "d884c379_7e8363ce",
+      "range": {
+        "startLine": 143,
+        "startChar": 0,
+        "endLine": 145,
+        "endChar": 65
+      },
+      "revId": "ee1a98ba24fba3bac0d69c4dc6305926c0bdb06f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
