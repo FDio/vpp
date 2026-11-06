@@ -3365,70 +3365,6 @@ class TestResponderGreAutoNATT(TestResponderRekey):
         self.verify_esp()
 
 
-class TestResponderChildSaExhaustion(TestResponderPsk):
-    """Reject exhausted Child SA IDs and reuse a slot released by Delete."""
-
-    def test_responder(self):
-        super().test_responder()
-        child = self.sa.child_sas[0]
-        for first in range(1, 2048, 32):
-            packets = []
-            for slot in range(first, min(first + 32, 2048)):
-                child.ispi = (0x10000000 + slot).to_bytes(4, "big")
-                packets.append(self.create_rekey_request(rekey_notify=False))
-            self.send_and_expect(
-                self.pg0, packets, self.pg0, trace=False, log_packets=False
-            )
-
-        sa_index = self.vapi.ikev2_sa_dump()[0].sa.sa_index
-        self.assertEqual(len(self.vapi.ikev2_child_sa_dump(sa_index=sa_index)), 2048)
-        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 4096)
-        child.ispi = (0x10000800).to_bytes(4, "big")
-        request = self.create_rekey_request(rekey_notify=False)
-        for _ in range(2):
-            reply = self.send_and_expect(self.pg0, [request], self.pg0)[0]
-            ih = self.get_ike_header(reply)
-            self.assertIn("Response", ih.flags)
-            self.assertEqual(ih.id, self.get_ike_header(request).id)
-            self.assertEqual(ih.exch_type, 36)
-            self.assertEqual(ih[ikev2.IKEv2_payload_Encrypted].next_payload, 41)
-            notify = ikev2.IKEv2_payload_Notify(self.sa.hmac_and_decrypt(ih))
-            self.assertEqual(notify.type, 35)  # NO_ADDITIONAL_SAS
-            self.assertEqual(notify.next_payload, 0)
-            self.assertEqual(
-                len(self.vapi.ikev2_child_sa_dump(sa_index=sa_index)), 2048
-            )
-            self.assertEqual(len(self.vapi.ipsec_sa_dump()), 4096)
-
-        header = ikev2.IKEv2(
-            init_SPI=self.sa.ispi,
-            resp_SPI=self.sa.rspi,
-            id=self.sa.new_msg_id(),
-            flags="Initiator",
-            exch_type="INFORMATIONAL",
-        )
-        delete = ikev2.IKEv2_payload_Delete(
-            proto="ESP", SPIsize=4, SPInum=1, SPIs=(0x10000400).to_bytes(4, "big")
-        )
-        packet = self.create_packet(
-            self.pg0,
-            self.encrypt_ike_msg(header, delete, "Delete"),
-            self.sa.sport,
-            self.sa.dport,
-            self.sa.natt,
-            self.ip6,
-        )
-        self.send_and_expect(self.pg0, [packet], self.pg0)
-        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 4094)
-        reply = self.send_and_expect(
-            self.pg0, [self.create_rekey_request(rekey_notify=False)], self.pg0
-        )[0]
-        ih = self.get_ike_header(reply)
-        self.assertEqual(ih[ikev2.IKEv2_payload_Encrypted].next_payload, 33)  # SA
-        self.assertEqual(len(self.vapi.ikev2_child_sa_dump(sa_index=sa_index)), 2048)
-        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 4096)
-
-
 @unittest.skipIf(
     "gre" in config.excluded_plugins, "Exclude tests depending on GRE plugin"
 )
@@ -3736,6 +3672,90 @@ class TestResponderRekeyOldSaGrace(TestResponderRekeyParallelChild):
             },
         )
         self.sa.child_sas[0] = replacement
+
+
+class TestResponderChildSaLimit(TestResponderParallelChildInbound):
+    """RFC 7296 1.3: refuse a Child SA past the tunnel protection capacity.
+
+    Protection holds ITP_MAX_N_SA_IN (4) inbound SAs and a rekey needs one for
+    its grace period, so the responder keeps at most three Child SAs. A fourth
+    gets NO_ADDITIONAL_SAS, no live Child loses its inbound SA, the
+    retransmission gets the same answer, and a Delete frees room again.
+    """
+
+    limit = 3
+
+    def child_request(self, spi, **kwargs):
+        self.sa.child_sas[0].ispi = spi.to_bytes(4, "big")
+        self.sa.i_nonce = os.urandom(32)
+        return self.create_rekey_request(**kwargs)
+
+    def send_child_request(self, request):
+        return self.get_ike_header(
+            self.send_and_expect(self.pg0, [request], self.pg0)[0]
+        )
+
+    def fill_to_limit(self):
+        for slot in range(1, self.limit):
+            reply = self.send_child_request(
+                self.child_request(0x10000000 + slot, rekey_notify=False)
+            )
+            self.assertEqual(reply[ikev2.IKEv2_payload_Encrypted].next_payload, 33)
+        sa_index = self.vapi.ikev2_sa_dump()[0].sa.sa_index
+        self.assertEqual(
+            len(self.vapi.ikev2_child_sa_dump(sa_index=sa_index)), self.limit
+        )
+        self.assertEqual(self.n_sa_in(), self.limit)
+        return sa_index
+
+    def test_responder(self):
+        super(TestResponderParallelChildInbound, self).test_responder()
+        sa_index = self.fill_to_limit()
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 2 * self.limit)
+        inbound = self.inbound_spis()
+
+        request = self.child_request(0x10000800, rekey_notify=False)
+        for _ in range(2):
+            reply = self.send_child_request(request)
+            self.assertIn("Response", reply.flags)
+            self.assertEqual(reply.id, self.get_ike_header(request).id)
+            self.assertEqual(reply[ikev2.IKEv2_payload_Encrypted].next_payload, 41)
+            notify = ikev2.IKEv2_payload_Notify(self.sa.hmac_and_decrypt(reply))
+            self.assertEqual(notify.type, 35)  # NO_ADDITIONAL_SAS
+            self.assertEqual(
+                len(self.vapi.ikev2_child_sa_dump(sa_index=sa_index)), self.limit
+            )
+            self.assertEqual(len(self.vapi.ipsec_sa_dump()), 2 * self.limit)
+            self.assertEqual(self.inbound_spis(), inbound)
+
+        # A Delete frees room for one more Child SA.
+        self.sa.child_sas[0].ispi = (0x10000001).to_bytes(4, "big")
+        self.delete_child(self.sa.child_sas[0])
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 2 * (self.limit - 1))
+        reply = self.send_child_request(
+            self.child_request(0x10000801, rekey_notify=False)
+        )
+        self.assertEqual(reply[ikev2.IKEv2_payload_Encrypted].next_payload, 33)
+        self.assertEqual(
+            len(self.vapi.ikev2_child_sa_dump(sa_index=sa_index)), self.limit
+        )
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 2 * self.limit)
+
+
+class TestResponderChildSaLimitRekey(TestResponderChildSaLimit):
+    """At the Child SA limit a rekey still fits: one inbound slot is kept free."""
+
+    def test_responder(self):
+        super(TestResponderParallelChildInbound, self).test_responder()
+        self.fill_to_limit()
+        reply = self.send_child_request(
+            self.child_request(
+                0x10000900, rekey_notify=True, rekey_spi=(0x10000002).to_bytes(4, "big")
+            )
+        )
+        self.assertEqual(reply[ikev2.IKEv2_payload_Encrypted].next_payload, 33)
+        # Three live Child SAs plus the old inbound SA kept for the grace.
+        self.assertEqual(self.n_sa_in(), self.limit + 1)
 
 
 @unittest.skipIf(
