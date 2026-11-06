@@ -463,7 +463,7 @@ F:	src/drivers/iavf/
 IGE Device driver
 I:	ige
 M:	Damjan Marion <damarion@cisco.com>
-F:	src/drivers/ige/
+F:	src/drivers/net/ige/
 
 Marvell Armada device driver
 I:	armada
