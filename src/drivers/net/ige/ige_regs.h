@@ -227,6 +227,28 @@
   __ (1, timestamp)                                                           \
   __ (1, drop_en)
 
+#define ige_reg_rxcsum_t_fields                                                                    \
+  __ (8, pcss)                                                                                     \
+  __ (1, ipofld)                                                                                   \
+  __ (1, tuofld)                                                                                   \
+  __ (3, _reserved10)                                                                              \
+  __ (1, pcsd)                                                                                     \
+  __ (18, _reserved14)
+
+#define ige_reg_mrqc_t_fields                                                                      \
+  __ (2, mq_enable)                                                                                \
+  __ (14, _reserved2)                                                                              \
+  __ (1, ipv4_tcp)                                                                                 \
+  __ (1, ipv4)                                                                                     \
+  __ (1, ipv6_tcp_ex)                                                                              \
+  __ (1, ipv6_ex)                                                                                  \
+  __ (1, ipv6)                                                                                     \
+  __ (1, ipv6_tcp)                                                                                 \
+  __ (1, ipv4_udp)                                                                                 \
+  __ (1, ipv6_udp)                                                                                 \
+  __ (1, ipv6_udp_ex)                                                                              \
+  __ (7, _reserved25)
+
 #define ige_reg_rxdctl_t_fields                                               \
   __ (5, pthresh)                                                             \
   __ (3, _reserved5)                                                          \
@@ -307,6 +329,8 @@ IGE_REG_STRUCT (ige_reg_manc_t);
 IGE_REG_STRUCT (ige_reg_swsm_t);
 IGE_REG_STRUCT (ige_reg_fwsm_t);
 IGE_REG_STRUCT (ige_reg_sw_fw_sync_t);
+IGE_REG_STRUCT (ige_reg_rxcsum_t);
+IGE_REG_STRUCT (ige_reg_mrqc_t);
 IGE_REG_STRUCT (ige_reg_srrctl_t);
 IGE_REG_STRUCT (ige_reg_rxdctl_t);
 IGE_REG_STRUCT (ige_reg_eec_t);
@@ -330,9 +354,11 @@ IGE_REG_STRUCT (ige_reg_eemngctl_t);
   _ (0x0152c, EIAC, )                                                                              \
   _ (0x01530, EIAM, )                                                                              \
   _ (0x01580, EICR, )                                                                              \
+  _ (0x05000, RXCSUM, ige_reg_rxcsum_t_fields)                                                     \
   _ (0x05004, RLPML, )                                                                             \
   _ (0x05400, RAL0, )                                                                              \
   _ (0x05404, RAH0, )                                                                              \
+  _ (0x05818, MRQC, ige_reg_mrqc_t_fields)                                                         \
   _ (0x05820, MANC, ige_reg_manc_t_fields)                                                         \
   _ (0x05b50, SWSM, ige_reg_swsm_t_fields)                                                         \
   _ (0x05b54, FWSM, ige_reg_fwsm_t_fields)                                                         \
@@ -356,6 +382,8 @@ IGE_REG_STRUCT (ige_reg_eemngctl_t);
   _ (0x12010, EEC, ige_reg_eec_t_fields)                                                           \
   _ (0x12030, EEMNGCTL, ige_reg_eemngctl_t_fields)
 
+#define IGE_REG_RETA(n)	  (0x05c00 + (n) * 4)
+#define IGE_REG_RSSRK(n)  (0x05c80 + (n) * 4)
 #define IGE_REG_EITR(n)	  (0x01680 + (n) * 4)
 #define IGE_REG_IVAR(n)	  (0x01700 + (n) * 4)
 #define IGE_REG_RDBAL(n)  (IGE_REG_RDBAL0 + (n) *0x40)
