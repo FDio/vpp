@@ -719,6 +719,7 @@ atl_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 	u64 dma_addr = vnet_dev_get_dma_addr (vm, dev, aq->descs);
 	u32 data_size = vnet_dev_get_rx_queue_buffer_data_size (vm, rxq);
 	u32 buf_sz, desc_len, n_alloc, qid = rxq->queue_id;
+	u16 hw_head;
 	u8 bpi;
 
 	mask = rxq->size - 1;
@@ -733,7 +734,6 @@ atl_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 
 	desc_len = rxq->size / 8;
 
-	atl_reg_wr_u32 (dev, ATL_REG_RX_DMA_DESC_HEAD_PTR (qid), 0);
 	atl_reg_wr_u32 (dev, ATL_REG_RX_DMA_DESC_BASE_ADDRLSW (qid), dma_addr);
 	atl_reg_wr_u32 (dev, ATL_REG_RX_DMA_DESC_BASE_ADDRMSW (qid), dma_addr >> 32);
 	aq->tail_reg = (u32 *) ((u8 *) ad->bar0 + ATL_REG_RX_DMA_DESC_TAIL_PTR (qid));
@@ -754,9 +754,13 @@ atl_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 		      },
 		    });
 
+	hw_head = atl_reg_rd_u32 (dev, ATL_REG_RX_DMA_DESC_HEAD_PTR (qid)) & mask;
+
 	bpi = vnet_dev_get_rx_queue_buffer_pool_index (rxq);
-	n_alloc = rxq->size - ATL_RX_REFILL_BATCH_SZ;
-	if (!vlib_buffer_strict_alloc_from_pool (vm, aq->buffer_indices, n_alloc, bpi))
+	n_alloc = ((hw_head + rxq->size - ATL_RX_REFILL_BATCH_SZ) & ~(ATL_RX_REFILL_BATCH_SZ - 1)) -
+		  hw_head;
+	if (!vlib_buffer_strict_alloc_to_ring_from_pool (vm, aq->buffer_indices, hw_head, rxq->size,
+							 n_alloc, bpi))
 	  {
 	    rv = VNET_DEV_ERR_BUFFER_ALLOC_FAIL;
 	    goto done;
@@ -764,15 +768,16 @@ atl_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 
 	for (u16 i = 0; i < n_alloc; i++)
 	  {
-	    vlib_buffer_t *b = vlib_get_buffer (vm, aq->buffer_indices[i]);
+	    u16 slot = (hw_head + i) & mask;
+	    vlib_buffer_t *b = vlib_get_buffer (vm, aq->buffer_indices[slot]);
 
-	    aq->descs[i] = (atl_rx_desc_t){
+	    aq->descs[slot] = (atl_rx_desc_t) {
 	      .buf_addr = vnet_dev_get_dma_addr (vm, dev, b->data),
 	    };
 	  }
 
-	aq->head = 0;
-	aq->tail = n_alloc;
+	aq->head = hw_head;
+	aq->tail = hw_head + n_alloc;
 	atl_reg_wr_u32 (dev, ATL_REG_RX_DMA_DESC_TAIL_PTR (qid), aq->tail & mask);
 	aq->next_index = 0;
       }
@@ -838,10 +843,10 @@ atl_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 
       aq->tail_reg = (u32 *) ((u8 *) ad->bar0 + ATL_REG_TX_DMA_DESC_TAIL_PTR (qid));
 
-      aq->head_index = 0;
-      aq->tail_index = 0;
+      aq->head_index = atl_reg_rd_u32 (dev, ATL_REG_TX_DMA_DESC_HEAD_PTR (qid)) & (txq->size - 1);
+      aq->tail_index = aq->head_index;
 
-      __atomic_store_n (aq->tail_reg, 0, __ATOMIC_RELEASE);
+      __atomic_store_n (aq->tail_reg, aq->tail_index, __ATOMIC_RELEASE);
 
       atl_reg_wr (dev, ATL_REG_TX_DMA_DESC_LEN (qid),
 		  (atl_reg_t){
