@@ -115,11 +115,18 @@ ige_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 
   foreach_vnet_dev_port_rx_queue (rxq, port)
     {
+      u32 buf_size = vnet_dev_get_rx_queue_buffer_data_size (vm, rxq);
+      if (buf_size < 1024)
+	{
+	  log_err (dev, "rx buffer data size %u is too small (min 1024)", buf_size);
+	  rv = VNET_DEV_ERR_BUFFER_ALLOC_FAIL;
+	  goto error;
+	}
+
       const ige_reg_srrctl_t srrctl = {
 	.drop_en = 1,
-	.desc_type = 1,	  /* advanced, no header */
-	.bsizepacket = 2, /* 2k */
-			  //.bsizeheader = 2, /* 128 B */
+	.desc_type = 1, /* advanced, no header */
+	.bsizepacket = clib_min (buf_size / 1024, 16),
       };
 
       const ige_reg_rxdctl_t rxdctl = {

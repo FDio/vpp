@@ -121,28 +121,39 @@ ige_rx_deq_64_desc (vlib_main_t *vm, vlib_node_runtime_t *node,
     vlib_buffer_copy_indices (to, bc, n_pkts);
 
   if (PREDICT_FALSE (*n_trace))
-    for (u32 i = 0; i<n_descs && * n_trace> 0; i++)
-      {
-	vlib_buffer_t *b = buffers[i];
-	u32 next_index, hw_if_index;
+    {
+      u32 next_index = vnet_dev_get_rx_queue_if_next_index (rxq);
+      u32 hw_if_index = vnet_dev_get_rx_queue_if_hw_if_index (rxq);
 
-	if (b == 0)
-	  continue;
+      for (u32 i = 0, n_desc; i < n_descs && *n_trace > 0; i += n_desc)
+	{
+	  u32 packet_length = 0;
 
-	next_index = vnet_dev_get_rx_queue_if_next_index (rxq);
-	hw_if_index = vnet_dev_get_rx_queue_if_hw_if_index (rxq);
+	  n_desc = 0;
+	  while (1)
+	    {
+	      packet_length += dc[i + n_desc].pkt_len;
+	      if (dc[i + n_desc++].eop)
+		break;
+	    }
 
-	if (PREDICT_TRUE (vlib_trace_buffer (vm, node, next_index, b, 0)))
-	  {
-	    ige_rx_trace_t *tr = vlib_add_trace (vm, node, b, sizeof (*tr));
-	    tr->next_index = next_index;
-	    tr->hw_if_index = hw_if_index;
-	    tr->queue_id = rxq->queue_id;
-	    tr->buffer_index = bc[i];
-	    tr->desc = dc[i];
-	    (*n_trace)--;
-	  }
-      }
+	  if (vlib_trace_buffer (vm, node, next_index, buffers[i], 0))
+	    {
+	      u32 size = sizeof (ige_rx_trace_t) + n_desc * sizeof (ige_rx_desc_t);
+	      ige_rx_trace_t *tr = vlib_add_trace (vm, node, buffers[i], size);
+
+	      tr->next_index = next_index;
+	      tr->hw_if_index = hw_if_index;
+	      tr->queue_id = rxq->queue_id;
+	      tr->buffer_index = bc[i];
+	      tr->n_desc = n_desc;
+	      tr->packet_length = packet_length;
+	      for (u32 j = 0; j < n_desc; j++)
+		tr->desc[j] = dc[i + j];
+	      (*n_trace)--;
+	    }
+	}
+    }
 
   return n_pkts;
 }
@@ -203,7 +214,8 @@ ige_rx_one_queue (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 rxq_empty:
 
-  vlib_set_trace_count (vm, node, n_trace);
+  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
+    vlib_set_trace_count (vm, node, n_trace);
   sw_if_index = vnet_dev_get_rx_queue_if_sw_if_index (rxq);
 
   if (PREDICT_TRUE (next_index == VNET_DEV_ETH_RX_PORT_NEXT_ETH_INPUT))
