@@ -313,43 +313,51 @@ IGE_REG_STRUCT (ige_reg_eec_t);
 IGE_REG_STRUCT (ige_reg_eemngctl_t);
 #undef __
 
-#define foreach_ige_reg                                                       \
-  _ (0x00000, CTRL, ige_reg_ctrl_t_fields)                                    \
-  _ (0x00008, STATUS, ige_reg_status_t_fields)                                \
-  _ (0x00018, CTRL_EXT, ige_reg_ctrl_ext_t_fields)                            \
-  _ (0x00020, MDIC, ige_reg_mdic_t_fields)                                    \
-  _ (0x00100, RCTL, ige_reg_rctl_t_fields)                                    \
-  _ (0x00400, TCTL, ige_reg_tctl_t_fields)                                    \
-  _ (0x00404, TCTL_EXT, )                                                     \
-  _ (0x00e14, PHPM, ige_reg_phpm_t_fields)                                    \
-  _ (0x01500, ICR, )                                                          \
-  _ (0x0150c, IMC, )                                                          \
-  _ (0x05004, RLPML, )                                                        \
-  _ (0x05400, RAL0, )                                                         \
-  _ (0x05404, RAH0, )                                                         \
-  _ (0x05820, MANC, ige_reg_manc_t_fields)                                    \
-  _ (0x05b50, SWSM, ige_reg_swsm_t_fields)                                    \
-  _ (0x05b54, FWSM, ige_reg_fwsm_t_fields)                                    \
-  _ (0x05b5c, SW_FW_SYNC, ige_reg_sw_fw_sync_t_fields)                        \
-  _ (0x0c000, RDBAL0, )                                                       \
-  _ (0x0c004, RDBAH0, )                                                       \
-  _ (0x0c008, RDLEN0, )                                                       \
-  _ (0x0c00c, SRRCTL0, ige_reg_srrctl_t_fields)                               \
-  _ (0x0c010, RDH0, )                                                         \
-  _ (0x0c018, RDT0, )                                                         \
-  _ (0x0c028, RXDCTL0, ige_reg_rxdctl_t_fields)                               \
-  _ (0x0e000, TDBAL0, )                                                       \
-  _ (0x0e004, TDBAH0, )                                                       \
-  _ (0x0e008, TDLEN0, )                                                       \
-  _ (0x0e010, TDH0, )                                                         \
-  _ (0x0e014, TXCTL0, ige_reg_txctl_t_fields)                                 \
-  _ (0x0e018, TDT0, )                                                         \
-  _ (0x0e038, TDWBAL0, )                                                      \
-  _ (0x0e03c, TDWBAH0, )                                                      \
-  _ (0x0e028, TXDCTL0, ige_reg_txdctl_t_fields)                               \
-  _ (0x12010, EEC, ige_reg_eec_t_fields)                                      \
+#define foreach_ige_reg                                                                            \
+  _ (0x00000, CTRL, ige_reg_ctrl_t_fields)                                                         \
+  _ (0x00008, STATUS, ige_reg_status_t_fields)                                                     \
+  _ (0x00018, CTRL_EXT, ige_reg_ctrl_ext_t_fields)                                                 \
+  _ (0x00020, MDIC, ige_reg_mdic_t_fields)                                                         \
+  _ (0x00100, RCTL, ige_reg_rctl_t_fields)                                                         \
+  _ (0x00400, TCTL, ige_reg_tctl_t_fields)                                                         \
+  _ (0x00404, TCTL_EXT, )                                                                          \
+  _ (0x00e14, PHPM, ige_reg_phpm_t_fields)                                                         \
+  _ (0x01500, ICR, )                                                                               \
+  _ (0x0150c, IMC, )                                                                               \
+  _ (0x01514, GPIE, )                                                                              \
+  _ (0x01524, EIMS, )                                                                              \
+  _ (0x01528, EIMC, )                                                                              \
+  _ (0x0152c, EIAC, )                                                                              \
+  _ (0x01530, EIAM, )                                                                              \
+  _ (0x01580, EICR, )                                                                              \
+  _ (0x05004, RLPML, )                                                                             \
+  _ (0x05400, RAL0, )                                                                              \
+  _ (0x05404, RAH0, )                                                                              \
+  _ (0x05820, MANC, ige_reg_manc_t_fields)                                                         \
+  _ (0x05b50, SWSM, ige_reg_swsm_t_fields)                                                         \
+  _ (0x05b54, FWSM, ige_reg_fwsm_t_fields)                                                         \
+  _ (0x05b5c, SW_FW_SYNC, ige_reg_sw_fw_sync_t_fields)                                             \
+  _ (0x0c000, RDBAL0, )                                                                            \
+  _ (0x0c004, RDBAH0, )                                                                            \
+  _ (0x0c008, RDLEN0, )                                                                            \
+  _ (0x0c00c, SRRCTL0, ige_reg_srrctl_t_fields)                                                    \
+  _ (0x0c010, RDH0, )                                                                              \
+  _ (0x0c018, RDT0, )                                                                              \
+  _ (0x0c028, RXDCTL0, ige_reg_rxdctl_t_fields)                                                    \
+  _ (0x0e000, TDBAL0, )                                                                            \
+  _ (0x0e004, TDBAH0, )                                                                            \
+  _ (0x0e008, TDLEN0, )                                                                            \
+  _ (0x0e010, TDH0, )                                                                              \
+  _ (0x0e014, TXCTL0, ige_reg_txctl_t_fields)                                                      \
+  _ (0x0e018, TDT0, )                                                                              \
+  _ (0x0e038, TDWBAL0, )                                                                           \
+  _ (0x0e03c, TDWBAH0, )                                                                           \
+  _ (0x0e028, TXDCTL0, ige_reg_txdctl_t_fields)                                                    \
+  _ (0x12010, EEC, ige_reg_eec_t_fields)                                                           \
   _ (0x12030, EEMNGCTL, ige_reg_eemngctl_t_fields)
 
+#define IGE_REG_EITR(n)	  (0x01680 + (n) * 4)
+#define IGE_REG_IVAR(n)	  (0x01700 + (n) * 4)
 #define IGE_REG_RDBAL(n)  (IGE_REG_RDBAL0 + (n) *0x40)
 #define IGE_REG_RDBAH(n)  (IGE_REG_RDBAH0 + (n) *0x40)
 #define IGE_REG_RDLEN(n)  (IGE_REG_RDLEN0 + (n) *0x40)

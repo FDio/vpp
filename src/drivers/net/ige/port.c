@@ -5,6 +5,7 @@
 #include <vnet/vnet.h>
 #include <vnet/dev/dev.h>
 #include <vnet/dev/counters.h>
+#include <vnet/dev/bus/pci.h>
 #include <ige.h>
 #include <vnet/ethernet/ethernet.h>
 
@@ -72,16 +73,131 @@ ige_port_status_poll (vlib_main_t *vm, vnet_dev_port_t *port)
     }
 }
 
+#define IGE_ITR_INTERVAL_US 20
+#define IGE_EITR_CNT_IGNR   (1U << 31)
+#define IGE_GPIE_MSIX_MODE  (1U << 4)
+#define IGE_GPIE_EIAME	    (1U << 30)
+#define IGE_GPIE_PBA	    (1U << 31)
+#define IGE_IVAR_VALID	    0x80
+
+static void
+ige_rx_msix_handler (vlib_main_t *vm __clib_unused, vnet_dev_t *dev, u16 line)
+{
+  vnet_dev_port_t *port = vnet_dev_get_port_by_id (dev, 0);
+
+  if (!port || !port->interfaces || !port->rx_node_assigned)
+    return;
+
+  ige_reg_wr (dev, IGE_REG_EIMS, 1U << line);
+  vlib_node_set_interrupt_pending (vlib_get_main_by_index (line - 1),
+				   vnet_dev_get_port_rx_node_index (port));
+}
+
+static u16
+ige_rxq_vector (ige_port_t *ip, vnet_dev_rx_queue_t *rxq)
+{
+  return clib_min (rxq->rx_thread_index + 1, ip->n_rx_vectors);
+}
+
+static void
+ige_rx_irq_apply (vnet_dev_port_t *port, vnet_dev_rx_queue_t *target, int override)
+{
+  ige_port_t *ip = vnet_dev_get_port_data (port);
+  u32 all = pow2_mask (ip->n_rx_vectors) << 1;
+  u32 mask = 0;
+
+  foreach_vnet_dev_port_rx_queue (q, port)
+    {
+      int is_intr = q->interrupt_mode;
+
+      if (override >= 0 && (target == 0 || target == q))
+	is_intr = override;
+
+      if (is_intr)
+	mask |= 1U << ige_rxq_vector (ip, q);
+    }
+
+  ige_reg_wr (port->dev, IGE_REG_EIMC, all & ~mask);
+  ige_reg_wr (port->dev, IGE_REG_EIMS, mask);
+}
+
+static void
+ige_rx_irq_map (vnet_dev_port_t *port)
+{
+  ige_port_t *ip = vnet_dev_get_port_data (port);
+  u32 ivar[2] = {};
+
+  foreach_vnet_dev_port_rx_queue (q, port)
+    ivar[q->queue_id >> 1] |= (u32) (ige_rxq_vector (ip, q) | IGE_IVAR_VALID)
+			      << (16 * (q->queue_id & 1));
+
+  for (u32 i = 0; i < ARRAY_LEN (ivar); i++)
+    ige_reg_wr (port->dev, IGE_REG_IVAR (i), ivar[i]);
+}
+
 vnet_dev_rv_t
 ige_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 {
+  vnet_dev_t *dev = port->dev;
+  ige_port_t *ip = vnet_dev_get_port_data (port);
   vnet_dev_rv_t rv;
 
-  log_debug (port->dev, "port %u", port->port_id);
+  log_debug (dev, "port %u", port->port_id);
 
   rv = ige_port_counters_init (vm, port);
+  if (rv != VNET_DEV_OK)
+    return rv;
+
+  if (port->attr.caps.interrupt_mode)
+    {
+      u32 vectors;
+
+      ip->n_rx_vectors = vlib_get_n_threads ();
+      vectors = pow2_mask (ip->n_rx_vectors) << 1;
+
+      rv = vnet_dev_pci_msix_add_handler (vm, dev, &ige_rx_msix_handler, 1, ip->n_rx_vectors);
+      if (rv != VNET_DEV_OK)
+	return rv;
+
+      ip->irq_registered = 1;
+
+      rv = vnet_dev_pci_msix_enable (vm, dev, 1, ip->n_rx_vectors);
+      if (rv != VNET_DEV_OK)
+	return rv;
+
+      for (u16 i = 0; i < ip->n_rx_vectors; i++)
+	{
+	  vnet_dev_pci_msix_set_polling_thread (vm, dev, i + 1, i);
+	  ige_reg_wr (dev, IGE_REG_EITR (i + 1), (IGE_ITR_INTERVAL_US * 4) | IGE_EITR_CNT_IGNR);
+	}
+
+      ige_reg_wr (dev, IGE_REG_GPIE, IGE_GPIE_MSIX_MODE | IGE_GPIE_EIAME | IGE_GPIE_PBA);
+      ige_reg_wr (dev, IGE_REG_EIAC, vectors);
+      ige_reg_wr (dev, IGE_REG_EIAM, vectors);
+    }
+
   vnet_dev_poll_port_add (vm, port, 1, ige_port_status_poll);
-  return rv;
+  return VNET_DEV_OK;
+}
+
+void
+ige_port_deinit (vlib_main_t *vm, vnet_dev_port_t *port)
+{
+  ige_port_t *ip = vnet_dev_get_port_data (port);
+  vnet_dev_rv_t rv;
+
+  if (!ip->irq_registered)
+    return;
+
+  rv = vnet_dev_pci_msix_disable (vm, port->dev, 1, ip->n_rx_vectors);
+  if (rv == VNET_DEV_OK)
+    rv = vnet_dev_pci_msix_remove_handler (vm, port->dev, 1, ip->n_rx_vectors);
+
+  if (rv != VNET_DEV_OK)
+    log_err (port->dev, "port %u RX interrupt cleanup failed: %U", port->port_id,
+	     format_vnet_dev_rv, rv);
+  else
+    ip->irq_registered = 0;
 }
 
 vnet_dev_rv_t
@@ -231,6 +347,12 @@ ige_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
       ige_reg_wr (dev, IGE_REG_RDT (q), iq->tail);
     }
 
+  if (port->attr.caps.interrupt_mode)
+    {
+      ige_rx_irq_map (port);
+      ige_rx_irq_apply (port, 0, -1);
+    }
+
   vnet_dev_poll_port_add (vm, port, 3, ige_port_counter_poll);
   return 0;
 
@@ -286,6 +408,13 @@ ige_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
   ige_reg_rctl_t rctl;
   ige_reg_tctl_t tctl;
   vnet_dev_poll_port_remove (vm, port, ige_port_counter_poll);
+
+  if (port->attr.caps.interrupt_mode)
+    {
+      ige_port_t *ip = vnet_dev_get_port_data (port);
+
+      ige_reg_wr (dev, IGE_REG_EIMC, pow2_mask (ip->n_rx_vectors) << 1);
+    }
 
   ige_reg_rd (dev, IGE_REG_RCTL, &rctl.as_u32);
   rctl.rx_enable = 0;
@@ -456,6 +585,12 @@ ige_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,
 	rv = VNET_DEV_OK;
       break;
 
+    case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_ENABLE:
+    case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_DISABLE:
+      if (port->attr.caps.interrupt_mode)
+	rv = VNET_DEV_OK;
+      break;
+
     case VNET_DEV_PORT_CFG_PROMISC_MODE:
     case VNET_DEV_PORT_CFG_CHANGE_PRIMARY_HW_ADDR:
     case VNET_DEV_PORT_CFG_ADD_SECONDARY_HW_ADDR:
@@ -481,6 +616,18 @@ ige_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
       break;
     case VNET_DEV_PORT_CFG_SET_LINK_SPEED:
       rv = ige_phy_set_speed (vm, port->dev, req->link_speed);
+      break;
+    case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_ENABLE:
+    case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_DISABLE:
+      if (port->started)
+	{
+	  vnet_dev_rx_queue_t *rxq = 0;
+
+	  if (!req->all_queues)
+	    rxq = vnet_dev_get_port_rx_queue_by_id (port, req->queue_id);
+
+	  ige_rx_irq_apply (port, rxq, req->type == VNET_DEV_PORT_CFG_RXQ_INTR_MODE_ENABLE);
+	}
       break;
     case VNET_DEV_PORT_CFG_PROMISC_MODE:
       rv = ige_set_promisc_mode (vm, port, req->promisc);
