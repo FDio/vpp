@@ -441,6 +441,12 @@ ige_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,
 	rv = VNET_DEV_ERR_PORT_STARTED;
       break;
 
+    case VNET_DEV_PORT_CFG_SET_LINK_SPEED:
+      if (req->link_speed == 0 ||
+	  (port->attr.speed_caps & vnet_hw_if_speed_from_kbps (req->link_speed)))
+	rv = VNET_DEV_OK;
+      break;
+
     case VNET_DEV_PORT_CFG_PROMISC_MODE:
     case VNET_DEV_PORT_CFG_CHANGE_PRIMARY_HW_ADDR:
     case VNET_DEV_PORT_CFG_ADD_SECONDARY_HW_ADDR:
@@ -463,6 +469,9 @@ ige_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
   switch (req->type)
     {
     case VNET_DEV_PORT_CFG_MAX_RX_FRAME_SIZE:
+      break;
+    case VNET_DEV_PORT_CFG_SET_LINK_SPEED:
+      rv = ige_phy_set_speed (vm, port->dev, req->link_speed);
       break;
     case VNET_DEV_PORT_CFG_PROMISC_MODE:
       rv = ige_set_promisc_mode (vm, port, req->promisc);

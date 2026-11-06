@@ -84,6 +84,7 @@ ige_init (vlib_main_t *vm, vnet_dev_t *dev)
   vlib_pci_config_hdr_t pci_hdr;
   vnet_dev_rv_t rv;
   u32 match, mask, tmp;
+  u32 speed_caps = VNET_HW_IF_SPEED_10M | VNET_HW_IF_SPEED_100M | VNET_HW_IF_SPEED_1G;
 
   rv = vnet_dev_pci_read_config_header (vm, dev, &pci_hdr);
   if (rv != VNET_DEV_OK)
@@ -144,6 +145,9 @@ ige_init (vlib_main_t *vm, vnet_dev_t *dev)
   ctrl_ext.driver_loaded = 1;
   ige_reg_wr (dev, IGE_REG_CTRL_EXT, ctrl_ext.as_u32);
 
+  if (id->config.supports_2_5g)
+    speed_caps |= VNET_HW_IF_SPEED_2_5G;
+
   rv = ige_phy_init (vm, dev);
 
   if (rv != VNET_DEV_OK)
@@ -159,6 +163,7 @@ ige_init (vlib_main_t *vm, vnet_dev_t *dev)
         .max_rx_queues = 4,
         .max_tx_queues = 4,
         .max_supported_rx_frame_size = 9728,
+        .speed_caps = speed_caps,
       },
       .ops = {
         .init = ige_port_init,
