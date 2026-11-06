@@ -13,12 +13,108 @@
 #include <vnet/udp/udp_packet.h>
 #include <vnet/tcp/tcp_packet.h>
 
+#include <vnet/ip/ip_psh_cksum.h>
 #include <ige.h>
 
 #define IGE_TX_MAX_SEGS 16
 
+#define IGE_TX_POPTS_IXSM 1
+#define IGE_TX_POPTS_TXSM 2
+
+#define IGE_TX_L4T_UDP 0
+#define IGE_TX_L4T_TCP 1
+
+static_always_inline u32
+ige_tx_prepare_offload (vlib_buffer_t *b, ige_tx_ctx_desc_t *ctx)
+{
+  vnet_buffer_oflags_t oflags = vnet_buffer (b)->oflags;
+  u32 is_tcp = oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
+  u32 is_udp = oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
+  u32 is_ip4 = b->flags & VNET_BUFFER_F_IS_IP4;
+  i16 l3_hdr_offset = vnet_buffer (b)->l3_hdr_offset;
+  ip4_header_t *ip4 = (void *) (b->data + l3_hdr_offset);
+  ip6_header_t *ip6 = (void *) (b->data + l3_hdr_offset);
+  u32 popts = 0;
+
+  *ctx = (ige_tx_ctx_desc_t) {
+    .maclen = l3_hdr_offset - b->current_data,
+    .ipv4 = is_ip4 != 0,
+    .dtyp = 2,
+    .dext = 1,
+  };
+
+  if (is_tcp || is_udp)
+    {
+      i16 l4_hdr_offset = vnet_buffer (b)->l4_hdr_offset;
+      u16 l3_len = l4_hdr_offset - l3_hdr_offset;
+      u16 sum;
+
+      if (is_ip4)
+	{
+	  ip4_psh_t psh = {
+	    .src = ip4->src_address,
+	    .dst = ip4->dst_address,
+	    .proto = ip4->protocol,
+	    .l4len = clib_host_to_net_u16 (clib_net_to_host_u16 (ip4->length) - l3_len),
+	  };
+	  sum = ~clib_ip_csum ((u8 *) &psh, sizeof (psh));
+	}
+      else
+	{
+	  ip6_psh_t psh = {
+	    .src = ip6->src_address,
+	    .dst = ip6->dst_address,
+	    .l4len = clib_host_to_net_u32 (clib_net_to_host_u16 (ip6->payload_length) -
+					   (l3_len - sizeof (*ip6))),
+	    .proto = clib_host_to_net_u32 (is_tcp ? IP_PROTOCOL_TCP : IP_PROTOCOL_UDP),
+	  };
+	  sum = ~clib_ip_csum ((u8 *) &psh, sizeof (psh));
+	}
+
+      ctx->iplen = l3_len;
+      if (is_tcp)
+	{
+	  tcp_header_t *tcp = (void *) (b->data + l4_hdr_offset);
+
+	  tcp->checksum = sum;
+	  ctx->l4t = IGE_TX_L4T_TCP;
+	  ctx->l4len = tcp_header_bytes (tcp);
+	}
+      else
+	{
+	  ((udp_header_t *) (b->data + l4_hdr_offset))->checksum = sum;
+	  ctx->l4t = IGE_TX_L4T_UDP;
+	  ctx->l4len = sizeof (udp_header_t);
+	}
+      popts |= IGE_TX_POPTS_TXSM;
+    }
+  else if (is_ip4)
+    ctx->iplen = ip4_header_bytes (ip4);
+
+  if (is_ip4 && (oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM))
+    {
+      ip4->checksum = 0;
+      popts |= IGE_TX_POPTS_IXSM;
+    }
+
+  return popts;
+}
+
 static_always_inline void
-ige_enq_txd (vlib_main_t *vm, vlib_buffer_t *b, u32 bi, int first, int last, u32 pkt_len,
+ige_enq_ctx (vlib_buffer_t *b, u32 bi, ige_tx_ctx_desc_t *ctx, ige_tx_desc_t *descs,
+	     u32 *buffer_indices, u16 *tail, u16 mask)
+{
+  u32 slot = *tail & mask;
+
+  descs[slot].qwords[0] = ctx->qwords[0];
+  descs[slot].qwords[1] = ctx->qwords[1];
+  buffer_indices[slot] = bi;
+  b->ref_count++;
+  (*tail)++;
+}
+
+static_always_inline void
+ige_enq_txd (vlib_main_t *vm, vlib_buffer_t *b, u32 bi, int first, int last, u32 pkt_len, u32 popts,
 	     ige_tx_desc_t *descs, u32 *buffer_indices, u16 *tail, u16 mask, int use_va)
 {
   u32 len = b->current_length;
@@ -27,13 +123,17 @@ ige_enq_txd (vlib_main_t *vm, vlib_buffer_t *b, u32 bi, int first, int last, u32
     .eop = last ? 1 : 0,
     .rs = last ? 1 : 0,
     .ifcs = 1,
+    .dext = 1,
     .dtyp = 0b0011,
     .dtalen = len,
   };
   d.addr = use_va ? vlib_buffer_get_current_va (b) :
 		    vlib_buffer_get_current_pa (vm, b);
   if (first)
-    d.paylen = pkt_len;
+    {
+      d.paylen = pkt_len;
+      d.popts = popts;
+    }
 
   descs[slot] = d;
   buffer_indices[slot] = bi;
@@ -87,6 +187,15 @@ ige_txq_enq (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_tx_queue_t *tx
     {
       u32 hbi = from[n_pkts];
       vlib_buffer_t *b = vlib_get_buffer (vm, hbi);
+      ige_tx_ctx_desc_t ctx;
+      u32 popts = 0;
+      u32 n_ctx = 0;
+
+      if (PREDICT_FALSE (b->flags & VNET_BUFFER_F_OFFLOAD))
+	{
+	  popts = ige_tx_prepare_offload (b, &ctx);
+	  n_ctx = popts != 0;
+	}
 
       if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
 	{
@@ -106,29 +215,36 @@ ige_txq_enq (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_tx_queue_t *tx
 	      n++;
 	    }
 
-	  if (n > n_free)
+	  if (n + n_ctx > n_free)
 	    break;
 
-	  ige_enq_txd (vm, b, hbi, 1, 0, pkt_len, d, bi, &tail, mask, va);
+	  if (n_ctx)
+	    ige_enq_ctx (b, hbi, &ctx, d, bi, &tail, mask);
+	  ige_enq_txd (vm, b, hbi, 1, 0, pkt_len, popts, d, bi, &tail, mask, va);
 	  tbi = b->next_buffer;
 	  tb = vlib_get_buffer (vm, tbi);
 	  for (u32 i = 1; i < n; i++)
 	    {
 	      u32 nbi = tb->next_buffer;
 	      int last = (i == n - 1);
-	      ige_enq_txd (vm, tb, tbi, 0, last, 0, d, bi, &tail, mask, va);
+	      ige_enq_txd (vm, tb, tbi, 0, last, 0, 0, d, bi, &tail, mask, va);
 	      if (!last)
 		{
 		  tbi = nbi;
 		  tb = vlib_get_buffer (vm, tbi);
 		}
 	    }
-	  n_free -= n;
+	  n_free -= n + n_ctx;
 	}
       else
 	{
-	  ige_enq_txd (vm, b, hbi, 1, 1, b->current_length, d, bi, &tail, mask, va);
-	  n_free--;
+	  if (n_ctx + 1 > n_free)
+	    break;
+
+	  if (n_ctx)
+	    ige_enq_ctx (b, hbi, &ctx, d, bi, &tail, mask);
+	  ige_enq_txd (vm, b, hbi, 1, 1, b->current_length, popts, d, bi, &tail, mask, va);
+	  n_free -= 1 + n_ctx;
 	}
 
     next:

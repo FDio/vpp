@@ -118,6 +118,35 @@ typedef union
 
 STATIC_ASSERT_SIZEOF (ige_tx_desc_t, 16);
 
+typedef union
+{
+  u64 qwords[2];
+  struct
+  {
+    u64 iplen : 9;
+    u64 maclen : 7;
+    u64 vlan : 16;
+    u64 launch_time : 32;
+
+    u64 _reserved_64_73 : 10;
+    u64 ipv4 : 1;
+    u64 l4t : 2;
+    u64 _reserved_77_83 : 7;
+    u64 dtyp : 4;
+    u64 _reserved_88_92 : 5;
+    u64 dext : 1;
+    u64 _reserved_94_95 : 2;
+
+    u64 _reserved_96_99 : 4;
+    u64 idx : 1;
+    u64 _reserved_101_103 : 3;
+    u64 l4len : 8;
+    u64 mss : 16;
+  };
+} ige_tx_ctx_desc_t;
+
+STATIC_ASSERT_SIZEOF (ige_tx_ctx_desc_t, 16);
+
 typedef enum
 {
   IGE_PHY_TYPE_UNKNOWN = 0,
