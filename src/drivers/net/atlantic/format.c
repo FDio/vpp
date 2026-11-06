@@ -182,15 +182,13 @@ atl_rx_trace (u8 *s, va_list *args)
 
   s = format (s, "atl: %v (%u) qid %u head_slot %u buffer %u", hi ? hi->name : (u8 *) "(unknown)",
 	      hi ? hi->hw_if_index : t->sw_if_index, t->queue_id, t->head_slot, t->buffer_index);
+  s = format_newline (s, indent + 2);
+  s = format (s, "packet length %u descriptors %u", t->packet_length, t->n_desc);
 
-  for (u32 i = 0; i < ATL_RX_TRACE_N_DESC; i++)
+  for (u32 i = 0; i < t->n_desc; i++)
     {
-      if (t->desc[i].qw1.dd == 0)
-	break;
-      s = format_newline (s, indent);
-      s = format (s, "desc[%u]: %U", i, format_atl_rx_wb_desc, &t->desc[i]);
-      if (t->desc[i].qw1.eop)
-	break;
+      s = format_newline (s, indent + 2);
+      s = format (s, "descriptor %u: %U", i, format_atl_rx_wb_desc, &t->desc[i]);
     }
   return s;
 }
@@ -198,13 +196,24 @@ atl_rx_trace (u8 *s, va_list *args)
 u8 *
 atl_tx_trace (u8 *s, va_list *args)
 {
-  __clib_unused vlib_main_t *vm = va_arg (*args, vlib_main_t *);
+  vlib_main_t *vm = va_arg (*args, vlib_main_t *);
   __clib_unused vlib_node_t *node = va_arg (*args, vlib_node_t *);
   atl_tx_trace_t *t = va_arg (*args, atl_tx_trace_t *);
+  u32 indent = format_get_indent (s);
 
-  s = format (s, "sw_if_index %u queue %u buffer %u", t->sw_if_index, t->queue_id, t->buffer_index);
-  s = format (s, "\n%U%U", format_white_space, format_get_indent (s) + 2, format_atl_tx_desc,
-	      &t->desc);
+  s = format (s, "atl-tx: sw_if_index %u queue %u buffer %u", t->sw_if_index, t->queue_id,
+	      t->buffer_index);
+  s = format_newline (s, indent + 2);
+  if (t->n_desc == 0)
+    s = format (s, "dropped (%s)", vm->error_main.counters_heap[t->error].name);
+  else
+    s = format (s, "descriptors %u", t->n_desc);
+
+  for (u32 i = 0; i < t->n_desc; i++)
+    {
+      s = format_newline (s, indent + 2);
+      s = format (s, "descriptor %u: %U", i, format_atl_tx_desc, &t->desc[i]);
+    }
   return s;
 }
 
