@@ -57,7 +57,7 @@ lcp_add_pair_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	return clib_error_return (0, "ERROR no-host:%U", format_unformat_error,
 				  input);
 
-      rv = lcp_itf_pair_add (host_sw_if_index, phy_sw_if_index, host_name, host_vif, host_type,
+      rv = lcp_itf_pair_add (host_sw_if_index, phy_sw_if_index, host_name, host_vif, host_type, 0,
 			     lcp_get_default_ns ());
     }
   else

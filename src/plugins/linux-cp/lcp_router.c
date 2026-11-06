@@ -123,12 +123,14 @@ lcp_router_intf_h2p (u32 host)
  * the message should be applied. See the declaration of nl_msg_info_t for
  * an explanation on why this is necessary.
  * If timestamps are good (message ts is newer than intf pair ts), return 0.
+ * Linux-originated pairs accept queued updates regardless of pair creation
+ * time.
  * Else, return -1.
  */
 static int
 lcp_router_lip_ts_check (nl_msg_info_t *msg_info, lcp_itf_pair_t *lip)
 {
-  if (!msg_info)
+  if (lip->lip_linux_origin || !msg_info)
     return 0;
 
   if (msg_info->ts > lip->lip_create_ts)
@@ -501,9 +503,8 @@ lcp_router_link_add (struct rtnl_link *rl, void *ctx)
 	  if ((if_name = rtnl_link_get_name (rl)) != NULL)
 	    vec_validate_init_c_string (if_namev, if_name,
 					strnlen (if_name, IFNAMSIZ));
-	  lcp_itf_pair_add (sub_host_sw_if_index, sub_phy_sw_if_index,
-			    if_namev, rtnl_link_get_ifindex (rl),
-			    lip->lip_host_type, ns);
+	  lcp_itf_pair_add (sub_host_sw_if_index, sub_phy_sw_if_index, if_namev,
+			    rtnl_link_get_ifindex (rl), lip->lip_host_type, 1, ns);
 	  if (up)
 	    vnet_sw_interface_admin_up (vnet_get_main (), sub_phy_sw_if_index);
 	  vnet_sw_interface_admin_up (vnet_get_main (), sub_host_sw_if_index);

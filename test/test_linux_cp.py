@@ -53,6 +53,7 @@ from vpp_qemu_utils import (
     add_namespace_vlan,
     add_namespace_qinq,
     del_namespace_link,
+    exec_namespace_batch,
     NextHop,
     create_namespace,
     delete_all_namespaces,
@@ -1674,6 +1675,7 @@ class TestLinuxCPLinuxToVPP(TestLinuxCPNetNSBase):
                 True,
             )
 
+        finally:
             # Delete the QinQ link
             del_namespace_link(self.ns_name, "hloop0.100.200")
             self.poll_for(
@@ -1693,7 +1695,59 @@ class TestLinuxCPLinuxToVPP(TestLinuxCPNetNSBase):
                 ),
                 True,
             )
+            self.vapi.cli("lcp lcp-auto-subint off")
+
+    def test_linux_to_vpp_vlan_batch(self):
+        """Linux batch of ip commands sync to VPP sub-interfaces"""
+        lo0 = self.lo_interfaces[0]
+        intf_flags = VppEnum.vl_api_if_status_flags_t
+
+        # Enable auto sub-interface creation and create the parent pair
+        self.vapi.cli("lcp lcp-auto-subint on")
+        try:
+            # Create a VLAN link and bring it up - all in one
+            # 'ip -batch' run, so the notifications are drained by VPP
+            # in a single batch
+            exec_namespace_batch(
+                self.ns_name,
+                [
+                    "link set hloop0 up",
+                    f"link add link hloop0 name hloop0.100 " f"type vlan id 100",
+                    f"link set hloop0.100 up",
+                ],
+            )
+
+            # The vlan sub-interface must exist in VPP and be admin up
+            self.poll_for(
+                f"loop0.100 single-tag sub-interface in VPP",
+                lambda: self._subif_matches("loop0.100", 1, 100, 0, lo0.sw_if_index),
+                True,
+            )
+
+            def vlan_admin_up():
+                dump = self.vapi.sw_interface_dump(
+                    name_filter_valid=True, name_filter="loop0.100"
+                )
+                if not dump:
+                    return 0
+                return dump[0].flags & intf_flags.IF_STATUS_API_FLAG_ADMIN_UP
+
+            self.poll_for(
+                f"loop0.100 admin up in VPP",
+                vlan_admin_up,
+                intf_flags.IF_STATUS_API_FLAG_ADMIN_UP,
+            )
+
         finally:
+            # Delete the VLAN link
+            del_namespace_link(self.ns_name, "hloop0.100")
+            self.poll_for(
+                f"loop0.100 sub-interface removed from VPP",
+                lambda: not self.vapi.sw_interface_dump(
+                    name_filter_valid=True, name_filter="loop0.100"
+                ),
+                True,
+            )
             self.vapi.cli("lcp lcp-auto-subint off")
 
 
