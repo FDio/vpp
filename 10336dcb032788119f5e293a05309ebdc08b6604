@@ -16,6 +16,57 @@
       "message": "recheck",
       "revId": "10336dcb032788119f5e293a05309ebdc08b6604",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7a7e2a26_c0a0f7e7",
+        "filename": "test/hs-test/infra/suite_no_topo.go",
+        "patchSetId": 12
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-06T18:24:00Z",
+      "side": 1,
+      "message": "please revert this we don\u0027t need to test corectness of http unit test",
+      "revId": "10336dcb032788119f5e293a05309ebdc08b6604",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "dd8e8693_21985e15",
+        "filename": "test/hs-test/unittests_test.go",
+        "patchSetId": 12
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-06T18:24:00Z",
+      "side": 1,
+      "message": "keep it as it was",
+      "revId": "10336dcb032788119f5e293a05309ebdc08b6604",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3ea7061c_17072669",
+        "filename": "test/hs-test/unittests_test.go",
+        "patchSetId": 12
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-06T18:24:00Z",
+      "side": 1,
+      "message": "we really don\u0027t need this, please remove it",
+      "revId": "10336dcb032788119f5e293a05309ebdc08b6604",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
