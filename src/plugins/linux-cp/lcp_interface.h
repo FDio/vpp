@@ -67,6 +67,7 @@ typedef struct lcp_itf_pair_t_
   lcp_itf_phy_adj_t lip_phy_adjs; /* adjacencies for phy l3 interface */
   lip_flag_t lip_flags;		  /* Flags */
   u8 lip_rewrite_len;		  /* The length of an L2 MAC rewrite */
+  u8 lip_linux_origin;		  /* Linux initiated the creation of a pair */
   f64 lip_create_ts;		  /* Timestamp of creation */
 } lcp_itf_pair_t;
 extern lcp_itf_pair_t *lcp_itf_pair_pool;
@@ -95,9 +96,8 @@ extern index_t lcp_itf_pair_find_by_vif (u32 vif_index);
  *
  * @return error code
  */
-extern int lcp_itf_pair_add (u32 host_sw_if_index, u32 phy_sw_if_index,
-			     u8 *host_name, u32 host_index,
-			     lip_host_type_t host_type, u8 *ns);
+extern int lcp_itf_pair_add (u32 host_sw_if_index, u32 phy_sw_if_index, u8 *host_name,
+			     u32 host_index, lip_host_type_t host_type, u8 linux_origin, u8 *ns);
 extern int lcp_itf_pair_del (u32 phy_sw_if_index);
 
 /**

@@ -230,8 +230,8 @@ lcp_itf_set_adjs (lcp_itf_pair_t *lip)
 }
 
 int
-lcp_itf_pair_add (u32 host_sw_if_index, u32 phy_sw_if_index, u8 *host_name,
-		  u32 host_index, lip_host_type_t host_type, u8 *ns)
+lcp_itf_pair_add (u32 host_sw_if_index, u32 phy_sw_if_index, u8 *host_name, u32 host_index,
+		  lip_host_type_t host_type, u8 linux_origin, u8 *ns)
 {
   index_t lipi;
   lcp_itf_pair_t *lip;
@@ -277,6 +277,7 @@ lcp_itf_pair_add (u32 host_sw_if_index, u32 phy_sw_if_index, u8 *host_name,
   lip->lip_host_name = vec_dup (host_name);
   lip->lip_host_type = host_type;
   lip->lip_vif_index = host_index;
+  lip->lip_linux_origin = linux_origin;
   lip->lip_namespace = vec_dup (ns);
 
   /*
@@ -1129,8 +1130,8 @@ lcp_itf_pair_create (u32 phy_sw_if_index, u8 *host_if_name,
 		     vnet_get_main (), phy_sw_if_index,
 		     format_vnet_sw_if_index_name, vnet_get_main (),
 		     host_sw_if_index, host_if_name);
-  lcp_itf_pair_add (host_sw_if_index, phy_sw_if_index, host_if_name, vif_index,
-		    host_if_type, ns);
+  lcp_itf_pair_add (host_sw_if_index, phy_sw_if_index, host_if_name, vif_index, host_if_type, 0,
+		    ns);
 
   /*
    * Copy the link state from VPP into the host side.
