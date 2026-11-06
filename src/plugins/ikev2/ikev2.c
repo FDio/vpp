@@ -2501,12 +2501,35 @@ ikev2_add_tunnel_from_main (ikev2_add_ipsec_tunnel_args_t * a)
     }
 
   u32 *sas_in = NULL;
-  vec_add1 (sas_in, a->remote_sa_id);
+  u32 existing_out;
+  u32 *s;
+  /* ipsec_tun_protect_update replaces the whole inbound SA set, so a parallel
+     Child SA must carry the inbound SAs of its siblings forward or they stop
+     receiving (RFC 7296 section 2.8). Seed from the current set; a fresh tunnel
+     has none. Protection holds at most ITP_MAX_N_SA_IN inbound SAs, so append
+     the old (rekey grace) then the new one last and drop the oldest past the
+     limit, keeping the newest Child SAs protected. */
+  if (ipsec_tun_protect_get_sa_ids (sw_if_index, &existing_out, &sas_in))
+    sas_in = NULL;
+  u32 new_ids[2];
+  u32 n_new = 0;
   if (a->old_remote_sa_id)
+    new_ids[n_new++] = a->old_remote_sa_id;
+  new_ids[n_new++] = a->remote_sa_id;
+  for (u32 i = 0; i < n_new; i++)
     {
-      /* keep the old sa */
-      vec_add1 (sas_in, a->old_remote_sa_id);
+      u8 present = 0;
+      vec_foreach (s, sas_in)
+	if (*s == new_ids[i])
+	  {
+	    present = 1;
+	    break;
+	  }
+      if (!present)
+	vec_add1 (sas_in, new_ids[i]);
     }
+  while (vec_len (sas_in) > ITP_MAX_N_SA_IN)
+    vec_delete (sas_in, 1, 0);
 
   rv = ipsec_sa_add_and_lock (a->local_sa_id, a->local_spi, IPSEC_PROTOCOL_ESP,
 			      a->encr_type, &a->loc_ckey, a->integ_type,
