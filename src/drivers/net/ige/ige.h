@@ -176,6 +176,9 @@ typedef struct
   ige_dev_config_t config;
 } ige_device_t;
 
+#define IGE_RSS_KEY_SIZE 40
+#define IGE_RSS_LUT_SIZE 128
+
 typedef struct
 {
   ige_reg_status_t last_status;
