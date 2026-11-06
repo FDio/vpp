@@ -181,12 +181,17 @@ format_ige_rx_trace (u8 *s, va_list *args)
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, t->hw_if_index);
   u32 indent = format_get_indent (s);
 
-  s = format (s, "ige: %v (%u) qid %u next-node %U buffer %u", hi->name,
-	      t->hw_if_index, t->queue_id, format_vlib_next_node_name, vm,
-	      node->index, t->next_index, t->buffer_index);
+  s =
+    format (s, "ige: %v (%u) qid %u next-node %U buffer %u", hi->name, t->hw_if_index, t->queue_id,
+	    format_vlib_next_node_name, vm, node->index, t->next_index, t->buffer_index);
+  s = format_newline (s, indent + 2);
+  s = format (s, "packet length %u descriptors %u", t->packet_length, t->n_desc);
 
-  s = format (s, "\n%Udesc: %U", format_white_space, indent + 2,
-	      format_ige_rx_desc, &t->desc);
+  for (u32 i = 0; i < t->n_desc; i++)
+    {
+      s = format_newline (s, indent + 2);
+      s = format (s, "descriptor %u: %U", i, format_ige_rx_desc, &t->desc[i]);
+    }
 
   return s;
 }
@@ -219,21 +224,30 @@ format_ige_tx_desc (u8 *s, va_list *args)
 u8 *
 format_ige_tx_trace (u8 *s, va_list *args)
 {
-  vlib_main_t __clib_unused *vm = va_arg (*args, vlib_main_t *);
-  vlib_node_t __clib_unused *node = va_arg (*args, vlib_node_t *);
+  vlib_main_t *vm = va_arg (*args, vlib_main_t *);
+  vlib_node_t *node __clib_unused = va_arg (*args, vlib_node_t *);
   ige_tx_trace_t *t = va_arg (*args, ige_tx_trace_t *);
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, t->hw_if_index);
   u32 indent = format_get_indent (s);
 
-  s = format (s, "ige-tx: %v (%u) qid %u buffer %u", hi->name, t->hw_if_index,
-	      t->queue_id, t->buffer_index);
+  s = format (s, "ige-tx: %v (%u) qid %u buffer %u", hi->name, t->hw_if_index, t->queue_id,
+	      t->buffer_index);
+  s = format_newline (s, indent + 2);
+  if (t->n_desc == 0)
+    s = format (s, "dropped (%s)", vm->error_main.counters_heap[t->error].name);
+  else
+    s = format (s, "descriptors %u", t->n_desc);
 
-  s = format (s, "\n%Udesc: %U", format_white_space, indent + 2,
-	      format_ige_tx_desc, &t->desc);
+  for (u32 i = 0; i < t->n_desc; i++)
+    {
+      s = format_newline (s, indent + 2);
+      s = format (s, "descriptor %u: %U", i, format_ige_tx_desc, &t->desc[i]);
+    }
 
   return s;
 }
+
 u8 *
 format_ige_receive_addr_table (u8 *s, va_list *args)
 {

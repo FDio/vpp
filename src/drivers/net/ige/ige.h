@@ -173,19 +173,23 @@ typedef struct
 
 typedef struct
 {
-  ige_rx_desc_t desc;
   u32 buffer_index;
   u32 hw_if_index;
+  u32 packet_length;
   u16 queue_id;
   u16 next_index;
+  u16 n_desc;
+  ige_rx_desc_t desc[];
 } ige_rx_trace_t;
 
 typedef struct
 {
-  ige_tx_desc_t desc;
   u32 buffer_index;
   u32 hw_if_index;
   u16 queue_id;
+  u16 n_desc;
+  vlib_error_t error;
+  ige_tx_desc_t desc[];
 } ige_tx_trace_t;
 
 /* counters.c */
