@@ -16,6 +16,24 @@
       "message": "This is too early",
       "revId": "2b6e603d12d7f8cdc3a1384ad41cb6ebe3c4a14c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ef252298_3dc4fb58",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-11-06T22:07:46Z",
+      "side": 1,
+      "message": "We can survive with this for now. We can revisit later.",
+      "parentUuid": "4e631096_0ce33aaf",
+      "revId": "2b6e603d12d7f8cdc3a1384ad41cb6ebe3c4a14c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
