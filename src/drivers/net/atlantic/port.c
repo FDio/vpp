@@ -746,11 +746,12 @@ atl_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 
 	clib_memset_u8 (aq->descs, 0, sizeof (aq->descs[0]) * rxq->size);
 
-	buf_sz = (data_size + 1023) / 1024;
+	buf_sz = atl_rx_buf_units (data_size);
 	if (buf_sz == 0)
-	  buf_sz = 1;
-	if (buf_sz > 31)
-	  buf_sz = 31;
+	  {
+	    log_err (dev, "rx buffer data size %u is too small (min 1024)", data_size);
+	    return VNET_DEV_ERR_BUFFER_ALLOC_FAIL;
+	  }
 
 	desc_len = rxq->size / 8;
 
