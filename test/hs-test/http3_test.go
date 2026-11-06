@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -26,6 +27,7 @@ import (
 func init() {
 	RegisterH3Tests(Http3GetTest, Http3AltSvcCompoundListenerTest, Http3DownloadTest, Http3PostTest, Http3UploadTest, Http3ClientGetRepeatTest,
 		Http3ClientGetMultiplexingTest, Http3PeerResetStream, Http3ClientRequestIncompleteTest,
+		Http3RequestFinCompleteTest, Http3RequestFinErrorsTest,
 		Http3MissingPseudoHeaderTest, Http3MissingSchemePseudoHeaderTest, Http3MissingPathPseudoHeaderTest,
 		Http3MissingAuthorityPseudoHeaderTest, Http3ConnectWithSchemePathPseudoHeadersTest,
 		Http3PseudoHeaderAfterRegularTest, Http3ReservedFrameTest, Http3DataFrameOnCtrlStreamTest,
@@ -35,6 +37,7 @@ func init() {
 		Http3QpackDecompressionFailedTest, Http3ClientOpenPushStreamTest, Http3DataBeforeHeadersTest,
 		Http3LongerDataThanContentLengthTest, Http3HalfClosedBeforeAllDataTest, Http3StaticGetTest,
 		Http3MaxHeaderListSizeTest, Http3ServerHeadersFrameTooLargeTest, Http3ClientHeadersFrameTooLargeTest,
+		Http3ClientOversizedBodyTest,
 		Http3ServerMemLeakTest, Http3ClientMemLeakTest)
 	RegisterH3MWTests(Http3ClientFailedConnectMWTest, Http3TsFifoMemPressureMWTest)
 	RegisterVethTests(Http3CliTest, Http3ClientPostTest, Http3ClientPostPtrTest)
@@ -475,6 +478,75 @@ func Http3ClientHeadersFrameTooLargeTest(s *Http3Suite) {
 	}
 }
 
+func Http3ClientOversizedBodyTest(s *Http3Suite) {
+	cert, err := tls.LoadX509KeyPair("resources/cert/localhost.crt", "resources/cert/localhost.key")
+	AssertNil(err)
+	serverAddress := s.HostAddr() + ":" + s.Ports.Port1
+	listener, err := quic.ListenAddr(serverAddress,
+		&tls.Config{Certificates: []tls.Certificate{cert}, NextProtos: []string{"h3"}},
+		&quic.Config{KeepAlivePeriod: 100 * time.Millisecond})
+	AssertNil(err)
+	defer listener.Close()
+
+	for _, bodies := range [][][]byte{{[]byte("abcde")}, {[]byte("ab"), []byte("cde")}} {
+		By(fmt.Sprintf("oversized response in %d DATA frames", len(bodies)))
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		release := make(chan struct{})
+		done := make(chan struct{})
+		go func() {
+			defer GinkgoRecover()
+			defer close(done)
+			conn, err := listener.Accept(ctx)
+			AssertNil(err)
+			defer conn.CloseWithError(0, "")
+			control, err := conn.OpenUniStream()
+			AssertNil(err)
+			_, err = control.Write([]byte{0x00, 0x04, 0x00})
+			AssertNil(err)
+			stream, err := conn.AcceptStream(ctx)
+			AssertNil(err)
+			deadline, _ := ctx.Deadline()
+			AssertNil(stream.SetDeadline(deadline))
+			reader := quicvarint.NewReader(stream)
+			frameType, err := quicvarint.Read(reader)
+			AssertNil(err)
+			AssertEqual(uint64(0x01), frameType)
+			requestLen, err := quicvarint.Read(reader)
+			AssertNil(err)
+			_, err = io.CopyN(io.Discard, stream, int64(requestLen))
+			AssertNil(err)
+
+			var headers bytes.Buffer
+			encoder := qpack.NewEncoder(&headers)
+			AssertNil(encoder.WriteField(qpack.HeaderField{Name: ":status", Value: "200"}))
+			AssertNil(encoder.WriteField(qpack.HeaderField{Name: "content-length", Value: "4"}))
+			AssertNil(encoder.Close())
+			response := http3FinFrame(0x01, headers.Bytes())
+			for _, body := range bodies {
+				response = append(response, http3FinFrame(0x00, body)...)
+			}
+			_, err = stream.Write(response)
+			AssertNil(err)
+
+			// Keep the connection open until the CLI returns: closing it here
+			// would notify the parent request and hide a missing stream reset.
+			select {
+			case <-release:
+			case <-ctx.Done():
+				Fail("client did not finish after the oversized response")
+			}
+		}()
+
+		output := s.Containers.Vpp.VppInstance.Vppctl("http client http3 timeout 3 uri https://" + serverAddress + "/")
+		close(release)
+		<-done
+		Log(output)
+		AssertContains(output, "transport closed")
+		AssertNotContains(output, "timeout")
+	}
+}
+
 func Http3PeerResetStream(s *Http3Suite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
@@ -747,6 +819,165 @@ func Http3ClientRequestIncompleteTest(s *Http3Suite) {
 	AssertMatchError(err, &expectedErr, "expected error code H3_REQUEST_INCOMPLETE")
 }
 
+func http3FinFrame(frameType uint64, payload []byte) []byte {
+	frame := quicvarint.Append(nil, frameType)
+	frame = quicvarint.Append(frame, uint64(len(payload)))
+	return append(frame, payload...)
+}
+
+func http3FinHeaders(method, path, contentLength string) []byte {
+	var headers bytes.Buffer
+	encoder := qpack.NewEncoder(&headers)
+	for _, field := range []qpack.HeaderField{
+		{Name: ":method", Value: method},
+		{Name: ":scheme", Value: "https"},
+		{Name: ":authority", Value: "localhost"},
+		{Name: ":path", Value: path},
+	} {
+		AssertNil(encoder.WriteField(field))
+	}
+	if contentLength != "" {
+		AssertNil(encoder.WriteField(qpack.HeaderField{Name: "content-length", Value: contentLength}))
+	}
+	AssertNil(encoder.Close())
+	return http3FinFrame(0x01, headers.Bytes())
+}
+
+func http3FinReadResponse(stream *quic.Stream, bodyLength int) {
+	response, err := io.ReadAll(stream)
+	AssertNil(err, "expected a complete response and FIN")
+	reader := bytes.NewReader(response)
+	status := ""
+	var body []byte
+	for reader.Len() != 0 {
+		frameType, err := quicvarint.Read(reader)
+		AssertNil(err)
+		length, err := quicvarint.Read(reader)
+		AssertNil(err)
+		AssertEqual(true, length <= uint64(reader.Len()))
+		payload := make([]byte, int(length))
+		_, err = io.ReadFull(reader, payload)
+		AssertNil(err)
+		switch frameType {
+		case 0x01:
+			decode := qpack.NewDecoder().Decode(payload)
+			for {
+				field, err := decode()
+				if err == io.EOF {
+					break
+				}
+				AssertNil(err)
+				if field.Name == ":status" {
+					status = field.Value
+				}
+			}
+		case 0x00:
+			body = append(body, payload...)
+		}
+	}
+	AssertEqual("200", status)
+	AssertEqual(bodyLength, len(body))
+}
+
+func Http3RequestFinCompleteTest(s *Http3Suite) {
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	Log(s.Containers.Vpp.VppInstance.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
+	get := http3FinHeaders(http.MethodGet, "/test_file_64", "")
+	post := http3FinHeaders(http.MethodPost, "/test_file_4", "4")
+	for _, tc := range []struct {
+		name       string
+		request    []byte
+		bodyLength int
+	}{
+		{"headers", get, 64},
+		{"zero content length", http3FinHeaders(http.MethodGet, "/test_file_64", "0"), 64},
+		{"empty DATA after body", append(append(bytes.Clone(post), http3FinFrame(0x00, []byte("abcd"))...), http3FinFrame(0x00, nil)...), 0},
+		{"complete DATA", append(bytes.Clone(post), http3FinFrame(0x00, []byte("abcd"))...), 0},
+		{"multiple DATA frames", append(append(bytes.Clone(post), http3FinFrame(0x00, []byte("ab"))...), http3FinFrame(0x00, []byte("cd"))...), 0},
+		{"empty DATA", append(append(bytes.Clone(post), http3FinFrame(0x00, nil)...), http3FinFrame(0x00, []byte("abcd"))...), 0},
+		{"unknown frames", append(append(http3FinFrame(0x21, []byte("padding")), get...), http3FinFrame(0x21, nil)...), 64},
+	} {
+		By(tc.name)
+		conn := H3ClientConnect(serverAddress)
+		stream, err := conn.OpenStream()
+		AssertNil(err)
+		AssertNil(stream.SetDeadline(time.Now().Add(3 * time.Second)))
+		_, err = stream.Write(tc.request)
+		AssertNil(err)
+		AssertNil(stream.Close())
+		http3FinReadResponse(stream, tc.bodyLength)
+		AssertNil(conn.CloseWithError(0, ""))
+	}
+	http3TestSessionCleanupServer(s)
+}
+
+func Http3RequestFinErrorsTest(s *Http3Suite) {
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	Log(s.Containers.Vpp.VppInstance.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
+	get := http3FinHeaders(http.MethodGet, "/test_file_64", "")
+	post := http3FinHeaders(http.MethodPost, "/test_file_4", "5")
+	for _, tc := range []struct {
+		name       string
+		request    []byte
+		code       http3.ErrCode
+		connection bool
+	}{
+		{"no headers", nil, http3.ErrCodeRequestIncomplete, false},
+		{"frame boundary before headers", http3FinFrame(0x21, []byte("padding")), http3.ErrCodeRequestIncomplete, false},
+		{"partial frame type", []byte{0x40}, http3.ErrCodeFrameError, true},
+		{"missing frame length", []byte{0x01}, http3.ErrCodeFrameError, true},
+		{"partial frame length", []byte{0x01, 0x40}, http3.ErrCodeFrameError, true},
+		{"missing HEADERS payload", []byte{0x01, 0x03}, http3.ErrCodeFrameError, true},
+		{"truncated HEADERS", get[:len(get)-1], http3.ErrCodeFrameError, true},
+		{"truncated DATA", append(bytes.Clone(post), 0x00, 0x05, 'a'), http3.ErrCodeFrameError, true},
+		{"truncated unknown frame", []byte{0x21, 0x03, 'a'}, http3.ErrCodeFrameError, true},
+		{"truncated trailing unknown frame", append(bytes.Clone(post), 0x21, 0x03, 'a'), http3.ErrCodeFrameError, true},
+		{"truncated frame after body", append(append(bytes.Clone(post), http3FinFrame(0x00, []byte("abcde"))...), 0x21, 0x03, 'a'), http3.ErrCodeFrameError, true},
+		{"partial trailing frame header", append(bytes.Clone(post), 0x40), http3.ErrCodeFrameError, true},
+		{"missing body", post, http3.ErrCodeMessageError, false},
+		{"short body", append(bytes.Clone(post), http3FinFrame(0x00, []byte("abcd"))...), http3.ErrCodeMessageError, false},
+		{"long body", append(bytes.Clone(post), http3FinFrame(0x00, []byte("abcdef"))...), http3.ErrCodeMessageError, false},
+		{"extra DATA frame", append(append(bytes.Clone(post), http3FinFrame(0x00, []byte("abcde"))...), http3FinFrame(0x00, []byte("f"))...), http3.ErrCodeMessageError, false},
+		{"prior stream error", http3FinFrame(0x01, []byte{0, 0, 0xd7, 0xc1}), http3.ErrCodeMessageError, false},
+		{"prior connection error", http3FinFrame(0x00, []byte("a")), http3.ErrCodeFrameUnexpected, true},
+	} {
+		By(fmt.Sprintf("%s: %s", tc.name, tc.code))
+		conn := H3ClientConnect(serverAddress)
+		// Leave another request waiting for its last header byte. Stream errors
+		// must allow it to finish; framing errors must terminate it too.
+		healthy, err := conn.OpenStream()
+		AssertNil(err)
+		AssertNil(healthy.SetDeadline(time.Now().Add(3 * time.Second)))
+		_, err = healthy.Write(get[:len(get)-1])
+		AssertNil(err)
+		stream, err := conn.OpenStream()
+		AssertNil(err)
+		AssertNil(stream.SetDeadline(time.Now().Add(3 * time.Second)))
+		if len(tc.request) != 0 {
+			_, err = stream.Write(tc.request)
+			AssertNil(err)
+		}
+		AssertNil(stream.Close())
+		_, err = stream.Read([]byte{0})
+		if tc.connection {
+			expected := quic.ApplicationError{ErrorCode: quic.ApplicationErrorCode(tc.code), Remote: true}
+			AssertMatchError(err, &expected)
+			_, err = healthy.Read([]byte{0})
+			AssertMatchError(err, &expected)
+		} else {
+			expected := quic.StreamError{StreamID: stream.StreamID(), ErrorCode: quic.StreamErrorCode(tc.code), Remote: true}
+			AssertMatchError(err, &expected)
+			AssertNil(context.Cause(conn.Context()), "stream error must not close the connection")
+			_, err = healthy.Write(get[len(get)-1:])
+			AssertNil(err)
+			AssertNil(healthy.Close())
+			http3FinReadResponse(healthy, 64)
+		}
+		AssertNil(conn.CloseWithError(0, ""))
+	}
+	http3TestSessionCleanupServer(s)
+}
+
 func Http3MissingPseudoHeaderTest(s *Http3Suite) {
 	// method pseudo header is missing
 	// server should reset stream with H3_MESSAGE_ERROR
@@ -825,14 +1056,14 @@ func Http3DataBeforeHeadersTest(s *Http3Suite) {
 
 func Http3LongerDataThanContentLengthTest(s *Http3Suite) {
 	// content-length is 4, but DATA frame has 5 bytes
-	http3SendReqExpectConnError(
+	http3SenInvalidReqExpectStreamError(
 		s,
 		[]byte{
 			0x01, 0x0B, 0x00, 0x00, 0xD4, 0xD7, 0xC1, 0x50,
 			0x01, 0x61, 0x54, 0x01, 0x34, 0x00, 0x05, 0x78,
 			0x78, 0x78, 0x78, 0x78,
 		},
-		http3.ErrCodeGeneralProtocolError)
+		http3.ErrCodeMessageError)
 }
 
 func Http3HalfClosedBeforeAllDataTest(s *Http3Suite) {
@@ -860,10 +1091,10 @@ func Http3HalfClosedBeforeAllDataTest(s *Http3Suite) {
 	Log(err)
 	expectedErr := quic.StreamError{
 		StreamID:  stream.StreamID(),
-		ErrorCode: quic.StreamErrorCode(http3.ErrCodeRequestIncomplete),
+		ErrorCode: quic.StreamErrorCode(http3.ErrCodeMessageError),
 		Remote:    true,
 	}
-	AssertMatchError(err, &expectedErr, "expected error code "+http3.ErrCodeRequestIncomplete.String())
+	AssertMatchError(err, &expectedErr, "expected error code "+http3.ErrCodeMessageError.String())
 }
 
 func http3SendCtrlExpectConnError(s *Http3Suite, p []byte, expectedErrorCode http3.ErrCode) {
