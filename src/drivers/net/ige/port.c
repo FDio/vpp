@@ -429,6 +429,15 @@ ige_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
       ige_rxq_t *iq = vnet_dev_get_rx_queue_data (rxq);
       u16 n_buffers = iq->tail - iq->head;
       u16 mask = rxq->size - 1;
+      u16 q = rxq->queue_id;
+      ige_reg_rxdctl_t rxdctl;
+
+      ige_reg_rd (dev, IGE_REG_RXDCTL (q), &rxdctl.as_u32);
+      rxdctl.enable = 0;
+      ige_reg_wr (dev, IGE_REG_RXDCTL (q), rxdctl.as_u32);
+      rxdctl.enable = 1;
+      if (!ige_reg_poll (vm, dev, IGE_REG_RXDCTL (q), rxdctl.as_u32, 0, 1e-4, 1e-2))
+	log_err (dev, "port %u rx queue %u failed to stop", port->port_id, q);
 
       if (n_buffers)
 	vlib_buffer_free_from_ring_no_next (
@@ -443,6 +452,18 @@ ige_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
       u16 n_buffers = tq->tail - tq->head;
       u16 mask = txq->size - 1;
 
+      if (tq->reg_tdt)
+	{
+	  ige_reg_txdctl_t txdctl = {};
+
+	  ige_reg_rd (dev, IGE_REG_TXDCTL (txq->queue_id), &txdctl.as_u32);
+	  txdctl.enable = 0;
+	  ige_reg_wr (dev, IGE_REG_TXDCTL (txq->queue_id), txdctl.as_u32);
+	  txdctl.enable = 1;
+	  if (!ige_reg_poll (vm, dev, IGE_REG_TXDCTL (txq->queue_id), txdctl.as_u32, 0, 1e-4, 1e-2))
+	    log_err (dev, "port %u tx queue %u failed to stop", port->port_id, txq->queue_id);
+	}
+
       if (n_buffers)
 	vlib_buffer_free_from_ring_no_next (
 	  vm, tq->buffer_indices, tq->head & mask, txq->size, n_buffers);
@@ -450,11 +471,7 @@ ige_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
       tq->head = tq->tail = 0;
       if (tq->reg_tdt)
 	{
-	  ige_reg_txdctl_t txdctl = {};
 	  ige_reg_wr (dev, IGE_REG_TDT (txq->queue_id), 0);
-	  ige_reg_rd (dev, IGE_REG_TXDCTL (txq->queue_id), &txdctl.as_u32);
-	  txdctl.enable = 0;
-	  ige_reg_wr (dev, IGE_REG_TXDCTL (txq->queue_id), txdctl.as_u32);
 	  ige_reg_wr (dev, IGE_REG_TDWBAL (txq->queue_id), 0);
 	  ige_reg_wr (dev, IGE_REG_TDWBAH (txq->queue_id), 0);
 	}
