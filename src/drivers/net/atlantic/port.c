@@ -700,6 +700,27 @@ atl_set_promisc (vnet_dev_port_t *port, int enabled)
   return rv;
 }
 
+static void
+atl_port_apply_link_options (vnet_dev_port_t *port)
+{
+  atl_port_t *ap = vnet_dev_get_port_data (port);
+  u8 rate = ap->forced_rate ? ap->forced_rate : 0xff;
+  u8 rate_hd = ap->forced_rate ? 0 : 0x7;
+
+  atl_reg_wr (port->dev, ATL_REG_AQ2_FW_INTERFACE_IN_LINK_OPTIONS,
+	      (atl_reg_t){
+		.aq2_fw_interface_in_link_options = {
+		  .link_up = 1,
+		  .link_renegotiate = 1,
+		  .rate = rate,
+		  .rate_hd = rate_hd,
+		  .pause_rx = 1,
+		  .pause_tx = 1,
+		  .downshift = 1,
+		},
+	      });
+}
+
 vnet_dev_rv_t
 atl_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 {
@@ -856,18 +877,7 @@ atl_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
   lc.aq2_fw_interface_in_link_control.mode = 1; /* MODE_ACTIVE */
   atl_reg_wr (dev, ATL_REG_AQ2_FW_INTERFACE_IN_LINK_CONTROL, lc);
 
-  atl_reg_wr (dev, ATL_REG_AQ2_FW_INTERFACE_IN_LINK_OPTIONS,
-	      (atl_reg_t){
-		.aq2_fw_interface_in_link_options = {
-		  .link_up = 1,
-		  .link_renegotiate = 1,
-		  .rate = 0xFF,
-		  .rate_hd = 0x7,
-		  .pause_rx = 1,
-		  .pause_tx = 1,
-		  .downshift = 1,
-		},
-	      });
+  atl_port_apply_link_options (port);
 
   atl_reg_wr_u32 (dev, ATL_REG_AQ2_FW_INTERFACE_IN_MTU, port->max_rx_frame_size);
   log_debug (dev, "max rx frame size set to %u", port->max_rx_frame_size);
@@ -1006,6 +1016,63 @@ atl_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
   vnet_dev_poll_port_remove (vm, port, atl_port_counter_poll);
 }
 
+static vnet_dev_rv_t
+atl_rate_for_speed (u32 speed_kbps, u8 *rate)
+{
+  switch (speed_kbps)
+    {
+    case 0:
+      *rate = 0;
+      return VNET_DEV_OK;
+    case 10000:
+      *rate = 1 << 0;
+      return VNET_DEV_OK;
+    case 100000:
+      *rate = 1 << 1;
+      return VNET_DEV_OK;
+    case 1000000:
+      *rate = 1 << 2;
+      return VNET_DEV_OK;
+    case 2500000:
+      *rate = 3 << 3;
+      return VNET_DEV_OK;
+    case 5000000:
+      *rate = 3 << 5;
+      return VNET_DEV_OK;
+    case 10000000:
+      *rate = 1 << 7;
+      return VNET_DEV_OK;
+    }
+  return VNET_DEV_ERR_NOT_SUPPORTED;
+}
+
+vnet_dev_rv_t
+atl_get_speed_caps (vnet_dev_t *dev, u32 *speed_caps)
+{
+  atl_reg_aq2_fw_interface_out_device_link_caps_t caps;
+  vnet_dev_rv_t rv;
+
+  rv = atl_aq2_interface_buffer_read (dev, ATL_REG_AQ2_FW_INTERFACE_OUT_DEVICE_LINK_CAPS,
+				      &caps.as_u32, 1);
+  if (rv != VNET_DEV_OK)
+    return rv;
+
+  *speed_caps = 0;
+  if (caps.rate_10m)
+    *speed_caps |= VNET_HW_IF_SPEED_10M;
+  if (caps.rate_100m)
+    *speed_caps |= VNET_HW_IF_SPEED_100M;
+  if (caps.rate_1g)
+    *speed_caps |= VNET_HW_IF_SPEED_1G;
+  if (caps.rate_2p5g)
+    *speed_caps |= VNET_HW_IF_SPEED_2_5G;
+  if (caps.rate_5g)
+    *speed_caps |= VNET_HW_IF_SPEED_5G;
+  if (caps.rate_10g)
+    *speed_caps |= VNET_HW_IF_SPEED_10G;
+  return VNET_DEV_OK;
+}
+
 vnet_dev_rv_t
 atl_port_cfg_change_validate (vlib_main_t *vm __clib_unused, vnet_dev_port_t *port,
 			      vnet_dev_port_cfg_change_req_t *req)
@@ -1014,6 +1081,16 @@ atl_port_cfg_change_validate (vlib_main_t *vm __clib_unused, vnet_dev_port_t *po
 
   switch (req->type)
     {
+    case VNET_DEV_PORT_CFG_SET_LINK_SPEED:
+      {
+	u8 rate;
+	rv = atl_rate_for_speed (req->link_speed, &rate);
+	if (rv == VNET_DEV_OK && req->link_speed &&
+	    (port->attr.speed_caps & vnet_hw_if_speed_from_kbps (req->link_speed)) == 0)
+	  rv = VNET_DEV_ERR_NOT_SUPPORTED;
+      }
+      break;
+
     case VNET_DEV_PORT_CFG_PROMISC_MODE:
     case VNET_DEV_PORT_CFG_CHANGE_PRIMARY_HW_ADDR:
     case VNET_DEV_PORT_CFG_ADD_SECONDARY_HW_ADDR:
@@ -1037,6 +1114,19 @@ atl_port_cfg_change (vlib_main_t *vm __clib_unused, vnet_dev_port_t *port,
 
   switch (req->type)
     {
+    case VNET_DEV_PORT_CFG_SET_LINK_SPEED:
+      {
+	atl_port_t *ap = vnet_dev_get_port_data (port);
+	rv = atl_rate_for_speed (req->link_speed, &ap->forced_rate);
+	if (rv != VNET_DEV_OK)
+	  return rv;
+	if (port->started)
+	  {
+	    atl_port_apply_link_options (port);
+	    rv = atl_aq2_fw_wait_shared_ack (dev);
+	  }
+      }
+      break;
     case VNET_DEV_PORT_CFG_PROMISC_MODE:
       if (port->started)
 	{
