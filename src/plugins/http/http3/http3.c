@@ -5,6 +5,7 @@
 #include <http/http3/http3.h>
 #include <http/http3/frame.h>
 #include <http/http3/qpack.h>
+#include <http/http2/hpack_inlines.h>
 #include <http/http_status_codes.h>
 
 #define HTTP3_SERVER_MAX_STREAM_ID (HTTP_VARINT_MAX - 3)
@@ -849,7 +850,7 @@ http3_req_state_udp_tunnel_draft03_tx (http_ctx_t *stream, http_ctx_t *req,
 }
 
 static_always_inline void
-http3_stream_resp_not_implemented (http_ctx_t *stream, http_ctx_t *req)
+http3_stream_respond_early (http_ctx_t *stream, http_ctx_t *req, http_status_code_t status)
 {
   if (http3_stream_cancel_rx (stream, req))
     return;
@@ -864,7 +865,7 @@ http3_stream_resp_not_implemented (http_ctx_t *stream, http_ctx_t *req)
     .server_name_len = vec_len (stream->app_name),
     .date = date,
     .date_len = vec_len (date),
-    .sc = HTTP_STATUS_NOT_IMPLEMENTED,
+    .sc = status,
   };
 
   vec_reset_length (http_tx_buf (stream));
@@ -880,32 +881,6 @@ http3_stream_resp_not_implemented (http_ctx_t *stream, http_ctx_t *req)
   http_io_ts_after_write (stream, 0);
   http_stats_responses_sent_inc (stream->c_thread_index);
 }
-
-#define http3_verify_port_in_authority()                                                           \
-  do                                                                                               \
-    {                                                                                              \
-      p = control_data.authority + control_data.authority_len;                                     \
-      p--;                                                                                         \
-      if (!isdigit (*p))                                                                           \
-	{                                                                                          \
-	  HTTP_DBG (1, "port not present in authority");                                           \
-	  http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);                         \
-	  return HTTP_SM_STOP;                                                                     \
-	}                                                                                          \
-      p--;                                                                                         \
-      for (; p > control_data.authority; p--)                                                      \
-	{                                                                                          \
-	  if (!isdigit (*p))                                                                       \
-	    break;                                                                                 \
-	}                                                                                          \
-      if (*p != ':')                                                                               \
-	{                                                                                          \
-	  HTTP_DBG (1, "port not present in authority");                                           \
-	  http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);                         \
-	  return HTTP_SM_STOP;                                                                     \
-	}                                                                                          \
-    }                                                                                              \
-  while (0);
 
 static void
 http3_send_431 (http_ctx_t *stream, http_ctx_t *req)
@@ -954,7 +929,7 @@ http3_req_state_wait_transport_method (http_ctx_t *stream, http_ctx_t *req,
   http_msg_t msg;
   http_req_state_t new_state = HTTP_REQ_STATE_WAIT_APP_REPLY;
   http_worker_t *wrk = http_worker_get (stream->c_thread_index);
-  u8 *rx_buf, *p;
+  u8 *rx_buf;
   http_sm_result_t res = HTTP_SM_STOP;
 
   if (req->fh.length == 0)
@@ -1017,58 +992,31 @@ http3_req_state_wait_transport_method (http_ctx_t *stream, http_ctx_t *req,
   req->headers_offset = control_data.headers - wrk->header_list;
   req->headers_len = control_data.headers_len;
 
-  if (!(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_METHOD_PARSED))
+  if (hpack_validate_request_pseudo_headers (&control_data, hc->settings.enable_connect_protocol))
     {
-      HTTP_DBG (1, ":method pseudo-header missing in request");
       http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
       return HTTP_SM_STOP;
     }
-  if (control_data.method == HTTP_REQ_UNKNOWN)
+  if (control_data.content_len_header_index != ~0)
     {
-      HTTP_DBG (1, "unsupported method");
-      http3_stream_terminate (stream, req, HTTP3_ERROR_GENERAL_PROTOCOL_ERROR);
-      return HTTP_SM_STOP;
+      req->content_len_header_index = control_data.content_len_header_index;
+      if (http_parse_content_length (req, wrk->header_list))
+	{
+	  http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
+	  return HTTP_SM_STOP;
+	}
     }
-  if (!(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_SCHEME_PARSED) &&
-      control_data.method != HTTP_REQ_CONNECT)
+  if ((control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_SCHEME_PARSED) &&
+      control_data.scheme == HTTP_URL_SCHEME_UNKNOWN)
     {
-      HTTP_DBG (1, ":scheme pseudo-header missing in request");
-      http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
-      return HTTP_SM_STOP;
-    }
-  if (control_data.scheme == HTTP_URL_SCHEME_UNKNOWN && control_data.method != HTTP_REQ_CONNECT)
-    {
-      HTTP_DBG (1, "unsupported scheme");
-      http3_stream_terminate (stream, req, HTTP3_ERROR_INTERNAL_ERROR);
-      return HTTP_SM_STOP;
-    }
-  if (!(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PATH_PARSED) &&
-      control_data.method != HTTP_REQ_CONNECT)
-    {
-      HTTP_DBG (1, ":path pseudo-header missing in request");
-      http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
-      return HTTP_SM_STOP;
-    }
-  if (!(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_AUTHORITY_PARSED))
-    {
-      HTTP_DBG (1, ":authority pseudo-header missing in request");
-      http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
+      http3_stream_respond_early (stream, req, HTTP_STATUS_MISDIRECTED_REQUEST);
       return HTTP_SM_STOP;
     }
   if (control_data.method == HTTP_REQ_CONNECT)
     {
       if (control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PROTOCOL_PARSED)
 	{
-	  /* extended CONNECT (RFC9220) */
-	  if (!(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_SCHEME_PARSED) ||
-	      !(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PATH_PARSED))
-	    {
-	      HTTP_DBG (1, ":scheme and :path pseudo-header must be present for "
-			   "extended CONNECT method");
-	      http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
-	      return HTTP_SM_STOP;
-	    }
-	  /* parse protocol header value */
+	  /* extended CONNECT (RFC9220), parse protocol header value */
 	  if (0)
 	    ;
 #define _(sym, str)                                                                                \
@@ -1081,22 +1029,12 @@ http3_req_state_wait_transport_method (http_ctx_t *stream, http_ctx_t *req,
 	  {
 	    HTTP_DBG (1, "unsupported extended connect protocol %U", format_http_bytes,
 		      control_data.protocol, control_data.protocol_len);
-	    http3_stream_resp_not_implemented (stream, req);
+	    http3_stream_respond_early (stream, req, HTTP_STATUS_NOT_IMPLEMENTED);
 	    return HTTP_SM_STOP;
 	  }
 	}
       else
 	{
-	  if (control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_SCHEME_PARSED ||
-	      control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PATH_PARSED)
-	    {
-	      HTTP_DBG (1, ":scheme and :path pseudo-header must be omitted for "
-			   "CONNECT method");
-	      http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
-	      return HTTP_SM_STOP;
-	    }
-	  /* quick check if port is present */
-	  http3_verify_port_in_authority ();
 	  req->upgrade_proto = HTTP_UPGRADE_PROTO_NA;
 	}
       req->req_flags |= HTTP_REQ_F_IS_TUNNEL;
@@ -1106,24 +1044,25 @@ http3_req_state_wait_transport_method (http_ctx_t *stream, http_ctx_t *req,
       if (!(hc->flags & HTTP_CONN_F_CONNECT_UDP_DRAFT03))
 	{
 	  HTTP_DBG (1, "CONNECT-UDP method but masque-connect-udp-draft-03 not enabled");
-	  http3_stream_terminate (stream, req, HTTP3_ERROR_GENERAL_PROTOCOL_ERROR);
+	  http3_stream_respond_early (stream, req, HTTP_STATUS_NOT_IMPLEMENTED);
 	  return HTTP_SM_STOP;
 	}
-      /* quick check if port is present */
-      http3_verify_port_in_authority ();
       req->req_flags |= HTTP_REQ_F_IS_TUNNEL;
       req->req_flags |= HTTP_REQ_F_CONNECT_UDP_DRAFT03;
       req->upgrade_proto = HTTP_UPGRADE_PROTO_NA;
     }
 
+  if (control_data.method == HTTP_REQ_UNKNOWN)
+    {
+      HTTP_DBG (1, "unsupported method");
+      http3_stream_respond_early (stream, req, HTTP_STATUS_NOT_IMPLEMENTED);
+      return HTTP_SM_STOP;
+    }
+
   if (control_data.content_len_header_index != ~0)
     {
-      req->content_len_header_index = control_data.content_len_header_index;
-      if (http_parse_content_length (req, wrk->header_list))
-	{
-	  http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
-	  return HTTP_SM_STOP;
-	}
+      /* Body processing is separate from validation so an early response can
+       * cancel an unfinished upload after validating the initial fields. */
       if (stream->state == HTTP_CONN_STATE_HALF_CLOSED && !http_io_ts_max_read (stream))
 	{
 	  HTTP_DBG (1, "request incomplete");

@@ -22,6 +22,7 @@ import (
 	"github.com/quic-go/quic-go/qlog"
 	"github.com/quic-go/quic-go/qlogwriter"
 	"github.com/quic-go/quic-go/quicvarint"
+	"golang.org/x/net/http2/hpack"
 )
 
 func init() {
@@ -38,6 +39,11 @@ func init() {
 		Http3MaxHeaderListSizeTest, Http3ServerHeadersFrameTooLargeTest, Http3ClientHeadersFrameTooLargeTest,
 		Http3Early431UploadTest, Http3Early431DecodedUploadTest, Http3Early501UploadTest,
 		Http3Early501CompletedRequestTest, Http3EarlyApplicationUploadTest,
+		Http3UnsupportedMethodTest, Http3MalformedMethodTest, Http3SupportedMethodsTest,
+		Http3EmptyAuthorityTest,
+		Http3PseudoHeadersTest, Http3ResponsePseudoHeadersTest,
+		Http3EarlyUnsupportedMethodUploadTest, Http3EarlyUnsupportedMethodCompletedTest,
+		Http3EarlyUnsupportedSchemeUploadTest, Http3EarlyUnsupportedSchemeCompletedTest,
 		Http3ServerMemLeakTest, Http3ClientMemLeakTest)
 	RegisterH3MWTests(Http3ClientFailedConnectMWTest, Http3TsFifoMemPressureMWTest)
 	RegisterVethTests(Http3CliTest, Http3ClientPostTest, Http3ClientPostPtrTest)
@@ -393,6 +399,9 @@ func (c *http3EarlyPacketConn) WriteTo(p []byte, addr net.Addr) (int, error) {
 func http3EarlyHeaders(fields []qpack.HeaderField) []byte {
 	var headers bytes.Buffer
 	encoder := qpack.NewEncoder(&headers)
+	if len(fields) == 0 {
+		headers.Write([]byte{0x00, 0x00})
+	}
 	for _, field := range fields {
 		AssertNil(encoder.WriteField(field))
 	}
@@ -468,6 +477,17 @@ func http3EarlyResponseTest(s *Http3Suite, mode string, complete bool, retry boo
 		status = "501"
 		fields[0].Value = "CONNECT"
 		fields = append(fields, qpack.HeaderField{Name: ":protocol", Value: "unsupported"})
+	} else if mode == "method" || mode == "scheme" {
+		if mode == "scheme" {
+			status = "421"
+			fields[1].Value = "web+demo"
+		} else {
+			status = "501"
+			fields[0].Value = "X-EXTENSION"
+		}
+		if !complete {
+			fields = append(fields, qpack.HeaderField{Name: "content-length", Value: "2097152"})
+		}
 	} else if mode == "decoded" {
 		fields = append(fields, qpack.HeaderField{Name: "x-test", Value: strings.Repeat("A", 8192)})
 	} else if mode == "application" {
@@ -479,7 +499,7 @@ func http3EarlyResponseTest(s *Http3Suite, mode string, complete bool, retry boo
 	if mode == "encoded" {
 		request = quicvarint.Append(nil, 0x01)
 		request = quicvarint.Append(request, 512<<10+1)
-	} else if mode == "application" {
+	} else if mode == "application" || ((mode == "method" || mode == "scheme") && !complete) {
 		request = quicvarint.Append(request, 0x00)
 		request = quicvarint.Append(request, 2<<20)
 	}
@@ -583,6 +603,205 @@ func Http3Early501CompletedRequestTest(s *Http3Suite) {
 
 func Http3EarlyApplicationUploadTest(s *Http3Suite) {
 	http3EarlyResponseTest(s, "application", false, false)
+}
+
+func Http3EarlyUnsupportedMethodUploadTest(s *Http3Suite) {
+	http3EarlyResponseTest(s, "method", false, true)
+}
+
+func Http3EarlyUnsupportedMethodCompletedTest(s *Http3Suite) {
+	http3EarlyResponseTest(s, "method", true, false)
+}
+
+func Http3EarlyUnsupportedSchemeUploadTest(s *Http3Suite) {
+	http3EarlyResponseTest(s, "scheme", false, true)
+}
+
+func Http3EarlyUnsupportedSchemeCompletedTest(s *Http3Suite) {
+	http3EarlyResponseTest(s, "scheme", true, false)
+}
+
+func Http3UnsupportedMethodTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + address))
+	conn := H3ClientConnect(address)
+	defer conn.CloseWithError(0, "")
+	control, err := conn.OpenUniStream()
+	AssertNil(err)
+	_, err = control.Write([]byte{0x00, 0x04, 0x00})
+	AssertNil(err)
+	for _, method := range []string{"X-EXTENSION", "HEAD", "DELETE", "PATCH", "OPTIONS", "CONNECT-UDP", "get", "!#$%&'*+-.^_`|~0123456789"} {
+		By("valid unsupported method " + method)
+		stream, err := conn.OpenStream()
+		AssertNil(err)
+		AssertNil(stream.SetDeadline(time.Now().Add(3 * time.Second)))
+		_, err = stream.Write(http3EarlyHeaders([]qpack.HeaderField{
+			{Name: ":method", Value: method}, {Name: ":scheme", Value: "https"},
+			{Name: ":authority", Value: address}, {Name: ":path", Value: "/test_file_64"},
+			{Name: "content-length", Value: "0"},
+		}))
+		AssertNil(err)
+		AssertNil(stream.Close())
+		AssertEmpty(http3ReadEarlyResponse(stream, "501"))
+		AssertNil(context.Cause(conn.Context()))
+	}
+}
+
+func Http3MalformedMethodTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + address))
+	conn := H3ClientConnect(address)
+	defer conn.CloseWithError(0, "")
+	control, err := conn.OpenUniStream()
+	AssertNil(err)
+	_, err = control.Write([]byte{0x00, 0x04, 0x00})
+	AssertNil(err)
+	base := []qpack.HeaderField{{Name: ":method", Value: "X-EXTENSION"},
+		{Name: ":scheme", Value: "https"}, {Name: ":authority", Value: address},
+		{Name: ":path", Value: "/test_file_64"}}
+	type malformedRequest struct {
+		name   string
+		fields []qpack.HeaderField
+	}
+	var tests []malformedRequest
+	for _, method := range []string{"", "BAD METHOD", " GET", "GET ", "G\tET", "G\rET", "G\nET", "G\x00ET", "G\x7fET", "G\x80ET", "G/ET", "G:ET", "G(ET"} {
+		fields := append([]qpack.HeaderField(nil), base...)
+		fields[0].Value = method
+		tests = append(tests, malformedRequest{name: fmt.Sprintf("invalid method %q", method), fields: fields})
+	}
+	for i, field := range base {
+		fields := append([]qpack.HeaderField(nil), base[:i]...)
+		fields = append(fields, base[i+1:]...)
+		tests = append(tests, malformedRequest{name: "missing " + field.Name, fields: fields})
+	}
+	for _, field := range []qpack.HeaderField{
+		{Name: ":method", Value: "GET"}, {Name: ":protocol", Value: "websocket"},
+		{Name: ":status", Value: "200"}, {Name: "connection", Value: "close"},
+		{Name: "content-length", Value: "invalid"}, {Name: "content-length", Value: "18446744073709551616"},
+		{Name: "Uppercase", Value: "invalid"},
+		{Name: "", Value: "invalid"},
+	} {
+		fields := append([]qpack.HeaderField(nil), base...)
+		fields = append(fields, field)
+		tests = append(tests, malformedRequest{name: "invalid field " + field.Name, fields: fields})
+	}
+	fields := append([]qpack.HeaderField(nil), base[1:]...)
+	fields = append(fields, qpack.HeaderField{Name: "x-test", Value: "value"}, base[0])
+	tests = append(tests, malformedRequest{name: "method after regular field", fields: fields})
+	for _, authority := range []string{"", "a", "missing-port"} {
+		fields := append([]qpack.HeaderField(nil), base...)
+		fields[0].Value = "CONNECT-UDP"
+		fields[2].Value = authority
+		tests = append(tests, malformedRequest{name: "disabled CONNECT-UDP with invalid authority", fields: fields})
+	}
+	for _, test := range tests {
+		By(test.name)
+		stream, err := conn.OpenStream()
+		AssertNil(err)
+		AssertNil(stream.SetDeadline(time.Now().Add(3 * time.Second)))
+		_, err = stream.Write(http3EarlyHeaders(test.fields))
+		AssertNil(err)
+		healthy, err := conn.OpenStream()
+		AssertNil(err)
+		AssertNil(healthy.SetDeadline(time.Now().Add(3 * time.Second)))
+		fields := append([]qpack.HeaderField(nil), base...)
+		fields[0].Value = "GET"
+		_, err = healthy.Write(http3EarlyHeaders(fields))
+		AssertNil(err)
+		AssertNil(healthy.Close())
+		_, err = stream.Read([]byte{0})
+		AssertMatchError(err, &quic.StreamError{StreamID: stream.StreamID(),
+			ErrorCode: quic.StreamErrorCode(http3.ErrCodeMessageError), Remote: true})
+		AssertNotEmpty(http3ReadEarlyResponse(healthy, "200"))
+		AssertNil(context.Cause(conn.Context()), "malformed request must only reset its stream")
+	}
+}
+
+func Http3EmptyAuthorityTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + address))
+	conn := H3ClientConnect(address)
+	defer conn.CloseWithError(0, "")
+	control, err := conn.OpenUniStream()
+	AssertNil(err)
+	_, err = control.Write([]byte{0x00, 0x04, 0x00})
+	AssertNil(err)
+	for _, method := range []string{"GET", "POST", "PUT", "X-EXTENSION", "CONNECT", "CONNECT-UDP", "extended CONNECT"} {
+		fields := []qpack.HeaderField{{Name: ":method", Value: method}}
+		if method != "CONNECT" {
+			fields = append(fields, qpack.HeaderField{Name: ":scheme", Value: "https"},
+				qpack.HeaderField{Name: ":path", Value: "/test_file_64"})
+		}
+		if method == "extended CONNECT" {
+			fields[0].Value = "CONNECT"
+			fields = append(fields, qpack.HeaderField{Name: ":protocol", Value: "unsupported"})
+		}
+		for _, authority := range []struct {
+			name  string
+			bytes []byte
+		}{{"indexed", []byte{0xc0}}, {"literal", []byte{0x50, 0x00}}, {"Huffman", []byte{0x50, 0x80}}} {
+			By(method + " with " + authority.name + " empty authority")
+			var headers bytes.Buffer
+			encoder := qpack.NewEncoder(&headers)
+			for _, field := range fields {
+				AssertNil(encoder.WriteField(field))
+			}
+			headers.Write(authority.bytes)
+			frame := quicvarint.Append([]byte{0x01}, uint64(headers.Len()))
+			frame = append(frame, headers.Bytes()...)
+			stream, err := conn.OpenStream()
+			AssertNil(err)
+			AssertNil(stream.SetDeadline(time.Now().Add(3 * time.Second)))
+			_, err = stream.Write(frame)
+			AssertNil(err)
+
+			healthy, err := conn.OpenStream()
+			AssertNil(err)
+			AssertNil(healthy.SetDeadline(time.Now().Add(3 * time.Second)))
+			_, err = healthy.Write(http3EarlyHeaders([]qpack.HeaderField{
+				{Name: ":method", Value: "GET"}, {Name: ":scheme", Value: "https"},
+				{Name: ":authority", Value: address}, {Name: ":path", Value: "/test_file_64"},
+				{Name: "cookie", Value: ""}, {Name: "user-agent", Value: ""},
+			}))
+			AssertNil(err)
+			AssertNil(healthy.Close())
+			_, err = stream.Read([]byte{0})
+			AssertMatchError(err, &quic.StreamError{StreamID: stream.StreamID(),
+				ErrorCode: quic.StreamErrorCode(http3.ErrCodeMessageError), Remote: true})
+			AssertNotEmpty(http3ReadEarlyResponse(healthy, "200"))
+			AssertNil(context.Cause(conn.Context()), "empty authority must only reset its stream")
+		}
+	}
+}
+
+func Http3SupportedMethodsTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	Log(vpp.Vppctl("http cli server http3-enabled listener add uri https://" + address))
+	transport := &http3.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	defer transport.Close()
+	client := &http.Client{Transport: transport, Timeout: 5 * time.Second}
+	for _, method := range []string{"GET", "POST", "PUT"} {
+		request, err := http.NewRequest(method, "https://"+address+"/echo", strings.NewReader("method body"))
+		AssertNil(err)
+		response, err := client.Do(request)
+		AssertNil(err)
+		AssertHttpStatus(response, http.StatusOK)
+		body, err := io.ReadAll(response.Body)
+		AssertNil(err)
+		AssertNil(response.Body.Close())
+		AssertEqual("method body", string(body))
+	}
+	request, err := http.NewRequest("PUT", "https://"+address+"/show/version", strings.NewReader("method body"))
+	AssertNil(err)
+	response, err := client.Do(request)
+	AssertNil(err)
+	defer response.Body.Close()
+	AssertHttpStatus(response, http.StatusMethodNotAllowed)
+	AssertHttpHeaderWithValue(response, "Allow", "GET")
 }
 
 func Http3MaxHeaderListSizeTest(s *Http3Suite) {
@@ -1499,4 +1718,102 @@ func Http3ClientMemLeakTest(s *Http3Suite) {
 	Log(vpp.Vppctl("show session verbose 2"))
 	AssertNil(err, fmt.Sprint(err))
 	vpp.MemLeakCheck(traces1, traces2)
+}
+
+func Http3PseudoHeadersTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	Log(vpp.Vppctl("http tps uri https://" + address + " h3 no-zc"))
+	conn := H3ClientConnect(address)
+	defer conn.CloseWithError(0, "")
+	control, err := conn.OpenUniStream()
+	AssertNil(err)
+	_, err = control.Write([]byte{0, 4, 0})
+	AssertNil(err)
+	encode := func(fields []hpack.HeaderField) []byte {
+		out := []qpack.HeaderField{}
+		for _, f := range fields {
+			out = append(out, qpack.HeaderField{Name: f.Name, Value: f.Value})
+		}
+		return http3EarlyHeaders(out)
+	}
+	healthyFields := []hpack.HeaderField{{Name: ":method", Value: "GET"}, {Name: ":scheme", Value: "https"}, {Name: ":authority", Value: address}, {Name: ":path", Value: "/test_file_64"}}
+	for _, tc := range pseudoHeaderCases(address) {
+		By(tc.name)
+		stream, err := conn.OpenStream()
+		AssertNil(err)
+		AssertNil(stream.SetDeadline(time.Now().Add(3 * time.Second)))
+		_, err = stream.Write(encode(tc.fields))
+		AssertNil(err)
+		if tc.status != 0 {
+			AssertNil(stream.Close())
+		}
+		healthy, err := conn.OpenStream()
+		AssertNil(err)
+		AssertNil(healthy.SetDeadline(time.Now().Add(3 * time.Second)))
+		_, err = healthy.Write(encode(healthyFields))
+		AssertNil(err)
+		AssertNil(healthy.Close())
+		if tc.status == 0 {
+			_, err = stream.Read([]byte{0})
+			AssertMatchError(err, &quic.StreamError{StreamID: stream.StreamID(), ErrorCode: quic.StreamErrorCode(http3.ErrCodeMessageError), Remote: true})
+		} else {
+			http3ReadEarlyResponse(stream, strconv.Itoa(tc.status))
+		}
+		AssertNotEmpty(http3ReadEarlyResponse(healthy, "200"))
+		AssertNil(context.Cause(conn.Context()))
+	}
+}
+
+func Http3ResponsePseudoHeadersTest(s *Http3Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	cert, err := tls.LoadX509KeyPair("resources/cert/localhost.crt", "resources/cert/localhost.key")
+	AssertNil(err)
+	listener, err := quic.ListenAddr(net.JoinHostPort(s.HostAddr(), s.Ports.Port1), &tls.Config{Certificates: []tls.Certificate{cert}, NextProtos: []string{"h3"}}, nil)
+	AssertNil(err)
+	defer listener.Close()
+	for _, tc := range pseudoResponseCases() {
+		By(tc.name)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		done := make(chan struct{})
+		go func() {
+			defer GinkgoRecover()
+			defer close(done)
+			conn, err := listener.Accept(ctx)
+			AssertNil(err)
+			defer conn.CloseWithError(0, "")
+			control, err := conn.OpenUniStream()
+			AssertNil(err)
+			_, err = control.Write([]byte{0, 4, 0})
+			AssertNil(err)
+			stream, err := conn.AcceptStream(ctx)
+			AssertNil(err)
+			deadline, _ := ctx.Deadline()
+			AssertNil(stream.SetDeadline(deadline))
+			reader := quicvarint.NewReader(stream)
+			frame, err := quicvarint.Read(reader)
+			AssertNil(err)
+			AssertEqual(uint64(1), frame)
+			length, err := quicvarint.Read(reader)
+			AssertNil(err)
+			_, err = io.CopyN(io.Discard, stream, int64(length))
+			AssertNil(err)
+			fields := []qpack.HeaderField{}
+			for _, f := range tc.fields {
+				fields = append(fields, qpack.HeaderField{Name: f.Name, Value: f.Value})
+			}
+			_, err = stream.Write(http3EarlyHeaders(fields))
+			AssertNil(err)
+			select {
+			case <-stream.Context().Done():
+				AssertMatchError(context.Cause(stream.Context()), &quic.StreamError{StreamID: stream.StreamID(), ErrorCode: quic.StreamErrorCode(http3.ErrCodeMessageError), Remote: true})
+			case <-ctx.Done():
+				Fail("expected H3_MESSAGE_ERROR receive cancellation")
+			}
+		}()
+		Log(vpp.Vppctl("http client http3 verbose timeout 1 uri https://" + listener.Addr().String() + "/"))
+		<-done
+		cancel()
+	}
+	AssertNotContains(vpp.Vppctl("show http stats"), "connections protocol error")
 }

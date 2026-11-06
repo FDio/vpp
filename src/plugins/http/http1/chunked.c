@@ -2,8 +2,8 @@
  * Copyright(c) 2026 Cisco Systems, Inc.
  */
 
+#include <http/http.h>
 #include <http/http1/chunked.h>
-#include <vppinfra/bitmap.h>
 
 typedef enum http1_chunked_state_ : u8
 {
@@ -43,21 +43,6 @@ http1_chunked_hex_digit (u8 c)
   if (c >= 'A' && c <= 'F')
     return c - 'A' + 10;
   return -1;
-}
-
-static_always_inline u8
-http1_chunked_is_token_char (u8 c)
-{
-  static uword tchar[4] = {
-    /* !#$%&'*+-.0123456789 */
-    0x03ff6cfa00000000,
-    /* ABCDEFGHIJKLMNOPQRSTUVWXYZ^_`abcdefghijklmnopqrstuvwxyz|~ */
-    0x57ffffffc7fffffe,
-    0x0000000000000000,
-    0x0000000000000000,
-  };
-
-  return clib_bitmap_get_no_check (tchar, c);
 }
 
 static_always_inline u8
@@ -151,13 +136,13 @@ http1_chunked_decode (http1_chunked_decoder_t *decoder, const u8 *src, u32 len, 
 	    goto invalid;
 	  break;
 	case CHUNK_EXT_NAME_FIRST:
-	  if (http1_chunked_is_token_char (c))
+	  if (http_token_char_is_valid (c))
 	    decoder->state = CHUNK_EXT_NAME;
 	  else if (c != ' ' && c != '\t')
 	    goto invalid;
 	  break;
 	case CHUNK_EXT_NAME:
-	  if (http1_chunked_is_token_char (c))
+	  if (http_token_char_is_valid (c))
 	    break;
 	  if (c == '=')
 	    decoder->state = CHUNK_EXT_VALUE_FIRST;
@@ -179,7 +164,7 @@ http1_chunked_decode (http1_chunked_decoder_t *decoder, const u8 *src, u32 len, 
 	    goto invalid;
 	  break;
 	case CHUNK_EXT_VALUE_FIRST:
-	  if (http1_chunked_is_token_char (c))
+	  if (http_token_char_is_valid (c))
 	    decoder->state = CHUNK_EXT_TOKEN;
 	  else if (c == '"')
 	    decoder->state = CHUNK_EXT_QUOTED;
@@ -187,7 +172,7 @@ http1_chunked_decode (http1_chunked_decoder_t *decoder, const u8 *src, u32 len, 
 	    goto invalid;
 	  break;
 	case CHUNK_EXT_TOKEN:
-	  if (http1_chunked_is_token_char (c))
+	  if (http_token_char_is_valid (c))
 	    break;
 	  __attribute__ ((fallthrough));
 	case CHUNK_EXT_QUOTED_END:
@@ -233,7 +218,7 @@ http1_chunked_decode (http1_chunked_decoder_t *decoder, const u8 *src, u32 len, 
 	case CHUNK_TRAILER_FIRST:
 	  if (c == '\r')
 	    decoder->state = CHUNK_END_LF;
-	  else if (http1_chunked_is_token_char (c))
+	  else if (http_token_char_is_valid (c))
 	    decoder->state = CHUNK_TRAILER_NAME;
 	  else
 	    goto invalid;
@@ -241,7 +226,7 @@ http1_chunked_decode (http1_chunked_decoder_t *decoder, const u8 *src, u32 len, 
 	case CHUNK_TRAILER_NAME:
 	  if (c == ':')
 	    decoder->state = CHUNK_TRAILER_VALUE;
-	  else if (!http1_chunked_is_token_char (c))
+	  else if (!http_token_char_is_valid (c))
 	    goto invalid;
 	  break;
 	case CHUNK_TRAILER_VALUE:

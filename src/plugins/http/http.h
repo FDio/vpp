@@ -557,47 +557,99 @@ http_encode_u64_decimal (u8 *end, u64 value)
   return end;
 }
 
-always_inline int
-http_validate_target_syntax (u8 *target, u32 len, int is_query,
-			     int *is_encoded)
+always_inline u8
+http_token_char_is_valid (u8 c)
 {
-  int encoded = 0;
-  u32 i;
-
-  static uword valid_chars[4] = {
-    /* !$&'()*+,-./0123456789:;= */
-    0x2fffffd200000000,
-    /* @ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~ */
-    0x47fffffe87ffffff,
+  /* RFC 9110 tchar */
+  static uword tchar[4] = {
+    0x03ff6cfa00000000,
+    0x57ffffffc7fffffe,
     0x0000000000000000,
     0x0000000000000000,
   };
+  return clib_bitmap_get_no_check (tchar, c);
+}
 
-  for (i = 0; i < len; i++)
+always_inline u8
+http_token_is_valid (u8 *value, u32 len)
+{
+  if (!len)
+    return 0;
+  for (u32 i = 0; i < len; i++)
+    if (!http_token_char_is_valid (value[i]))
+      return 0;
+  return 1;
+}
+
+always_inline u8
+http_scheme_is_valid (u8 *value, u32 len)
+{
+  /* RFC 3986 3.1: ALPHA *(ALPHA / DIGIT / '+' / '-' / '.') */
+  if (!len || !isalpha (value[0]) || value[0] >= 0x80)
+    return 0;
+  for (u32 i = 1; i < len; i++)
+    if (value[i] >= 0x80 ||
+	!(isalnum (value[i]) || value[i] == '+' || value[i] == '-' || value[i] == '.'))
+      return 0;
+  return 1;
+}
+
+always_inline u8
+http_uri_unreserved_char_is_valid (u8 c)
+{
+  return (c < 0x80 && isalnum (c)) || (c && strchr ("-._~", c));
+}
+
+always_inline u8
+http_uri_reg_name_char_is_valid (u8 c)
+{
+  /* unreserved / sub-delims */
+  static uword valid_chars[4] = {
+    0x2bff7fd200000000,
+    0x47fffffe87fffffe,
+    0x0000000000000000,
+    0x0000000000000000,
+  };
+  return clib_bitmap_get_no_check (valid_chars, c);
+}
+
+typedef enum
+{
+  HTTP_URI_COMPONENT_REG_NAME,
+  HTTP_URI_COMPONENT_USERINFO,
+  HTTP_URI_COMPONENT_PATH,
+  HTTP_URI_COMPONENT_QUERY,
+} http_uri_component_t;
+
+/* Validate encoded URI components without decoding, QUERY covers combined path and query. */
+always_inline int
+http_validate_uri_component (u8 *value, u32 len, http_uri_component_t component, int *is_encoded)
+{
+  int encoded = 0;
+  for (u32 i = 0; i < len; i++)
     {
-      if (clib_bitmap_get_no_check (valid_chars, target[i]))
-	continue;
-      /* target was already split after first question mark,
-       * for query it is valid character */
-      if (is_query && target[i] == '?')
+      u8 c = value[i];
+      if (http_uri_reg_name_char_is_valid (c) ||
+	  (component != HTTP_URI_COMPONENT_REG_NAME && c == ':') ||
+	  (component >= HTTP_URI_COMPONENT_PATH && (c == '@' || c == '/')) ||
+	  (component == HTTP_URI_COMPONENT_QUERY && c == '?'))
 	continue;
       /* pct-encoded = "%" HEXDIG HEXDIG */
-      if (target[i] == '%')
-	{
-	  if ((i + 2) >= len)
-	    return -1;
-	  if (!isxdigit (target[i + 1]) || !isxdigit (target[i + 2]))
-	    return -1;
-	  i += 2;
-	  encoded = 1;
-	  continue;
-	}
-      clib_warning ("invalid character %d", target[i]);
-      return -1;
+      if (c != '%' || i + 2 >= len || !isxdigit (value[i + 1]) || !isxdigit (value[i + 2]))
+	return -1;
+      i += 2;
+      encoded = 1;
     }
   if (is_encoded)
     *is_encoded = encoded;
   return 0;
+}
+
+always_inline int
+http_validate_target_syntax (u8 *target, u32 len, int is_query, int *is_encoded)
+{
+  return http_validate_uri_component (
+    target, len, is_query ? HTTP_URI_COMPONENT_QUERY : HTTP_URI_COMPONENT_PATH, is_encoded);
 }
 
 /**
@@ -1278,94 +1330,106 @@ _http_parse_ip4 (u8 **p, u8 *end, ip4_address_t *ip4)
   return rv;
 }
 
-/* modified unformat_ip6_address */
+/* Parse through end or a delimiter, leaving *p at the delimiter. */
 always_inline int
 _http_parse_ip6 (u8 **p, u8 *end, ip6_address_t *ip6)
 {
-  u8 n_hex_digits = 0, n_colon = 0, n_hex_quads = 0;
-  u8 double_colon_index = ~0, i;
-  u16 hex_digit;
-  u32 hex_quad = 0;
-  int rv = 0;
+  u8 *pos = *p;
+  u32 n_hex_quads = 0, double_colon_index = ~0U;
 
-  while (*p != end)
+  if (pos == end)
+    return -1;
+  if (*pos == ':')
     {
-      hex_digit = 16;
-      if (**p >= '0' && **p <= '9')
-	hex_digit = **p - '0';
-      else if (**p >= 'a' && **p <= 'f')
-	hex_digit = **p + 10 - 'a';
-      else if (**p >= 'A' && **p <= 'F')
-	hex_digit = **p + 10 - 'A';
-      else if (**p == ':' && n_colon < 2)
-	n_colon++;
-      else
+      if (end - pos < 2 || pos[1] != ':')
+	return -1;
+      double_colon_index = 0;
+      pos += 2;
+    }
+
+  while (pos != end)
+    {
+      u8 *quad_start = pos;
+      u32 hex_quad = 0, n_hex_digits = 0;
+      while (pos != end && isxdigit (*pos))
 	{
-	  /* probably more data (delimiter) after IPv6 address */
-	  rv = **p;
+	  if (++n_hex_digits > 4)
+	    return -1;
+	  hex_quad = (hex_quad << 4) | htoi (*pos);
+	  pos++;
+	}
+
+      if (pos != end && *pos == '.')
+	{
+	  /* IPv4 tail occupies the final two hex quads */
+	  if (n_hex_quads > ARRAY_LEN (ip6->as_u16) - 2)
+	    return -1;
+	  pos = quad_start;
+	  for (u32 i = 0; i < 4; i++)
+	    {
+	      u8 *octet_start = pos;
+	      u32 octet = 0, n_digits = 0;
+	      while (pos != end && *pos >= '0' && *pos <= '9')
+		{
+		  octet = octet * 10 + *pos++ - '0';
+		  if (++n_digits > 3 || octet > 255)
+		    return -1;
+		}
+	      if (!n_digits || (n_digits > 1 && *octet_start == '0'))
+		return -1;
+	      ip6->as_u8[2 * n_hex_quads + i] = octet;
+	      if (i < 3)
+		{
+		  if (pos == end || *pos++ != '.')
+		    return -1;
+		}
+	    }
+	  n_hex_quads += 2;
 	  break;
 	}
 
-      /* too many hex quads */
-      if (n_hex_quads >= ARRAY_LEN (ip6->as_u16))
+      if (!n_hex_digits)
+	break;
+      if (n_hex_quads == ARRAY_LEN (ip6->as_u16))
 	return -1;
-
-      if (hex_digit < 16)
+      ip6->as_u16[n_hex_quads++] = clib_host_to_net_u16 ((u16) hex_quad);
+      if (pos == end || *pos != ':')
+	break;
+      pos++;
+      if (pos != end && *pos == ':')
 	{
-	  hex_quad = (hex_quad << 4) | hex_digit;
-
-	  /* must fit in 16 bits */
-	  if (n_hex_digits >= 4)
-	    return -1;
-
-	  n_colon = 0;
-	  n_hex_digits++;
-	}
-
-      /* save position of :: */
-      if (n_colon == 2)
-	{
-	  /* more than one :: ? */
-	  if (double_colon_index < ARRAY_LEN (ip6->as_u16))
+	  if (double_colon_index != ~0U)
 	    return -1;
 	  double_colon_index = n_hex_quads;
+	  pos++;
 	}
-
-      if (n_colon > 0 && n_hex_digits > 0)
-	{
-	  ip6->as_u16[n_hex_quads++] = clib_host_to_net_u16 ((u16) hex_quad);
-	  hex_quad = 0;
-	  n_hex_digits = 0;
-	}
-
-      (*p)++;
+      else if (pos == end || !isxdigit (*pos))
+	return -1;
     }
 
-  if (n_hex_digits > 0)
-    ip6->as_u16[n_hex_quads++] = clib_host_to_net_u16 ((u16) hex_quad);
+  if (pos != end && (*pos == ':' || *pos == '.'))
+    return -1;
 
   /* expand :: to appropriate number of zero hex quads */
-  if (double_colon_index < ARRAY_LEN (ip6->as_u16))
+  if (double_colon_index != ~0U)
     {
-      u8 n_zero = ARRAY_LEN (ip6->as_u16) - n_hex_quads;
+      u32 n_zero = ARRAY_LEN (ip6->as_u16) - n_hex_quads;
+      if (!n_zero)
+	return -1;
 
-      for (i = n_hex_quads - 1; i >= double_colon_index; i--)
-	ip6->as_u16[n_zero + i] = ip6->as_u16[i];
-
-      for (i = 0; i < n_zero; i++)
-	{
-	  ASSERT ((double_colon_index + i) < ARRAY_LEN (ip6->as_u16));
-	  ip6->as_u16[double_colon_index + i] = 0;
-	}
+      for (u32 i = n_hex_quads; i > double_colon_index; i--)
+	ip6->as_u16[n_zero + i - 1] = ip6->as_u16[i - 1];
+      for (u32 i = 0; i < n_zero; i++)
+	ip6->as_u16[double_colon_index + i] = 0;
 
       n_hex_quads = ARRAY_LEN (ip6->as_u16);
     }
 
-  /* too few hex quads */
-  if (n_hex_quads < ARRAY_LEN (ip6->as_u16))
+  if (n_hex_quads != ARRAY_LEN (ip6->as_u16))
     return -1;
 
-  return rv;
+  *p = pos;
+  return pos == end ? 0 : *pos;
 }
 
 always_inline int
@@ -1374,7 +1438,7 @@ _http_parse_port (u8 **pos, u8 *end, u16 *port)
   u32 value = 0;
   u8 *p = *pos;
 
-  if (!isdigit (*p))
+  if (p == end || !isdigit (*p))
     return -1;
   value = *p - '0';
   p++;

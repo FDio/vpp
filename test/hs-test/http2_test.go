@@ -24,7 +24,8 @@ func init() {
 		Http2ServerMemLeakTest, Http2ClientGetTest, Http2ClientPostTest, Http2ClientPostPtrTest, Http2ClientGetRepeatTest,
 		Http2ClientMultiplexingTest, Http2ClientH2cTest, Http2ClientContinuationH2cTest, Http2ClientNoContentLengthTest, Http2ServerExtraDataTest,
 		Http2ClientMemLeakTest, Http2ClientClosedHeadersTest, Http2ServerDeferredCleanupTest,
-		Htttp2TlsNoAlpnTest, Http2TcpClientCloseDuringHandshakeTest)
+		Htttp2TlsNoAlpnTest, Http2TcpClientCloseDuringHandshakeTest,
+		Http2PseudoHeadersTest, Http2ResponsePseudoHeadersTest)
 	RegisterH2MWTests(Http2MultiplexingMWTest, Http2ClientMultiplexingMWTest, Http2TsFifoMemPressureMWTest)
 	RegisterVethTests(Http2CliTlsTest, Http2ClientContinuationTest, Http2ClientPostFormTest, Http2ClientPostFormPtrTest)
 }
@@ -782,4 +783,263 @@ func Http2TsFifoMemPressureMWTest(s *Http2Suite) {
 	Log(vpp.Vppctl("show session"))
 	stdout, _ := s.Containers.Curl.GetOutput()
 	Log(stdout)
+}
+
+type pseudoHeaderCase struct {
+	name   string
+	fields []hpack.HeaderField
+	status int
+}
+
+func pseudoHeaderCases(address string) []pseudoHeaderCase {
+	base := []hpack.HeaderField{{Name: ":method", Value: "GET"}, {Name: ":scheme", Value: "https"},
+		{Name: ":authority", Value: address}, {Name: ":path", Value: "/test_file_64"}}
+	change := func(fields []hpack.HeaderField, name, value string, omit bool) []hpack.HeaderField {
+		out := []hpack.HeaderField{}
+		for _, f := range fields {
+			if f.Name == name {
+				if !omit {
+					out = append(out, hpack.HeaderField{Name: name, Value: value})
+				}
+			} else {
+				out = append(out, f)
+			}
+		}
+		return out
+	}
+	cases := []pseudoHeaderCase{{"ordinary request", base, 200}, {name: "empty initial section"}, {name: "empty fragmented initial section"}}
+	add := func(name string, fields []hpack.HeaderField, status int) {
+		cases = append(cases, pseudoHeaderCase{name, fields, status})
+	}
+	for _, f := range base {
+		add("missing "+f.Name, change(base, f.Name, "", true), 0)
+		add("empty "+f.Name, change(base, f.Name, "", false), 0)
+		add("duplicate "+f.Name, append(append([]hpack.HeaderField{}, base...), f), 0)
+	}
+	for _, m := range []string{"BAD METHOD", "G\tET", "G/ET", "G\x00ET", "G\x80ET"} {
+		add(fmt.Sprintf("invalid method %q", m), change(base, ":method", m, false), 0)
+	}
+	add("valid extension method", change(base, ":method", "X-EXTENSION", false), 501)
+	add("ampersand in field name", append(append([]hpack.HeaderField{}, base...), hpack.HeaderField{Name: "x&name", Value: "value"}), 200)
+	for _, scheme := range []string{"1https", "ht:tps", "https ", "ht%74ps", "\x80https", "http_", "+http", "http/", "\x00https", "htt\x7fps"} {
+		add("invalid scheme "+scheme, change(base, ":scheme", scheme, false), 0)
+	}
+	add("case-insensitive scheme", change(base, ":scheme", "HTTPS", false), 200)
+	for _, scheme := range []string{"http", "masque", "HtTp", "MaSqUe"} {
+		add("supported scheme "+scheme, change(base, ":scheme", scheme, false), 200)
+	}
+	for _, scheme := range []string{"x", "A0+.-"} {
+		add("valid unsupported scheme "+scheme, change(base, ":scheme", scheme, false), 421)
+	}
+	add("valid unsupported scheme", change(base, ":scheme", "web+demo", false), 421)
+	add("unsupported scheme without authority", change(change(base, ":scheme", "web+demo", false), ":authority", "", true), 421)
+	for _, a := range []string{"bad host", "user@host", ":80", "host:bad", "host:65536", "host/a", "host?q", "host#f", "[::1", "::1", "[gg::1]", "%zz", "host\x00", "host\r", "host\n"} {
+		add(fmt.Sprintf("invalid authority %q", a), change(base, ":authority", a, false), 0)
+	}
+	for _, a := range []string{"[::1]", "[::ffff:192.0.2.1]:443", "[v1.example]:443", "example.com:", "example.com:000443"} {
+		add("valid authority "+a, change(base, ":authority", a, false), 200)
+	}
+	for _, path := range []string{"relative", "*", "/bad#fragment", "/bad%", "/bad%0z", "/bad path", "/bad\\path", "/bad\x00"} {
+		add(fmt.Sprintf("invalid path %q", path), change(base, ":path", path, false), 0)
+	}
+	add("valid path and query", change(base, ":path", "/test_file_64?q=%2f/?", false), 200)
+	add("OPTIONS asterisk", change(change(base, ":method", "OPTIONS", false), ":path", "*", false), 501)
+	hostOnly := append(change(base, ":authority", "", true), hpack.HeaderField{Name: "host", Value: address})
+	add("Host fallback", hostOnly, 200)
+	add("matching Host", append(append([]hpack.HeaderField{}, base...), hpack.HeaderField{Name: "host", Value: address}), 200)
+	add("normalized Host", append(change(base, ":authority", "EXAMPLE.com:443", false), hpack.HeaderField{Name: "host", Value: "example.com"}), 200)
+	add("percent-normalized Host", append(change(base, ":authority", "%65XAMPLE.com:443", false), hpack.HeaderField{Name: "host", Value: "example.com"}), 200)
+	add("IPv6 normalized Host", append(change(base, ":authority", "[2001:0db8::1]:443", false), hpack.HeaderField{Name: "host", Value: "[2001:db8:0:0:0:0:0:1]"}), 200)
+	for _, name := range []string{":method", ":scheme"} {
+		fields := change(base, name, map[string]string{":method": "X-EXTENSION", ":scheme": "web+demo"}[name], false)
+		add("invalid content length before support response "+name, append(fields, hpack.HeaderField{Name: "content-length", Value: "invalid"}), 0)
+	}
+	add("mismatched Host", append(append([]hpack.HeaderField{}, base...), hpack.HeaderField{Name: "host", Value: "elsewhere"}), 0)
+	add("empty Host", append(append([]hpack.HeaderField{}, base...), hpack.HeaderField{Name: "host", Value: ""}), 0)
+	add("duplicate Host", append(hostOnly, hpack.HeaderField{Name: "host", Value: address}), 0)
+	for _, name := range []string{":abcd", ":abcdef", ":abcdefgh", ":abcdefghi", ":status", ":Method"} {
+		add("unknown/request-inappropriate "+name, append(append([]hpack.HeaderField{}, base...), hpack.HeaderField{Name: name, Value: "200"}), 0)
+	}
+	add("pseudo-header after regular field", append(append(append([]hpack.HeaderField{}, base[:3]...), hpack.HeaderField{Name: "x-regular", Value: "value"}), base[3]), 0)
+	add("protocol on ordinary method", append(append([]hpack.HeaderField{}, base...), hpack.HeaderField{Name: ":protocol", Value: "websocket"}), 0)
+	connect := []hpack.HeaderField{{Name: ":method", Value: "CONNECT"}, {Name: ":authority", Value: address}}
+	add("plain CONNECT", connect, 405)
+	add("plain CONNECT missing authority", connect[:1], 0)
+	add("plain CONNECT with scheme", append(append([]hpack.HeaderField{}, connect...), base[1]), 0)
+	add("plain CONNECT with path", append(append([]hpack.HeaderField{}, connect...), base[3]), 0)
+	for _, a := range []string{"", "1", "host", "host:", "host:bad", "host:65536", ":443"} {
+		add("plain CONNECT invalid target "+a, change(connect, ":authority", a, false), 0)
+	}
+	add("plain CONNECT IPv6", change(connect, ":authority", "[::1]:443", false), 405)
+	extended := append(change(base, ":method", "CONNECT", false), hpack.HeaderField{Name: ":protocol", Value: "websocket"})
+	add("extended CONNECT", extended, 405)
+	add("extended CONNECT unsupported scheme", change(extended, ":scheme", "web+demo", false), 421)
+	for _, scheme := range []string{"", "1https", "ht:tps"} {
+		add("extended CONNECT malformed scheme "+scheme, change(extended, ":scheme", scheme, false), 0)
+	}
+	for _, f := range base {
+		add("extended CONNECT missing "+f.Name, change(extended, f.Name, "", true), 0)
+	}
+	for _, p := range []string{"", "web socket", "websocket\x00", "websocket/13"} {
+		add("invalid protocol "+p, change(extended, ":protocol", p, false), 0)
+	}
+	add("duplicate protocol", append(append([]hpack.HeaderField{}, extended...), hpack.HeaderField{Name: ":protocol", Value: "websocket"}), 0)
+	add("unsupported protocol", change(extended, ":protocol", "unknown", false), 501)
+	draft := change(base, ":method", "CONNECT-UDP", false)
+	add("disabled draft CONNECT-UDP", draft, 501)
+	add("draft CONNECT-UDP missing path", change(draft, ":path", "", true), 0)
+	add("draft CONNECT-UDP missing scheme", change(draft, ":scheme", "", true), 0)
+	add("draft CONNECT-UDP missing port", change(draft, ":authority", "host", false), 0)
+	return cases
+}
+
+func pseudoResponseCases() []pseudoHeaderCase {
+	cases := []pseudoHeaderCase{{name: "empty initial response section"}}
+	for _, status := range []string{"", "20", "2000", "2x0", "099", "600", "101"} {
+		cases = append(cases, pseudoHeaderCase{name: "invalid status " + status, fields: []hpack.HeaderField{{Name: ":status", Value: status}}})
+	}
+	cases = append(cases,
+		pseudoHeaderCase{name: "missing status", fields: []hpack.HeaderField{{Name: "server", Value: "test"}}},
+		pseudoHeaderCase{name: "duplicate status", fields: []hpack.HeaderField{{Name: ":status", Value: "200"}, {Name: ":status", Value: "200"}}},
+		pseudoHeaderCase{name: "unknown status-sized pseudo-header", fields: []hpack.HeaderField{{Name: ":foobar", Value: "200"}}},
+		pseudoHeaderCase{name: "request pseudo-header in response", fields: []hpack.HeaderField{{Name: ":status", Value: "200"}, {Name: ":method", Value: "GET"}}},
+		pseudoHeaderCase{name: "status after regular field", fields: []hpack.HeaderField{{Name: "server", Value: "test"}, {Name: ":status", Value: "200"}}},
+	)
+	return cases
+}
+
+func Http2PseudoHeadersTest(s *Http2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	Log(vpp.Vppctl("http tps uri http://" + address + " no-zc"))
+	conn, err := net.DialTimeout("tcp", address, 5*time.Second)
+	AssertNil(err)
+	defer conn.Close()
+	AssertNil(conn.SetDeadline(time.Now().Add(30 * time.Second)))
+	_, err = conn.Write([]byte(http2.ClientPreface))
+	AssertNil(err)
+	framer := http2.NewFramer(conn, conn)
+	framer.ReadMetaHeaders = hpack.NewDecoder(4096, nil)
+	AssertNil(framer.WriteSettings(http2.Setting{ID: http2.SettingMaxConcurrentStreams, Val: 100}))
+	var encoded bytes.Buffer
+	encoder := hpack.NewEncoder(&encoded)
+	encode := func(fields []hpack.HeaderField) []byte {
+		encoded.Reset()
+		if len(fields) == 0 {
+			return nil
+		}
+		for _, f := range fields {
+			AssertNil(encoder.WriteField(f))
+		}
+		// Insert after any malformed pseudo-header. The next stream can reference it.
+		AssertNil(encoder.WriteField(hpack.HeaderField{Name: "x-after-validation", Value: "dynamic-table-state"}))
+		return append([]byte(nil), encoded.Bytes()...)
+	}
+	healthy := []hpack.HeaderField{{Name: ":method", Value: "GET"}, {Name: ":scheme", Value: "https"}, {Name: ":authority", Value: address}, {Name: ":path", Value: "/test_file_64"}}
+	id := uint32(1)
+	for _, tc := range pseudoHeaderCases(address) {
+		By(tc.name)
+		fragmented := tc.name == "empty fragmented initial section"
+		AssertNil(framer.WriteHeaders(http2.HeadersFrameParam{StreamID: id, BlockFragment: encode(tc.fields), EndHeaders: !fragmented, EndStream: true}))
+		if fragmented {
+			AssertNil(framer.WriteContinuation(id, true, nil))
+		}
+		AssertNil(framer.WriteHeaders(http2.HeadersFrameParam{StreamID: id + 2, BlockFragment: encode(healthy), EndHeaders: true, EndStream: true}))
+		pending := map[uint32]bool{id: true, id + 2: true}
+		status := map[uint32]string{}
+		bodies := map[uint32]int{}
+		resets := map[uint32]http2.ErrCode{}
+		for len(pending) > 0 {
+			frame, err := framer.ReadFrame()
+			AssertNil(err)
+			switch f := frame.(type) {
+			case *http2.SettingsFrame:
+				if !f.IsAck() {
+					AssertNil(framer.WriteSettingsAck())
+				}
+			case *http2.MetaHeadersFrame:
+				for _, field := range f.Fields {
+					if field.Name == ":status" {
+						status[f.StreamID] = field.Value
+					}
+				}
+				if f.StreamEnded() {
+					delete(pending, f.StreamID)
+				}
+			case *http2.DataFrame:
+				bodies[f.StreamID] += len(f.Data())
+				if f.StreamEnded() {
+					delete(pending, f.StreamID)
+				}
+			case *http2.RSTStreamFrame:
+				resets[f.StreamID] = f.ErrCode
+				delete(pending, f.StreamID)
+			case *http2.GoAwayFrame:
+				Fail(fmt.Sprintf("connection error while testing %s: %s", tc.name, f.ErrCode))
+			}
+		}
+		if tc.status == 0 {
+			AssertEqual(http2.ErrCodeProtocol, resets[id])
+			AssertEqual("", status[id])
+		} else {
+			AssertEqual(strconv.Itoa(tc.status), status[id])
+		}
+		AssertEqual("200", status[id+2])
+		AssertEqual(64, bodies[id+2])
+		id += 4
+	}
+}
+
+func Http2ResponsePseudoHeadersTest(s *Http2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	for _, tc := range pseudoResponseCases() {
+		By(tc.name)
+		listener, err := net.Listen("tcp", net.JoinHostPort(s.HostAddr(), s.Ports.Port1))
+		AssertNil(err)
+		done := make(chan struct{})
+		go func() {
+			defer GinkgoRecover()
+			defer close(done)
+			conn, err := listener.Accept()
+			AssertNil(err)
+			defer conn.Close()
+			AssertNil(conn.SetDeadline(time.Now().Add(5 * time.Second)))
+			preface := make([]byte, len(http2.ClientPreface))
+			_, err = io.ReadFull(conn, preface)
+			AssertNil(err)
+			framer := http2.NewFramer(conn, conn)
+			AssertNil(framer.WriteSettings(http2.Setting{ID: http2.SettingMaxConcurrentStreams, Val: 100}))
+			var id uint32
+			for id == 0 {
+				frame, err := framer.ReadFrame()
+				AssertNil(err)
+				switch f := frame.(type) {
+				case *http2.SettingsFrame:
+					if !f.IsAck() {
+						AssertNil(framer.WriteSettingsAck())
+					}
+				case *http2.HeadersFrame:
+					id = f.StreamID
+				}
+			}
+			AssertNil(framer.WriteHeaders(http2.HeadersFrameParam{StreamID: id, BlockFragment: http2HeaderBlock(tc.fields...), EndHeaders: true, EndStream: true}))
+			for {
+				frame, err := framer.ReadFrame()
+				AssertNil(err)
+				switch f := frame.(type) {
+				case *http2.RSTStreamFrame:
+					AssertEqual(id, f.StreamID)
+					AssertEqual(http2.ErrCodeProtocol, f.ErrCode)
+					return
+				case *http2.GoAwayFrame:
+					Fail("malformed response must only reset its stream")
+				}
+			}
+		}()
+		output := vpp.Vppctl("http client http2 verbose timeout 1 uri http://" + listener.Addr().String() + "/")
+		Log(output)
+		<-done
+		AssertNil(listener.Close())
+	}
+	AssertNotContains(vpp.Vppctl("show http stats"), "connections protocol error")
 }

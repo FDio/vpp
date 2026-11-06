@@ -2751,6 +2751,7 @@ func HttpHeadersTest(s *Http1Suite) {
 	AssertNil(err, fmt.Sprint(err))
 	req.Header.Add("Accept", "text/xml")
 	req.Header.Add("Accept-Language", "*")
+	req.Header.Add("X&Name", "valid-token")
 	req.Header.Add("Accept", "text/plain")
 	req.Header.Add("Accept", "text/html")
 	resp, err := client.Do(req)
