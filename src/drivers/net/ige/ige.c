@@ -166,6 +166,10 @@ ige_init (vlib_main_t *vm, vnet_dev_t *dev)
         .caps = {
           .change_max_rx_frame_size = 1,
         },
+        .rx_offloads = {
+          .ip4_cksum = 1,
+          .l4_cksum = 1,
+        },
         .speed_caps = speed_caps,
       },
       .ops = {
