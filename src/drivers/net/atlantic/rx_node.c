@@ -118,7 +118,7 @@ atl_rx_one_queue (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queue_
   atl_rx_desc_t *descs = aq->descs;
   atl_rx_desc_t *next = descs + slot;
   atl_rx_desc_qw1_t qw1;
-  u16 frame_max = vnet_dev_get_rx_queue_buffer_data_size (vm, rxq);
+  u16 frame_max = atl_rx_buf_units (vnet_dev_get_rx_queue_buffer_data_size (vm, rxq)) * 1024;
   atl_rx_desc_t all_desc_or = {};
   u32 *pkt_buffer_indices = buffer_indices;
   n_trace = vlib_get_trace_count (vm, node);
