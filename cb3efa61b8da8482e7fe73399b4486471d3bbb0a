@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "998a6a95_51ffc4e1",
+        "filename": "test/test_ip6.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 3224,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-11-06T03:02:19Z",
+      "side": 1,
+      "message": "Is this malformed? 194 bytes inside a 16-byte header?",
+      "revId": "cb3efa61b8da8482e7fe73399b4486471d3bbb0a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

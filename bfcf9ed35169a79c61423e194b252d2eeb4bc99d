@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b5225ba3_af71b195",
+        "filename": "src/plugins/nsh/nsh-md2-ioam/nsh_md2_ioam_util.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-11-06T03:02:19Z",
+      "side": 0,
+      "message": "NSH MD2 TLVs have a 4-byte header and there\u0027s no Pad1 or PadN, both cases were probably copied from HbH. Stepping 1 byte misaligns the walk, and the old 4-byte step ignored length. Remove both cases so type 0/1 TLVs go through the normal lookup and length step. Probably we can remove switch then",
+      "revId": "bfcf9ed35169a79c61423e194b252d2eeb4bc99d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "91b24fd1_11477deb",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 2317,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-11-06T03:02:19Z",
+      "side": 0,
+      "message": "Should this be `((u8 *) hbh0 + t-\u003etrace_len)`?\n\nI think vxlan_gpe_ioam_util.h:40 and ioam_pop.c:58 both need the fix as well",
+      "revId": "bfcf9ed35169a79c61423e194b252d2eeb4bc99d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
