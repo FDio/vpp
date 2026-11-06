@@ -3511,6 +3511,76 @@ class TestResponderGreNewChildDeleteOld(TestResponderPsk):
         )
 
 
+class TestResponderParallelChildInbound(TestResponderPsk):
+    """RFC 7296 2.8: a second parallel Child SA keeps the first one's inbound SA.
+
+    VPP is the responder. The peer adds a parallel Child with the same Traffic
+    Selectors. Both children's inbound SAs must stay installed in the tunnel
+    protection; deleting one must leave the other able to receive.
+    """
+
+    def add_parallel_child(self):
+        first = self.sa.child_sas[0]
+        new = IKEv2ChildSA(first.local_ts, first.remote_ts, True)
+        self.sa.child_sas[0] = new
+        self.sa.i_nonce = os.urandom(32)
+        self.pg0.add_stream(self.create_rekey_request(rekey_notify=False))
+        self.pg0.enable_capture()
+        self.pg_start()
+        reply = self.get_ike_header(self.pg0.get_capture(1)[0])
+        self.assertEqual(reply.exch_type, 36)
+        sa_payload = ikev2.IKEv2_payload_SA(self.sa.hmac_and_decrypt(reply))
+        new.rspi = sa_payload[ikev2.IKEv2_payload_Proposal].SPI
+        return new
+
+    def delete_child(self, child):
+        header = ikev2.IKEv2(
+            init_SPI=self.sa.ispi,
+            resp_SPI=self.sa.rspi,
+            id=self.sa.new_msg_id(),
+            flags="Initiator",
+            exch_type="INFORMATIONAL",
+        )
+        delete = ikev2.IKEv2_payload_Delete(
+            proto="ESP", SPIsize=4, SPInum=1, SPIs=child.ispi
+        )
+        packet = self.create_packet(
+            self.pg0,
+            self.encrypt_ike_msg(header, delete, "Delete"),
+            self.sa.sport,
+            self.sa.dport,
+            self.sa.natt,
+            self.ip6,
+        )
+        self.pg0.add_stream(packet)
+        self.pg0.enable_capture()
+        self.pg_start()
+        return self.get_ike_header(self.pg0.get_capture(1)[0])
+
+    def n_sa_in(self):
+        return self.vapi.ipsec_tunnel_protect_dump(sw_if_index=0xFFFFFFFF)[
+            0
+        ].tun.n_sa_in
+
+    def test_responder(self):
+        super().test_responder()
+        first = self.sa.child_sas[0]
+        self.assertEqual(self.n_sa_in(), 1)
+
+        second = self.add_parallel_child()
+        sa_index = self.vapi.ikev2_sa_dump()[0].sa.sa_index
+        self.assertEqual(len(self.vapi.ikev2_child_sa_dump(sa_index=sa_index)), 2)
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 4)
+        # RFC 7296 2.8: the first Child's inbound SA must still be protected.
+        self.assertEqual(self.n_sa_in(), 2)
+
+        # Deleting the second Child must leave the first able to receive.
+        self.delete_child(first)
+        self.assertEqual(self.n_sa_in(), 1)
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 2)
+        self.sa.child_sas[0] = second
+
+
 @unittest.skipIf(
     "gre" in config.excluded_plugins, "Exclude tests depending on GRE plugin"
 )
