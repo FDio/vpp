@@ -502,7 +502,11 @@ vnet_dev_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
 
 	  clib_bitmap_foreach (i, bmp)
 	    {
-	      vnet_dev_rt_op_t op = { .port = port, .thread_index = i };
+	      vnet_dev_rt_op_t op = {
+		.port = port,
+		.thread_index = i,
+		.disable_rx_node = !port->started,
+	      };
 	      vec_add1 (ops, op);
 	    }
 
@@ -514,9 +518,10 @@ vnet_dev_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
 	{
 	  rxq->interrupt_mode = enable;
 	  vnet_dev_rt_exec_ops (vm, port->dev,
-				&(vnet_dev_rt_op_t){
+				&(vnet_dev_rt_op_t) {
 				  .port = port,
 				  .thread_index = rxq->rx_thread_index,
+				  .disable_rx_node = !port->started,
 				},
 				1);
 	}
