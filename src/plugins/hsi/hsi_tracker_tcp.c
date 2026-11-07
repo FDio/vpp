@@ -209,20 +209,14 @@ hsi_tcp_track_abort_session_inline (session_t *s, u8 send_rst)
 }
 
 static void
-hsi_tcp_track_abort_session (session_t *s)
+hsi_tcp_track_abort_msg (session_handle_t session_handle, u8 send_rst)
 {
-  hsi_tcp_track_abort_session_inline (s, 1 /* send_rst */);
-}
-
-static void
-hsi_tcp_track_abort_rpc (void *arg)
-{
-  session_handle_tu_t sh = { .handle = pointer_to_uword (arg) };
+  session_handle_tu_t sh = { .handle = session_handle };
   session_t *s;
 
   s = hsi_session_get_owned_if_valid (sh);
   if (s)
-    hsi_tcp_track_abort_session (s);
+    hsi_tcp_track_abort_session_inline (s, send_rst);
 }
 
 static void
@@ -233,29 +227,11 @@ hsi_tcp_track_send_abort (session_handle_t session_handle)
   if (session_handle == SESSION_INVALID_HANDLE)
     return;
 
-  hsi_send_rpc_force (sh.thread_index, hsi_tcp_track_abort_rpc,
-		      uword_to_pointer (session_handle, void *));
+  hsi_mq_send_handle (sh.thread_index, HSI_MSG_TCP_ABORT, session_handle);
 }
 
 static_always_inline u8 hsi_tcp_drain_flag_is_set (hsi_tcp_drain_t *drain,
 						   hsi_tcp_drain_flags_t flag);
-
-static void
-hsi_tcp_track_abort_session_silent (session_t *s)
-{
-  hsi_tcp_track_abort_session_inline (s, 0 /* send_rst */);
-}
-
-static void
-hsi_tcp_track_abort_silent_rpc (void *arg)
-{
-  session_handle_tu_t sh = { .handle = pointer_to_uword (arg) };
-  session_t *s;
-
-  s = hsi_session_get_owned_if_valid (sh);
-  if (s)
-    hsi_tcp_track_abort_session_silent (s);
-}
 
 static void
 hsi_tcp_track_send_abort_silent (session_handle_t session_handle)
@@ -265,8 +241,7 @@ hsi_tcp_track_send_abort_silent (session_handle_t session_handle)
   if (session_handle == SESSION_INVALID_HANDLE)
     return;
 
-  hsi_send_rpc_force (sh.thread_index, hsi_tcp_track_abort_silent_rpc,
-		      uword_to_pointer (session_handle, void *));
+  hsi_mq_send_handle (sh.thread_index, HSI_MSG_TCP_ABORT_SILENT, session_handle);
 }
 
 static void
@@ -654,21 +629,15 @@ hsi_tcp_track_is_possible (tcp_connection_t *tc0, tcp_connection_t *tc1)
 }
 
 static void
-hsi_tcp_drain_start_req_free_rpc (void *arg)
+hsi_tcp_drain_start_msg (hsi_tcp_drain_start_req_t *a)
 {
-  hsi_tcp_drain_start_req_put (arg);
-}
-
-static void
-hsi_tcp_drain_start_rpc (void *arg)
-{
-  hsi_tcp_drain_start_req_t *a = hsi_tcp_drain_start_req_get (arg);
   session_handle_tu_t sh = { .handle = a->session_handle };
   session_handle_tu_t peer_sh = { .handle = a->peer_session_handle };
   session_t *s, *peer_s;
   tcp_connection_t *tc, *peer_tc;
   hsi_tcp_drain_t *drain;
 
+  ASSERT (sh.thread_index == vlib_get_thread_index ());
   s = session_get_from_handle_if_valid (sh);
   peer_s = hsi_session_peer_get_if_valid (peer_sh);
   if (!s || !peer_s)
@@ -676,7 +645,7 @@ hsi_tcp_drain_start_rpc (void *arg)
       hsi_worker_counter_inc (hsi_worker_get (sh.thread_index), tcp_track_peer_rpc_failed);
       hsi_tcp_track_send_abort (a->session_handle);
       hsi_tcp_track_send_abort (a->peer_session_handle);
-      goto done;
+      return;
     }
 
   tc = hsi_tcp_connection_at_session (s);
@@ -687,31 +656,22 @@ hsi_tcp_drain_start_rpc (void *arg)
   hsi_session_save_app_wrk (s, a->flags);
   drain = hsi_tcp_drain_start (s, peer_s, tc, peer_tc);
 
-  /* App handed off session but it might have been closed while the rpc was
-   * pending. Drains also can't fill rx holes. Either way fail the pair */
+  /* App handed off session but it might have been closed while the message
+   * was pending. Drains also can't fill rx holes. Either way fail the pair */
   if (!hsi_track_sessions_compatible (s, peer_s) || svm_fifo_has_ooo_data (s->rx_fifo))
     hsi_tcp_drain_fail_pair (drain);
-
-done:
-  hsi_send_rpc (hsi_rpc_req_thread (arg), hsi_tcp_drain_start_req_free_rpc, arg);
 }
 
 static void
 hsi_tcp_track_send_drain_start (session_t *s, session_t *peer_s, hsi_track_flags_t flags)
 {
-  hsi_tcp_drain_start_req_t *a;
-  hsi_worker_t *wrk;
-  clib_thread_index_t thread_index;
-  void *arg;
+  hsi_msg_t msg = { .type = HSI_MSG_TCP_DRAIN_START };
 
-  thread_index = s->thread_index;
-  wrk = hsi_worker_get (thread_index);
-  arg = hsi_tcp_drain_start_req_alloc (wrk, &a, thread_index);
-  a->session_handle = session_handle (peer_s);
-  a->peer_session_handle = session_handle (s);
-  a->flags = flags;
-
-  hsi_send_rpc (peer_s->thread_index, hsi_tcp_drain_start_rpc, arg);
+  ASSERT (s->thread_index == vlib_get_thread_index ());
+  msg.tcp_drain_start.session_handle = session_handle (peer_s);
+  msg.tcp_drain_start.peer_session_handle = session_handle (s);
+  msg.tcp_drain_start.flags = flags;
+  hsi_mq_send (peer_s->thread_index, &msg);
 }
 
 static void
@@ -997,18 +957,12 @@ hsi_tcp_track_commit (session_t *s, hsi_tcp_track_snapshot_t *self, hsi_tcp_trac
 }
 
 static void
-hsi_tcp_track_commit_req_free_rpc (void *arg)
+hsi_tcp_track_commit_msg (hsi_tcp_track_commit_req_t *a)
 {
-  hsi_tcp_track_commit_req_put (arg);
-}
-
-static void
-hsi_tcp_track_commit_rpc (void *arg)
-{
-  hsi_tcp_track_commit_req_t *a = hsi_tcp_track_commit_req_get (arg);
   session_handle_tu_t sh = { .handle = a->session_handle };
   session_t *s;
 
+  ASSERT (sh.thread_index == vlib_get_thread_index ());
   s = hsi_session_get_owned_if_valid (sh);
   if (s)
     hsi_tcp_track_commit (s, &a->self, &a->peer);
@@ -1018,27 +972,19 @@ hsi_tcp_track_commit_rpc (void *arg)
       hsi_tcp_track_send_abort (a->session_handle);
       hsi_tcp_track_send_abort (a->peer.session_handle);
     }
-
-  hsi_send_rpc (hsi_rpc_req_thread (arg), hsi_tcp_track_commit_req_free_rpc, arg);
 }
 
 static void
 hsi_tcp_track_send_commit (session_t *peer_s, hsi_tcp_track_snapshot_t *self,
 			   hsi_tcp_track_snapshot_t *peer)
 {
-  hsi_tcp_track_commit_req_t *a;
-  hsi_worker_t *wrk;
-  clib_thread_index_t thread_index;
-  void *arg;
+  hsi_msg_t msg = { .type = HSI_MSG_TCP_TRACK_COMMIT };
 
-  thread_index = peer->thread_index;
-  wrk = hsi_worker_get (thread_index);
-  arg = hsi_tcp_track_commit_req_alloc (wrk, &a, thread_index);
-
-  a->session_handle = session_handle (peer_s);
-  a->self = *self;
-  a->peer = *peer;
-  hsi_send_rpc (peer_s->thread_index, hsi_tcp_track_commit_rpc, arg);
+  ASSERT (peer->thread_index == vlib_get_thread_index ());
+  msg.tcp_track_commit.session_handle = session_handle (peer_s);
+  msg.tcp_track_commit.self = *self;
+  msg.tcp_track_commit.peer = *peer;
+  hsi_mq_send (peer_s->thread_index, &msg);
 }
 
 /*
@@ -1638,39 +1584,26 @@ hsi_tcp_mark_fin_acked (tcp_connection_t *tc, u32 ack)
 }
 
 static void
-hsi_tcp_fin_ack_req_free_rpc (void *arg)
+hsi_tcp_mark_fin_acked_msg (hsi_tcp_fin_ack_req_t *a)
 {
-  hsi_tcp_fin_ack_req_put (arg);
-}
-
-static void
-hsi_tcp_mark_fin_acked_rpc (void *arg)
-{
-  hsi_tcp_fin_ack_req_t *a = hsi_tcp_fin_ack_req_get (arg);
   session_handle_tu_t sh = { .handle = a->session_handle };
   session_t *s;
 
+  ASSERT (sh.thread_index == vlib_get_thread_index ());
   s = hsi_session_get_owned_if_valid (sh);
   if (s && hsi_tcp_connection_is_committed (hsi_tcp_connection_at_session (s)))
     hsi_tcp_mark_fin_acked (hsi_tcp_connection_at_session (s), a->ack);
-
-  hsi_send_rpc (hsi_rpc_req_thread (arg), hsi_tcp_fin_ack_req_free_rpc, arg);
 }
 
 static void
-hsi_tcp_send_fin_acked (session_handle_t session_handle, clib_thread_index_t owner_thread, u32 ack)
+hsi_tcp_send_fin_acked (session_handle_t session_handle, u32 ack)
 {
   session_handle_tu_t sh = { .handle = session_handle };
-  hsi_tcp_fin_ack_req_t *a;
-  hsi_worker_t *wrk;
-  void *arg;
+  hsi_msg_t msg = { .type = HSI_MSG_TCP_FIN_ACKED };
 
-  wrk = hsi_worker_get (owner_thread);
-  arg = hsi_tcp_fin_ack_req_alloc (wrk, &a, owner_thread);
-
-  a->session_handle = session_handle;
-  a->ack = ack;
-  hsi_send_rpc_force (sh.thread_index, hsi_tcp_mark_fin_acked_rpc, arg);
+  msg.tcp_fin_ack.session_handle = session_handle;
+  msg.tcp_fin_ack.ack = ack;
+  hsi_mq_send (sh.thread_index, &msg);
 }
 
 static void
@@ -1689,7 +1622,7 @@ hsi_tcp_track_peer_fin_acked (hsi_tcp_tracker_t *trk, u32 ack, clib_thread_index
       hsi_tcp_mark_fin_acked (hsi_tcp_connection_at_session (peer_s), peer_ack);
     }
   else
-    hsi_tcp_send_fin_acked (trk->peer_session_handle, thread_index, peer_ack);
+    hsi_tcp_send_fin_acked (trk->peer_session_handle, peer_ack);
 }
 
 static void
@@ -1733,40 +1666,26 @@ hsi_tcp_mark_peer_fin_pending (tcp_connection_t *tc, u32 ack)
 }
 
 static void
-hsi_tcp_peer_fin_req_free_rpc (void *arg)
+hsi_tcp_mark_peer_fin_pending_msg (hsi_tcp_peer_fin_req_t *a)
 {
-  hsi_tcp_peer_fin_req_put (arg);
-}
-
-static void
-hsi_tcp_mark_peer_fin_pending_rpc (void *arg)
-{
-  hsi_tcp_peer_fin_req_t *a = hsi_tcp_peer_fin_req_get (arg);
   session_handle_tu_t sh = { .handle = a->session_handle };
   session_t *s;
 
+  ASSERT (sh.thread_index == vlib_get_thread_index ());
   s = hsi_session_get_owned_if_valid (sh);
   if (s && hsi_tcp_connection_is_committed (hsi_tcp_connection_at_session (s)))
     hsi_tcp_mark_peer_fin_pending (hsi_tcp_connection_at_session (s), a->ack);
-
-  hsi_send_rpc (hsi_rpc_req_thread (arg), hsi_tcp_peer_fin_req_free_rpc, arg);
 }
 
 static void
-hsi_tcp_send_peer_fin_pending (session_handle_t session_handle, clib_thread_index_t owner_thread,
-			       u32 ack)
+hsi_tcp_send_peer_fin_pending (session_handle_t session_handle, u32 ack)
 {
   session_handle_tu_t sh = { .handle = session_handle };
-  hsi_tcp_peer_fin_req_t *a;
-  hsi_worker_t *wrk;
-  void *arg;
+  hsi_msg_t msg = { .type = HSI_MSG_TCP_PEER_FIN_PENDING };
 
-  wrk = hsi_worker_get (owner_thread);
-  arg = hsi_tcp_peer_fin_req_alloc (wrk, &a, owner_thread);
-
-  a->session_handle = session_handle;
-  a->ack = ack;
-  hsi_send_rpc_force (sh.thread_index, hsi_tcp_mark_peer_fin_pending_rpc, arg);
+  msg.tcp_peer_fin.session_handle = session_handle;
+  msg.tcp_peer_fin.ack = ack;
+  hsi_mq_send (sh.thread_index, &msg);
 }
 
 static void
@@ -1783,7 +1702,7 @@ hsi_tcp_arm_peer_fin_pending (hsi_tcp_tracker_t *trk, u32 ack, clib_thread_index
       hsi_tcp_mark_peer_fin_pending (hsi_tcp_connection_at_session (peer_s), ack);
     }
   else
-    hsi_tcp_send_peer_fin_pending (trk->peer_session_handle, thread_index, ack);
+    hsi_tcp_send_peer_fin_pending (trk->peer_session_handle, ack);
 }
 
 static_always_inline u8
@@ -2112,5 +2031,34 @@ hsi_tracker_show_tcp (vlib_main_t *vm, u32 i, hsi_worker_t *wrk, f64 now)
 	session_thread_from_handle ((session_handle_tu_t){ .handle = trk->peer_session_handle }),
 	format_hsi_tcp_tracker_flags, trk->flags, trk->peer_fin_ack, trk->seq_delta, trk->ack_delta,
 	trk->packets, trk->bytes);
+    }
+}
+
+void
+hsi_tcp_handle_msg (hsi_msg_t *msg)
+{
+  switch (msg->type)
+    {
+    case HSI_MSG_TCP_DRAIN_START:
+      hsi_tcp_drain_start_msg (&msg->tcp_drain_start);
+      break;
+    case HSI_MSG_TCP_TRACK_COMMIT:
+      hsi_tcp_track_commit_msg (&msg->tcp_track_commit);
+      break;
+    case HSI_MSG_TCP_FIN_ACKED:
+      hsi_tcp_mark_fin_acked_msg (&msg->tcp_fin_ack);
+      break;
+    case HSI_MSG_TCP_PEER_FIN_PENDING:
+      hsi_tcp_mark_peer_fin_pending_msg (&msg->tcp_peer_fin);
+      break;
+    case HSI_MSG_TCP_ABORT:
+      hsi_tcp_track_abort_msg (msg->session_handle, 1 /* send_rst */);
+      break;
+    case HSI_MSG_TCP_ABORT_SILENT:
+      hsi_tcp_track_abort_msg (msg->session_handle, 0 /* send_rst */);
+      break;
+    default:
+      ASSERT (0);
+      break;
     }
 }

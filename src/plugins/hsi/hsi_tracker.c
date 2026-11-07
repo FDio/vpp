@@ -83,36 +83,14 @@ hsi_session_cleanup_peer_handle (session_t *s)
 }
 
 static void
-hsi_session_fifos_cleanup_req_free_rpc (void *arg)
-{
-  hsi_session_fifos_cleanup_req_put (arg);
-}
-
-static void
-hsi_session_fifos_cleanup_on_thread_rpc (void *arg)
-{
-  hsi_session_fifos_cleanup_req_t *a = hsi_session_fifos_cleanup_req_get (arg);
-
-  segment_manager_dealloc_fifos (a->rx_fifo, a->tx_fifo);
-  hsi_send_rpc (hsi_rpc_req_thread (arg), hsi_session_fifos_cleanup_req_free_rpc, arg);
-}
-
-static void
 hsi_session_send_fifos_cleanup_on_thread (clib_thread_index_t thread_index, svm_fifo_t *rx_fifo,
 					  svm_fifo_t *tx_fifo)
 {
-  hsi_session_fifos_cleanup_req_t *a;
-  hsi_worker_t *wrk;
-  clib_thread_index_t owner_thread;
-  void *arg;
+  hsi_msg_t msg = { .type = HSI_MSG_SESSION_FIFOS_CLEANUP };
 
-  owner_thread = vlib_get_thread_index ();
-  wrk = hsi_worker_get (owner_thread);
-  arg = hsi_session_fifos_cleanup_req_alloc (wrk, &a, owner_thread);
-
-  a->rx_fifo = rx_fifo;
-  a->tx_fifo = tx_fifo;
-  hsi_send_rpc_force (thread_index, hsi_session_fifos_cleanup_on_thread_rpc, arg);
+  msg.session_fifos_cleanup.rx_fifo = rx_fifo;
+  msg.session_fifos_cleanup.tx_fifo = tx_fifo;
+  hsi_mq_send (thread_index, &msg);
 }
 
 static_always_inline void
@@ -227,9 +205,9 @@ hsi_session_program_cleanup (session_t *s)
 }
 
 static void
-hsi_session_cleanup_rpc (void *arg)
+hsi_session_cleanup_msg (session_handle_t session_handle)
 {
-  session_handle_tu_t sh = { .handle = pointer_to_uword (arg) };
+  session_handle_tu_t sh = { .handle = session_handle };
   session_t *s;
 
   s = session_get_from_handle_if_valid (sh);
@@ -242,14 +220,13 @@ hsi_session_send_cleanup (session_handle_t session_handle)
 {
   session_handle_tu_t sh = { .handle = session_handle };
 
-  hsi_send_rpc_force (sh.thread_index, hsi_session_cleanup_rpc,
-		      uword_to_pointer (session_handle, void *));
+  hsi_mq_send_handle (sh.thread_index, HSI_MSG_SESSION_CLEANUP, session_handle);
 }
 
 static void
-hsi_session_cleanup_pair_rpc (void *arg)
+hsi_session_cleanup_pair_msg (session_handle_t session_handle)
 {
-  session_handle_tu_t sh = { .handle = pointer_to_uword (arg) };
+  session_handle_tu_t sh = { .handle = session_handle };
   session_handle_t peer_handle = SESSION_INVALID_HANDLE;
   session_t *s;
 
@@ -268,8 +245,123 @@ hsi_session_send_cleanup_pair (session_handle_t first)
 {
   session_handle_tu_t sh = { .handle = first };
 
-  hsi_send_rpc_force (sh.thread_index, hsi_session_cleanup_pair_rpc,
-		      uword_to_pointer (first, void *));
+  hsi_mq_send_handle (sh.thread_index, HSI_MSG_SESSION_CLEANUP_PAIR, first);
+}
+
+static void
+hsi_handle_msg (hsi_msg_t *msg)
+{
+  switch (msg->type)
+    {
+    case HSI_MSG_SESSION_CLEANUP:
+      hsi_session_cleanup_msg (msg->session_handle);
+      break;
+    case HSI_MSG_SESSION_CLEANUP_PAIR:
+      hsi_session_cleanup_pair_msg (msg->session_handle);
+      break;
+    case HSI_MSG_SESSION_FIFOS_CLEANUP:
+      segment_manager_dealloc_fifos (msg->session_fifos_cleanup.rx_fifo,
+				     msg->session_fifos_cleanup.tx_fifo);
+      break;
+    case HSI_MSG_TCP_DRAIN_START:
+    case HSI_MSG_TCP_TRACK_COMMIT:
+    case HSI_MSG_TCP_FIN_ACKED:
+    case HSI_MSG_TCP_PEER_FIN_PENDING:
+    case HSI_MSG_TCP_ABORT:
+    case HSI_MSG_TCP_ABORT_SILENT:
+      hsi_tcp_handle_msg (msg);
+      break;
+    case HSI_MSG_UDP_DRAIN_START:
+    case HSI_MSG_UDP_DRAIN_CACHE:
+    case HSI_MSG_UDP_TRACK_COMMIT:
+    case HSI_MSG_UDP_PEER_UPDATE:
+    case HSI_MSG_UDP_MIGRATED_CLEANUP:
+      hsi_udp_handle_msg (msg);
+      break;
+    default:
+      ASSERT (0);
+      break;
+    }
+}
+
+/*
+ * Handle all messages queued for this worker. Messages are moved to a vector
+ * this worker owns first, so the queue is held only to copy them and producers
+ * can add new messages, including handlers on this worker.
+ */
+static void
+hsi_mq_handle_rpc (void *arg)
+{
+  hsi_worker_t *wrk = hsi_worker_get (vlib_get_thread_index ());
+  hsi_msg_t *msg;
+  u32 i;
+
+  clib_spinlock_lock (&wrk->mq_lock);
+  while ((msg = clib_ring_deq (wrk->mq)))
+    vec_add1 (wrk->mq_msgs, *msg);
+  clib_spinlock_unlock (&wrk->mq_lock);
+
+  for (i = 0; i < vec_len (wrk->mq_msgs); i++)
+    hsi_handle_msg (vec_elt_at_index (wrk->mq_msgs, i));
+
+  vec_reset_length (wrk->mq_msgs);
+}
+
+/*
+ * Queue msg for thread_index. Its queue is drained when the producer that
+ * finds it empty notifies it with an rpc. Notify with the queue locked, so
+ * producers that find the queue non-empty know the rpc is ahead of any
+ * other rpc they send to the thread afterwards.
+ */
+void
+hsi_mq_send (clib_thread_index_t thread_index, hsi_msg_t *msg)
+{
+  clib_thread_index_t cur_thread = vlib_get_thread_index ();
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+  hsi_worker_t *src_wrk = hsi_worker_get (cur_thread);
+  hsi_msg_t *slot;
+  u8 was_empty;
+
+  clib_spinlock_lock (&wrk->mq_lock);
+
+  was_empty = !clib_ring_n_enq (wrk->mq);
+  slot = clib_ring_enq (wrk->mq);
+  if (PREDICT_FALSE (!slot))
+    {
+      /* Queues must be sized so this never happens */
+      clib_spinlock_unlock (&wrk->mq_lock);
+      hsi_worker_counter_inc (src_wrk, mq_full);
+      clib_warning ("hsi mq of thread %u full", thread_index);
+      ASSERT (0);
+      return;
+    }
+  *slot = *msg;
+  if (was_empty)
+    session_send_rpc_evt_to_thread_force (thread_index, hsi_mq_handle_rpc, 0);
+
+  clib_spinlock_unlock (&wrk->mq_lock);
+
+  hsi_worker_counter_inc (src_wrk, mq_msgs);
+  if (was_empty)
+    {
+      hsi_worker_counter_inc (src_wrk, mq_doorbells);
+      hsi_rpc_count (src_wrk, thread_index == cur_thread);
+    }
+}
+
+/* Allocate or resize mq, only before workers can use it */
+void
+hsi_mq_init (hsi_worker_t *wrk)
+{
+  if (!wrk->mq_lock)
+    clib_spinlock_init (&wrk->mq_lock);
+
+  if (wrk->mq && vec_len (wrk->mq) == hsi_main.mq_length)
+    return;
+
+  ASSERT (!wrk->mq || !clib_ring_n_enq (wrk->mq));
+  clib_ring_free (wrk->mq);
+  clib_ring_new_aligned (wrk->mq, hsi_main.mq_length, CLIB_CACHE_LINE_BYTES);
 }
 
 int
