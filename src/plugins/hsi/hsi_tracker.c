@@ -94,8 +94,7 @@ hsi_session_fifos_cleanup_on_thread_rpc (void *arg)
   hsi_session_fifos_cleanup_req_t *a = hsi_session_fifos_cleanup_req_get (arg);
 
   segment_manager_dealloc_fifos (a->rx_fifo, a->tx_fifo);
-  session_send_rpc_evt_to_thread (hsi_rpc_req_thread (arg), hsi_session_fifos_cleanup_req_free_rpc,
-				  arg);
+  hsi_send_rpc (hsi_rpc_req_thread (arg), hsi_session_fifos_cleanup_req_free_rpc, arg);
 }
 
 static void
@@ -113,7 +112,7 @@ hsi_session_send_fifos_cleanup_on_thread (clib_thread_index_t thread_index, svm_
 
   a->rx_fifo = rx_fifo;
   a->tx_fifo = tx_fifo;
-  session_send_rpc_evt_to_thread_force (thread_index, hsi_session_fifos_cleanup_on_thread_rpc, arg);
+  hsi_send_rpc_force (thread_index, hsi_session_fifos_cleanup_on_thread_rpc, arg);
 }
 
 static_always_inline void
@@ -243,8 +242,8 @@ hsi_session_send_cleanup (session_handle_t session_handle)
 {
   session_handle_tu_t sh = { .handle = session_handle };
 
-  session_send_rpc_evt_to_thread_force (sh.thread_index, hsi_session_cleanup_rpc,
-					uword_to_pointer (session_handle, void *));
+  hsi_send_rpc_force (sh.thread_index, hsi_session_cleanup_rpc,
+		      uword_to_pointer (session_handle, void *));
 }
 
 static void
@@ -269,8 +268,8 @@ hsi_session_send_cleanup_pair (session_handle_t first)
 {
   session_handle_tu_t sh = { .handle = first };
 
-  session_send_rpc_evt_to_thread_force (sh.thread_index, hsi_session_cleanup_pair_rpc,
-					uword_to_pointer (first, void *));
+  hsi_send_rpc_force (sh.thread_index, hsi_session_cleanup_pair_rpc,
+		      uword_to_pointer (first, void *));
 }
 
 int

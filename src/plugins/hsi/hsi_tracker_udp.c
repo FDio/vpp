@@ -132,7 +132,7 @@ hsi_udp_drain_maybe_register_time_update (clib_thread_index_t thread_index)
   if (wrk->udp_drain_time_registered)
     return;
 
-  session_send_rpc_evt_to_thread_force (thread_index, hsi_udp_drain_register_time_update_rpc, 0);
+  hsi_send_rpc_force (thread_index, hsi_udp_drain_register_time_update_rpc, 0);
 }
 
 static_always_inline void
@@ -147,7 +147,7 @@ hsi_udp_drain_maybe_unregister_time_update (clib_thread_index_t thread_index)
   /* Defer unregister so the session update-time vector is not mutated while
    * session code is iterating it. */
   wrk->udp_drain_time_unregister_pending = 1;
-  session_send_rpc_evt_to_thread_force (thread_index, hsi_udp_drain_unregister_time_update_rpc, 0);
+  hsi_send_rpc_force (thread_index, hsi_udp_drain_unregister_time_update_rpc, 0);
 }
 
 static_always_inline void
@@ -162,7 +162,7 @@ hsi_udp_idle_maybe_register_time_update (clib_thread_index_t thread_index)
   if (wrk->udp_idle_time_registered)
     return;
 
-  session_send_rpc_evt_to_thread_force (thread_index, hsi_udp_idle_register_time_update_rpc, 0);
+  hsi_send_rpc_force (thread_index, hsi_udp_idle_register_time_update_rpc, 0);
 }
 
 static_always_inline void
@@ -175,7 +175,7 @@ hsi_udp_idle_maybe_unregister_time_update (clib_thread_index_t thread_index)
     return;
 
   wrk->udp_idle_time_unregister_pending = 1;
-  session_send_rpc_evt_to_thread_force (thread_index, hsi_udp_idle_unregister_time_update_rpc, 0);
+  hsi_send_rpc_force (thread_index, hsi_udp_idle_unregister_time_update_rpc, 0);
 }
 
 static void
@@ -201,7 +201,7 @@ hsi_udp_idle_timeout_update (void)
     {
       wrk = vec_elt_at_index (hsi_main.wrk, i);
       if (hash_elts (wrk->udp_idle_by_session_conn) || wrk->udp_idle_time_registered)
-	session_send_rpc_evt_to_thread_force (i, hsi_udp_idle_timeout_update_rpc, 0);
+	hsi_send_rpc_force (i, hsi_udp_idle_timeout_update_rpc, 0);
     }
 }
 static void
@@ -348,7 +348,7 @@ hsi_udp_peer_update_rpc (void *arg)
 
   if (!hsi_udp_track_peer_update (a->session_handle, a->peer_session_handle))
     hsi_udp_track_peer_update_failed (a->peer_session_handle);
-  session_send_rpc_evt_to_thread (hsi_rpc_req_thread (arg), hsi_udp_peer_update_req_free_rpc, arg);
+  hsi_send_rpc (hsi_rpc_req_thread (arg), hsi_udp_peer_update_req_free_rpc, arg);
 }
 
 static void
@@ -372,7 +372,7 @@ hsi_udp_track_peer_update_on_thread (session_handle_t session_handle,
   arg = hsi_udp_peer_update_req_alloc (wrk, &a, thread_index);
   a->session_handle = session_handle;
   a->peer_session_handle = peer_session_handle;
-  session_send_rpc_evt_to_thread (sh.thread_index, hsi_udp_peer_update_rpc, arg);
+  hsi_send_rpc (sh.thread_index, hsi_udp_peer_update_rpc, arg);
 }
 
 static_always_inline void
@@ -463,8 +463,8 @@ hsi_udp_migrate_tracked_connection (session_t **ps, udp_connection_t *uc)
     }
 
   hsi_udp_track_peer_update_on_thread (peer_handle, new_handle);
-  session_send_rpc_evt_to_thread_force (old_thread, hsi_udp_migrated_session_cleanup_rpc,
-					uword_to_pointer (old_handle, void *));
+  hsi_send_rpc_force (old_thread, hsi_udp_migrated_session_cleanup_rpc,
+		      uword_to_pointer (old_handle, void *));
   hsi_worker_counter_inc (hsi_worker_get (thread_index), udp_track_migrated);
 
   *ps = new_s;
@@ -847,7 +847,7 @@ drop:
   hsi_worker_counter_inc (wrk, udp_drain_cache_dropped);
 
 done:
-  session_send_rpc_evt_to_thread (hsi_rpc_req_thread (arg), hsi_udp_drain_cache_req_free_rpc, arg);
+  hsi_send_rpc (hsi_rpc_req_thread (arg), hsi_udp_drain_cache_req_free_rpc, arg);
 }
 
 hsi_udp_tracked_action_t
@@ -875,7 +875,7 @@ hsi_udp_drain_cache_buffer_remote (vlib_main_t *vm, vlib_buffer_t *b, session_t 
   a->buffer_index = vlib_get_buffer_index (vm, b);
   a->len = len;
 
-  session_send_rpc_evt_to_thread (uc->c_thread_index, hsi_udp_drain_cache_rpc, arg);
+  hsi_send_rpc (uc->c_thread_index, hsi_udp_drain_cache_rpc, arg);
 
   return HSI_UDP_TRACKED_ACTION_HELD;
 }
@@ -1007,7 +1007,7 @@ hsi_udp_drain_start_rpc (void *arg)
   hsi_udp_drain_start (s, peer_s, uc, peer_uc);
 
 done:
-  session_send_rpc_evt_to_thread (hsi_rpc_req_thread (arg), hsi_udp_drain_start_req_free_rpc, arg);
+  hsi_send_rpc (hsi_rpc_req_thread (arg), hsi_udp_drain_start_req_free_rpc, arg);
 }
 
 static int
@@ -1025,7 +1025,7 @@ hsi_udp_track_send_drain_start (session_t *s, session_t *peer_s, hsi_track_flags
   a->session_handle = session_handle (peer_s);
   a->peer_session_handle = session_handle (s);
   a->flags = flags;
-  session_send_rpc_evt_to_thread (peer_s->thread_index, hsi_udp_drain_start_rpc, arg);
+  hsi_send_rpc (peer_s->thread_index, hsi_udp_drain_start_rpc, arg);
 
   return 0;
 }
@@ -1154,7 +1154,7 @@ hsi_udp_track_commit_rpc (void *arg)
       hsi_worker_counter_inc (hsi_worker_get (vlib_get_thread_index ()), udp_track_peer_rpc_failed);
       hsi_udp_send_cleanup_pair_once (a->session_handle, a->peer.session_handle);
     }
-  session_send_rpc_evt_to_thread (hsi_rpc_req_thread (arg), hsi_udp_track_commit_req_free_rpc, arg);
+  hsi_send_rpc (hsi_rpc_req_thread (arg), hsi_udp_track_commit_req_free_rpc, arg);
 }
 
 static int
@@ -1171,7 +1171,7 @@ hsi_udp_track_send_commit (session_t *peer_s, hsi_udp_track_snapshot_t *peer)
 
   a->session_handle = session_handle (peer_s);
   a->peer = *peer;
-  session_send_rpc_evt_to_thread (peer_s->thread_index, hsi_udp_track_commit_rpc, arg);
+  hsi_send_rpc (peer_s->thread_index, hsi_udp_track_commit_rpc, arg);
 
   return 0;
 }
