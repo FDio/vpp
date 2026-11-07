@@ -479,6 +479,9 @@ app_rx_mqs_epoll_add (application_t *app, app_rx_mq_elt_t *mqe)
   template.file_descriptor = fd;
   template.private_data = handle.as_u64;
   template.polling_thread_index = thread_index;
+  /* the eventfd belongs to the message queue and is closed by
+     svm_msg_q_cleanup (); the file registration must not close it too */
+  template.dont_close = 1;
   template.description =
     format (0, "app-%u-rx-mq-%u", app->app_index, thread_index);
   mqe->file_index = clib_file_add (&file_main, &template);
