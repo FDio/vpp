@@ -914,7 +914,8 @@ atl_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 
   /* Invalidate Descriptor Cache */
   v = atl_reg_rd_u32 (dev, ATL_REG_RX_DMA_DESC_CACHE_INIT);
-  atl_reg_wr_u32 (dev, ATL_REG_RX_DMA_DESC_CACHE_INIT, v ^ 1);
+  atl_reg_wr_u32 (dev, ATL_REG_RX_DMA_DESC_CACHE_INIT, v & ~1U);
+  atl_reg_wr_u32 (dev, ATL_REG_RX_DMA_DESC_CACHE_INIT, v | 1);
   t0 = vlib_time_now (vm);
   while (atl_reg_rd_u32 (dev, ATL_REG_RDM_RX_DMA_DESC_CACHE_INIT_DONE) == 0)
     if (vlib_time_now (vm) - t0 > 10e-3)
