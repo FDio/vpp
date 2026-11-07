@@ -793,6 +793,7 @@ hsi_show_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_
   vlib_cli_output (vm, "udp idle-timeout %.3f", hm->udp_idle_timeout);
   vlib_cli_output (vm, "tcp fin-wait-timeout %.3f", hm->tcp_fin_wait_timeout);
   vlib_cli_output (vm, "postponed-cleanup-time %.3f", hm->postponed_cleanup_time);
+  vlib_cli_output (vm, "mq-length %u", hm->mq_length);
 
   vec_foreach_index (i, hm->wrk)
     {
@@ -823,8 +824,11 @@ static void
 hsi_workers_init (void)
 {
   hsi_main_t *hm = &hsi_main;
+  hsi_worker_t *wrk;
 
   vec_validate (hm->wrk, vlib_get_n_threads () - 1);
+  vec_foreach (wrk, hm->wrk)
+    hsi_mq_init (wrk);
 }
 
 static clib_error_t *
@@ -849,9 +853,38 @@ hsi_init (vlib_main_t *vm)
   hm->udp_idle_timeout = HSI_UDP_IDLE_DEFAULT_TIMEOUT;
   hm->tcp_fin_wait_timeout = HSI_TCP_FIN_WAIT_DEFAULT_TIMEOUT;
   hm->postponed_cleanup_time = HSI_POSTPONED_CLEANUP_TIME;
+  if (!hm->mq_length)
+    hm->mq_length = HSI_MQ_DEFAULT_LENGTH;
   hsi_workers_init ();
 
   return 0;
 }
 
 VLIB_INIT_FUNCTION (hsi_init);
+
+static clib_error_t *
+hsi_config_fn (vlib_main_t *vm, unformat_input_t *input)
+{
+  hsi_main_t *hm = &hsi_main;
+  hsi_worker_t *wrk;
+  u32 mq_length;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "mq-length %u", &mq_length))
+	{
+	  if (!mq_length)
+	    return clib_error_return (0, "mq-length must be non-zero");
+	  hm->mq_length = mq_length;
+	}
+      else
+	return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
+    }
+
+  vec_foreach (wrk, hm->wrk)
+    hsi_mq_init (wrk);
+
+  return 0;
+}
+
+VLIB_CONFIG_FUNCTION (hsi_config_fn, "hsi");
