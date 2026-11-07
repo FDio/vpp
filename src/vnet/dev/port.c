@@ -774,6 +774,7 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
 	vnm, &(vnet_eth_interface_registration_t) {
 	       .address = port->primary_hw_addr.eth_mac,
 	       .max_frame_size = port->max_rx_frame_size - VNET_DEV_ETH_FCS_LEN,
+	       .frame_overhead = sizeof (ethernet_header_t),
 	       .dev_class_index = driver->dev_class_index,
 	       .dev_instance = ifs->primary_interface.dev_instance,
 	       .cb.set_max_frame_size = vnet_dev_port_set_max_frame_size,
@@ -1022,6 +1023,7 @@ vnet_dev_port_add_sec_if (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
 	vnm, &(vnet_eth_interface_registration_t) {
 	       .address = port->primary_hw_addr.eth_mac,
 	       .max_frame_size = port->max_rx_frame_size - VNET_DEV_ETH_FCS_LEN,
+	       .frame_overhead = sizeof (ethernet_header_t),
 	       .dev_class_index = driver->dev_class_index,
 	       .dev_instance = sif->dev_instance,
 	       .cb.set_max_frame_size = vnet_dev_port_set_max_frame_size,
