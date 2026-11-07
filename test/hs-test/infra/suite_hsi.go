@@ -425,6 +425,40 @@ func WaitProxyLitePendingRxAtLeast(vpp *VppInstance, minBytes int) {
 		lastOutput)
 }
 
+// HsiShowSessions returns verbose sessions of all threads. Unlike plain show
+// session, it doesn't suppress threads with many sessions.
+func HsiShowSessions(vpp *VppInstance) string {
+	var out strings.Builder
+	for thread := 0; thread <= vpp.CpuConfig.NumWorkers; thread++ {
+		out.WriteString(vpp.Vppctl("show session thread %d verbose 2 force-print", thread))
+		out.WriteString("\n")
+	}
+	return out.String()
+}
+
+// WaitProxyLitePendingRxSessions waits until at least sessions proxy-lite
+// sessions have data queued in their rx fifos
+func WaitProxyLitePendingRxSessions(vpp *VppInstance, sessions int) {
+	pendingRx := regexp.MustCompile(`(?m)^\s*Rx fifo: cursize (\d+)\b`)
+	var lastOutput string
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		lastOutput = HsiShowSessions(vpp)
+		pending := 0
+		for _, m := range pendingRx.FindAllStringSubmatch(lastOutput, -1) {
+			if n, err := strconv.Atoi(m[1]); err == nil && n > 0 {
+				pending++
+			}
+		}
+		if pending >= sessions {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	AssertFail("timed out waiting for %d proxy-lite sessions with RX data:\n%s", sessions,
+		lastOutput)
+}
+
 func WaitProxyLiteTrackedCount(vpp *VppInstance, count int, cancel func()) string {
 	var lastOutput string
 	deadline := time.Now().Add(5 * time.Second)
@@ -580,7 +614,7 @@ func AssertProxyLiteSessionsCleanedCount(s *HsiSuite, expectedCleanups int) {
 		s.Interfaces.Client.Host.Ip4AddressString())
 	proxyTargetConn := fmt.Sprintf("->%s:%d", s.ServerAddr(), s.Ports.Server)
 	for range 10 {
-		sessions := vpp.Vppctl("show session verbose 2")
+		sessions := HsiShowSessions(vpp)
 		if !strings.Contains(sessions, proxyClientConn) &&
 			!strings.Contains(sessions, proxyTargetConn) {
 			break
@@ -589,7 +623,7 @@ func AssertProxyLiteSessionsCleanedCount(s *HsiSuite, expectedCleanups int) {
 	}
 
 	hsi := vpp.Vppctl("show hsi")
-	sessions := vpp.Vppctl("show session verbose 2")
+	sessions := HsiShowSessions(vpp)
 	Log(hsi)
 	Log(sessions)
 	AssertNotContains(sessions, proxyClientConn, "client-proxy session not cleaned up")
