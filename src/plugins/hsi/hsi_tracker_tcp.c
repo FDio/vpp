@@ -842,7 +842,9 @@ hsi_tcp_track_commit_flush (tcp_connection_t *tc)
 /*
  * Ack that reopens the window closed while draining, to what the peer endpoint
  * advertises. Built from the session's commit snapshot, so seq, ack and
- * timestamps are consistent with what the tracker forwards afterwards.
+ * timestamps are consistent with what the tracker forwards afterwards. Sent
+ * through tcp output, so it leaves like any other segment of the connection,
+ * e.g., honoring its output node override.
  */
 static void
 hsi_tcp_send_window_update (tcp_connection_t *tc, hsi_tcp_track_snapshot_t *self,
@@ -856,6 +858,8 @@ hsi_tcp_send_window_update (tcp_connection_t *tc, hsi_tcp_track_snapshot_t *self
   vlib_buffer_t *b;
   vlib_frame_t *f;
 
+  ASSERT (tc->c_thread_index == vm->thread_index);
+
   if (PREDICT_FALSE (vlib_buffer_alloc (vm, &bi, 1) != 1))
     return;
 
@@ -863,6 +867,7 @@ hsi_tcp_send_window_update (tcp_connection_t *tc, hsi_tcp_track_snapshot_t *self
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   b->total_length_not_including_first_buffer = 0;
   b->current_data = 0;
+  vnet_buffer (b)->tcp.flags = 0;
   vlib_buffer_make_headroom (b, TRANSPORT_MAX_HDRS_LEN);
 
   if (tcp_opts_tstamp (&tc->rcv_opts))
@@ -877,29 +882,11 @@ hsi_tcp_send_window_update (tcp_connection_t *tc, hsi_tcp_track_snapshot_t *self
   th = vlib_buffer_push_tcp (b, self->lcl_port, self->rmt_port, self->snd_nxt, self->rcv_nxt,
 			     sizeof (tcp_header_t) + opts_len, TCP_FLAG_ACK, wnd);
   tcp_options_write ((u8 *) (th + 1), opts);
+  th->checksum = tcp_compute_checksum (tc, b);
 
-  if (tc->c_is_ip4)
-    {
-      ip4_header_t *ih;
-
-      ih =
-	vlib_buffer_push_ip4_custom (vm, b, &self->lcl_ip.ip4, &self->rmt_ip.ip4, IP_PROTOCOL_TCP,
-				     0 /* csum offload */, 1 /* is_df */, tc->connection.dscp);
-      th->checksum = ip4_tcp_udp_compute_checksum (vm, b, ih);
-      next_index = ip4_lookup_node.index;
-    }
-  else
-    {
-      ip6_header_t *ih;
-      int bogus = 0;
-
-      ih = vlib_buffer_push_ip6 (vm, b, &self->lcl_ip.ip6, &self->rmt_ip.ip6, IP_PROTOCOL_TCP);
-      th->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ih, &bogus);
-      next_index = ip6_lookup_node.index;
-    }
-
-  vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
-  vnet_buffer (b)->sw_if_index[VLIB_TX] = self->fib_index;
+  /* tcp output adds the ip header and picks the next node */
+  vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
+  next_index = tc->c_is_ip4 ? tcp4_output_node.index : tcp6_output_node.index;
 
   f = vlib_get_frame_to_node (vm, next_index);
   to_next = vlib_frame_vector_args (f);
