@@ -90,7 +90,7 @@ class TestIPIP(VppTestCase):
         self.table.remove_vpp_config()
 
     def validate(self, rx, expected):
-        self.assertTrue(bytes(rx), bytes(expected))
+        self.assertEqual(bytes(rx), bytes(expected))
 
     def generate_ip4_frags(self, payload_length, fragment_size):
         p_ether = Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
@@ -474,7 +474,7 @@ class TestIPIP(VppTestCase):
         self.pg_start()
         rx = self.pg0.get_capture(6)
         reass_pkt = reassemble4(rx)
-        p4_reply.id = 256
+        p4_reply.id = reass_pkt.id
         self.validate(reass_pkt, p4_reply)
 
         self.vapi.sw_interface_set_mtu(self.pg0.sw_if_index, [1600, 0, 0, 0])
@@ -484,7 +484,7 @@ class TestIPIP(VppTestCase):
         self.pg_start()
         rx = self.pg0.get_capture(2)
         reass_pkt = reassemble4(rx)
-        p4_reply.id = 512
+        p4_reply.id = reass_pkt.id
         self.validate(reass_pkt, p4_reply)
 
         # send large packets through the tunnel, expect them to be fragmented
@@ -767,7 +767,7 @@ class TestIPIP6(VppTestCase):
         rv = self.vapi.ipip_del_tunnel(sw_if_index=self.tunnel_if_index)
 
     def validate(self, rx, expected):
-        self.assertTrue(bytes(rx), bytes(expected))
+        self.assertEqual(bytes(rx), bytes(expected))
 
     def generate_ip6_frags(self, payload_length, fragment_size):
         p_ether = Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac)
