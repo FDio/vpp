@@ -751,8 +751,8 @@ hsi_tcp_drain_flush_cached_buffers (tcp_connection_t *tc)
   hsi_worker_t *wrk;
   vlib_main_t *vm;
   u32 *cached, *forward = 0, *drops = 0;
+  u32 i, fwd_node_index, fwd_opaque;
   uword key;
-  u32 i;
 
   key = hsi_tcp_session_conn_key_from_connection (tc);
   drain = hsi_tcp_drain_get (tc->c_thread_index, key);
@@ -766,6 +766,20 @@ hsi_tcp_drain_flush_cached_buffers (tcp_connection_t *tc)
   drain->cached_bytes = 0;
 
   hsi_tcp_tracker_t *trk = hsi_tcp_tracker_get (tc);
+
+  /* If tcp output is overridden, forward through the override with our opaque,
+   * because we send from this worker. See hsi.h */
+  if (tc->next_node_index)
+    {
+      fwd_node_index =
+	vlib_get_next_node (vm, tcp_node_index (output, tc->c_is_ip4), tc->next_node_index)->index;
+      fwd_opaque = trk->next_node_opaque;
+    }
+  else
+    {
+      fwd_node_index = tc->c_is_ip4 ? ip4_lookup_node.index : ip6_lookup_node.index;
+      fwd_opaque = trk->peer_next_node_opaque;
+    }
 
   for (i = 0; i < vec_len (cached); i++)
     {
@@ -782,7 +796,7 @@ hsi_tcp_drain_flush_cached_buffers (tcp_connection_t *tc)
       action = hsi_tcp_handle_tracked_connection (vm, b, tc, ip_hdr, tcp_hdr, tc->c_is_ip4, 0);
       if (action == HSI_TCP_TRACKED_ACTION_FORWARD)
 	{
-	  vnet_buffer (b)->tcp.next_node_opaque = trk->peer_next_node_opaque;
+	  vnet_buffer (b)->tcp.next_node_opaque = fwd_opaque;
 	  vec_add1 (forward, cached[i]);
 	  if (PREDICT_FALSE (tcp_rst (tcp_hdr)))
 	    {
@@ -799,8 +813,7 @@ hsi_tcp_drain_flush_cached_buffers (tcp_connection_t *tc)
 
   if (vec_len (forward))
     {
-      hsi_drain_enqueue_cached_buffers (
-	vm, tc->c_is_ip4 ? ip4_lookup_node.index : ip6_lookup_node.index, forward);
+      hsi_drain_enqueue_cached_buffers (vm, fwd_node_index, forward);
       hsi_worker_counter_add (wrk, tcp_drain_cache_flushed, vec_len (forward));
     }
 
