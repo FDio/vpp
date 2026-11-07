@@ -39,6 +39,12 @@ typedef struct hsi_track_args_
 /*
  * Returns 0 once HSI owns both sessions. On success, the application must stop
  * using and closing them; on failure, ownership remains with the caller.
+ *
+ * Tracked tcp packets are forwarded from the worker of the connection that
+ * received them. If tcp output of that connection is overridden, forwards
+ * replayed from drain caches go through the override node, with the
+ * connection's next_node_opaque, so both connections must use the same node.
+ * Unlike the connection's own segments, forwards are not locally originated.
  */
 __clib_export int hsi_track_pair (hsi_track_args_t *a);
 
