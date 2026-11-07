@@ -88,7 +88,9 @@ typedef struct hsi_udp_drain_cache_req_ hsi_udp_drain_cache_req_t;
   _ (udp_drain_cache_flushed, u64, "udp-drain-cache-flushed")                                      \
   _ (udp_idle_timeout, u64, "udp-idle-timeout")                                                    \
   _ (udp_idle_cleanup_scheduled, u64, "udp-idle-cleanup-scheduled")                                \
-  _ (udp_cleanup_completed, u64, "udp-cleanup-completed")
+  _ (udp_cleanup_completed, u64, "udp-cleanup-completed")                                          \
+  _ (rpc_remote, u64, "rpc-remote")                                                                \
+  _ (rpc_self, u64, "rpc-self")
 
 typedef struct hsi_worker_stats_
 {

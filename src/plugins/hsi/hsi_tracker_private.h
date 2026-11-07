@@ -231,6 +231,41 @@ hsi_worker_get (clib_thread_index_t thread_index)
   return vec_elt_at_index (hsi_main.wrk, thread_index);
 }
 
+static_always_inline void
+hsi_rpc_count (hsi_worker_t *wrk, u8 is_self)
+{
+  if (is_self)
+    hsi_worker_counter_inc (wrk, rpc_self);
+  else
+    hsi_worker_counter_inc (wrk, rpc_remote);
+}
+
+/* Rpc to thread_index, called inline if that's the current thread */
+static_always_inline void
+hsi_send_rpc (clib_thread_index_t thread_index, void *fp, void *arg)
+{
+  clib_thread_index_t cur_thread = vlib_get_thread_index ();
+  void (*fnp) (void *) = fp;
+
+  if (thread_index == cur_thread)
+    {
+      fnp (arg);
+      return;
+    }
+  hsi_rpc_count (hsi_worker_get (cur_thread), 0 /* is_self */);
+  session_send_rpc_evt_to_thread_force (thread_index, fp, arg);
+}
+
+/* Rpc to thread_index, also deferred if that's the current thread */
+static_always_inline void
+hsi_send_rpc_force (clib_thread_index_t thread_index, void *fp, void *arg)
+{
+  clib_thread_index_t cur_thread = vlib_get_thread_index ();
+
+  hsi_rpc_count (hsi_worker_get (cur_thread), thread_index == cur_thread);
+  session_send_rpc_evt_to_thread_force (thread_index, fp, arg);
+}
+
 /*
  * Cross-thread rpc requests are passed as (owner thread, pool index) packed
  * into the rpc arg. Owner pools must be grown with pool_get_aligned_safe so

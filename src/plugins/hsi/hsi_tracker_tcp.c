@@ -61,8 +61,7 @@ hsi_tcp_fin_wait_maybe_unregister_time_update (clib_thread_index_t thread_index)
   /* Defer unregister so the session update-time vector is not mutated while
    * session code is iterating it. */
   wrk->tcp_fin_wait_time_unregister_pending = 1;
-  session_send_rpc_evt_to_thread_force (thread_index, hsi_tcp_fin_wait_unregister_time_update_rpc,
-					0);
+  hsi_send_rpc_force (thread_index, hsi_tcp_fin_wait_unregister_time_update_rpc, 0);
 }
 
 static_always_inline void
@@ -123,7 +122,7 @@ hsi_tcp_drain_maybe_unregister_time_update (clib_thread_index_t thread_index)
   /* Defer unregister so the session update-time vector is not mutated while
    * session code is iterating it. */
   wrk->tcp_drain_time_unregister_pending = 1;
-  session_send_rpc_evt_to_thread_force (thread_index, hsi_tcp_drain_unregister_time_update_rpc, 0);
+  hsi_send_rpc_force (thread_index, hsi_tcp_drain_unregister_time_update_rpc, 0);
 }
 static_always_inline void
 hsi_tcp_fin_wait_maybe_register_time_update (clib_thread_index_t thread_index)
@@ -234,8 +233,8 @@ hsi_tcp_track_send_abort (session_handle_t session_handle)
   if (session_handle == SESSION_INVALID_HANDLE)
     return;
 
-  session_send_rpc_evt_to_thread_force (sh.thread_index, hsi_tcp_track_abort_rpc,
-					uword_to_pointer (session_handle, void *));
+  hsi_send_rpc_force (sh.thread_index, hsi_tcp_track_abort_rpc,
+		      uword_to_pointer (session_handle, void *));
 }
 
 static_always_inline u8 hsi_tcp_drain_flag_is_set (hsi_tcp_drain_t *drain,
@@ -266,8 +265,8 @@ hsi_tcp_track_send_abort_silent (session_handle_t session_handle)
   if (session_handle == SESSION_INVALID_HANDLE)
     return;
 
-  session_send_rpc_evt_to_thread_force (sh.thread_index, hsi_tcp_track_abort_silent_rpc,
-					uword_to_pointer (session_handle, void *));
+  hsi_send_rpc_force (sh.thread_index, hsi_tcp_track_abort_silent_rpc,
+		      uword_to_pointer (session_handle, void *));
 }
 
 static void
@@ -694,7 +693,7 @@ hsi_tcp_drain_start_rpc (void *arg)
     hsi_tcp_drain_fail_pair (drain);
 
 done:
-  session_send_rpc_evt_to_thread (hsi_rpc_req_thread (arg), hsi_tcp_drain_start_req_free_rpc, arg);
+  hsi_send_rpc (hsi_rpc_req_thread (arg), hsi_tcp_drain_start_req_free_rpc, arg);
 }
 
 static void
@@ -712,7 +711,7 @@ hsi_tcp_track_send_drain_start (session_t *s, session_t *peer_s, hsi_track_flags
   a->peer_session_handle = session_handle (s);
   a->flags = flags;
 
-  session_send_rpc_evt_to_thread (peer_s->thread_index, hsi_tcp_drain_start_rpc, arg);
+  hsi_send_rpc (peer_s->thread_index, hsi_tcp_drain_start_rpc, arg);
 }
 
 static void
@@ -1020,7 +1019,7 @@ hsi_tcp_track_commit_rpc (void *arg)
       hsi_tcp_track_send_abort (a->peer.session_handle);
     }
 
-  session_send_rpc_evt_to_thread (hsi_rpc_req_thread (arg), hsi_tcp_track_commit_req_free_rpc, arg);
+  hsi_send_rpc (hsi_rpc_req_thread (arg), hsi_tcp_track_commit_req_free_rpc, arg);
 }
 
 static void
@@ -1039,7 +1038,7 @@ hsi_tcp_track_send_commit (session_t *peer_s, hsi_tcp_track_snapshot_t *self,
   a->session_handle = session_handle (peer_s);
   a->self = *self;
   a->peer = *peer;
-  session_send_rpc_evt_to_thread (peer_s->thread_index, hsi_tcp_track_commit_rpc, arg);
+  hsi_send_rpc (peer_s->thread_index, hsi_tcp_track_commit_rpc, arg);
 }
 
 /*
@@ -1655,7 +1654,7 @@ hsi_tcp_mark_fin_acked_rpc (void *arg)
   if (s && hsi_tcp_connection_is_committed (hsi_tcp_connection_at_session (s)))
     hsi_tcp_mark_fin_acked (hsi_tcp_connection_at_session (s), a->ack);
 
-  session_send_rpc_evt_to_thread (hsi_rpc_req_thread (arg), hsi_tcp_fin_ack_req_free_rpc, arg);
+  hsi_send_rpc (hsi_rpc_req_thread (arg), hsi_tcp_fin_ack_req_free_rpc, arg);
 }
 
 static void
@@ -1671,7 +1670,7 @@ hsi_tcp_send_fin_acked (session_handle_t session_handle, clib_thread_index_t own
 
   a->session_handle = session_handle;
   a->ack = ack;
-  session_send_rpc_evt_to_thread_force (sh.thread_index, hsi_tcp_mark_fin_acked_rpc, arg);
+  hsi_send_rpc_force (sh.thread_index, hsi_tcp_mark_fin_acked_rpc, arg);
 }
 
 static void
@@ -1750,7 +1749,7 @@ hsi_tcp_mark_peer_fin_pending_rpc (void *arg)
   if (s && hsi_tcp_connection_is_committed (hsi_tcp_connection_at_session (s)))
     hsi_tcp_mark_peer_fin_pending (hsi_tcp_connection_at_session (s), a->ack);
 
-  session_send_rpc_evt_to_thread (hsi_rpc_req_thread (arg), hsi_tcp_peer_fin_req_free_rpc, arg);
+  hsi_send_rpc (hsi_rpc_req_thread (arg), hsi_tcp_peer_fin_req_free_rpc, arg);
 }
 
 static void
@@ -1767,7 +1766,7 @@ hsi_tcp_send_peer_fin_pending (session_handle_t session_handle, clib_thread_inde
 
   a->session_handle = session_handle;
   a->ack = ack;
-  session_send_rpc_evt_to_thread_force (sh.thread_index, hsi_tcp_mark_peer_fin_pending_rpc, arg);
+  hsi_send_rpc_force (sh.thread_index, hsi_tcp_mark_peer_fin_pending_rpc, arg);
 }
 
 static void
