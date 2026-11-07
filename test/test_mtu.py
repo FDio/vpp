@@ -54,7 +54,7 @@ class TestMTU(VppTestCase):
                 i.admin_down()
 
     def validate(self, rx, expected):
-        self.assertTrue(bytes(rx), bytes(expected))
+        self.assertEqual(bytes(rx), bytes(expected))
 
     def validate_bytes(self, rx, expected):
         self.assertEqual(rx, expected)
@@ -119,12 +119,12 @@ class TestMTU(VppTestCase):
         p4_reply = p_ip4 / p_payload
         p4_reply.ttl = p_ip4.ttl - 1
         p4_reply.flags = 0
-        p4_reply.id = 256
         self.pg_enable_capture()
         self.pg0.add_stream(p4 * 1)
         self.pg_start()
         rx = self.pg1.get_capture(3)
         reass_pkt = reassemble4(rx)
+        p4_reply.id = reass_pkt.id
         self.validate(reass_pkt, p4_reply)
 
         """
