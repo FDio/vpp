@@ -16,6 +16,7 @@
 #define HSI_UDP_IDLE_DEFAULT_TIMEOUT		  300.0
 #define HSI_TCP_FIN_WAIT_DEFAULT_TIMEOUT	  2.0
 #define HSI_POSTPONED_CLEANUP_TIME		  0.1
+#define HSI_MQ_DEFAULT_LENGTH			  4096
 
 typedef struct hsi_tcp_track_snapshot_
 {
@@ -54,6 +55,7 @@ typedef struct hsi_udp_peer_update_req_ hsi_udp_peer_update_req_t;
 typedef struct hsi_udp_drain_ hsi_udp_drain_t;
 typedef struct hsi_udp_drain_start_req_ hsi_udp_drain_start_req_t;
 typedef struct hsi_udp_drain_cache_req_ hsi_udp_drain_cache_req_t;
+typedef struct hsi_msg_ hsi_msg_t;
 
 #define foreach_hsi_wrk_stat                                                                       \
   _ (tcp_track_accepted, u64, "tcp-track-accepted")                                                \
@@ -90,7 +92,10 @@ typedef struct hsi_udp_drain_cache_req_ hsi_udp_drain_cache_req_t;
   _ (udp_idle_cleanup_scheduled, u64, "udp-idle-cleanup-scheduled")                                \
   _ (udp_cleanup_completed, u64, "udp-cleanup-completed")                                          \
   _ (rpc_remote, u64, "rpc-remote")                                                                \
-  _ (rpc_self, u64, "rpc-self")
+  _ (rpc_self, u64, "rpc-self")                                                                    \
+  _ (mq_msgs, u64, "mq-msgs")                                                                      \
+  _ (mq_doorbells, u64, "mq-doorbells")                                                            \
+  _ (mq_full, u64, "mq-full")
 
 typedef struct hsi_worker_stats_
 {
@@ -107,11 +112,11 @@ typedef struct hsi_cleanup_req_
 
 typedef struct hsi_worker_
 {
-  hsi_tcp_track_commit_req_t *tcp_track_commit_reqs;
-  hsi_tcp_drain_start_req_t *tcp_drain_start_reqs;
-  hsi_tcp_fin_ack_req_t *tcp_fin_ack_reqs;
-  hsi_tcp_peer_fin_req_t *tcp_peer_fin_reqs;
-  hsi_session_fifos_cleanup_req_t *session_fifos_cleanup_reqs;
+  /** Messages from other workers, or this one, see hsi_mq_send */
+  clib_spinlock_t mq_lock;
+  hsi_msg_t *mq;
+  /** Messages being handled, owned by this worker */
+  hsi_msg_t *mq_msgs;
   hsi_tcp_drain_t *tcp_drains;
   uword *tcp_drain_by_session_conn;
   session_handle_t *tcp_drain_update_handles;
@@ -123,10 +128,6 @@ typedef struct hsi_worker_
   u8 tcp_fin_wait_time_registered;
   u8 tcp_fin_wait_time_unregister_pending;
   uword *udp_track_peer_by_session_conn;
-  hsi_udp_track_commit_req_t *udp_track_commit_reqs;
-  hsi_udp_peer_update_req_t *udp_peer_update_reqs;
-  hsi_udp_drain_start_req_t *udp_drain_start_reqs;
-  hsi_udp_drain_cache_req_t *udp_drain_cache_reqs;
   hsi_udp_drain_t *udp_drains;
   uword *udp_drain_by_session_conn;
   session_handle_t *udp_drain_update_handles;
@@ -183,11 +184,14 @@ typedef struct hsi_main_
   f64 udp_idle_timeout;
   f64 tcp_fin_wait_timeout;
   f64 postponed_cleanup_time;
+  u32 mq_length;
 
   /* ipv4 and ipv6 for tcp and udp */
   session_handle_t intercept_listeners[2][2];
 } hsi_main_t;
 
 extern hsi_main_t hsi_main;
+
+void hsi_mq_init (hsi_worker_t *wrk);
 
 #endif /* SRC_PLUGINS_HSI_HSI_TYPES_H_ */
