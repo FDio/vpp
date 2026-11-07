@@ -1000,10 +1000,14 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
    */
   sm = segment_manager_alloc ();
   sm->app_wrk_index = app_wrk->wrk_index;
+  /* Link the segment manager to the worker before init so a failed
+     init_first is fully rolled back by app_worker_free () below. */
+  app_wrk->connects_seg_manager = segment_manager_index (sm);
 
   if ((rv = segment_manager_init_first (sm)))
     {
       app_worker_free (app_wrk);
+      app_worker_map_free (app, wrk_map);
       return rv;
     }
   sm->first_is_protected = 1;
@@ -1012,7 +1016,6 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
   /*
    * Setup app worker
    */
-  app_wrk->connects_seg_manager = segment_manager_index (sm);
   app_wrk->listeners_table = hash_create (0, sizeof (u64));
   app_wrk->event_queue = segment_manager_event_queue (sm);
   app_wrk->app_is_builtin = application_is_builtin (app);
@@ -1150,16 +1153,28 @@ vnet_application_attach (vnet_app_attach_args_t *a)
       secret = a->options[APP_OPTIONS_NAMESPACE_SECRET];
       if ((rv = app_validate_namespace (a->namespace_id, secret,
 					&app_ns_index)))
-	return rv;
+	goto done;
       a->options[APP_OPTIONS_NAMESPACE] = app_ns_index;
     }
 
   if ((rv = application_alloc_and_init ((app_init_args_t *) a)))
-    return rv;
+    goto done;
 
   app = application_get (a->app_index);
   if ((rv = application_alloc_worker_and_init (app, &app_wrk)))
-    return rv;
+    {
+      /*
+       * Undo application_alloc_and_init: drop the api-table entry (added
+       * only for non-builtin apps) and clear the proxy flag. The proxy is
+       * set up only after worker init, so application_free () must not run
+       * proxy teardown on this worker-less app.
+       */
+      if (!application_is_builtin (app))
+	application_api_table_del (a->api_client_index);
+      app->flags &= ~APP_OPTIONS_FLAGS_IS_PROXY;
+      application_free (app);
+      goto done;
+    }
 
   a->app_evt_q = app_wrk->event_queue;
   app_wrk->api_client_index = a->api_client_index;
@@ -1183,6 +1198,7 @@ vnet_application_attach (vnet_app_attach_args_t *a)
   if (!application_is_builtin (app) && application_use_private_rx_mqs ())
     rv = app_rx_mqs_alloc (app);
 
+done:
   vec_free (app_name);
   return rv;
 }
