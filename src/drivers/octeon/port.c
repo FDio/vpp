@@ -259,7 +259,7 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 
   oct_port_add_counters (vm, port);
 
-  if ((rrv = roc_nix_mac_mtu_set (nix, port->max_rx_frame_size)))
+  if ((rrv = roc_nix_mac_mtu_set (nix, port->max_rx_frame_size - VNET_DEV_ETH_FCS_LEN)))
     {
       rv = oct_roc_err (dev, rrv, "roc_nix_mac_mtu_set() failed");
       return rv;
@@ -899,7 +899,7 @@ oct_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
       break;
 
     case VNET_DEV_PORT_CFG_MAX_RX_FRAME_SIZE:
-      rv = oct_op_config_max_rx_len (vm, port, req->max_rx_frame_size);
+      rv = oct_op_config_max_rx_len (vm, port, req->max_rx_frame_size - VNET_DEV_ETH_FCS_LEN);
       break;
 
     case VNET_DEV_PORT_CFG_SET_RSS_CONFIG:

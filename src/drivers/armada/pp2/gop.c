@@ -49,7 +49,7 @@ mvpp2_gop_max_rx_size_set (vnet_dev_port_t *port, u16 frame_size)
   /* GOP#0 and GOP#2 (in PP23/CP115) can support both XLG and GMAC.
    * Configure both MAC blocks when the port has XLG capability.
    */
-  max_rx_size = frame_size + MV_MH_SIZE + MV_ETH_FCS_LEN;
+  max_rx_size = frame_size + MV_MH_SIZE;
   mvpp2_gop_gmac_max_rx_size_set (port, max_rx_size);
   if (mp->has_xlg)
     mvpp2_gop_xlg_max_rx_size_set (port, max_rx_size);
