@@ -474,6 +474,25 @@ session_test_basic (vlib_main_t * vm, unformat_input_t * input)
     .api_client_index = ~0,
   };
   vnet_application_detach (&detach_args);
+
+  /* A refused attach must not keep its application. The detach above freed
+   * a pool slot; the next successful attach reuses it only if the refused
+   * attach in between gave its slot back. */
+  options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = 1;
+  options[APP_OPTIONS_PREALLOC_FIFO_HDRS] = 1;
+  attach_args.name = format (0, "session_test");
+  error = vnet_application_attach (&attach_args);
+  SESSION_TEST ((error != 0), "attach with fifo pairs and hdrs should not work");
+  options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = 0;
+  options[APP_OPTIONS_PREALLOC_FIFO_HDRS] = 0;
+  error = vnet_application_attach (&attach_args);
+  SESSION_TEST ((error == 0), "app attached");
+  SESSION_TEST ((attach_args.app_index == server_index),
+		"refused attach should not leak an app, index %u expected %u",
+		attach_args.app_index, server_index);
+  vec_free (attach_args.name);
+  detach_args.app_index = attach_args.app_index;
+  vnet_application_detach (&detach_args);
   return 0;
 }
 
