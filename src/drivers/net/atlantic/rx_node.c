@@ -50,7 +50,7 @@ atl_rxq_refill_one_batch (vlib_main_t *vm, atl_rx_desc_t *desc_ring, u32 *bi_rin
 }
 
 static_always_inline void
-atl_rxq_refill (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq, int va_dma)
+atl_rxq_refill (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queue_t *rxq, int va_dma)
 {
   atl_rxq_t *aq = vnet_dev_get_rx_queue_data (rxq);
   u32 *bi_ring = aq->buffer_indices;
@@ -75,14 +75,20 @@ atl_rxq_refill (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq, int va_dma)
       if (n_refill >= x4_sz && off + x4_sz <= size)
 	{
 	  if (!atl_rxq_refill_one_batch (vm, desc_ring, bi_ring, size, off, bpi, va_dma, x4_sz))
-	    break;
+	    {
+	      vlib_error_count (vm, node->node_index, ATL_RX_NODE_CTR_BUFFER_ALLOC, 1);
+	      break;
+	    }
 	  tail += x4_sz;
 	  n_refill -= x4_sz;
 	}
       else
 	{
 	  if (!atl_rxq_refill_one_batch (vm, desc_ring, bi_ring, size, off, bpi, va_dma, x1_sz))
-	    break;
+	    {
+	      vlib_error_count (vm, node->node_index, ATL_RX_NODE_CTR_BUFFER_ALLOC, 1);
+	      break;
+	    }
 	  tail += x1_sz;
 	  n_refill -= x1_sz;
 	}
@@ -325,9 +331,9 @@ VNET_DEV_NODE_FN (atl_rx_node)
 
       n_rx += atl_rx_one_queue (vm, node, rxq);
       if (rxq->port->dev->va_dma)
-	atl_rxq_refill (vm, rxq, 1);
+	atl_rxq_refill (vm, node, rxq, 1);
       else
-	atl_rxq_refill (vm, rxq, 0);
+	atl_rxq_refill (vm, node, rxq, 0);
 
       if (PREDICT_FALSE (rxq->interrupt_mode) && aq->tail == aq->head)
 	vlib_node_set_interrupt_pending (vm, node->node_index);
