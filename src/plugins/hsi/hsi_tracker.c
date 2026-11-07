@@ -405,6 +405,12 @@ hsi_track_pair (hsi_track_args_t *a)
   if (!hsi_track_sessions_compatible (s, peer_s))
     {
       hsi_worker_proto_counter_inc (wrk, proto, track_failed);
+      if (!peer_s || s == peer_s || s->session_type != peer_s->session_type)
+	hsi_worker_proto_counter_inc (wrk, proto, track_fail_peer);
+      else if (s->session_state >= SESSION_STATE_TRANSPORT_CLOSING)
+	hsi_worker_proto_counter_inc (wrk, proto, track_fail_closing);
+      else
+	hsi_worker_proto_counter_inc (wrk, proto, track_fail_peer_closing);
       return -1;
     }
 

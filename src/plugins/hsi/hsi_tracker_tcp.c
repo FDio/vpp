@@ -1305,19 +1305,30 @@ hsi_track_tcp (session_t *s, session_t *peer_s, hsi_track_flags_t flags)
 {
   tcp_connection_t *tc0, *tc1;
   hsi_tcp_track_snapshot_t snap0, snap1;
+  hsi_worker_t *wrk;
   u8 is_same_thread;
 
   tc0 = hsi_tcp_connection_at_session (s);
   tc1 = hsi_tcp_connection_at_session (peer_s);
   is_same_thread = s->thread_index == peer_s->thread_index;
+  wrk = hsi_worker_get (s->thread_index);
 
   if (!hsi_tcp_track_is_possible (tc0, tc1))
-    return -1;
+    {
+      if ((tc0->cfg_flags | tc1->cfg_flags) & TCP_CFG_F_TRACKED)
+	hsi_worker_counter_inc (wrk, tcp_track_fail_tracked);
+      else
+	hsi_worker_counter_inc (wrk, tcp_track_fail_options);
+      return -1;
+    }
 
   /* Drains can't fill rx holes because hsi intercepts the retransmits */
   if (svm_fifo_has_ooo_data (s->rx_fifo) ||
       (is_same_thread && svm_fifo_has_ooo_data (peer_s->rx_fifo)))
-    return -1;
+    {
+      hsi_worker_counter_inc (wrk, tcp_track_fail_ooo);
+      return -1;
+    }
 
   hsi_session_save_app_wrk (s, flags);
 

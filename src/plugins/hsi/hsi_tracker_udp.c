@@ -1295,14 +1295,22 @@ hsi_track_udp (session_t *s, session_t *peer_s, hsi_track_flags_t flags)
 {
   hsi_udp_track_snapshot_t snap0, snap1;
   udp_connection_t *uc0, *uc1;
+  hsi_worker_t *wrk;
   u8 is_same_thread;
 
   uc0 = hsi_udp_connection_at_session (s);
   uc1 = hsi_udp_connection_at_session (peer_s);
   is_same_thread = s->thread_index == peer_s->thread_index;
+  wrk = hsi_worker_get (s->thread_index);
 
   if (!hsi_udp_track_is_possible (uc0, uc1))
-    return -1;
+    {
+      if (!(uc0->flags & UDP_CONN_F_CONNECTED) || !(uc1->flags & UDP_CONN_F_CONNECTED))
+	hsi_worker_counter_inc (wrk, udp_track_fail_unconnected);
+      else
+	hsi_worker_counter_inc (wrk, udp_track_fail_tracked);
+      return -1;
+    }
 
   hsi_session_save_app_wrk (s, flags);
 
