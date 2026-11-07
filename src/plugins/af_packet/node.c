@@ -137,6 +137,18 @@ buffer_add_to_chain (vlib_buffer_t *b, vlib_buffer_t *first_b,
   b->next_buffer = ~0;
 }
 
+/*
+ * The kernel strips the outer VLAN tag and reports it in the tpacket header.
+ * Use it, so that 802.1ad (0x88a8) tags are put back correctly.
+ */
+static_always_inline u16
+af_packet_vlan_tpid (u32 tp_status, u16 tp_vlan_tpid)
+{
+  if (tp_status & TP_STATUS_VLAN_TPID_VALID)
+    return tp_vlan_tpid;
+  return ETHERNET_TYPE_VLAN;
+}
+
 static_always_inline void
 fill_gso_offload (vlib_buffer_t *b, u32 gso_size, u8 l4_hdr_sz)
 {
@@ -379,8 +391,8 @@ af_packet_v3_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 			  vlan->priority_cfi_and_id =
 			    clib_host_to_net_u16 (tph->hv1.tp_vlan_tci);
 			  vlan->type = eth->type;
-			  eth->type =
-			    clib_host_to_net_u16 (ETHERNET_TYPE_VLAN);
+			  eth->type = clib_host_to_net_u16 (af_packet_vlan_tpid (
+			    tph->tp_status, tph->hv1.tp_vlan_tpid));
 			  vlan_len = sizeof (ethernet_vlan_header_t);
 			  bytes_copied = sizeof (ethernet_header_t);
 			}
@@ -633,7 +645,8 @@ af_packet_v2_device_input_fn (vlib_main_t *vm, vlib_node_runtime_t *node,
 		      vlan->priority_cfi_and_id =
 			clib_host_to_net_u16 (tph->tp_vlan_tci);
 		      vlan->type = eth->type;
-		      eth->type = clib_host_to_net_u16 (ETHERNET_TYPE_VLAN);
+		      eth->type = clib_host_to_net_u16 (af_packet_vlan_tpid (
+			tph->tp_status, tph->tp_vlan_tpid));
 		      vlan_len = sizeof (ethernet_vlan_header_t);
 		      bytes_copied = sizeof (ethernet_header_t);
 		    }
