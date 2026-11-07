@@ -155,7 +155,6 @@ ige_txq_complete (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
   u32 new_head = __atomic_load_n (itq->wb, __ATOMIC_ACQUIRE);
   u16 mask = txq->size - 1;
   n_free = (new_head - head) & mask;
-  n_free &= 0xfff0;
 
   if (!n_free)
     return;
