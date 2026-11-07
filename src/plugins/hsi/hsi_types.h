@@ -60,6 +60,12 @@ typedef struct hsi_msg_ hsi_msg_t;
 #define foreach_hsi_wrk_stat                                                                       \
   _ (tcp_track_accepted, u64, "tcp-track-accepted")                                                \
   _ (tcp_track_failed, u64, "tcp-track-failed")                                                    \
+  _ (tcp_track_fail_peer, u64, "tcp-track-fail-peer")                                              \
+  _ (tcp_track_fail_closing, u64, "tcp-track-fail-closing")                                        \
+  _ (tcp_track_fail_peer_closing, u64, "tcp-track-fail-peer-closing")                              \
+  _ (tcp_track_fail_tracked, u64, "tcp-track-fail-tracked")                                        \
+  _ (tcp_track_fail_options, u64, "tcp-track-fail-options")                                        \
+  _ (tcp_track_fail_ooo, u64, "tcp-track-fail-ooo")                                                \
   _ (tcp_track_peer_rpc_failed, u64, "tcp-peer-rpc-failed")                                        \
   _ (tcp_drain_started, u64, "tcp-drain-started")                                                  \
   _ (tcp_drain_completed, u64, "tcp-drain-completed")                                              \
@@ -77,6 +83,11 @@ typedef struct hsi_msg_ hsi_msg_t;
   _ (tcp_rst_cleanup, u64, "tcp-rst-cleanup")                                                      \
   _ (udp_track_accepted, u64, "udp-track-accepted")                                                \
   _ (udp_track_failed, u64, "udp-track-failed")                                                    \
+  _ (udp_track_fail_peer, u64, "udp-track-fail-peer")                                              \
+  _ (udp_track_fail_closing, u64, "udp-track-fail-closing")                                        \
+  _ (udp_track_fail_peer_closing, u64, "udp-track-fail-peer-closing")                              \
+  _ (udp_track_fail_tracked, u64, "udp-track-fail-tracked")                                        \
+  _ (udp_track_fail_unconnected, u64, "udp-track-fail-unconnected")                                \
   _ (udp_track_peer_rpc_failed, u64, "udp-peer-rpc-failed")                                        \
   _ (udp_track_migrated, u64, "udp-track-migrated")                                                \
   _ (udp_track_migration_failed, u64, "udp-track-migration-failed")                                \
