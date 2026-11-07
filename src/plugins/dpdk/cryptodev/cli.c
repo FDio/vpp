@@ -266,7 +266,7 @@ cryptodev_set_assignment_fn (vlib_main_t *vm, unformat_input_t *input,
   cryptodev_main_t *cmt = &cryptodev_main;
   cryptodev_engine_thread_t *cet;
   unformat_input_t _line_input, *line_input = &_line_input;
-  clib_thread_index_t thread_index, inst_index;
+  u32 thread_index, inst_index;
   u32 thread_present = 0, inst_present = 0;
   clib_error_t *error = 0;
   int ret;
@@ -290,7 +290,7 @@ cryptodev_set_assignment_fn (vlib_main_t *vm, unformat_input_t *input,
   if (thread_index == 0 && vlib_num_workers () > 0)
     return clib_error_return (0, "assign crypto resource for master thread");
 
-  if (thread_index > vec_len (cmt->per_thread_data) || inst_index > vec_len (cmt->cryptodev_inst))
+  if (thread_index >= vec_len (cmt->per_thread_data) || inst_index >= vec_len (cmt->cryptodev_inst))
     return clib_error_return (0, "wrong thread id or resource id");
 
   cet = cmt->per_thread_data + thread_index;
