@@ -683,15 +683,15 @@ application_alloc_and_init (app_init_args_t *a)
     {
       clib_warning ("mq eventfds can only be used if socket transport is "
 		    "used for binary api");
-      return SESSION_E_NOSUPPORT;
+      goto err;
     }
 
   if (!application_verify_cfg (seg_type))
-    return SESSION_E_NOSUPPORT;
+    goto err;
 
   if (opts[APP_OPTIONS_PREALLOC_FIFO_PAIRS] &&
       opts[APP_OPTIONS_PREALLOC_FIFO_HDRS])
-    return SESSION_E_NOSUPPORT;
+    goto err;
 
   /* Check that the obvious things are properly set up */
   application_verify_cb_fns (a->session_cb_vft);
@@ -765,6 +765,11 @@ application_alloc_and_init (app_init_args_t *a)
 	   a->api_client_index, app->app_index);
 
   return 0;
+
+err:
+  /* nothing beyond application_alloc () ran yet: undo exactly that */
+  pool_put (app_main.app_pool, app);
+  return SESSION_E_NOSUPPORT;
 }
 
 static void
