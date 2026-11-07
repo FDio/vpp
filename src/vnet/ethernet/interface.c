@@ -366,8 +366,10 @@ vnet_eth_register_interface (vnet_main_t *vnm,
 			 ethernet_main.default_mtu + hi->frame_overhead;
   ;
 
-  /* Default ethernet MTU, 9000 unless set by ethernet_config see below */
-  vnet_sw_interface_set_mtu (vnm, hi->sw_if_index, em->default_mtu);
+  /* Default ethernet MTU, 9000 unless set by ethernet_config see below,
+   * limited to what the frame size of the interface allows */
+  vnet_sw_interface_set_mtu (vnm, hi->sw_if_index,
+			     clib_min (em->default_mtu, hi->max_frame_size - hi->frame_overhead));
 
   ethernet_set_mac (hi, ei, r->address);
   return hw_if_index;
