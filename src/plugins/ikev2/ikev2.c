@@ -32,6 +32,8 @@ static int ikev2_delete_tunnel_interface (vnet_main_t *vnm, ikev2_sa_t *sa,
 					  ikev2_child_sa_t *child) __clib_warn_unused_result;
 static_always_inline int ikev2_encr_is_aead (ikev2_transform_encr_type_t encr_type);
 static int ikev2_ts_cmp (ikev2_ts_t *ts1, ikev2_ts_t *ts2);
+static void ikev2_send_informational_delete (vlib_main_t *vm, ikev2_sa_t *sa,
+					     ikev2_protocol_id_t protocol_id, u32 spi);
 
 typedef struct
 {
@@ -4227,6 +4229,7 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 		peer.child.protocol_id ? &peer.child : (vec_len (sa0->rekey) ? sa0->rekey : 0);
 	      if (rekey)
 		{
+		  u8 install_failed = 0;
 		  if (!rekey->notify_type && rekey->protocol_id != IKEV2_PROTOCOL_IKE)
 		    {
 		      u32 old_local_sa_id = 0, old_remote_sa_id = 0;
@@ -4269,6 +4272,7 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 			  rekey->i_proposal = rekey->r_proposal = 0;
 			  rekey->tsi = rekey->tsr = 0;
 			  rekey->notify_type = IKEV2_NOTIFY_MSG_TEMPORARY_FAILURE;
+			  install_failed = 1;
 			}
 		      else
 			{
@@ -4284,6 +4288,11 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 		    }
 		  if (ike_hdr_is_response (ike0))
 		    {
+		      /* RFC 7296 section 2.21: the peer has installed its new
+			 Child SA; if we could not install ours, tell it to drop
+			 the new SA instead of leaving it dangling. */
+		      if (install_failed)
+			ikev2_send_informational_delete (vm, sa0, IKEV2_PROTOCOL_ESP, rekey->spi);
 		      vec_free (sa0->rekey);
 		    }
 		  else
@@ -5586,6 +5595,48 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     }
 
   return 0;
+}
+
+/* Send an Initiator INFORMATIONAL Delete for one SPI. Used to clean up a Child
+   SA the peer installed but that we could not, which has no local Child object
+   to tear down (RFC 7296 section 2.21). */
+static void
+ikev2_send_informational_delete (vlib_main_t *vm, ikev2_sa_t *sa, ikev2_protocol_id_t protocol_id,
+				 u32 spi)
+{
+  ike_header_t *ike0;
+  u32 bi0 = 0;
+  vlib_buffer_t *b0;
+  int len;
+
+  bi0 = ikev2_get_new_ike_header_buff (vm, &b0);
+  if (!bi0)
+    {
+      log_err ("buffer alloc failure");
+      return;
+    }
+
+  ike0 = vlib_buffer_get_current (b0);
+  ike0->exchange = IKEV2_EXCHANGE_INFORMATIONAL;
+  ike0->ispi = clib_host_to_net_u64 (sa->ispi);
+  ike0->rspi = clib_host_to_net_u64 (sa->rspi);
+  ike0->flags = 0;
+  vec_reset_length (sa->del);
+  vec_resize (sa->del, 1);
+  sa->del->protocol_id = protocol_id;
+  sa->del->spi = spi;
+  ike0->msgid = clib_host_to_net_u32 (sa->last_init_msg_id);
+  sa->last_init_msg_id += 1;
+  len = ikev2_generate_message (vm, b0, sa, ike0, 0, 0, 0);
+  if (~0 != len)
+    {
+      if (ikev2_natt_active (sa))
+	len = ikev2_insert_non_esp_marker (ike0, len);
+      ikev2_send_ike (vm, &sa->iaddr, &sa->raddr, bi0, len, ikev2_get_port (sa), sa->dst_port,
+		      sa->sw_if_index);
+    }
+  else
+    vlib_buffer_free_one (vm, bi0);
 }
 
 static int

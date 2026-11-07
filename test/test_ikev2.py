@@ -4159,6 +4159,80 @@ class Test_IKE_AES_GCM_16_256_CURVE448(TemplateResponder, Ikev2Params):
         )
 
 
+class TestInitiatorRekeyInstallFailure(TestInitiatorPsk):
+    """RFC 7296 2.21: a failed rekey-response install sends a Delete for the SA.
+
+    VPP initiates a Child SA rekey. The peer accepts, but installing the new
+    Child SA fails (here forced with a colliding SA id). The peer has installed
+    its side, so VPP must clean up by sending a Delete for the new Child SA
+    rather than silently dropping it.
+    """
+
+    vpp_worker_count = 2
+
+    def test_initiator(self):
+        super(TestInitiatorRekeyInstallFailure, self).test_initiator()
+
+        # The Child's outbound SA id (top bits 0x80000000) encodes its thread
+        # and SA index; the rekey's new Child takes the next slot, id + 1.
+        local_id = next(
+            sa.entry.sad_id
+            for sa in self.vapi.ipsec_sa_dump()
+            if sa.entry.sad_id & 0xC0000000 == 0x80000000
+        )
+        VppIpsecSA(
+            self,
+            local_id + 1,
+            0x5555,
+            VppEnum.vl_api_ipsec_integ_alg_t.IPSEC_API_INTEG_ALG_SHA1_96,
+            b"C91KUR9GYMm5GfkEvNjX",
+            VppEnum.vl_api_ipsec_crypto_alg_t.IPSEC_API_CRYPTO_ALG_AES_CBC_128,
+            b"JPjyOWBciTmuwbBr",
+            VppEnum.vl_api_ipsec_proto_t.IPSEC_API_PROTO_ESP,
+        ).add_vpp_config()
+
+        ispi = int.from_bytes(self.sa.child_sas[0].ispi, "little")
+        self.pg0.enable_capture()
+        self.pg_start()
+        self.vapi.ikev2_initiate_rekey_child_sa(ispi=ispi)
+        req = self.get_ike_header(self.pg0.get_capture(1)[0])
+        self.assertEqual(req.exch_type, 36)
+        sa_pay = ikev2.IKEv2_payload_SA(self.sa.hmac_and_decrypt(req))
+        new_spi = sa_pay[ikev2.IKEv2_payload_Proposal].SPI
+
+        self.sa.i_nonce = sa_pay[ikev2.IKEv2_payload_Nonce].load
+        self.sa.r_nonce = self.sa.i_nonce
+        self.sa.child_sas[0].ispi = new_spi
+        self.sa.child_sas[0].rspi = new_spi
+        self.sa.calc_child_keys()
+        header = ikev2.IKEv2(
+            init_SPI=self.sa.ispi,
+            resp_SPI=self.sa.rspi,
+            flags="Response",
+            exch_type=36,
+            id=req.id,
+            next_payload="Encrypted",
+        )
+        resp = self.encrypt_ike_msg(header, sa_pay, "SA")
+        packet = self.create_packet(
+            self.pg0, resp, self.sa.sport, self.sa.dport, self.sa.natt, self.ip6
+        )
+
+        # The install fails; RFC 7296 2.21 requires a Delete for the new Child SA.
+        self.pg0.add_stream(packet)
+        self.pg0.enable_capture()
+        self.pg_start()
+        reply = self.get_ike_header(self.pg0.get_capture(1)[0])
+        self.assertEqual(reply.exch_type, 37)  # INFORMATIONAL
+        self.assertIn("Initiator", reply.flags)
+        self.assertNotIn("Response", reply.flags)
+        delete = ikev2.IKEv2_payload_Delete(self.sa.hmac_and_decrypt(reply))
+        self.assertEqual(delete.proto, 3)  # ESP
+        self.assertEqual(delete.SPIs, new_spi)
+        # The original Child SA is untouched: two SAs plus the colliding one.
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 3)
+
+
 class TestInitiatorKeepaliveMsg(TestInitiatorPsk):
     """
     Test for keep alive messages
