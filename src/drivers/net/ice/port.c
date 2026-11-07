@@ -256,7 +256,8 @@ ice_start_rx_queue (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq)
 
   buffer_size = clib_min (buffer_size, ICE_RX_BUFFER_SIZE_MAX * ICE_RX_BUFFER_SIZE_UNIT);
 
-  if (!buffer_size || rxq->port->max_rx_frame_size > buffer_size * ICE_RX_DESC_MAX_CHAIN_LENGTH)
+  if (!buffer_size ||
+      rxq->port->max_rx_frame_size + ICE_FCS_LEN > buffer_size * ICE_RX_DESC_MAX_CHAIN_LENGTH)
     return VNET_DEV_ERR_NOT_SUPPORTED;
 
   rv = ice_rx_queue_set_enable (vm, rxq, 0);
@@ -293,7 +294,7 @@ ice_start_rx_queue (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq)
     .dbuf = buffer_size >> ICE_RX_BUFFER_SIZE_SHIFT,
     .crcstrip = 1,
     .l2tsel = 1,
-    .rxmax = rxq->port->max_rx_frame_size,
+    .rxmax = rxq->port->max_rx_frame_size + ICE_FCS_LEN,
     .tphrdesc_ena = 1,
     .tphwdesc_ena = 1,
     .tphdata_ena = 1,

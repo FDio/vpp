@@ -356,7 +356,8 @@ ice_init (vlib_main_t *vm, vnet_dev_t *dev)
 	     "MSI-X vecs %u default MAC %U",
 	     max_frame_size, rxq_count, txq_count, vnet_dev_get_pci_n_msix_interrupts (dev),
 	     format_ethernet_address, default_mac);
-  max_frame_size = clib_min (max_frame_size, ICE_RX_DESC_MAX_CHAIN_LENGTH * data_size);
+  max_frame_size =
+    clib_min (max_frame_size, ICE_RX_DESC_MAX_CHAIN_LENGTH * data_size) - ICE_FCS_LEN;
 
   vnet_dev_port_add_args_t args = {
     .port = {
