@@ -669,7 +669,6 @@ application_alloc_and_init (app_init_args_t *a)
   application_t *app;
   u64 *opts;
 
-  app = application_alloc ();
   opts = a->options;
   /*
    * Make sure we support the requested configuration
@@ -696,6 +695,9 @@ application_alloc_and_init (app_init_args_t *a)
   /* Check that the obvious things are properly set up */
   application_verify_cb_fns (a->session_cb_vft);
 
+  /* allocated only after the checks above, so that they have nothing to
+   * undo */
+  app = application_alloc ();
   app->flags = opts[APP_OPTIONS_FLAGS];
   app->cb_fns = *a->session_cb_vft;
   app->ns_index = opts[APP_OPTIONS_NAMESPACE];
