@@ -353,6 +353,9 @@ atl_rx_buf_units (u32 data_size)
   return clib_min (data_size / 1024, 31);
 }
 
+#define ATL_RSS_KEY_SIZE 40
+#define ATL_RSS_LUT_SIZE 64
+
 vnet_dev_rv_t atl_get_speed_caps (vnet_dev_t *dev, u32 *speed_caps);
 format_function_t format_atl_link_capa;
 format_function_t format_atl_partner_link_capa;

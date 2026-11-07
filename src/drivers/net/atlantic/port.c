@@ -15,18 +15,6 @@ VLIB_REGISTER_LOG_CLASS (atl_log, static) = {
 #define ATL_RPF_RSS_KEY_ADDR_MASK 0x1f
 #define ATL_RPF_RSS_KEY_WR_EN	  (1 << 5)
 
-static_always_inline u32
-atl_enabled_rxq_count (vnet_dev_port_t *port)
-{
-  u32 n = 0;
-
-  foreach_vnet_dev_port_rx_queue (rxq, port)
-    if (rxq->enabled)
-      n++;
-
-  return n;
-}
-
 void
 atl_port_status_poll (vlib_main_t *vm, vnet_dev_port_t *port)
 {
@@ -132,51 +120,87 @@ aq2_filter_art_set (vnet_dev_t *dev, u32 idx, atl_aq2_art_tag_t tag, atl_aq2_art
 }
 
 static vnet_dev_rv_t
-atl_rss_init (vnet_dev_port_t *port, u32 n_rxq)
+atl_rss_validate (vnet_dev_port_t *port, const vnet_dev_rss_config_t *config)
+{
+  if ((config->set_key && config->key_len != ATL_RSS_KEY_SIZE) ||
+      (config->set_lut && config->lut_len != ATL_RSS_LUT_SIZE))
+    return VNET_DEV_ERR_INVALID_DATA;
+
+  if (config->set_lut)
+    for (u32 i = 0; i < ATL_RSS_LUT_SIZE; i++)
+      {
+	vnet_dev_rx_queue_t *rxq = vnet_dev_get_port_rx_queue_by_id (port, config->lut[i]);
+
+	if (!rxq || !rxq->enabled)
+	  return VNET_DEV_ERR_INVALID_VALUE;
+      }
+
+  return VNET_DEV_OK;
+}
+
+static vnet_dev_rv_t
+atl_rss_apply (vnet_dev_port_t *port, const vnet_dev_rss_config_t *config)
 {
   vnet_dev_t *dev = port->dev;
   vlib_main_t *vm = vlib_get_main ();
-  u8 key[40] = {};
-  u32 key_len;
-  u32 i;
 
-  key_len = clib_min ((u32) port->rss_config.key_len, (u32) sizeof (key));
-  ASSERT (key_len > 0);
-  clib_memcpy_fast (key, port->rss_config.key, key_len);
+  if (config->set_key)
+    for (u32 i = 0; i < ATL_RSS_KEY_SIZE / 4; i++)
+      {
+	u32 w = ((u32) config->key[i * 4 + 0] << 24) | ((u32) config->key[i * 4 + 1] << 16) |
+		((u32) config->key[i * 4 + 2] << 8) | ((u32) config->key[i * 4 + 3] << 0);
+	f64 t0 = vlib_time_now (vm);
 
-  for (i = 0; i < 10; i++)
-    {
-      u32 w = ((u32) key[i * 4 + 0] << 24) | ((u32) key[i * 4 + 1] << 16) |
-	      ((u32) key[i * 4 + 2] << 8) | ((u32) key[i * 4 + 3] << 0);
-      f64 t0 = vlib_time_now (vm);
+	atl_reg_wr_u32 (dev, ATL_REG_RPF_RSS_KEY_WR_DATA, w);
+	atl_reg_wr_u32 (dev, ATL_REG_RPF_RSS_KEY_ADDR,
+			((9 - i) & ATL_RPF_RSS_KEY_ADDR_MASK) | ATL_RPF_RSS_KEY_WR_EN);
 
-      atl_reg_wr_u32 (dev, ATL_REG_RPF_RSS_KEY_WR_DATA, w);
-      atl_reg_wr_u32 (dev, ATL_REG_RPF_RSS_KEY_ADDR,
-		      ((9 - i) & ATL_RPF_RSS_KEY_ADDR_MASK) | ATL_RPF_RSS_KEY_WR_EN);
+	while (atl_reg_rd_u32 (dev, ATL_REG_RPF_RSS_KEY_ADDR) & ATL_RPF_RSS_KEY_WR_EN)
+	  if (vlib_time_now (vm) - t0 > 10e-3)
+	    return VNET_DEV_ERR_TIMEOUT;
+      }
 
-      while (atl_reg_rd_u32 (dev, ATL_REG_RPF_RSS_KEY_ADDR) & ATL_RPF_RSS_KEY_WR_EN)
-	if (vlib_time_now (vm) - t0 > 10e-3)
-	  return VNET_DEV_ERR_TIMEOUT;
-    }
+  if (config->set_lut)
+    for (u32 i = 0; i < ATL_RSS_LUT_SIZE; i++)
+      {
+	u32 v = 0;
 
-  if (n_rxq < 2)
-    return VNET_DEV_OK;
+	for (u32 tc = 0; tc < 4; tc++)
+	  v |= ((tc * 8 + config->lut[i]) & 0x1f) << (5 * tc);
 
-  for (i = 0; i < 64; i++)
-    {
-      u32 v = 0;
-      u32 tc;
-
-      for (tc = 0; tc < 4; tc++)
-	{
-	  u32 q = (tc * 8) + (i % n_rxq);
-	  v |= (q & 0x1f) << (5 * tc);
-	}
-
-      atl_reg_wr_u32 (dev, ATL_REG_AQ2_RPF_RSS_REDIR (i), v);
-    }
+	atl_reg_wr_u32 (dev, ATL_REG_AQ2_RPF_RSS_REDIR (i), v);
+      }
 
   return VNET_DEV_OK;
+}
+
+static vnet_dev_rv_t
+atl_rss_init (vnet_dev_port_t *port)
+{
+  vnet_dev_rss_config_t config = port->rss_config;
+  u16 queue_ids[ATL_RSS_LUT_SIZE];
+  u32 n_queues = 0;
+
+  foreach_vnet_dev_port_rx_queue (rxq, port)
+    if (rxq->enabled && n_queues < ARRAY_LEN (queue_ids))
+      queue_ids[n_queues++] = rxq->queue_id;
+
+  if (n_queues == 0)
+    return VNET_DEV_OK;
+
+  if (config.set_lut && atl_rss_validate (port, &config) != VNET_DEV_OK)
+    config.set_lut = 0;
+
+  if (!config.set_lut)
+    {
+      for (u32 i = 0; i < ATL_RSS_LUT_SIZE; i++)
+	config.lut[i] = queue_ids[i % n_queues];
+
+      config.set_lut = 1;
+      config.lut_len = ATL_RSS_LUT_SIZE;
+    }
+
+  return atl_rss_apply (port, &config);
 }
 
 static void
@@ -833,7 +857,6 @@ atl_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
   f64 t0;
   atl_reg_rpb_rpf_rx_t rpb_rx;
   u32 v;
-  u32 n_rxq;
 
   foreach_vnet_dev_port_rx_queue (rxq, port)
     if (rxq->enabled)
@@ -907,8 +930,7 @@ atl_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 	aq->next_index = 0;
       }
 
-  n_rxq = atl_enabled_rxq_count (port);
-  rv = atl_rss_init (port, n_rxq);
+  rv = atl_rss_init (port);
   if (rv != VNET_DEV_OK)
     goto done;
 
@@ -1213,6 +1235,10 @@ atl_port_cfg_change_validate (vlib_main_t *vm __clib_unused, vnet_dev_port_t *po
 	rv = VNET_DEV_OK;
       break;
 
+    case VNET_DEV_PORT_CFG_SET_RSS_CONFIG:
+      rv = atl_rss_validate (port, &req->rss_config);
+      break;
+
     case VNET_DEV_PORT_CFG_SET_LINK_SPEED:
       {
 	u8 rate;
@@ -1247,6 +1273,10 @@ atl_port_cfg_change (vlib_main_t *vm __clib_unused, vnet_dev_port_t *port,
   switch (req->type)
     {
     case VNET_DEV_PORT_CFG_MAX_RX_FRAME_SIZE:
+      break;
+    case VNET_DEV_PORT_CFG_SET_RSS_CONFIG:
+      if (port->started)
+	rv = atl_rss_apply (port, &req->rss_config);
       break;
     case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_ENABLE:
     case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_DISABLE:
