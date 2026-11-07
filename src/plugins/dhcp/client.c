@@ -306,75 +306,107 @@ dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
 
   o = (dhcp_option_t *) dhcp->options;
 
-  while (o->option != 0xFF /* end of options */  &&
-	 (u8 *) o < (b->data + b->current_data + b->current_length))
-    {
-      switch (o->option)
-	{
-	case 53:		/* dhcp message type */
-	  dhcp_message_type = o->data[0];
-	  break;
+  /* The options are peer-supplied; bound every access to the received
+     packet. PAD (0) and END (0xFF) are single octets with no length or
+     data byte; every other option is option(1) length(1) data(length). */
+  {
+    u8 *o_end = b->data + b->current_data + b->current_length;
 
-	case 51:		/* lease time */
-	  {
-	    u32 lease_time_in_seconds =
-	      clib_host_to_net_u32 (o->data_as_u32[0]);
-	    // for debug: lease_time_in_seconds = 20; /*$$$$*/
-	    c->lease_expires = now + (f64) lease_time_in_seconds;
-	    c->lease_lifetime = lease_time_in_seconds;
-	    /* Set a sensible default, in case we don't get opt 58 */
-	    c->lease_renewal_interval = lease_time_in_seconds / 2;
-	  }
-	  break;
+    while ((u8 *) o < o_end && o->option != 0xFF /* end of options */)
+      {
+	u8 *data;
+	u32 len;
 
-	case 58:		/* lease renew time in seconds */
+	if (o->option == 0 /* pad */)
 	  {
-	    u32 lease_renew_time_in_seconds =
-	      clib_host_to_net_u32 (o->data_as_u32[0]);
-	    c->lease_renewal_interval = lease_renew_time_in_seconds;
+	    o = (dhcp_option_t *) ((u8 *) o + 1);
+	    continue;
 	  }
-	  break;
+	/* the length octet and then that many data octets must be present;
+	   a malformed option means the datagram is rejected, not parsed
+	   up to the break (untrusted-input: reject, do not repair) */
+	if ((u8 *) o + 2 > o_end)
+	  return 0;
+	len = o->length;
+	data = o->data;
+	if (data + len > o_end)
+	  return 0;
 
-	case 54:		/* dhcp server address */
-	  c->learned.dhcp_server.as_u32 = o->data_as_u32[0];
-	  break;
+	switch (o->option)
+	  {
+	  case 53: /* dhcp message type */
+	    if (len >= 1)
+	      dhcp_message_type = o->data[0];
+	    break;
 
-	case 1:		/* subnet mask */
-	  {
-	    u32 subnet_mask = clib_host_to_net_u32 (o->data_as_u32[0]);
-	    c->learned.subnet_mask_width = count_set_bits (subnet_mask);
-	  }
-	  break;
-	case 3:		/* router address */
-	  {
-	    u32 router_address = o->data_as_u32[0];
-	    c->learned.router_address.as_u32 = router_address;
-	  }
-	  break;
-	case 6:		/* domain server address */
-	  {
-	    vec_free (c->domain_server_address);
-	    vec_validate (c->domain_server_address,
-			  o->length / sizeof (ip4_address_t) - 1);
-	    clib_memcpy (c->domain_server_address, o->data, o->length);
-	  }
-	  break;
-	case 12:		/* hostname */
-	  {
-	    /* Replace the existing hostname if necessary */
-	    vec_free (c->hostname);
-	    vec_validate (c->hostname, o->length - 1);
-	    clib_memcpy (c->hostname, o->data, o->length);
-	  }
-	  break;
+	  case 51: /* lease time */
+	    if (len >= 4)
+	      {
+		u32 lease_time_in_seconds = clib_host_to_net_u32 (o->data_as_u32[0]);
+		// for debug: lease_time_in_seconds = 20; /*$$$$*/
+		c->lease_expires = now + (f64) lease_time_in_seconds;
+		c->lease_lifetime = lease_time_in_seconds;
+		/* Set a sensible default, in case we don't get opt 58 */
+		c->lease_renewal_interval = lease_time_in_seconds / 2;
+	      }
+	    break;
 
-	  /* $$$$ Your message in this space, parse more options */
-	default:
-	  break;
-	}
+	  case 58: /* lease renew time in seconds */
+	    if (len >= 4)
+	      {
+		u32 lease_renew_time_in_seconds = clib_host_to_net_u32 (o->data_as_u32[0]);
+		c->lease_renewal_interval = lease_renew_time_in_seconds;
+	      }
+	    break;
 
-      o = (dhcp_option_t *) (((uword) o) + (o->length + 2));
-    }
+	  case 54: /* dhcp server address */
+	    if (len >= 4)
+	      c->learned.dhcp_server.as_u32 = o->data_as_u32[0];
+	    break;
+
+	  case 1: /* subnet mask */
+	    if (len >= 4)
+	      {
+		u32 subnet_mask = clib_host_to_net_u32 (o->data_as_u32[0]);
+		c->learned.subnet_mask_width = count_set_bits (subnet_mask);
+	      }
+	    break;
+	  case 3: /* router address */
+	    if (len >= 4)
+	      {
+		u32 router_address = o->data_as_u32[0];
+		c->learned.router_address.as_u32 = router_address;
+	      }
+	    break;
+	  case 6: /* domain server address */
+	    {
+	      u32 n = len / sizeof (ip4_address_t);
+	      vec_free (c->domain_server_address);
+	      if (n)
+		{
+		  vec_validate (c->domain_server_address, n - 1);
+		  clib_memcpy (c->domain_server_address, o->data, n * sizeof (ip4_address_t));
+		}
+	    }
+	    break;
+	  case 12: /* hostname */
+	    if (len)
+	      {
+		/* Replace the existing hostname if necessary */
+		vec_free (c->hostname);
+		vec_validate (c->hostname, len - 1);
+		clib_memcpy (c->hostname, o->data, len);
+	      }
+	    break;
+
+	    /* $$$$ Your message in this space, parse more options */
+	  default:
+	    break;
+	  }
+
+	o = (dhcp_option_t *) (data + len);
+      }
+  }
 
   switch (c->state)
     {

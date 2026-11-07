@@ -10,6 +10,7 @@ from vpp_ip_route import find_route, VppIpTable
 from util import mk_ll_addr
 import scapy.compat
 from scapy.layers.l2 import Ether, ARP, Dot1Q
+from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6, in6_getnsmac
 from scapy.layers.dhcp import DHCP, BOOTP, DHCPTypes
@@ -1787,6 +1788,76 @@ class TestDHCP(VppTestCase):
         self.verify_orig_dhcp_discover(
             rx[0], self.pg3, hostname, dscp=vdscp.IP_API_DSCP_EF
         )
+
+
+class TestDHCPClientMalformedOption(VppTestCase):
+    """DHCP client tolerates malformed options without crashing"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestDHCPClientMalformedOption, cls).setUpClass()
+        cls.create_pg_interfaces(range(1))
+        cls.pg0.admin_up()
+        cls.pg0.config_ip4()
+        cls.pg0.resolve_arp()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestDHCPClientMalformedOption, cls).tearDownClass()
+
+    @staticmethod
+    def _dhcp_type(pkt):
+        for o in pkt[DHCP].options:
+            if isinstance(o, tuple) and o[0] == "message-type":
+                return DHCPTypes[o[1]]
+        return None
+
+    def _offer(self, opts):
+        # BOOTP fixed header, then the DHCP magic cookie and raw options so
+        # that deliberately malformed TLVs reach the client option parser.
+        cookie = b"\x63\x82\x53\x63"
+        return (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IP(src=self.pg0.remote_ip4, dst="255.255.255.255")
+            / UDP(sport=DHCP4_SERVER_PORT, dport=DHCP4_CLIENT_PORT)
+            / BOOTP(
+                op=1, yiaddr=self.pg0.local_ip4, chaddr=mac_pton(self.pg0.local_mac)
+            )
+            / Raw(cookie + opts)
+        )
+
+    def test_malformed_options(self):
+        hostname = "dp"
+        self.pg_enable_capture(self.pg_interfaces)
+        client = VppDHCPClient(self, self.pg0.sw_if_index, hostname)
+        client.add_vpp_config()
+        rx = self.pg0.get_capture(1)
+        self.assertEqual(self._dhcp_type(rx[0]), "discover")
+
+        sid = inet_pton(AF_INET, self.pg0.remote_ip4)
+        offer = bytes([53, 1, 2]) + bytes([54, 4]) + sid  # message-type, server id
+        end = bytes([255])
+
+        # A malformed option must be rejected without crashing or corrupting
+        # state. Option 6 with a length that is not a multiple of four made the
+        # pre-fix client copy o->length bytes into a vector sized for whole
+        # addresses (heap over-write); the others over-read the datagram.
+        for bad in (
+            bytes([6, 5]) + b"\x0a\x00\x00\x01\x0b",
+            bytes([6, 0]),
+            bytes([12, 0]),
+            bytes([12, 4]) + b"\xff\xff\xff",
+            bytes([12, 200]),
+        ):
+            self.pg0.add_stream(self._offer(offer + bad + end))
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            # the unpatched client over-writes the heap on option 6 with a
+            # length that is not a multiple of four; a crash surfaces as
+            # VppDiedError on the next API call
+            self.assertIsNotNone(self.vapi.show_version())
+
+        client.remove_vpp_config()
 
 
 if __name__ == "__main__":
