@@ -70,6 +70,9 @@ func (s *EnvoyProxySuite) SetupSuite() {
 }
 
 func (s *EnvoyProxySuite) SetupTest() {
+	// Envoy's bundled ARM VCL uses 128-byte alignment, VPP defaults to 64-byte.
+	s.SkipIfArm()
+
 	s.HstSuite.SetupTest()
 
 	// VPP
