@@ -34,7 +34,8 @@ func init() {
 		HsiProxyLiteDrainOffloadMWTest,
 		HsiProxyLiteUdpConnectedMWTest, HsiProxyLiteUdpDrainOffloadMWTest,
 		HsiProxyLiteUdpIdleTimeoutMWTest, HsiProxyLiteUdpRepeatedMigrationIdleMWTest,
-		HsiProxyLiteNotifyCleanupMWTest, HsiProxyLiteNotifyCleanupUdpMigrationMWTest)
+		HsiProxyLiteNotifyCleanupMWTest, HsiProxyLiteNotifyCleanupUdpMigrationMWTest,
+		HsiProxyLiteDrainOffloadLoadMWTest, HsiProxyLiteDrainTransportClosedMWTest)
 }
 
 func HsiTransparentProxyTest(s *HsiSuite) {
@@ -206,6 +207,48 @@ func HsiProxyLiteDrainOffloadMWTest(s *HsiSuite) {
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
 	runHsiProxyLiteDrainOffloadTest(s)
+}
+
+// Many pairs with sessions on different workers drain at the same time, so
+// sessions waiting for commit rpcs run drain checks while their peers commit
+// and free their fifos
+func HsiProxyLiteDrainOffloadLoadMWTest(s *HsiSuite) {
+	const flows = 32
+
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
+	s.SetupNginxServer()
+	vpp := s.Containers.Vpp.VppInstance
+	unblock := s.BlockServerReplies()
+	defer unblock()
+	s.StartProxyLiteTcp4("hsi-offload", "fifo-size 4k")
+
+	uploadFileName := MakeProxyLiteUploadFile()
+	defer os.Remove(uploadFileName)
+
+	var finished []<-chan error
+	for i := range flows {
+		uri := fmt.Sprintf("http://%s:%d/upload/hsi-proxy-lite-load-%d", s.ServerAddr(),
+			s.Ports.Server, i)
+		finished = append(finished, startCurlHttpRequest(uri, s.NetNamespaces.Client, "201",
+			60, "-T", uploadFileName, "-H", "Expect:", "--limit-rate", "256k"))
+	}
+
+	WaitProxyLitePendingRxSessions(vpp, flows)
+	unblock()
+	WaitProxyLiteTrackedCount(vpp, flows, func() {})
+	for _, f := range finished {
+		AssertNil(<-f)
+	}
+
+	output := vpp.Vppctl("show proxy-lite")
+	Log(output)
+	AssertContains(output, "failed 0")
+	hsi := WaitHsiCounterAtLeast(vpp, "tcp-drain-completed", 2*flows)
+	Log(hsi)
+	AssertEqual(0, HsiCounterValue(hsi, "tcp-drain-stalled"))
+	AssertEqual(0, HsiCounterValue(hsi, "tcp-track-peer-rpc-failed"))
+	AssertProxyLiteSessionsCleanedCount(s, 2*flows)
 }
 
 func HsiProxyLiteIpv6DrainOffloadTest(s *HsiSuite) {
@@ -637,6 +680,18 @@ func HsiProxyLiteNotifyCleanupDrainTimeoutTest(s *HsiSuite) {
 // session, and notify proxy-lite, once tcp deletes the connection. Takes ~100s
 // because tcp gives up only after TCP_RTO_BOFF_MAX backoffs.
 func HsiProxyLiteDrainTransportClosedTest(s *HsiSuite) {
+	runHsiProxyLiteDrainTransportClosedTest(s)
+}
+
+// Proxy target session, on another worker than the client session in MW
+// tests, is torn down while the pair is draining
+func HsiProxyLiteDrainTransportClosedMWTest(s *HsiSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
+	runHsiProxyLiteDrainTransportClosedTest(s)
+}
+
+func runHsiProxyLiteDrainTransportClosedTest(s *HsiSuite) {
 	s.SetupNginxServer()
 	vpp := s.Containers.Vpp.VppInstance
 	Log(vpp.Vppctl("hsi tcp drain-timeout 300"))

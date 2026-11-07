@@ -462,6 +462,9 @@ hsi_tcp_drain_flag_set (hsi_tcp_drain_t *drain, hsi_tcp_drain_flags_t flag, u8 i
 static_always_inline void
 hsi_tcp_drain_sample (session_t *s, tcp_connection_t *tc, hsi_tcp_drain_t *drain)
 {
+  /* Fifos of sessions owned by other workers can go away under us, see
+   * hsi_tcp_track_remote_peer_needs_drain */
+  ASSERT (s->thread_index == vlib_get_thread_index ());
   hsi_drain_sample_fifos (s, &drain->rx_deq, &drain->tx_deq);
   hsi_tcp_drain_flag_set (drain, HSI_TCP_DRAIN_F_RX_OOO, svm_fifo_has_ooo_data (s->rx_fifo));
   drain->snd_una = tc->snd_una;
@@ -525,6 +528,34 @@ hsi_tcp_track_needs_drain (session_t *s, tcp_connection_t *tc)
   hsi_tcp_drain_t sample = {};
 
   hsi_tcp_drain_sample (s, tc, &sample);
+  return hsi_tcp_drain_sample_needs_drain (&sample);
+}
+
+/*
+ * Check if a peer owned by another worker still needs draining. Its worker
+ * frees its fifos when it's torn down, so treat a closed peer as not drained
+ * and load the fifos only once.
+ */
+static_always_inline int
+hsi_tcp_track_remote_peer_needs_drain (session_t *peer_s, tcp_connection_t *peer_tc)
+{
+  hsi_tcp_drain_t sample = {};
+  svm_fifo_t *rx_fifo, *tx_fifo;
+
+  if (clib_atomic_load_relax_n (&peer_s->session_state) >= SESSION_STATE_TRANSPORT_CLOSED)
+    return 1;
+
+  rx_fifo = clib_atomic_load_relax_n (&peer_s->rx_fifo);
+  tx_fifo = clib_atomic_load_relax_n (&peer_s->tx_fifo);
+  if (!rx_fifo || !tx_fifo)
+    return 1;
+
+  sample.rx_deq = svm_fifo_max_dequeue (rx_fifo);
+  sample.tx_deq = svm_fifo_max_dequeue_cons (tx_fifo);
+  hsi_tcp_drain_flag_set (&sample, HSI_TCP_DRAIN_F_RX_OOO, svm_fifo_has_ooo_data (rx_fifo));
+  sample.snd_una = peer_tc->snd_una;
+  sample.snd_nxt = peer_tc->snd_nxt;
+
   return hsi_tcp_drain_sample_needs_drain (&sample);
 }
 
@@ -1103,14 +1134,16 @@ hsi_tcp_drain_try_complete (session_t *s, tcp_connection_t *tc, hsi_tcp_drain_t 
 	    return 0;
 	}
     }
-  else if (peer_s->rx_fifo && peer_s->tx_fifo && hsi_tcp_track_needs_drain (peer_s, peer_tc))
-    return 0;
-
-  if (s->thread_index != peer_s->thread_index)
+  else
     {
+      /* Across workers, the session with the lower handle commits both and
+       * the other one waits for its commit rpc. Don't touch the committer's
+       * fifos while waiting, it frees them when it commits */
       if (drain->session_handle > drain->peer_session_handle)
 	return 0;
       if (hsi_tcp_drain_flag_is_set (drain, HSI_TCP_DRAIN_F_COMMIT_SENT))
+	return 0;
+      if (hsi_tcp_track_remote_peer_needs_drain (peer_s, peer_tc))
 	return 0;
       drain->flags |= HSI_TCP_DRAIN_F_COMMIT_SENT;
     }
