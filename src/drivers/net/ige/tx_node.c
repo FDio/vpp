@@ -296,7 +296,6 @@ ige_tx_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_tx_queu
 		    u32 n_bufs, u32 n_processed, u16 first)
 {
   ige_txq_t *itq = vnet_dev_get_tx_queue_data (txq);
-  vlib_node_t *n = vlib_get_node (vm, node->node_index);
   u16 mask = txq->size - 1;
   u16 end = itq->tail;
 
@@ -326,9 +325,9 @@ ige_tx_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_tx_queu
       if (n_desc)
 	t->error = 0;
       else if (i >= n_processed)
-	t->error = n->error_heap_index + IGE_TX_NODE_CTR_NO_FREE_SLOTS;
+	t->error = node->errors[IGE_TX_NODE_CTR_NO_FREE_SLOTS];
       else
-	t->error = n->error_heap_index + IGE_TX_NODE_CTR_BUFFER_CHAIN_TOO_LONG;
+	t->error = node->errors[IGE_TX_NODE_CTR_BUFFER_CHAIN_TOO_LONG];
       for (u32 j = 0; j < n_desc; j++)
 	t->desc[j] = itq->descs[(start + j) & mask];
     }
