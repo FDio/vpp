@@ -873,7 +873,11 @@ application_force_detach (application_t *app)
   {
     vnet_app_detach_args_t _args = { 0 }, *args = &_args;
     args->app_index = app->app_index;
-    vlib_rpc_call_main_thread (vnet_application_detach, (u8 *) &args, sizeof (args));
+    /* force detach tears down the whole app, as the in-place branch does */
+    args->api_client_index = ~0;
+    /* pass the argument struct by value: &args/sizeof(args) copied only the
+       pointer to a stack object that is gone when the RPC runs */
+    vlib_rpc_call_main_thread (vnet_application_detach, (u8 *) args, sizeof (*args));
   }
   else
   {
