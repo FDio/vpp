@@ -2,7 +2,8 @@
 
 PKG=vpp-dep-octeon-roc
 URL=https://github.com/MarvellEmbeddedProcessors/marvell-vpp.git
-ARCH=$(dpkg --print-architecture)
+ARCH=arm64
+TARGET=aarch64
 TMP_DIR=$(mktemp -d -p $PWD)
 
 set -eEuo pipefail
@@ -19,12 +20,23 @@ trap "err_handler" INT TERM EXIT ERR
 SRC=${TMP_DIR}/src
 BUILD=${TMP_DIR}/build
 STAGE=${TMP_DIR}/pkg
-INSTALL_PREFIX=/opt/vpp/external/$(uname -m)
+INSTALL_PREFIX=/opt/vpp/external/${TARGET}
+CMAKE_ARGS=()
+
+if [ "$(uname -m)" != "${TARGET}" ]; then
+  CMAKE_ARGS+=(
+    -DCMAKE_SYSTEM_NAME=Linux
+    -DCMAKE_SYSTEM_PROCESSOR=${TARGET}
+    -DCMAKE_C_COMPILER=clang
+    -DCMAKE_C_COMPILER_TARGET=${TARGET}-linux-gnu
+    -DCMAKE_FIND_ROOT_PATH=/usr/${TARGET}-linux-gnu
+  )
+fi
 
 git clone ${URL} ${SRC}
 VER=0.0.$(git -C ${SRC} rev-list --count HEAD)
 
-cmake -S ${SRC} -B ${BUILD}
+cmake -S ${SRC} -B ${BUILD} ${CMAKE_ARGS[@]+"${CMAKE_ARGS[@]}"}
 cmake --build ${BUILD} --parallel
 cmake --install ${BUILD} --prefix ${STAGE}${INSTALL_PREFIX}
 
