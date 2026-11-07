@@ -775,6 +775,7 @@ setup_tx_node (vlib_main_t * vm,
   vlib_register_errors (vm, node_index, dev_class->tx_function_n_errors,
 			dev_class->tx_function_error_strings,
 			dev_class->tx_function_error_counters);
+  vlib_node_update_runtime_errors (vm, node_index);
 }
 
 static void

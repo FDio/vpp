@@ -108,6 +108,27 @@ vlib_unregister_errors (vlib_main_t *vm, u32 node_index)
     }
 }
 
+/* Makes the error codes of a node whose errors were registered after the
+ * node was created visible to the node function through node->errors[]. */
+void
+vlib_node_update_runtime_errors (vlib_main_t *vm, u32 node_index)
+{
+  vlib_node_t *n = vlib_get_node (vm, node_index);
+  vlib_node_runtime_t *rt = vlib_node_get_runtime (vm, node_index);
+
+  ASSERT (vlib_get_thread_index () == 0);
+
+  vec_reset_length (rt->errors);
+
+  if (n->n_errors)
+    vec_validate (rt->errors, n->n_errors - 1);
+
+  for (u32 i = 0; i < n->n_errors; i++)
+    rt->errors[i] = n->error_heap_index + i;
+
+  vlib_worker_thread_node_runtime_update ();
+}
+
 /* Reserves given number of error codes for given node. */
 void
 vlib_register_errors (vlib_main_t *vm, u32 node_index, u32 n_errors,
