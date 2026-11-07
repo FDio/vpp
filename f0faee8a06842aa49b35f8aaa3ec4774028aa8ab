@@ -16,6 +16,24 @@
       "message": "can we generalize this a bit? :) \n\nFor instance, make APP_SAPI_MSG_TYPE_ADD_DEL_CERT_KEY do some prealloc/flag the socket as having incomplete data that we keep on accumulating? \n\nThis works only if data is split in 2, right?",
       "revId": "f0faee8a06842aa49b35f8aaa3ec4774028aa8ab",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "13e2a6bb_aab0f30c",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2207,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-07T20:35:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "85c96bbf_4e599cfe",
+      "revId": "f0faee8a06842aa49b35f8aaa3ec4774028aa8ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
