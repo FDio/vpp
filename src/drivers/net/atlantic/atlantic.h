@@ -292,7 +292,8 @@ typedef struct
   _ (NO_FREE_SLOTS, no_free_slots, ERROR, "no free TX slots")                                      \
   _ (CHAIN_TOO_LONG, chain_too_long, ERROR, "packet dropped: TX chain too long")
 #define foreach_atl_rx_node_counter                                                                \
-  _ (RX_DESC_ERROR_DROP, rx_desc_error_drop, ERROR, "buffers dropped due to mac_err/dma_err")
+  _ (RX_DESC_ERROR_DROP, rx_desc_error_drop, ERROR, "buffers dropped due to mac_err/dma_err")      \
+  _ (BUFFER_ALLOC, buffer_alloc, ERROR, "buffer allocation failed")
 
 typedef enum
 {
