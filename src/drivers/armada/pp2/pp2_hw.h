@@ -29,7 +29,7 @@
 #define MVPP2_VER_PP22		       0x10
 #define MVPP2_VER_PP23		       0x11
 #define MV_ETH_FCS_LEN		       4
-#define MVPP2_MAX_RX_FRAME_SIZE	       (10 * 1024 - MV_ETH_FCS_LEN)
+#define MVPP2_MAX_RX_FRAME_SIZE	       (10 * 1024)
 #define MV_ETH_HLEN		       14
 #define MV_VLAN_TAG_LEN		       4
 #define SRAM_BIT_IN_WORD(_bit_)	       HW_BYTE_OFFS ((_bit_) % 32)

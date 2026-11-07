@@ -339,9 +339,9 @@ vnet_dev_port_add (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_port_id_t id,
 
   if (port->attr.type == VNET_DEV_PORT_TYPE_ETHERNET)
     {
-      if (port->max_rx_frame_size > 1514 &&
+      if (port->max_rx_frame_size > 1514 + VNET_DEV_ETH_FCS_LEN &&
 	  port->attr.caps.change_max_rx_frame_size)
-	port->max_rx_frame_size = 1514;
+	port->max_rx_frame_size = 1514 + VNET_DEV_ETH_FCS_LEN;
     }
 
   if (port->port_ops.alloc)
@@ -773,7 +773,7 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
       hw_if_index = vnet_eth_register_interface (
 	vnm, &(vnet_eth_interface_registration_t) {
 	       .address = port->primary_hw_addr.eth_mac,
-	       .max_frame_size = port->max_rx_frame_size,
+	       .max_frame_size = port->max_rx_frame_size - VNET_DEV_ETH_FCS_LEN,
 	       .dev_class_index = driver->dev_class_index,
 	       .dev_instance = ifs->primary_interface.dev_instance,
 	       .cb.set_max_frame_size = vnet_dev_port_set_max_frame_size,
@@ -1019,9 +1019,9 @@ vnet_dev_port_add_sec_if (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
 
       /* create new interface including tx and output nodes */
       sif->hw_if_index = vnet_eth_register_interface (
-	vnm, &(vnet_eth_interface_registration_t){
+	vnm, &(vnet_eth_interface_registration_t) {
 	       .address = port->primary_hw_addr.eth_mac,
-	       .max_frame_size = port->max_rx_frame_size,
+	       .max_frame_size = port->max_rx_frame_size - VNET_DEV_ETH_FCS_LEN,
 	       .dev_class_index = driver->dev_class_index,
 	       .dev_instance = sif->dev_instance,
 	       .cb.set_max_frame_size = vnet_dev_port_set_max_frame_size,

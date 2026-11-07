@@ -360,7 +360,7 @@ oct_init_nix (vlib_main_t *vm, vnet_dev_t *dev)
         .type = VNET_DEV_PORT_TYPE_ETHERNET,
         .max_rx_queues = 64,
         .max_tx_queues = 64,
-        .max_supported_rx_frame_size = roc_nix_max_pkt_len (cd->nix),
+        .max_supported_rx_frame_size = roc_nix_max_pkt_len (cd->nix) + VNET_DEV_ETH_FCS_LEN,
 	.caps = {
 	  .rss = 1,
 	},

@@ -66,7 +66,7 @@ mvpp2_tx_sched_mtu_set (vnet_dev_port_t *port)
   };
   u32 val, mtu;
 
-  mtu = port->max_rx_frame_size * 8;
+  mtu = (port->max_rx_frame_size - VNET_DEV_ETH_FCS_LEN) * 8;
 
   /* WA for wrong Token bucket update: Set MTU value = 3*real MTU value */
   mtu = 3 * mtu;

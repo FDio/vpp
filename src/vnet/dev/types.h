@@ -18,6 +18,10 @@ typedef struct vnet_dev_port vnet_dev_port_t;
 typedef struct vnet_dev_rx_queue vnet_dev_rx_queue_t;
 typedef struct vnet_dev_tx_queue vnet_dev_tx_queue_t;
 
+/* Frame sizes (max_rx_frame_size, max_supported_rx_frame_size) follow IEEE 802.3
+ * and include the Ethernet FCS, so they are what the hardware counts. */
+#define VNET_DEV_ETH_FCS_LEN 4
+
 #define VNET_DEV_RSS_KEY_MAX_SIZE 64
 #define VNET_DEV_RSS_LUT_MAX_SIZE 256
 
