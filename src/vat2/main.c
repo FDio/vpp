@@ -389,19 +389,44 @@ main (int argc, char **argv)
 
       chunksize = bufsize = 1024;
       char *buf = malloc (bufsize);
-      while ((n = fread (buf + n_read, 1, chunksize, f)))
+      if (!buf)
+	{
+	  fprintf (stderr, "%s: out of memory\n", argv[0]);
+	  fclose (f);
+	  exit (-1);
+	}
+      while ((n = fread (buf + n_read, 1, bufsize - n_read, f)))
 	{
 	  n_read += n;
-	  if (n == chunksize)
+	  if (n_read == bufsize)
 	    {
+	      char *tmp = realloc (buf, bufsize + chunksize);
+	      if (!tmp)
+		{
+		  fprintf (stderr, "%s: out of memory\n", argv[0]);
+		  free (buf);
+		  fclose (f);
+		  exit (-1);
+		}
+	      buf = tmp;
 	      bufsize += chunksize;
-	      buf = realloc (buf, bufsize);
 	    }
 	}
+      if (ferror (f))
+	{
+	  fprintf (stderr, "%s: error reading file: %s\n", argv[0], filename);
+	  free (buf);
+	  fclose (f);
+	  exit (-1);
+	}
       fclose (f);
+      /* bufsize always exceeds n_read (the buffer grows the moment it fills),
+	 so terminate the data: cJSON_ParseWithLength() bounds the parse and the
+	 NUL also bounds cJSON_GetErrorPtr() printed on a parse failure below. */
+      buf[n_read] = 0;
       if (n_read)
 	{
-	  o = cJSON_Parse (buf);
+	  o = cJSON_ParseWithLength (buf, n_read);
 	  if (!o)
 	    {
 	      fprintf (stderr, "%s: Failed parsing JSON input: %s\n", argv[0],
