@@ -551,9 +551,14 @@ app_rx_mqs_alloc (application_t *app)
       app->rx_mqs[i].mq = fifo_segment_msg_q_alloc (eqs, i, cfg);
       if (svm_msg_q_alloc_eventfd (app->rx_mqs[i].mq))
 	{
+	  int j;
 	  clib_warning ("eventfd returned");
+	  /* unwind epoll regs and the mq vector before the segment is freed */
+	  for (j = 0; j < i; j++)
+	    app_rx_mqs_epoll_del (app, &app->rx_mqs[j]);
 	  fifo_segment_cleanup (eqs);
 	  ssvm_delete (&eqs->ssvm);
+	  vec_free (app->rx_mqs);
 	  return SESSION_E_EVENTFD_ALLOC;
 	}
       app_rx_mqs_epoll_add (app, &app->rx_mqs[i]);
