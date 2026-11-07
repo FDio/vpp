@@ -600,9 +600,17 @@ check_collision_count_and_maybe_split(acl_main_t *am, u32 lc_index, int is_ip6, 
 {
   applied_hash_ace_entry_t **applied_hash_aces = get_applied_hash_aces(am, lc_index);
   applied_hash_ace_entry_t *first_pae = vec_elt_at_index((*applied_hash_aces), first_index);
-  if (vec_len(first_pae->colliding_rules) > am->tuple_merge_split_threshold) {
-    split_partition(am, first_index, lc_index, is_ip6);
-  }
+  u32 n_coll = vec_len (first_pae->colliding_rules);
+  /*
+   * Only attempt a split when over threshold, and - if a previous attempt on
+   * this head made no progress (same-mask rules) - not again until the list
+   * has doubled. This bounds the O(n) min/max rescans to O(log n) over n
+   * same-mask adds without changing match order or semantics.
+   */
+  if (n_coll > am->tuple_merge_split_threshold && n_coll >= 2 * first_pae->tentative_split_fail_at)
+    {
+      split_partition (am, first_index, lc_index, is_ip6);
+    }
 }
 
 void
@@ -690,6 +698,7 @@ hash_acl_apply(acl_main_t *am, u32 lc_index, int acl_index, u32 acl_position)
     /* we might link it in later */
     pae->collision_head_ae_index = ~0;
     pae->colliding_rules = NULL;
+    pae->tentative_split_fail_at = 0;
     pae->mask_type_index = ~0;
     assign_mask_type_index_to_pae(am, lc_index, is_ip6, pae);
     u32 first_index = activate_applied_ace_hash_entry(am, lc_index, applied_hash_aces, new_index);
@@ -803,6 +812,8 @@ deactivate_applied_ace_hash_entry(acl_main_t *am,
       applied_hash_ace_entry_t *next_pae = vec_elt_at_index((*applied_hash_aces), next_pae_index);
       /* Remove ourselves and transfer the ownership of the colliding rules vector */
       next_pae->colliding_rules = pae->colliding_rules;
+      /* new head starts with a clean split-progress record */
+      next_pae->tentative_split_fail_at = 0;
       set_collision_head_ae_index(applied_hash_aces, next_pae->colliding_rules, next_pae_index);
       add_del_hashtable_entry(am, lc_index,
                               applied_hash_aces, next_pae_index, 1);
@@ -1526,6 +1537,10 @@ split_partition(acl_main_t *am, u32 first_index,
 
 	if(coll_mask_type_index == new_mask_type_index){
 		//vlib_cli_output(vm, "TM-There are collisions over threshold, but i'm not able to split! %d %d", coll_mask_type_index, new_mask_type_index);
+		/* No progress: record the length so check_collision_count_and_maybe_
+		   split() does not rescan on every subsequent same-mask add. */
+		vec_elt_at_index ((*applied_hash_aces), first_index)->tentative_split_fail_at =
+		  (u32) collisions;
 		return;
 	}
 

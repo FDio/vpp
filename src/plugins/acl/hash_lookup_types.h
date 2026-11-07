@@ -52,6 +52,14 @@ typedef struct {
    */
   u32 collision_head_ae_index;
   /*
+   * Head entry only: colliding_rules length at which the last TupleMerge
+   * split attempt made no progress (all rules shared one mask). 0 = none.
+   * Avoids rescanning the whole collision list on every subsequent add when
+   * a split cannot help; retried once the list doubles. Placed here to fill
+   * the padding after collision_head_ae_index (no struct growth).
+   */
+  u32 tentative_split_fail_at;
+  /*
    * Collision rule vector for matching - set only on head entry
    */
   collision_match_rule_t *colliding_rules;
