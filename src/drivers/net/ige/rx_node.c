@@ -67,7 +67,8 @@ ige_rx_deq_64_desc (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queu
   u32 bc[64], *buffer_indices = iq->buffer_indices,
 	      *bi = buffer_indices + slot;
   vlib_buffer_t *buffers[64];
-  u32 n_descs = 0, n_pkts = 0;
+  u32 n_descs = 0, n_pkts = 0, n_err = 0, n_drop = 0, n_drop_pkts = 0;
+  u32 drop[ARRAY_LEN (dc)];
 
   while (d->dd && n_descs < ARRAY_LEN (dc) && n_pkts < max_pkts)
     {
@@ -110,10 +111,11 @@ ige_rx_deq_64_desc (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queu
       buffers[hi]->flags |= l4i * VNET_BUFFER_F_L4_CHECKSUM_COMPUTED |
 			    (l4i & !dc[i].l4e) * VNET_BUFFER_F_L4_CHECKSUM_CORRECT;
       *ip4_bad |= dc[i].ipv4 & (dc[i].ipcs == 0 || dc[i].ipe);
+      n_err += dc[i].rxe;
       hi = i + 1;
     }
 
-  if (n_pkts < n_descs)
+  if (n_pkts < n_descs || PREDICT_FALSE (n_err))
     {
       u32 hi = 0;    /* head index */
       u32 tlnif = 0; /* total length not including first buffer */
@@ -128,12 +130,22 @@ ige_rx_deq_64_desc (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queu
 	    }
 	  if (dc[i].eop)
 	    {
-	      to++[0] = bc[hi];
-	      if (tlnif)
+	      if (PREDICT_FALSE (dc[i].rxe))
 		{
-		  buffers[hi]->total_length_not_including_first_buffer = tlnif;
-		  buffers[hi]->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+		  for (u32 j = hi; j <= i; j++)
+		    drop[n_drop++] = bc[j];
+		  n_drop_pkts++;
 		  tlnif = 0;
+		}
+	      else
+		{
+		  to++[0] = bc[hi];
+		  if (tlnif)
+		    {
+		      buffers[hi]->total_length_not_including_first_buffer = tlnif;
+		      buffers[hi]->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+		      tlnif = 0;
+		    }
 		}
 	      hi = i + 1;
 	    }
@@ -177,7 +189,13 @@ ige_rx_deq_64_desc (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queu
 	}
     }
 
-  return n_pkts;
+  if (PREDICT_FALSE (n_drop))
+    {
+      vlib_buffer_free (vm, drop, n_drop);
+      vlib_error_count (vm, node->node_index, IGE_RX_NODE_CTR_DESC_ERROR, n_drop_pkts);
+    }
+
+  return n_pkts - n_drop_pkts;
 }
 
 static_always_inline u32
