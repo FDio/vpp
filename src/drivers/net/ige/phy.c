@@ -247,6 +247,30 @@ typedef struct
 } ige_phy_id_t;
 
 vnet_dev_rv_t
+ige_phy_set_power (vlib_main_t *vm, vnet_dev_t *dev, int up)
+{
+  u16 ctrl;
+  vnet_dev_rv_t rv;
+
+  if ((rv = ige_phy_acquire (vm, dev)) != VNET_DEV_OK)
+    return rv;
+
+  if ((rv = ige_phy_read (vm, dev, IGE_PHY_REG_CTRL, &ctrl)) != VNET_DEV_OK)
+    goto done;
+
+  if (up)
+    ctrl = (ctrl & ~0x0800) | 0x1000 | 0x0200;
+  else
+    ctrl |= 0x0800;
+
+  rv = ige_phy_write (vm, dev, IGE_PHY_REG_CTRL, ctrl);
+
+done:
+  ige_phy_release (vm, dev);
+  return rv;
+}
+
+vnet_dev_rv_t
 ige_phy_init (vlib_main_t *vm, vnet_dev_t *dev)
 {
   ige_device_t *id = vnet_dev_get_data (dev);
@@ -305,7 +329,12 @@ ige_phy_init (vlib_main_t *vm, vnet_dev_t *dev)
     }
 
 done:
-  return ige_phy_release (vm, dev);
+  ige_phy_release (vm, dev);
+  if (rv != VNET_DEV_OK)
+    return rv;
+
+  /* PHY is powered up when the port is started */
+  return ige_phy_set_power (vm, dev, 0);
 }
 
 vnet_dev_rv_t
