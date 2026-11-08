@@ -475,6 +475,15 @@ hsi_drain_program_tx (session_t *s)
     session_program_tx_io_evt (session_handle (s), SESSION_IO_EVT_TX);
 }
 
+/* Data received before hsi took over the session, the peer's tx fifo, is not
+ * forwarded by the app anymore, so the peer must send it */
+static_always_inline void
+hsi_drain_program_peer_tx (session_t *s, session_handle_t peer_handle)
+{
+  if (svm_fifo_max_dequeue (s->rx_fifo) && svm_fifo_set_event (s->rx_fifo))
+    session_program_tx_io_evt (peer_handle, SESSION_IO_EVT_TX);
+}
+
 static_always_inline u8
 hsi_drain_cache_has_room (u32 *cached_buffers, u32 cached_bytes, u32 len, u32 max_packets,
 			  u32 max_bytes)
