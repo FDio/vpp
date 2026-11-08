@@ -806,10 +806,6 @@ atl_set_promisc (vnet_dev_port_t *port, int enabled)
   r.aq2_fw_interface_in_request_policy.promisc_mcast = enabled;
   atl_reg_wr (dev, ATL_REG_AQ2_FW_INTERFACE_IN_REQUEST_POLICY, r);
 
-  r = atl_reg_rd (dev, ATL_REG_AQ2_FW_INTERFACE_IN_LINK_CONTROL);
-  r.aq2_fw_interface_in_link_control.promiscuous_mode = enabled;
-  atl_reg_wr (dev, ATL_REG_AQ2_FW_INTERFACE_IN_LINK_CONTROL, r);
-
   r = atl_reg_rd (dev, ATL_REG_RPF_L2BC);
   r.rpf_l2bc.promisc = enabled;
   atl_reg_wr (dev, ATL_REG_RPF_L2BC, r);
