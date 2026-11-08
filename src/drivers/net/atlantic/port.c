@@ -391,7 +391,7 @@ atl_rx_path_init (vnet_dev_port_t *port)
 
   /* disable L2 promiscuous filtering in ART */
   tag = (atl_aq2_art_tag_t){};
-  mask = (atl_aq2_art_tag_t){ .uc = 0x3f };
+  mask = (atl_aq2_art_tag_t) { .uc = 0x3f, .allmc = 1 };
   action = (atl_aq2_art_action_t){ .enable = 1, .action = ATL_AQ2_ART_ACTION_DISCARD };
   rv = aq2_filter_art_set (dev, AQ2_RPF_INDEX_L2_PROMISC_OFF, tag, mask, action);
 
@@ -816,7 +816,7 @@ atl_set_promisc (vnet_dev_port_t *port, int enabled)
 
   action = enabled ? action : (atl_aq2_art_action_t){ .enable = 1 };
 
-  mask = (atl_aq2_art_tag_t){ .uc = 0x3f };
+  mask = (atl_aq2_art_tag_t) { .uc = 0x3f, .allmc = 1 };
   rv = aq2_filter_art_set (dev, AQ2_RPF_INDEX_L2_PROMISC_OFF, tag, mask, action);
   if (rv != VNET_DEV_OK)
     return rv;
