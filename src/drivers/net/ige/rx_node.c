@@ -10,10 +10,11 @@
 #include <vnet/ethernet/ethernet.h>
 
 static_always_inline void
-ige_rxq_refill (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq, int use_va_dma)
+ige_rxq_refill (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queue_t *rxq,
+		int use_va_dma)
 {
   ige_rxq_t *iq = vnet_dev_get_rx_queue_data (rxq);
-  u16 n, off, n_before_wrap, size, mask, n_refill, tail;
+  u16 n, n_want, off, n_before_wrap, size, mask, n_refill, tail;
   u8 buffer_pool_index = vnet_dev_get_rx_queue_buffer_pool_index (rxq);
 
   tail = iq->tail;
@@ -27,16 +28,24 @@ ige_rxq_refill (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq, int use_va_dma)
   mask = size - 1;
   off = tail & mask;
   n_before_wrap = size - off;
-  n = clib_min (n_refill, n_before_wrap);
+  n_want = clib_min (n_refill, n_before_wrap);
 
-  n = ige_rxq_refill_no_wrap (vm, iq->buffer_indices + off, iq->descs + off, n,
+  n = ige_rxq_refill_no_wrap (vm, iq->buffer_indices + off, iq->descs + off, n_want,
 			      buffer_pool_index, use_va_dma);
   tail += n;
 
-  if (n == n_before_wrap)
-    tail += ige_rxq_refill_no_wrap (vm, iq->buffer_indices, iq->descs,
-				    n_refill - n_before_wrap,
-				    buffer_pool_index, use_va_dma);
+  if (PREDICT_FALSE (n != n_want))
+    vlib_error_count (vm, node->node_index, IGE_RX_NODE_CTR_BUFFER_ALLOC, 1);
+  else if (n == n_before_wrap)
+    {
+      n_want = n_refill - n_before_wrap;
+      n = ige_rxq_refill_no_wrap (vm, iq->buffer_indices, iq->descs, n_want, buffer_pool_index,
+				  use_va_dma);
+      tail += n;
+
+      if (PREDICT_FALSE (n != n_want))
+	vlib_error_count (vm, node->node_index, IGE_RX_NODE_CTR_BUFFER_ALLOC, 1);
+    }
 
   if (iq->tail != tail)
     {
@@ -275,9 +284,9 @@ VNET_DEV_NODE_FN (ige_rx_node)
 
       /* refill RX queue */
       if (dev->va_dma)
-	ige_rxq_refill (vm, rxq, /*use_va_dma */ 1);
+	ige_rxq_refill (vm, node, rxq, /*use_va_dma */ 1);
       else
-	ige_rxq_refill (vm, rxq, /*use_va_dma */ 0);
+	ige_rxq_refill (vm, node, rxq, /*use_va_dma */ 0);
 
       if (PREDICT_FALSE (rxq->interrupt_mode) && iq->tail == iq->head)
 	vlib_node_set_interrupt_pending (vm, node->node_index);
