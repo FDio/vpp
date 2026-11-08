@@ -16,6 +16,24 @@
       "message": "But the certkey could already be buffered, no?",
       "revId": "172a4eb2fd4a3885671cb185c7ab1d8e363b5491",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8070b9e7_817dd463",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2142,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-08T22:36:00Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3b014520_f539d0be",
+      "revId": "172a4eb2fd4a3885671cb185c7ab1d8e363b5491",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
