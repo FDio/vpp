@@ -56,7 +56,7 @@ typedef enum
 
 always_inline uword
 nsim_drain_wheel (vlib_main_t *vm, vlib_node_runtime_t *node, nsim_worker_t *nsw, nsim_wheel_t *wp,
-		  f64 now)
+		  f64 now, int is_trace)
 {
   nsim_wheel_entry_t *ep;
 
@@ -86,6 +86,23 @@ nsim_drain_wheel (vlib_main_t *vm, vlib_node_runtime_t *node, nsim_worker_t *nsw
       from[0] = ep->buffer_index;
       next[0] = ep->output_next_index;
 
+      if (PREDICT_FALSE (is_trace))
+	{
+	  vlib_buffer_t *b = vlib_get_buffer (vm, from[0]);
+
+	  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      nsim_tx_trace_t *t = vlib_add_trace (vm, node, b, sizeof (*t));
+	      t->expired = now;
+	      t->next_index = next[0];
+
+	      /* Claim the frame before marking it: enqueue may otherwise
+	       * swap it with a frame owned by another producer. */
+	      vlib_get_next_frame_internal (vm, node, next[0], 0);
+	      vlib_trace_next_frame (vm, node, next[0]);
+	    }
+	}
+
       wp->head++;
       if (wp->head == wp->wheel_size)
 	wp->head = 0;
@@ -102,8 +119,7 @@ nsim_drain_wheel (vlib_main_t *vm, vlib_node_runtime_t *node, nsim_worker_t *nsw
       nsw->storage_cursize -= n_tx_packets;
     }
   vlib_buffer_enqueue_to_next (vm, node, froms, nexts, n_tx_packets);
-  vlib_node_increment_counter (vm, node->node_index,
-			       NSIM_TX_ERROR_TRANSMITTED, n_tx_packets);
+  vlib_node_increment_counter (vm, node->node_index, NSIM_TX_ERROR_TRANSMITTED, n_tx_packets);
   nsw->transmitted += n_tx_packets;
   return n_tx_packets;
 }
@@ -117,12 +133,12 @@ nsim_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f, 
   f64 now = vlib_time_now (vm);
   uword n_tx;
 
-  n_tx = nsim_drain_wheel (vm, node, nsw, wp, now);
+  n_tx = nsim_drain_wheel (vm, node, nsw, wp, now, is_trace);
 
   /* Also drain the side wheel of late-reordered packets, if present. */
   if (PREDICT_FALSE (nsw->reorder_wheel != 0))
     {
-      n_tx += nsim_drain_wheel (vm, node, nsw, nsw->reorder_wheel, now);
+      n_tx += nsim_drain_wheel (vm, node, nsw, nsw->reorder_wheel, now, is_trace);
     }
 
   return n_tx;
@@ -131,7 +147,7 @@ nsim_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f, 
 VLIB_NODE_FN (nsim_input_node) (vlib_main_t * vm, vlib_node_runtime_t * node,
 				vlib_frame_t * frame)
 {
-  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
+  if (PREDICT_FALSE (vm->trace_main.trace_enable))
     return nsim_input_inline (vm, node, frame, 1 /* is_trace */ );
   else
     return nsim_input_inline (vm, node, frame, 0 /* is_trace */ );
