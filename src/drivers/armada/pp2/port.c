@@ -567,13 +567,6 @@ mvpp2_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
       mvpp2_port_egress_disable (port);
       mvpp2_netdev_set_enable (port, 0);
 
-      vnet_dev_port_state_change (vm, port,
-				  (vnet_dev_port_state_changes_t){
-				    .change.link_state = 1,
-				    .change.link_speed = 1,
-				    .link_speed = 0,
-				    .link_state = 0,
-				  });
       mp->is_enabled = 0;
     }
 

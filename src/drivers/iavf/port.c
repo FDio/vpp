@@ -432,13 +432,6 @@ iavf_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
   foreach_vnet_dev_port_tx_queue (txq, port)
     iavf_tx_queue_stop (vm, txq);
 
-  vnet_dev_port_state_change (vm, port,
-			      (vnet_dev_port_state_changes_t){
-				.change.link_state = 1,
-				.change.link_speed = 1,
-				.link_speed = 0,
-				.link_state = 0,
-			      });
 }
 
 vnet_dev_rv_t

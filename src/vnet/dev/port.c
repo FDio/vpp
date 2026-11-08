@@ -188,6 +188,12 @@ vnet_dev_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
   port->port_ops.stop (vm, port);
   vlib_worker_thread_barrier_release (vm);
 
+  vnet_dev_port_state_change (vm, port,
+			      (vnet_dev_port_state_changes_t) {
+				.change.link_state = 1,
+				.change.link_speed = 1,
+			      });
+
   foreach_vnet_dev_port_rx_queue (q, port)
     {
       q->started = 0;
