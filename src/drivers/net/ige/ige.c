@@ -17,11 +17,14 @@ VLIB_REGISTER_LOG_CLASS (ige_log, static) = {
 #define _(f, n, s, d)                                                         \
   { .name = #n, .desc = d, .severity = VL_COUNTER_SEVERITY_##s },
 
+vlib_error_desc_t ige_rx_node_counters[] = { foreach_ige_rx_node_counter };
 vlib_error_desc_t ige_tx_node_counters[] = { foreach_ige_tx_node_counter };
 #undef _
 
 vnet_dev_node_t ige_rx_node = {
   .format_trace = format_ige_rx_trace,
+  .error_counters = ige_rx_node_counters,
+  .n_error_counters = ARRAY_LEN (ige_rx_node_counters),
 };
 
 vnet_dev_node_t ige_tx_node = {

@@ -333,6 +333,16 @@ ige_reg_wr (vnet_dev_t *dev, u32 reg, u32 val)
   _ (BUFFER_CHAIN_TOO_LONG, buffer_chain_too_long, ERROR,                     \
      "buffer chain too long")
 
+#define foreach_ige_rx_node_counter                                                                \
+  _ (BUFFER_ALLOC, buffer_alloc, ERROR, "buffer allocation failed")
+
+typedef enum
+{
+#define _(f, n, s, d) IGE_RX_NODE_CTR_##f,
+  foreach_ige_rx_node_counter
+#undef _
+} ige_rx_node_counter_t;
+
 typedef enum
 {
 #define _(f, n, s, d) IGE_TX_NODE_CTR_##f,
