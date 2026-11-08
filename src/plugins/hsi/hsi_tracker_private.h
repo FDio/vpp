@@ -457,8 +457,8 @@ hsi_udp_session_conn_key_from_connection (udp_connection_t *uc)
 static_always_inline u8
 hsi_session_uses_remote_fifos (session_t *s)
 {
-  return (s->rx_fifo && s->rx_fifo->master_thread_index != s->thread_index) ||
-	 (s->tx_fifo && s->tx_fifo->master_thread_index != s->thread_index);
+  return (s->rx_fifo && segment_manager_fifo_alloc_thread (s->rx_fifo) != s->thread_index) ||
+	 (s->tx_fifo && segment_manager_fifo_alloc_thread (s->tx_fifo) != s->thread_index);
 }
 
 static_always_inline void
