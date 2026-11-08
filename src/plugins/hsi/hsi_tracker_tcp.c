@@ -1308,6 +1308,12 @@ hsi_tcp_drain_update_time (f64 time_now, u8 thread_index)
       return;
     }
 
+  /* Acks and peer messages complete drains, so only check periodically for
+   * timeouts and transports tcp closed */
+  if (time_now < wrk->tcp_drain_next_scan)
+    return;
+  wrk->tcp_drain_next_scan = time_now + HSI_TCP_DRAIN_SCAN_INTERVAL;
+
   handles = wrk->tcp_drain_update_handles;
   vec_reset_length (handles);
   pool_foreach (drain, wrk->tcp_drains)

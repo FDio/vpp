@@ -11,6 +11,8 @@
 
 #define HSI_TCP_DRAIN_CACHE_DEFAULT_PACKETS	  16
 #define HSI_TCP_DRAIN_NO_PROGRESS_DEFAULT_TIMEOUT 10.0
+/* Drains complete on events, timeouts are checked at this interval */
+#define HSI_TCP_DRAIN_SCAN_INTERVAL		  0.1
 #define HSI_UDP_DRAIN_CACHE_DEFAULT_PACKETS	  3
 #define HSI_UDP_DRAIN_NO_PROGRESS_DEFAULT_TIMEOUT 10.0
 #define HSI_UDP_IDLE_DEFAULT_TIMEOUT		  300.0
@@ -143,6 +145,7 @@ typedef struct hsi_worker_
   hsi_tcp_drain_t *tcp_drains;
   uword *tcp_drain_by_session_conn;
   session_handle_t *tcp_drain_update_handles;
+  f64 tcp_drain_next_scan;
   uword *tcp_fin_wait_by_session_conn;
   /** Fin-wait entries in the order they expire, deleted ones included */
   hsi_tcp_fin_wait_elt_t *tcp_fin_wait_fifo;
