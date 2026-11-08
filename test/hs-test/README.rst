@@ -181,6 +181,25 @@ passed, failed, skipped, and elapsed-time statistics. With
 ``MW_PARALLEL=false``, repeat remains native Ginkgo behavior and its JSON report
 contains the final attempt.
 
+To repeat full runs with a cleanup before each run, use::
+
+        ./test/hs-test/loop.sh
+        ./test/hs-test/loop.sh --debug
+
+These commands are run from the VPP root; the script also works from any other
+directory when given its path. It uses ``PARALLEL=auto MW_PARALLEL=true`` and
+``make test-wipe`` before each run. ``--debug`` selects ``test-debug``. The loop
+stops on a test or cleanup failure, or Ctrl+C, and leaves the failed run's logs
+available for inspection. Make output is captured in a temporary log whose path
+is printed at startup and on failure; each run overwrites that log. Only brief
+run status and failed test names are printed. Listing names requires ``jq`` on
+the host and a valid ``summary/report.json``; if no list is available, inspect
+the captured log. On Ctrl+C, the script runs ``make cleanup-hst`` to remove
+dangling containers and exits with status 130. Cleanup output is appended to
+the same log. No test-failure summary is printed for an interrupted run. With
+``jq`` available, a report marked ``Interrupted by User`` follows this same
+cleanup path, even when the script itself did not receive SIGINT.
+
 
 Running several checkouts at once
 ---------------------------------
