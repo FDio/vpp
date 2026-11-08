@@ -41,11 +41,13 @@ typedef struct proxy_lite_session_
   clib_thread_index_t ao_thread_index;
   proxy_lite_session_state_t state;
   u8 hsi_offload;
-  u8 hsi_offload_stall;
-  u8 hsi_notify_cleanup;
   u8 hsi_tracked;
   u8 po_deleted;
   u8 ao_deleted;
+  /** Connect pending, session layer still uses the ps index as opaque */
+  u8 ao_connecting;
+  /** Active open handed its fifo references to the fifo owner thread */
+  u8 ao_fifos_release_pending;
 } proxy_lite_session_t;
 
 typedef struct proxy_lite_worker_
@@ -71,7 +73,6 @@ typedef struct proxy_lite_main_
   u64 segment_size;
   u8 hsi_offload;
   u8 hsi_offload_stall;
-  u8 hsi_notify_cleanup;
   u8 started;
 
   proxy_lite_hsi_track_pair_fn hsi_track_pair;
@@ -224,39 +225,6 @@ proxy_lite_hsi_symbols_init (void)
   return pm->hsi_track_pair != 0;
 }
 
-static_always_inline u8
-proxy_lite_session_has_pending (session_t *s)
-{
-  if (svm_fifo_max_dequeue (s->rx_fifo))
-    return 1;
-  if (svm_fifo_max_dequeue_cons (s->tx_fifo))
-    return 1;
-  if (session_get_transport_proto (s) == TRANSPORT_PROTO_TCP && svm_fifo_has_ooo_data (s->rx_fifo))
-    return 1;
-  return 0;
-}
-
-static void
-proxy_lite_session_finish_hsi (proxy_lite_session_t *ps)
-{
-  ps->state = PROXY_LITE_S_HSI_DONE;
-  proxy_lite_side_ctx_free_on_thread (ps->po_thread_index, ps->po_ctx_index);
-  proxy_lite_side_ctx_free_on_thread (ps->ao_thread_index, ps->ao_ctx_index);
-  ps->po_ctx_index = ~0;
-  ps->ao_ctx_index = ~0;
-  proxy_lite_session_free (ps);
-}
-
-static void
-proxy_lite_session_hsi_done (proxy_lite_session_t *ps)
-{
-  /* With cleanup notifications, state is freed once hsi reports cleanups */
-  if (ps->hsi_notify_cleanup)
-    ps->state = PROXY_LITE_S_HSI_DONE;
-  else
-    proxy_lite_session_finish_hsi (ps);
-}
-
 static void
 proxy_lite_session_disconnect_rpc (void *arg)
 {
@@ -306,7 +274,8 @@ proxy_lite_session_close_pair (proxy_lite_session_t *ps)
 static void
 proxy_lite_maybe_free_closed_session (proxy_lite_session_t *ps)
 {
-  if (ps->po_handle != SESSION_INVALID_HANDLE || ps->ao_handle != SESSION_INVALID_HANDLE)
+  if (ps->po_handle != SESSION_INVALID_HANDLE || ps->ao_handle != SESSION_INVALID_HANDLE ||
+      ps->ao_connecting || ps->ao_fifos_release_pending)
     return;
 
   proxy_lite_session_free (ps);
@@ -357,6 +326,17 @@ proxy_lite_forward_rx (session_t *s)
 static int
 proxy_lite_tx_callback (session_t *s)
 {
+  proxy_lite_main_t *pm = &proxy_lite_main;
+  proxy_lite_side_ctx_t *ctx;
+  u8 offloaded;
+
+  ctx = proxy_lite_side_ctx_get (s->opaque);
+  clib_spinlock_lock_if_init (&pm->sessions_lock);
+  offloaded = proxy_lite_session_get (ctx->ps_index)->state == PROXY_LITE_S_HSI_DONE;
+  clib_spinlock_unlock_if_init (&pm->sessions_lock);
+  if (offloaded)
+    return 0;
+
   if (svm_fifo_max_enqueue (s->tx_fifo) < clib_min (svm_fifo_size (s->tx_fifo) >> 3, 128 << 10))
     svm_fifo_add_want_deq_ntf (s->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
 
@@ -370,18 +350,18 @@ proxy_lite_start_hsi_offload (session_t *s, session_handle_t peer_handle, u32 ps
   hsi_track_args_t args = {
     .s = s,
     .peer_session_handle = peer_handle,
-    .flags = pm->hsi_notify_cleanup ? HSI_TRACK_F_NOTIFY_CLEANUP : 0,
+    /* Session state is freed once hsi reports the sessions cleaned up */
+    .flags = HSI_TRACK_F_NOTIFY_CLEANUP,
   };
   proxy_lite_session_t *ps;
   session_handle_tu_t sh = { .handle = peer_handle };
   session_t *peer_s;
-  u8 pending, flush_pending = 0, closing;
+  u8 closing;
 
   peer_s = session_get_from_handle_safe (sh);
   if (!peer_s)
     goto fail;
 
-  pending = proxy_lite_session_has_pending (s) || proxy_lite_session_has_pending (peer_s);
   if (pm->hsi_offload_stall)
     {
       /* Leave the event bits set without queueing TX events. This is fault
@@ -392,36 +372,14 @@ proxy_lite_start_hsi_offload (session_t *s, session_handle_t peer_handle, u32 ps
   if (pm->hsi_track_pair (&args))
     goto fail;
 
+  /* Sessions are hsi's now and it frees their fifos, so stop touching them,
+   * including on events queued before hsi took them, and wait for cleanups */
   clib_spinlock_lock_if_init (&pm->sessions_lock);
   ps = proxy_lite_session_get (ps_index);
   ps->hsi_tracked = 1;
-  if (pending)
-    {
-      if (ps->hsi_offload_stall)
-	proxy_lite_session_hsi_done (ps);
-      else
-	{
-	  ps->state = PROXY_LITE_S_PROXYING;
-	  flush_pending = 1;
-	}
-    }
-  else
-    {
-      if (s->thread_index == sh.thread_index || ps->hsi_offload_stall)
-	proxy_lite_session_hsi_done (ps);
-      else
-	ps->state = PROXY_LITE_S_PROXYING;
-    }
+  ps->state = PROXY_LITE_S_HSI_DONE;
   pm->hsi_tracked++;
   clib_spinlock_unlock_if_init (&pm->sessions_lock);
-
-  if (flush_pending)
-    {
-      if (svm_fifo_set_event (s->tx_fifo))
-	session_program_tx_io_evt (session_handle (s), SESSION_IO_EVT_TX);
-      if (svm_fifo_set_event (peer_s->tx_fifo))
-	session_program_tx_io_evt (peer_handle, SESSION_IO_EVT_TX);
-    }
 
   return 0;
 
@@ -482,8 +440,7 @@ proxy_lite_accept_callback (session_t *s)
   ps->po_ctx_index = ctx->ctx_index;
   ps->po_thread_index = s->thread_index;
   ps->hsi_offload = pm->hsi_offload;
-  ps->hsi_offload_stall = pm->hsi_offload_stall;
-  ps->hsi_notify_cleanup = pm->hsi_notify_cleanup;
+  ps->ao_connecting = 1;
   ctx->ps_index = ps_index;
   ctx->peer_handle = SESSION_INVALID_HANDLE;
   pm->accepted++;
@@ -496,6 +453,7 @@ proxy_lite_accept_callback (session_t *s)
     {
       clib_spinlock_lock_if_init (&pm->sessions_lock);
       ps = proxy_lite_session_get (ps_index);
+      ps->ao_connecting = 0;
       ps->state = PROXY_LITE_S_CLOSING;
       proxy_lite_session_close_pair (ps);
       clib_spinlock_unlock_if_init (&pm->sessions_lock);
@@ -515,6 +473,12 @@ proxy_lite_disconnect_callback (session_t *s)
 
   clib_spinlock_lock_if_init (&pm->sessions_lock);
   ps = proxy_lite_session_get (ctx->ps_index);
+  /* Hsi closes offloaded sessions */
+  if (ps->state == PROXY_LITE_S_HSI_DONE)
+    {
+      clib_spinlock_unlock_if_init (&pm->sessions_lock);
+      return;
+    }
   ps->state = PROXY_LITE_S_CLOSING;
   proxy_lite_session_close_pair (ps);
   pm->closed++;
@@ -532,6 +496,12 @@ proxy_lite_reset_callback (session_t *s)
 
   clib_spinlock_lock_if_init (&pm->sessions_lock);
   ps = proxy_lite_session_get (ctx->ps_index);
+  /* Hsi closes offloaded sessions */
+  if (ps->state == PROXY_LITE_S_HSI_DONE)
+    {
+      clib_spinlock_unlock_if_init (&pm->sessions_lock);
+      return;
+    }
   ps->state = PROXY_LITE_S_CLOSING;
   proxy_lite_session_close_pair (ps);
   pm->reset++;
@@ -539,9 +509,24 @@ proxy_lite_reset_callback (session_t *s)
 }
 
 static void
+proxy_lite_ao_fifos_release_rpc (void *arg)
+{
+  proxy_lite_main_t *pm = &proxy_lite_main;
+  proxy_lite_session_t *ps;
+
+  clib_spinlock_lock_if_init (&pm->sessions_lock);
+  ps = proxy_lite_session_get (pointer_to_uword (arg));
+  segment_manager_dealloc_fifos (ps->po_rx_fifo, ps->po_tx_fifo);
+  ps->ao_fifos_release_pending = 0;
+  proxy_lite_maybe_free_closed_session (ps);
+  clib_spinlock_unlock_if_init (&pm->sessions_lock);
+}
+
+static void
 proxy_lite_cleanup_callback (session_t *s, session_cleanup_ntf_t ntf)
 {
   proxy_lite_main_t *pm = &proxy_lite_main;
+  clib_thread_index_t fifos_thread = ~0;
   proxy_lite_side_ctx_t *ctx;
   proxy_lite_session_t *ps;
   u32 ps_index;
@@ -564,6 +549,16 @@ proxy_lite_cleanup_callback (session_t *s, session_cleanup_ntf_t ntf)
     {
       ps->ao_handle = SESSION_INVALID_HANDLE;
       ps->ao_ctx_index = ~0;
+      /* Fifos are shared with the passive open and only the thread that
+       * allocated them can free them. Instead of letting session layer
+       * release our references here, hand them over to that thread */
+      if (s->rx_fifo && segment_manager_fifo_alloc_thread (s->rx_fifo) != s->thread_index)
+	{
+	  fifos_thread = segment_manager_fifo_alloc_thread (s->rx_fifo);
+	  s->rx_fifo = 0;
+	  s->tx_fifo = 0;
+	  ps->ao_fifos_release_pending = 1;
+	}
     }
   else
     {
@@ -572,6 +567,10 @@ proxy_lite_cleanup_callback (session_t *s, session_cleanup_ntf_t ntf)
     }
   proxy_lite_maybe_free_closed_session (ps);
   clib_spinlock_unlock_if_init (&pm->sessions_lock);
+
+  if (fifos_thread != (clib_thread_index_t) ~0)
+    session_send_rpc_evt_to_thread (fifos_thread, proxy_lite_ao_fifos_release_rpc,
+				    uword_to_pointer (ps_index, void *));
 }
 
 static int
@@ -643,11 +642,14 @@ proxy_lite_active_open_connected_callback (u32 app_index, u32 opaque, session_t 
   clib_spinlock_lock_if_init (&pm->sessions_lock);
   ps = proxy_lite_session_get (opaque);
   ps_index = opaque;
+  ps->ao_connecting = 0;
 
   if (err || ps->state == PROXY_LITE_S_CLOSING)
     {
       ps->state = PROXY_LITE_S_CLOSING;
       proxy_lite_session_close_pair (ps);
+      /* Passive open might've been cleaned up while connecting */
+      proxy_lite_maybe_free_closed_session (ps);
       clib_spinlock_unlock_if_init (&pm->sessions_lock);
       if (ao_ctx)
 	proxy_lite_side_ctx_free (s->thread_index, ao_ctx->ctx_index);
@@ -819,7 +821,6 @@ proxy_lite_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_comman
   pm->segment_size = 512 << 20;
   pm->hsi_offload = 0;
   pm->hsi_offload_stall = 0;
-  pm->hsi_notify_cleanup = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, "expected server-uri and client-uri");
@@ -841,11 +842,6 @@ proxy_lite_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_comman
 	}
       else if (unformat (line_input, "hsi-offload"))
 	pm->hsi_offload = 1;
-      else if (unformat (line_input, "hsi-notify-cleanup"))
-	{
-	  pm->hsi_offload = 1;
-	  pm->hsi_notify_cleanup = 1;
-	}
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'", format_unformat_error, line_input);
@@ -901,7 +897,7 @@ VLIB_CLI_COMMAND (proxy_lite_command, static) = {
   .short_help = "proxy-lite server-uri <tcp://ip:port|udp://ip:port> "
 		"client-uri <tcp://ip:port|udp://ip:port> "
 		"[fifo-size <n>[k|m]] [segment-size <n>[k|m]] "
-		"[hsi-offload] [hsi-offload-stall] [hsi-notify-cleanup]",
+		"[hsi-offload] [hsi-offload-stall]",
   .function = proxy_lite_command_fn,
 };
 
@@ -910,10 +906,9 @@ proxy_lite_show_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_c
 {
   proxy_lite_main_t *pm = &proxy_lite_main;
 
-  vlib_cli_output (vm, "proxy-lite %s%s%s%s", pm->started ? "started" : "stopped",
+  vlib_cli_output (vm, "proxy-lite %s%s%s", pm->started ? "started" : "stopped",
 		   pm->hsi_offload ? " hsi-offload" : "",
-		   pm->hsi_offload_stall ? " hsi-offload-stall" : "",
-		   pm->hsi_notify_cleanup ? " hsi-notify-cleanup" : "");
+		   pm->hsi_offload_stall ? " hsi-offload-stall" : "");
   vlib_cli_output (vm, "accepted %lu connected %lu proxied %lu", pm->accepted, pm->connected,
 		   pm->proxied);
   vlib_cli_output (vm, "hsi tracked %lu failed %lu", pm->hsi_tracked, pm->hsi_failed);
