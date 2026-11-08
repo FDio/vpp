@@ -416,6 +416,7 @@ ige_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
   rctl.long_pkt_reception_ena = 1;
   rctl.vlan_filter_ena = 0;
   rctl.bcast_accept_mode = 1;
+  rctl.mc_promisc_ena = 1;
   rctl.discard_pause_frames = 1;
   ige_reg_wr (dev, IGE_REG_RCTL, rctl.as_u32);
   ige_reg_wr (dev, IGE_REG_RLPML, port->max_rx_frame_size);
@@ -572,7 +573,6 @@ ige_set_promisc_mode (vlib_main_t *vm, vnet_dev_port_t *port, int enabled)
 
   ige_reg_rd (dev, IGE_REG_RCTL, &rctl.as_u32);
   rctl.uc_promisc_ena = enabled;
-  rctl.mc_promisc_ena = enabled;
   ige_reg_wr (dev, IGE_REG_RCTL, rctl.as_u32);
   ige_reg_rd (dev, IGE_REG_RCTL, &rctl.as_u32);
   log_debug (dev, "\n %U", format_ige_reg_read, IGE_REG_RCTL, rctl.as_u32);
