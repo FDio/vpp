@@ -121,6 +121,12 @@ typedef struct hsi_cleanup_req_
   session_handle_t sh;
 } hsi_cleanup_req_t;
 
+typedef struct hsi_tcp_fin_wait_elt_
+{
+  uword key;
+  f64 start;
+} hsi_tcp_fin_wait_elt_t;
+
 typedef struct hsi_worker_
 {
   /** Messages from other workers, or this one, see hsi_mq_send */
@@ -132,7 +138,8 @@ typedef struct hsi_worker_
   uword *tcp_drain_by_session_conn;
   session_handle_t *tcp_drain_update_handles;
   uword *tcp_fin_wait_by_session_conn;
-  uword *tcp_fin_wait_update_keys;
+  /** Fin-wait entries in the order they expire, deleted ones included */
+  hsi_tcp_fin_wait_elt_t *tcp_fin_wait_fifo;
   hsi_worker_stats_t stats;
   u8 tcp_drain_time_registered;
   u8 tcp_drain_time_unregister_pending;
