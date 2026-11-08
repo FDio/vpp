@@ -16,7 +16,8 @@
 #include <vnet/ip/ip_psh_cksum.h>
 #include <ige.h>
 
-#define IGE_TX_MAX_SEGS 16
+#define IGE_TX_MAX_SEGS	    16
+#define IGE_TX_MAX_GSO_SEGS 40
 
 #define IGE_TX_POPTS_IXSM 1
 #define IGE_TX_POPTS_TXSM 2
@@ -30,11 +31,20 @@ ige_tx_prepare_offload (vlib_buffer_t *b, ige_tx_ctx_desc_t *ctx)
   vnet_buffer_oflags_t oflags = vnet_buffer (b)->oflags;
   u32 is_tcp = oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM;
   u32 is_udp = oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
+  u32 is_gso = b->flags & VNET_BUFFER_F_GSO;
   u32 is_ip4 = b->flags & VNET_BUFFER_F_IS_IP4;
   i16 l3_hdr_offset = vnet_buffer (b)->l3_hdr_offset;
   ip4_header_t *ip4 = (void *) (b->data + l3_hdr_offset);
   ip6_header_t *ip6 = (void *) (b->data + l3_hdr_offset);
   u32 popts = 0;
+
+  if (is_gso && !is_tcp && !is_udp)
+    {
+      u8 proto = is_ip4 ? ip4->protocol : ip6->protocol;
+
+      is_tcp = proto == IP_PROTOCOL_TCP;
+      is_udp = proto == IP_PROTOCOL_UDP;
+    }
 
   *ctx = (ige_tx_ctx_desc_t) {
     .maclen = l3_hdr_offset - b->current_data,
@@ -49,13 +59,23 @@ ige_tx_prepare_offload (vlib_buffer_t *b, ige_tx_ctx_desc_t *ctx)
       u16 l3_len = l4_hdr_offset - l3_hdr_offset;
       u16 sum;
 
+      if (is_gso)
+	{
+	  ctx->mss = vnet_buffer2 (b)->gso_size;
+	  if (is_ip4)
+	    ip4->length = 0;
+	  else
+	    ip6->payload_length = 0;
+	}
+
       if (is_ip4)
 	{
 	  ip4_psh_t psh = {
 	    .src = ip4->src_address,
 	    .dst = ip4->dst_address,
 	    .proto = ip4->protocol,
-	    .l4len = clib_host_to_net_u16 (clib_net_to_host_u16 (ip4->length) - l3_len),
+	    .l4len =
+	      is_gso ? 0 : clib_host_to_net_u16 (clib_net_to_host_u16 (ip4->length) - l3_len),
 	  };
 	  sum = ~clib_ip_csum ((u8 *) &psh, sizeof (psh));
 	}
@@ -64,8 +84,9 @@ ige_tx_prepare_offload (vlib_buffer_t *b, ige_tx_ctx_desc_t *ctx)
 	  ip6_psh_t psh = {
 	    .src = ip6->src_address,
 	    .dst = ip6->dst_address,
-	    .l4len = clib_host_to_net_u32 (clib_net_to_host_u16 (ip6->payload_length) -
-					   (l3_len - sizeof (*ip6))),
+	    .l4len = is_gso ? 0 :
+			      clib_host_to_net_u32 (clib_net_to_host_u16 (ip6->payload_length) -
+						    (l3_len - sizeof (*ip6))),
 	    .proto = clib_host_to_net_u32 (is_tcp ? IP_PROTOCOL_TCP : IP_PROTOCOL_UDP),
 	  };
 	  sum = ~clib_ip_csum ((u8 *) &psh, sizeof (psh));
@@ -91,7 +112,7 @@ ige_tx_prepare_offload (vlib_buffer_t *b, ige_tx_ctx_desc_t *ctx)
   else if (is_ip4)
     ctx->iplen = ip4_header_bytes (ip4);
 
-  if (is_ip4 && (oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM))
+  if (is_ip4 && (is_gso || (oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM)))
     {
       ip4->checksum = 0;
       popts |= IGE_TX_POPTS_IXSM;
@@ -115,7 +136,8 @@ ige_enq_ctx (vlib_buffer_t *b, u32 bi, ige_tx_ctx_desc_t *ctx, ige_tx_desc_t *de
 
 static_always_inline void
 ige_enq_txd (vlib_main_t *vm, vlib_buffer_t *b, u32 bi, int first, int last, u32 pkt_len, u32 popts,
-	     ige_tx_desc_t *descs, u32 *buffer_indices, u16 *tail, u16 mask, int use_va)
+	     u32 tso_hdr_len, ige_tx_desc_t *descs, u32 *buffer_indices, u16 *tail, u16 mask,
+	     int use_va)
 {
   u32 len = b->current_length;
   u32 slot = *tail & mask;
@@ -133,6 +155,11 @@ ige_enq_txd (vlib_main_t *vm, vlib_buffer_t *b, u32 bi, int first, int last, u32
     {
       d.paylen = pkt_len;
       d.popts = popts;
+      if (tso_hdr_len)
+	{
+	  d.paylen = pkt_len - tso_hdr_len;
+	  d.tse = 1;
+	}
     }
 
   descs[slot] = d;
@@ -190,11 +217,14 @@ ige_txq_enq (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_tx_queue_t *tx
       ige_tx_ctx_desc_t ctx;
       u32 popts = 0;
       u32 n_ctx = 0;
+      u32 tso_hdr_len = 0;
 
-      if (PREDICT_FALSE (b->flags & VNET_BUFFER_F_OFFLOAD))
+      if (PREDICT_FALSE (b->flags & (VNET_BUFFER_F_OFFLOAD | VNET_BUFFER_F_GSO)))
 	{
 	  popts = ige_tx_prepare_offload (b, &ctx);
 	  n_ctx = popts != 0;
+	  if (ctx.mss)
+	    tso_hdr_len = ctx.maclen + ctx.iplen + ctx.l4len;
 	}
 
       if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
@@ -202,10 +232,11 @@ ige_txq_enq (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_tx_queue_t *tx
 	  vlib_buffer_t *tb = b;
 	  u32 pkt_len = b->current_length;
 	  u32 n = 1, tbi;
+	  u32 max_segs = tso_hdr_len ? IGE_TX_MAX_GSO_SEGS : IGE_TX_MAX_SEGS;
 
 	  while (tb->flags & VLIB_BUFFER_NEXT_PRESENT)
 	    {
-	      if (n >= IGE_TX_MAX_SEGS)
+	      if (n >= max_segs)
 		{
 		  drop_too_long[(*n_drop_too_long)++] = hbi;
 		  goto next;
@@ -220,14 +251,14 @@ ige_txq_enq (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_tx_queue_t *tx
 
 	  if (n_ctx)
 	    ige_enq_ctx (b, hbi, &ctx, d, bi, &tail, mask);
-	  ige_enq_txd (vm, b, hbi, 1, 0, pkt_len, popts, d, bi, &tail, mask, va);
+	  ige_enq_txd (vm, b, hbi, 1, 0, pkt_len, popts, tso_hdr_len, d, bi, &tail, mask, va);
 	  tbi = b->next_buffer;
 	  tb = vlib_get_buffer (vm, tbi);
 	  for (u32 i = 1; i < n; i++)
 	    {
 	      u32 nbi = tb->next_buffer;
 	      int last = (i == n - 1);
-	      ige_enq_txd (vm, tb, tbi, 0, last, 0, 0, d, bi, &tail, mask, va);
+	      ige_enq_txd (vm, tb, tbi, 0, last, 0, 0, 0, d, bi, &tail, mask, va);
 	      if (!last)
 		{
 		  tbi = nbi;
@@ -243,7 +274,8 @@ ige_txq_enq (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_tx_queue_t *tx
 
 	  if (n_ctx)
 	    ige_enq_ctx (b, hbi, &ctx, d, bi, &tail, mask);
-	  ige_enq_txd (vm, b, hbi, 1, 1, b->current_length, popts, d, bi, &tail, mask, va);
+	  ige_enq_txd (vm, b, hbi, 1, 1, b->current_length, popts, tso_hdr_len, d, bi, &tail, mask,
+		       va);
 	  n_free -= 1 + n_ctx;
 	}
 
