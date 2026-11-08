@@ -457,8 +457,8 @@ hsi_udp_session_conn_key_from_connection (udp_connection_t *uc)
 static_always_inline u8
 hsi_session_uses_remote_fifos (session_t *s)
 {
-  return (s->rx_fifo && s->rx_fifo->master_thread_index != s->thread_index) ||
-	 (s->tx_fifo && s->tx_fifo->master_thread_index != s->thread_index);
+  return (s->rx_fifo && segment_manager_fifo_alloc_thread (s->rx_fifo) != s->thread_index) ||
+	 (s->tx_fifo && segment_manager_fifo_alloc_thread (s->tx_fifo) != s->thread_index);
 }
 
 static_always_inline void
@@ -473,6 +473,15 @@ hsi_drain_program_tx (session_t *s)
 {
   if (svm_fifo_max_dequeue_cons (s->tx_fifo) && svm_fifo_set_event (s->tx_fifo))
     session_program_tx_io_evt (session_handle (s), SESSION_IO_EVT_TX);
+}
+
+/* Data received before hsi took over the session, the peer's tx fifo, is not
+ * forwarded by the app anymore, so the peer must send it */
+static_always_inline void
+hsi_drain_program_peer_tx (session_t *s, session_handle_t peer_handle)
+{
+  if (svm_fifo_max_dequeue (s->rx_fifo) && svm_fifo_set_event (s->rx_fifo))
+    session_program_tx_io_evt (peer_handle, SESSION_IO_EVT_TX);
 }
 
 static_always_inline u8
