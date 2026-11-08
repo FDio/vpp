@@ -777,12 +777,21 @@ format_atl_tx_desc (u8 *s, va_list *args)
 
 #define _(b) ((b) ? '+' : '-')
 
+  if (d->type_txc)
+    {
+      const atl_tx_ctx_desc_t *c = (const void *) d;
+
+      return format (s, "context l2_len %u l3_len %u l4_len %u mss %u ipv6%c tcp%c", c->l2_len,
+		     c->l3_len_hi << 1 | c->l3_len_lo, c->l4_len, c->mss, _ (c->ipv6), _ (c->tcp));
+    }
+
   s = format (s, "addr 0x%016llx len %u ctx_en %u", d->addr, d->len, d->ctx_en);
-  s = format (s,
-	      "\n%Uflags type_txd%c type_txc%c dd%c eop%c vlan%c fcs%c "
-	      "ip4csum%c l4csum%c wb%c blen %u",
-	      format_white_space, indent, _ (d->type_txd), _ (d->type_txc), _ (d->dd), _ (d->eop),
-	      _ (d->vlan), _ (d->fcs), _ (d->ip4csum), _ (d->l4csum), _ (d->wb), d->blen);
+  s =
+    format (s,
+	    "\n%Uflags type_txd%c type_txc%c dd%c eop%c vlan%c fcs%c "
+	    "ip4csum%c l4csum%c lso%c wb%c blen %u",
+	    format_white_space, indent, _ (d->type_txd), _ (d->type_txc), _ (d->dd), _ (d->eop),
+	    _ (d->vlan), _ (d->fcs), _ (d->ip4csum), _ (d->l4csum), _ (d->lso), _ (d->wb), d->blen);
 
 #undef _
 

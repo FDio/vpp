@@ -7,14 +7,46 @@
 #include <vnet/ip/ip4_packet.h>
 #include <atlantic.h>
 
+#include <vnet/ip/ip6_packet.h>
+#include <vnet/tcp/tcp_packet.h>
+
 #define ATL_TX_CSO_IP4 1
 #define ATL_TX_CSO_L4  2
+#define ATL_TX_GSO     4
+
+#define ATL_TX_MAX_SEGS	    8
+#define ATL_TX_MAX_GSO_SEGS 32
 
 static_always_inline u32
-atl_tx_prepare_offload (vlib_buffer_t *b)
+atl_tx_prepare_offload (vlib_buffer_t *b, atl_tx_ctx_desc_t *ctx)
 {
   vnet_buffer_oflags_t oflags = vnet_buffer (b)->oflags;
   u32 cso = 0;
+
+  if (PREDICT_FALSE (b->flags & VNET_BUFFER_F_GSO))
+    {
+      i16 l3_hdr_offset = vnet_buffer (b)->l3_hdr_offset;
+      i16 l4_hdr_offset = vnet_buffer (b)->l4_hdr_offset;
+      tcp_header_t *tcp = (void *) (b->data + l4_hdr_offset);
+      u32 is_ip4 = b->flags & VNET_BUFFER_F_IS_IP4;
+      u32 l2 = l3_hdr_offset - b->current_data, l3 = l4_hdr_offset - l3_hdr_offset;
+      u32 l4 = tcp_header_bytes (tcp), mss = vnet_buffer2 (b)->gso_size;
+
+      *ctx = (atl_tx_ctx_desc_t) {
+	.type_txc = 1,
+	.ipv6 = !is_ip4,
+	.tcp = 1,
+	.l2_len = l2,
+	.l3_len_lo = l3 & 1,
+	.l3_len_hi = l3 >> 1,
+	.l4_len = l4,
+	.mss = mss,
+      };
+
+      if (is_ip4)
+	((ip4_header_t *) (b->data + l3_hdr_offset))->checksum = 0;
+      return ATL_TX_GSO | ATL_TX_CSO_L4 | (is_ip4 ? ATL_TX_CSO_IP4 : 0);
+    }
 
   if (oflags & (VNET_BUFFER_OFFLOAD_F_TCP_CKSUM | VNET_BUFFER_OFFLOAD_F_UDP_CKSUM))
     cso |= ATL_TX_CSO_L4;
@@ -43,6 +75,7 @@ atl_tx_one_batch (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_t *dev,
   u16 pkt_first_seg[32];
   u32 pkt_len[32];
   u8 pkt_cso[32];
+  atl_tx_ctx_desc_t pkt_ctx[32];
   u32 n_drop = *n_drop_ptr;
   u32 n = 0;
   u16 tail = *tail_ptr;
@@ -57,12 +90,15 @@ atl_tx_one_batch (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_t *dev,
       u32 total_len = 0;
       u32 n_desc = 0;
 
-      if (n_free < ((b0->flags & VLIB_BUFFER_NEXT_PRESENT) ? 8 : 1))
+      u32 max_segs = (b0->flags & VNET_BUFFER_F_GSO) ? ATL_TX_MAX_GSO_SEGS : ATL_TX_MAX_SEGS;
+
+      if (n_free < ((b0->flags & VLIB_BUFFER_NEXT_PRESENT) ? max_segs + 1 : 1) ||
+	  n_seg + max_segs > ARRAY_LEN (seg_len))
 	break;
 
       pkt_cso[n_enq] = 0;
-      if (PREDICT_FALSE (b0->flags & VNET_BUFFER_F_OFFLOAD))
-	pkt_cso[n_enq] = atl_tx_prepare_offload (b0);
+      if (PREDICT_FALSE (b0->flags & (VNET_BUFFER_F_OFFLOAD | VNET_BUFFER_F_GSO)))
+	pkt_cso[n_enq] = atl_tx_prepare_offload (b0, &pkt_ctx[n_enq]);
 
       pkt_first_seg[n_enq] = n_seg;
 
@@ -78,7 +114,7 @@ atl_tx_one_batch (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_t *dev,
 	  if ((b0->flags & VLIB_BUFFER_NEXT_PRESENT) == 0)
 	    break;
 
-	  if (PREDICT_FALSE (n_desc == 8))
+	  if (PREDICT_FALSE (n_desc == max_segs))
 	    {
 	      drop_indices[n_drop++] = from[p];
 	      n++;
@@ -90,6 +126,22 @@ atl_tx_one_batch (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_t *dev,
 	}
 
       pkt_len[n_enq] = total_len;
+
+      if (PREDICT_FALSE (pkt_cso[n_enq] & ATL_TX_GSO))
+	{
+	  u16 slot = tail & mask;
+	  u32 hbi = seg_bi[pkt_first_seg[n_enq]];
+
+	  aq->descs[slot].qwords[0] = pkt_ctx[n_enq].qwords[0];
+	  aq->descs[slot].qwords[1] = pkt_ctx[n_enq].qwords[1];
+	  bi_ring[slot] = hbi;
+	  vlib_get_buffer (vm, hbi)->ref_count++;
+	  tail++;
+	  n_free--;
+	  pkt_len[n_enq] -= pkt_ctx[n_enq].l2_len +
+			    (pkt_ctx[n_enq].l3_len_hi << 1 | pkt_ctx[n_enq].l3_len_lo) +
+			    pkt_ctx[n_enq].l4_len;
+	}
 
       for (u32 i = 0; i < n_desc; i++)
 	{
@@ -107,6 +159,8 @@ atl_tx_one_batch (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_t *dev,
 	    .len = pkt_len[n_enq],
 	    .ip4csum = (i == 0) & (pkt_cso[n_enq] & ATL_TX_CSO_IP4),
 	    .l4csum = (i == 0) & !!(pkt_cso[n_enq] & ATL_TX_CSO_L4),
+	    .lso = !!(pkt_cso[n_enq] & ATL_TX_GSO),
+	    .ctx_en = !!(pkt_cso[n_enq] & ATL_TX_GSO),
 	  };
 
 	  aq->descs[slot] = desc;
@@ -144,6 +198,7 @@ atl_tx_trace_frame (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_tx_queu
 
       if (first != tail && aq->buffer_indices[first & mask] == from[i])
 	{
+	  n_desc = aq->descs[first & mask].type_txc;
 	  do
 	    n_desc++;
 	  while (aq->descs[(first + n_desc - 1) & mask].eop == 0);
