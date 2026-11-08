@@ -217,22 +217,23 @@ atl_tx_path_init (vnet_dev_port_t *port)
   r.tpb_tx_buf.tc_q_rand_map_en = 1;
   atl_reg_wr (dev, ATL_REG_TPB_TX_BUF, r);
 
-  atl_reg_wr (dev, ATL_REG_THM_LSO_TCP_FLAG1,
+  atl_reg_wr (dev, ATL_REG_TDM_LSO_EN,
 	      (atl_reg_t){
-		.thm_lso_tcp_flag = {
-		  .val = 0x0ff6,
+		.tdm_lso_en = {
+		  .queue_mask = 0xffffffff,
 		},
 	      });
-  atl_reg_wr (dev, ATL_REG_THM_LSO_TCP_FLAG1 + 4,
+  atl_reg_wr (dev, ATL_REG_THM_LSO_TCP_FLAG1,
 	      (atl_reg_t){
-		.thm_lso_tcp_flag = {
-		  .val = 0x0ff6,
+		.thm_lso_tcp_flag1 = {
+		  .first = 0x0ff6,
+		  .middle = 0x0ff6,
 		},
-	      }); /* MID */
+	      });
   atl_reg_wr (dev, ATL_REG_THM_LSO_TCP_FLAG2,
 	      (atl_reg_t){
-		.thm_lso_tcp_flag = {
-		  .val = 0x0f7f,
+		.thm_lso_tcp_flag2 = {
+		  .last = 0x0f7f,
 		},
 	      });
 

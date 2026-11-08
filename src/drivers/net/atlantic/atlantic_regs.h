@@ -119,8 +119,16 @@
   __ (1, tc_q_rand_map_en)                                                                         \
   __ (22, _reserved_10_31)
 
-#define atl_reg_thm_lso_tcp_flag_t_fields                                                          \
-  __ (12, val)                                                                                     \
+#define atl_reg_tdm_lso_en_t_fields __ (32, queue_mask)
+
+#define atl_reg_thm_lso_tcp_flag1_t_fields                                                         \
+  __ (12, first)                                                                                   \
+  __ (4, _reserved_12_15)                                                                          \
+  __ (12, middle)                                                                                  \
+  __ (4, _reserved_28_31)
+
+#define atl_reg_thm_lso_tcp_flag2_t_fields                                                         \
+  __ (12, last)                                                                                    \
   __ (20, _reserved_12_31)
 
 #define atl_reg_rpb_rpf_rx_t_fields                                                                \
@@ -369,7 +377,9 @@ ATL_REG_STRUCT (atl_reg_aq2_fw_interface_out_device_link_caps_t);
 ATL_REG_STRUCT (atl_reg_aq2_fw_interface_out_lkp_link_caps_t);
 ATL_REG_STRUCT (atl_reg_aq2_launchtime_ctrl_t);
 ATL_REG_STRUCT (atl_reg_tpb_tx_buf_t);
-ATL_REG_STRUCT (atl_reg_thm_lso_tcp_flag_t);
+ATL_REG_STRUCT (atl_reg_tdm_lso_en_t);
+ATL_REG_STRUCT (atl_reg_thm_lso_tcp_flag1_t);
+ATL_REG_STRUCT (atl_reg_thm_lso_tcp_flag2_t);
 ATL_REG_STRUCT (atl_reg_rpb_rpf_rx_t);
 ATL_REG_STRUCT (atl_reg_aq2_rpf_redir2_t);
 ATL_REG_STRUCT (atl_reg_rx_flr_rss_control1_t);
@@ -481,8 +491,9 @@ ATL_REG_STRUCT (atl_reg_aq2_device_caps_t);
   _ (0x06ff0, AQ2_RPF_REC_TAB_ENABLE, atl_reg_aq2_rpf_rec_tab_enable_t_fields)                     \
   _ (0x07000, TX_DMA_CTRL, atl_reg_tx_dma_ctrl_t_fields)                                           \
   _ (0x07800, TPO_OFFLOAD_CTRL, atl_reg_tpo_offload_ctrl_t_fields)                                 \
-  _ (0x07820, THM_LSO_TCP_FLAG1, atl_reg_thm_lso_tcp_flag_t_fields)                                \
-  _ (0x07824, THM_LSO_TCP_FLAG2, atl_reg_thm_lso_tcp_flag_t_fields)                                \
+  _ (0x07810, TDM_LSO_EN, atl_reg_tdm_lso_en_t_fields)                                             \
+  _ (0x07820, THM_LSO_TCP_FLAG1, atl_reg_thm_lso_tcp_flag1_t_fields)                               \
+  _ (0x07824, THM_LSO_TCP_FLAG2, atl_reg_thm_lso_tcp_flag2_t_fields)                               \
   _ (0x07900, TPB_TX_BUF, atl_reg_tpb_tx_buf_t_fields)                                             \
   _ (0x07910, TPB_TXB_BUFSIZE0, atl_reg_tpb_txb_bufsize_t_fields)                                  \
   _ (0x07914, TPB_TXB_THRESH0, atl_reg_tpb_txb_thresh_t_fields)                                    \
@@ -602,7 +613,9 @@ typedef union
   atl_reg_aq2_fw_interface_out_lkp_link_caps_t aq2_fw_interface_out_lkp_link_caps;
   atl_reg_aq2_launchtime_ctrl_t aq2_launchtime_ctrl;
   atl_reg_tpb_tx_buf_t tpb_tx_buf;
-  atl_reg_thm_lso_tcp_flag_t thm_lso_tcp_flag;
+  atl_reg_tdm_lso_en_t tdm_lso_en;
+  atl_reg_thm_lso_tcp_flag1_t thm_lso_tcp_flag1;
+  atl_reg_thm_lso_tcp_flag2_t thm_lso_tcp_flag2;
   atl_reg_rpb_rpf_rx_t rpb_rpf_rx;
   atl_reg_aq2_rpf_redir2_t aq2_rpf_redir2;
   atl_reg_rx_flr_rss_control1_t rx_flr_rss_control1;
