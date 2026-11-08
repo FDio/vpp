@@ -190,4 +190,12 @@ segment_manager_parse_segment_handle (u64 segment_handle, u32 * sm_index,
 
 extern u8 *format_segment_manager (u8 *s, va_list *args);
 
+static inline clib_thread_index_t
+segment_manager_fifo_alloc_thread (svm_fifo_t *f)
+{
+  if (f->flags & (SVM_FIFO_F_SERVER_CT | SVM_FIFO_F_CLIENT_CT))
+    return f->master_thread_index;
+  return f->shr->slice_index;
+}
+
 #endif /* SRC_VNET_SESSION_SEGMENT_MANAGER_H_ */
