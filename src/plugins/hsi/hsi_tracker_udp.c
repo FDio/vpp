@@ -939,6 +939,7 @@ hsi_udp_drain_start (session_t *s, session_t *peer_s, udp_connection_t *uc,
   hsi_worker_counter_inc (wrk, udp_drain_started);
   hsi_udp_drain_maybe_register_time_update (thread_index);
   hsi_drain_program_tx (s);
+  hsi_drain_program_peer_tx (s, drain->peer_session_handle);
 
   return drain;
 }
