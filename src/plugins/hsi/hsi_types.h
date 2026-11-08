@@ -45,6 +45,12 @@ typedef struct hsi_tcp_track_commit_req_
   hsi_tcp_track_snapshot_t peer;
 } hsi_tcp_track_commit_req_t;
 
+typedef struct hsi_tcp_track_ready_req_
+{
+  session_handle_t session_handle;
+  hsi_tcp_track_snapshot_t snapshot;
+} hsi_tcp_track_ready_req_t;
+
 typedef struct hsi_tcp_drain_ hsi_tcp_drain_t;
 typedef struct hsi_tcp_drain_start_req_ hsi_tcp_drain_start_req_t;
 typedef struct hsi_tcp_fin_ack_req_ hsi_tcp_fin_ack_req_t;
