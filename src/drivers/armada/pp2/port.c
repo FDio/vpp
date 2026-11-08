@@ -559,6 +559,7 @@ mvpp2_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
   if (mp->is_enabled)
     {
       vnet_dev_poll_port_remove (vm, port, mvpp2_port_poll);
+      mp->last_link_info = (mvpp2_port_link_info_t) {};
 
       log_debug (port->dev, "stopping port %u", port->port_id);
       mvpp2_port_ingress_disable (port);
