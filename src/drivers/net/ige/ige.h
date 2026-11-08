@@ -335,7 +335,8 @@ ige_reg_wr (vnet_dev_t *dev, u32 reg, u32 val)
      "buffer chain too long")
 
 #define foreach_ige_rx_node_counter                                                                \
-  _ (BUFFER_ALLOC, buffer_alloc, ERROR, "buffer allocation failed")
+  _ (BUFFER_ALLOC, buffer_alloc, ERROR, "buffer allocation failed")                                \
+  _ (DESC_ERROR, desc_error, ERROR, "receive descriptor error")
 
 typedef enum
 {
