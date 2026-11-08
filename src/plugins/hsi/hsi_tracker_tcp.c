@@ -562,6 +562,9 @@ hsi_tcp_drain_start (session_t *s, session_t *peer_s, tcp_connection_t *tc,
   tc->cfg_flags |= TCP_CFG_F_TRACKED;
   hsi_tcp_send_zero_wnd_ack (s, tc);
   drain->flags |= HSI_TCP_DRAIN_F_WND_CLAMPED;
+  /* Peer dequeues what the session received, which reopens the window */
+  if (svm_fifo_max_dequeue_prod (s->rx_fifo))
+    vec_add1 (wrk->tcp_drain_clamp_handles, drain->session_handle);
   hsi_worker_counter_inc (wrk, tcp_drain_started);
   hsi_tcp_drain_maybe_register_time_update (thread_index);
   hsi_drain_program_tx (s);
@@ -1294,6 +1297,41 @@ hsi_tcp_try_complete_drain (vlib_main_t *vm, tcp_connection_t *tc)
   return hsi_tcp_drain_try_complete (s, tc, drain, vlib_time_now (vm)) == 1;
 }
 
+/*
+ * Peers keep sending data draining sessions received, so keep their windows
+ * closed before tcp sends anything. Once the rx fifo is empty, it stays closed.
+ */
+static void
+hsi_tcp_drain_clamp_rx_fifos (hsi_worker_t *wrk)
+{
+  session_handle_t *handles = wrk->tcp_drain_clamp_handles;
+  tcp_connection_t *tc;
+  session_t *s;
+  u32 i = 0;
+
+  while (i < vec_len (handles))
+    {
+      session_handle_tu_t sh = { .handle = handles[i] };
+
+      s = session_get_from_handle_if_valid (sh);
+      if (s && hsi_session_is_hsi_owned (s) && s->rx_fifo)
+	{
+	  tc = hsi_tcp_connection_at_session (s);
+	  if ((tc->cfg_flags & TCP_CFG_F_TRACKED) && !hsi_tcp_connection_is_committed (tc))
+	    {
+	      hsi_tcp_drain_clamp_rx_fifo (s);
+	      if (svm_fifo_max_dequeue_prod (s->rx_fifo))
+		{
+		  i++;
+		  continue;
+		}
+	    }
+	}
+      vec_del1 (handles, i);
+    }
+  wrk->tcp_drain_clamp_handles = handles;
+}
+
 void
 hsi_tcp_drain_update_time (f64 time_now, u8 thread_index)
 {
@@ -1307,6 +1345,14 @@ hsi_tcp_drain_update_time (f64 time_now, u8 thread_index)
       hsi_tcp_drain_maybe_unregister_time_update (thread_index);
       return;
     }
+
+  hsi_tcp_drain_clamp_rx_fifos (wrk);
+
+  /* Acks and peer messages complete drains, so only check periodically for
+   * timeouts and transports tcp closed */
+  if (time_now < wrk->tcp_drain_next_scan)
+    return;
+  wrk->tcp_drain_next_scan = time_now + HSI_TCP_DRAIN_SCAN_INTERVAL;
 
   handles = wrk->tcp_drain_update_handles;
   vec_reset_length (handles);
