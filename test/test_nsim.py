@@ -570,6 +570,65 @@ class TestNsimWorkers(VppTestCase):
 
 
 @unittest.skipIf("nsim" in config.excluded_plugins, "Exclude NSIM plugin tests")
+class TestNsimTrace(VppTestCase):
+    """NSIM delayed-packet tracing"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.create_pg_interfaces(range(2))
+        for interface in cls.pg_interfaces:
+            interface.admin_up()
+            interface.config_ip4()
+            interface.resolve_arp()
+
+    def test_wheel_trace(self):
+        """Preserve a sampled trace across normal and reorder wheels"""
+        for output_feature in (False, True):
+            for reorder in (False, True):
+                with self.subTest(output_feature=output_feature, reorder=reorder):
+                    command = "set nsim delay 1 ms bandwidth 1 gbit packet-size 128"
+                    if reorder:
+                        command += " reorder-fraction 1.0 reorder-delay 5 ms seed 17"
+                    self.vapi.cli(command)
+                    feature = (
+                        "nsim output-feature enable-disable pg1"
+                        if output_feature
+                        else "nsim cross-connect enable-disable pg0 pg1"
+                    )
+                    self.vapi.cli(feature)
+                    try:
+                        self.vapi.cli("clear trace")
+                        self.vapi.cli("trace add pg-input 1")
+                        self.pg0.add_stream(create_stream(self, self.pg0, self.pg1, 10))
+                        self.pg1.enable_capture()
+                        self.pg_start(trace=False)
+                        self.pg1.get_capture(10, timeout=1)
+
+                        trace = self.vapi.cli("show trace")
+                        self.assertEqual(
+                            len(re.findall(r"^Packet \d+$", trace, re.M)), 1
+                        )
+                        self.assertIn(": nsim-wheel\n", trace)
+                        self.assertIn("NSIM: tx at ", trace)
+                        wheel = trace.index(": nsim-wheel\n")
+                        self.assertGreater(trace.index(": pg1-tx\n"), wheel)
+                        if not output_feature:
+                            self.assertGreater(trace.index(": pg1-output\n"), wheel)
+
+                        # Forwarding also works with tracing disabled; no wheel
+                        # record should be allocated for an untraced packet.
+                        self.vapi.cli("clear trace")
+                        self.pg0.add_stream(create_stream(self, self.pg0, self.pg1, 3))
+                        self.pg1.enable_capture()
+                        self.pg_start(trace=False)
+                        self.pg1.get_capture(3, timeout=1)
+                        self.assertNotIn("NSIM:", self.vapi.cli("show trace"))
+                    finally:
+                        self.vapi.cli(feature + " disable")
+
+
+@unittest.skipIf("nsim" in config.excluded_plugins, "Exclude NSIM plugin tests")
 class TestNsimApi(VppTestCase):
     """NSIM plugin tests [API]"""
 
