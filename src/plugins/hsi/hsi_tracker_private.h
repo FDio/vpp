@@ -144,6 +144,10 @@ typedef enum hsi_tcp_drain_flags_
   HSI_TCP_DRAIN_F_ABORT_SENT = 1 << 3,
   HSI_TCP_DRAIN_F_COMMIT_SENT = 1 << 4,
   HSI_TCP_DRAIN_F_HSI_CLOSED = 1 << 5,
+  /** Across workers, drain of the session hsi_track_pair was called on */
+  HSI_TCP_DRAIN_F_COMMITTER = 1 << 6,
+  HSI_TCP_DRAIN_F_READY_SENT = 1 << 7,
+  HSI_TCP_DRAIN_F_PEER_READY = 1 << 8,
 } hsi_tcp_drain_flags_t;
 
 typedef enum hsi_udp_drain_state_
@@ -185,6 +189,8 @@ struct hsi_tcp_drain_
   u32 *cached_buffers;
   hsi_tcp_drain_flags_t flags;
   hsi_tcp_drain_state_t state;
+  /** Committer only, snapshot the peer reported once drained */
+  hsi_tcp_track_snapshot_t peer_snapshot;
 };
 
 struct hsi_tcp_drain_start_req_
@@ -258,6 +264,7 @@ hsi_send_rpc_force (clib_thread_index_t thread_index, void *fp, void *arg)
 #define foreach_hsi_msg                                                                            \
   _ (TCP_DRAIN_START)                                                                              \
   _ (TCP_TRACK_COMMIT)                                                                             \
+  _ (TCP_TRACK_READY)                                                                              \
   _ (TCP_FIN_ACKED)                                                                                \
   _ (TCP_PEER_FIN_PENDING)                                                                         \
   _ (TCP_ABORT)                                                                                    \
@@ -287,6 +294,7 @@ struct hsi_msg_
     session_handle_t session_handle;
     hsi_tcp_drain_start_req_t tcp_drain_start;
     hsi_tcp_track_commit_req_t tcp_track_commit;
+    hsi_tcp_track_ready_req_t tcp_track_ready;
     hsi_tcp_fin_ack_req_t tcp_fin_ack;
     hsi_tcp_peer_fin_req_t tcp_peer_fin;
     hsi_udp_drain_start_req_t udp_drain_start;

@@ -267,6 +267,7 @@ hsi_handle_msg (hsi_msg_t *msg)
       break;
     case HSI_MSG_TCP_DRAIN_START:
     case HSI_MSG_TCP_TRACK_COMMIT:
+    case HSI_MSG_TCP_TRACK_READY:
     case HSI_MSG_TCP_FIN_ACKED:
     case HSI_MSG_TCP_PEER_FIN_PENDING:
     case HSI_MSG_TCP_ABORT:
