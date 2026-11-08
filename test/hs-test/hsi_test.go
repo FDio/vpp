@@ -25,17 +25,15 @@ func init() {
 		HsiTrackerTcpFinDuplicateTest, HsiTrackerTcpFinRetransmitTest,
 		HsiTrackerTcpOptionRewriteTest,
 		HsiProxyLiteUdpDrainCacheOverflowTest,
-		HsiProxyLiteUdpDrainTimeoutTest, HsiProxyLiteNotifyCleanupTest,
-		HsiProxyLiteNotifyCleanupDrainTimeoutTest, HsiProxyLiteNotifyCleanupUdpIdleTest,
-		HsiProxyLiteDrainTransportClosedTest, HsiProxyLiteLossTest,
+		HsiProxyLiteUdpDrainTimeoutTest, HsiProxyLiteDrainTransportClosedTest, HsiProxyLiteLossTest,
 		HsiProxyLiteDrainActiveSenderTest, HsiProxyLiteUdpDrainIcmpTest,
-		HsiTrackerTcpDrainedRstTest)
+		HsiTrackerTcpDrainedRstTest, HsiProxyLiteClientCloseWhileConnectingTest)
 	RegisterHsiMWTests(HsiProxyLiteOffloadMWTest, HsiProxyLiteRepeatedOffloadMWTest,
 		HsiProxyLiteDrainOffloadMWTest,
 		HsiProxyLiteUdpConnectedMWTest, HsiProxyLiteUdpDrainOffloadMWTest,
 		HsiProxyLiteUdpIdleTimeoutMWTest, HsiProxyLiteUdpRepeatedMigrationIdleMWTest,
-		HsiProxyLiteNotifyCleanupMWTest, HsiProxyLiteNotifyCleanupUdpMigrationMWTest,
-		HsiProxyLiteDrainOffloadLoadMWTest, HsiProxyLiteDrainTransportClosedMWTest)
+		HsiProxyLiteDrainOffloadLoadMWTest, HsiProxyLiteDrainTransportClosedMWTest,
+		HsiProxyLiteNoOffloadMWTest)
 }
 
 func HsiTransparentProxyTest(s *HsiSuite) {
@@ -80,10 +78,10 @@ func runCurlIgnoreResult(uri, netNs string, timeout int, args ...string) string 
 	return string(output)
 }
 
-func runHsiProxyLiteOffloadTest(s *HsiSuite, options ...string) {
+func runHsiProxyLiteOffloadTest(s *HsiSuite) {
 	s.SetupNginxServer()
 	vpp := s.Containers.Vpp.VppInstance
-	s.StartProxyLiteTcp4(append([]string{"hsi-offload"}, options...)...)
+	s.StartProxyLiteTcp4("hsi-offload")
 
 	uri := fmt.Sprintf("http://%s:%d/64B", s.ServerAddr(), s.Ports.Server)
 	finished := startCurlHttpRequest(uri, s.NetNamespaces.Client, "200 OK", 20)
@@ -96,6 +94,7 @@ func runHsiProxyLiteOffloadTest(s *HsiSuite, options ...string) {
 	AssertContains(output, "failed 0")
 
 	AssertProxyLiteSessionsCleaned(s)
+	AssertProxyLiteHsiCleanups(vpp, 2)
 }
 
 func HsiProxyLiteOffloadTest(s *HsiSuite) {
@@ -106,18 +105,6 @@ func HsiProxyLiteOffloadMWTest(s *HsiSuite) {
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
 	runHsiProxyLiteOffloadTest(s)
-}
-
-func HsiProxyLiteNotifyCleanupTest(s *HsiSuite) {
-	runHsiProxyLiteOffloadTest(s, "hsi-notify-cleanup")
-	AssertProxyLiteHsiCleanups(s.Containers.Vpp.VppInstance, 2)
-}
-
-func HsiProxyLiteNotifyCleanupMWTest(s *HsiSuite) {
-	s.CpusPerVppContainer = 3
-	s.SetupTest()
-	runHsiProxyLiteOffloadTest(s, "hsi-notify-cleanup")
-	AssertProxyLiteHsiCleanups(s.Containers.Vpp.VppInstance, 2)
 }
 
 func runHsiProxyLiteRepeatedOffloadTest(s *HsiSuite) {
@@ -453,7 +440,7 @@ func HsiProxyLiteUdpDrainIcmpTest(s *HsiSuite) {
 
 	vpp := s.Containers.Vpp.VppInstance
 	Log(vpp.Vppctl("hsi udp drain-timeout 30"))
-	s.StartProxyLiteUdp4("hsi-offload-stall", "hsi-notify-cleanup", "fifo-size 4k")
+	s.StartProxyLiteUdp4("hsi-offload-stall", "fifo-size 4k")
 
 	finished := SendHsiUdpDatagrams(s.ServerAddr(), s.Ports.Server, s.NetNamespaces.Client,
 		0, "hsi-udp-icmp-warm")
@@ -501,13 +488,13 @@ func HsiProxyLiteUdpIdleDisabledTest(s *HsiSuite) {
 	AssertNotContains(hsi, "udp-drain session")
 }
 
-func runHsiProxyLiteUdpIdleTimeoutTest(s *HsiSuite, options ...string) {
+func runHsiProxyLiteUdpIdleTimeoutTest(s *HsiSuite) {
 	remoteServerConn := StartUdpEchoServer(s.ServerAddr(), int(s.Ports.Server))
 	defer remoteServerConn.Close()
 
 	vpp := s.Containers.Vpp.VppInstance
 	Log(vpp.Vppctl("hsi udp idle-timeout 1"))
-	s.StartProxyLiteUdp4(append([]string{"hsi-offload", "fifo-size 4k"}, options...)...)
+	s.StartProxyLiteUdp4("hsi-offload", "fifo-size 4k")
 
 	finished := StartHsiUdpEchoClient(s.ServerAddr(), s.Ports.Server, s.NetNamespaces.Client,
 		100*time.Millisecond, "hsi-udp-idle-warm", "hsi-udp-idle-first", "hsi-udp-idle-second")
@@ -523,15 +510,11 @@ func runHsiProxyLiteUdpIdleTimeoutTest(s *HsiSuite, options ...string) {
 	Log(hsi)
 	AssertEqual(1, HsiCounterValue(hsi, "udp-idle-cleanup-scheduled"))
 	AssertNotContains(hsi, "udp-tracked session")
+	AssertProxyLiteHsiCleanups(vpp, 2)
 }
 
 func HsiProxyLiteUdpIdleTimeoutTest(s *HsiSuite) {
 	runHsiProxyLiteUdpIdleTimeoutTest(s)
-}
-
-func HsiProxyLiteNotifyCleanupUdpIdleTest(s *HsiSuite) {
-	runHsiProxyLiteUdpIdleTimeoutTest(s, "hsi-notify-cleanup")
-	AssertProxyLiteHsiCleanups(s.Containers.Vpp.VppInstance, 2)
 }
 
 func HsiProxyLiteUdpIpv6IdleTimeoutTest(s *HsiSuite) {
@@ -564,7 +547,7 @@ func HsiProxyLiteUdpIdleTimeoutMWTest(s *HsiSuite) {
 	runHsiProxyLiteUdpIdleTimeoutTest(s)
 }
 
-func runHsiProxyLiteUdpRepeatedMigrationIdleMWTest(s *HsiSuite, flows int, options ...string) {
+func runHsiProxyLiteUdpRepeatedMigrationIdleMWTest(s *HsiSuite, flows int) {
 	setupHsiUdpMigrationTest(s)
 
 	remoteServerConn := StartUdpEchoServer(s.ServerAddr(), int(s.Ports.Server))
@@ -572,7 +555,7 @@ func runHsiProxyLiteUdpRepeatedMigrationIdleMWTest(s *HsiSuite, flows int, optio
 
 	vpp := s.Containers.Vpp.VppInstance
 	Log(vpp.Vppctl("hsi udp idle-timeout 1"))
-	s.StartProxyLiteUdp4(append([]string{"hsi-offload", "fifo-size 4k"}, options...)...)
+	s.StartProxyLiteUdp4("hsi-offload", "fifo-size 4k")
 
 	for i := 0; i < flows; i++ {
 		second := fmt.Sprintf("hsi-udp-mw-idle-second-%d", i)
@@ -599,17 +582,12 @@ func runHsiProxyLiteUdpRepeatedMigrationIdleMWTest(s *HsiSuite, flows int, optio
 	AssertGreaterThan(HsiCounterValue(hsi, "udp-track-migrated"), 0)
 	AssertNotContains(hsi, "udp-tracked session")
 	AssertNotContains(hsi, "udp-drain session")
+	// Migrated flows must be reported once, on the migrated session
+	AssertProxyLiteHsiCleanups(vpp, flows*2)
 }
 
 func HsiProxyLiteUdpRepeatedMigrationIdleMWTest(s *HsiSuite) {
 	runHsiProxyLiteUdpRepeatedMigrationIdleMWTest(s, 8)
-}
-
-// Migrated flows must be reported once, on the migrated session
-func HsiProxyLiteNotifyCleanupUdpMigrationMWTest(s *HsiSuite) {
-	flows := 8
-	runHsiProxyLiteUdpRepeatedMigrationIdleMWTest(s, flows, "hsi-notify-cleanup")
-	AssertProxyLiteHsiCleanups(s.Containers.Vpp.VppInstance, flows*2)
 }
 
 // Client data in flight when the drain closes the window must still be cached.
@@ -642,11 +620,11 @@ func HsiProxyLiteDrainCacheOverflowTest(s *HsiSuite) {
 	AssertProxyLiteSessionsCleaned(s)
 }
 
-func runHsiProxyLiteDrainTimeoutTest(s *HsiSuite, options ...string) {
+func runHsiProxyLiteDrainTimeoutTest(s *HsiSuite) {
 	s.SetupNginxServer()
 	vpp := s.Containers.Vpp.VppInstance
 	Log(vpp.Vppctl("hsi tcp drain-timeout 1"))
-	s.StartProxyLiteTcp4(append([]string{"hsi-offload-stall", "fifo-size 4k"}, options...)...)
+	s.StartProxyLiteTcp4("hsi-offload-stall", "fifo-size 4k")
 
 	uploadFileName := MakeProxyLiteUploadFile()
 	defer os.Remove(uploadFileName)
@@ -663,22 +641,65 @@ func runHsiProxyLiteDrainTimeoutTest(s *HsiSuite, options ...string) {
 	hsi := WaitHsiCounterAtLeast(vpp, "tcp-drain-stalled", 1)
 	Log(hsi)
 	AssertProxyLiteSessionsCleaned(s)
+	// Drain failure aborts the pair, both sessions must still be reported
+	AssertProxyLiteHsiCleanups(vpp, 2)
 }
 
 func HsiProxyLiteDrainTimeoutTest(s *HsiSuite) {
 	runHsiProxyLiteDrainTimeoutTest(s)
 }
 
-// Drain failure aborts the pair, both sessions must still be reported
-func HsiProxyLiteNotifyCleanupDrainTimeoutTest(s *HsiSuite) {
-	runHsiProxyLiteDrainTimeoutTest(s, "hsi-notify-cleanup")
-	AssertProxyLiteHsiCleanups(s.Containers.Vpp.VppInstance, 2)
-}
-
 // Target never acks drained data, so tcp gives up retransmitting before the hsi
 // drain timeout. Hsi must abort the pair and the session layer must clean up the
 // session, and notify proxy-lite, once tcp deletes the connection. Takes ~100s
 // because tcp gives up only after TCP_RTO_BOFF_MAX backoffs.
+// Client gives up while the proxy-lite connect to the target is pending and a
+// new client connects before that connect completes. The pending connect must
+// not pick up the new client's proxy-lite session, and with it its fifos.
+func HsiProxyLiteClientCloseWhileConnectingTest(s *HsiSuite) {
+	s.SetupNginxServer()
+	vpp := s.Containers.Vpp.VppInstance
+	unblock := s.BlockServerReplies()
+	defer unblock()
+	s.StartProxyLiteTcp4("hsi-offload")
+
+	uri := fmt.Sprintf("http://%s:%d/64B", s.ServerAddr(), s.Ports.Server)
+	AssertNotNil(<-startCurlHttpRequest(uri, s.NetNamespaces.Client, "200 OK", 1))
+	// Connect is still pending, only the client session goes away
+	WaitProxyLiteSessionGoneWithin(s, 10*time.Second, false)
+
+	finished := startCurlHttpRequest(uri, s.NetNamespaces.Client, "200 OK", 20)
+	WaitProxyLiteCounterAtLeast(vpp, "accepted", 2)
+	unblock()
+	AssertNil(<-finished)
+
+	output := vpp.Vppctl("show proxy-lite")
+	Log(output)
+	AssertContains(output, "hsi tracked 1")
+	AssertProxyLiteSessionsCleaned(s)
+}
+
+// Without hsi offload, proxy-lite proxies the pair. With the pair's sessions on
+// different workers and the client closing first, the target session, which
+// uses fifos the client session allocated, is cleaned up last
+func HsiProxyLiteNoOffloadMWTest(s *HsiSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
+	s.SetupNginxServer()
+	vpp := s.Containers.Vpp.VppInstance
+	s.StartProxyLiteTcp4()
+
+	uri := fmt.Sprintf("http://%s:%d/64B", s.ServerAddr(), s.Ports.Server)
+	AssertNil(<-startCurlHttpRequest(uri, s.NetNamespaces.Client, "200 OK", 20))
+
+	output := vpp.Vppctl("show proxy-lite")
+	Log(output)
+	AssertContains(output, "proxied 1")
+	// Target session waits out time-wait before cleanup
+	WaitProxyLiteSessionGoneWithin(s, 20*time.Second, true)
+	AssertProxyLiteSessionsCleanedCount(s, 0)
+}
+
 func HsiProxyLiteDrainTransportClosedTest(s *HsiSuite) {
 	runHsiProxyLiteDrainTransportClosedTest(s)
 }
@@ -699,7 +720,7 @@ func runHsiProxyLiteDrainTransportClosedTest(s *HsiSuite) {
 	defer dropData()
 	unblock := s.BlockServerReplies()
 	defer unblock()
-	s.StartProxyLiteTcp4("hsi-offload", "hsi-notify-cleanup", "fifo-size 4k")
+	s.StartProxyLiteTcp4("hsi-offload", "fifo-size 4k")
 
 	uploadFileName := MakeProxyLiteUploadFile()
 	defer os.Remove(uploadFileName)
