@@ -284,6 +284,24 @@ ige_port_deinit (vlib_main_t *vm, vnet_dev_port_t *port)
     ip->irq_registered = 0;
 }
 
+static vnet_dev_rv_t
+ige_change_primary_hw_addr (vlib_main_t *vm, vnet_dev_port_t *port,
+			    const vnet_dev_hw_addr_t *hw_addr)
+{
+  vnet_dev_t *dev = port->dev;
+  ige_receive_addr_t ra = {
+    .av = 1,
+  };
+
+  clib_memcpy (ra.hw_addr, hw_addr->eth_mac, sizeof (ra.hw_addr));
+
+  ige_reg_wr (dev, IGE_REG_RAH (0), ra.rah);
+  ige_reg_wr (dev, IGE_REG_RAL (0), ra.ral);
+
+  log_debug (dev, "receive addr table:\n%U", format_ige_receive_addr_table, dev);
+  return VNET_DEV_OK;
+}
+
 vnet_dev_rv_t
 ige_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 {
@@ -299,6 +317,7 @@ ige_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
   log_debug (dev, "port %u", port->port_id);
 
   ip->last_status.as_u32 = 0;
+  ige_change_primary_hw_addr (vm, port, &port->primary_hw_addr);
 
   ige_reg_rd (dev, IGE_REG_RCTL, &rctl.as_u32);
   if (rctl.rx_enable)
@@ -576,25 +595,6 @@ ige_set_promisc_mode (vlib_main_t *vm, vnet_dev_port_t *port, int enabled)
   ige_reg_wr (dev, IGE_REG_RCTL, rctl.as_u32);
   ige_reg_rd (dev, IGE_REG_RCTL, &rctl.as_u32);
   log_debug (dev, "\n %U", format_ige_reg_read, IGE_REG_RCTL, rctl.as_u32);
-  return VNET_DEV_OK;
-}
-
-static vnet_dev_rv_t
-ige_change_primary_hw_addr (vlib_main_t *vm, vnet_dev_port_t *port,
-			    const vnet_dev_hw_addr_t *hw_addr)
-{
-  vnet_dev_t *dev = port->dev;
-  ige_receive_addr_t ra = {
-    .av = 1,
-  };
-
-  clib_memcpy (ra.hw_addr, hw_addr->eth_mac, sizeof (ra.hw_addr));
-
-  ige_reg_wr (dev, IGE_REG_RAH (0), ra.rah);
-  ige_reg_wr (dev, IGE_REG_RAL (0), ra.ral);
-
-  log_debug (dev, "receive addr table:\n%U", format_ige_receive_addr_table,
-	     dev);
   return VNET_DEV_OK;
 }
 
