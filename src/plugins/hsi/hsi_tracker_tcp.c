@@ -46,7 +46,8 @@ hsi_tcp_fin_wait_unregister_time_update_rpc (void *arg)
 
   session_register_update_time_fn_w_thread (hsi_tcp_fin_wait_update_time, 0, thread_index);
   wrk->tcp_fin_wait_time_registered = 0;
-  vec_reset_length (wrk->tcp_fin_wait_update_keys);
+  /* All entries left were deleted */
+  clib_fifo_reset (wrk->tcp_fin_wait_fifo);
 }
 
 static_always_inline void
@@ -594,13 +595,17 @@ hsi_tcp_drain_start (session_t *s, session_t *peer_s, tcp_connection_t *tc,
 }
 
 static_always_inline void
-hsi_tcp_fin_wait_add (tcp_connection_t *tc)
+hsi_tcp_fin_wait_add (tcp_connection_t *tc, f64 start)
 {
   hsi_worker_t *wrk = hsi_worker_get (tc->c_thread_index);
-  uword key = hsi_tcp_session_conn_key_from_connection (tc);
+  hsi_tcp_fin_wait_elt_t elt = {
+    .key = hsi_tcp_session_conn_key_from_connection (tc),
+    .start = start,
+  };
 
-  if (!hash_get (wrk->tcp_fin_wait_by_session_conn, key))
-    hash_set (wrk->tcp_fin_wait_by_session_conn, key, 1);
+  hash_set (wrk->tcp_fin_wait_by_session_conn, elt.key, 1);
+  /* All entries have the same timeout, so they expire in the order added */
+  clib_fifo_add1 (wrk->tcp_fin_wait_fifo, elt);
 
   hsi_tcp_fin_wait_maybe_register_time_update (tc->c_thread_index);
 }
@@ -1461,7 +1466,15 @@ hsi_tcp_track_arm_fin_wait (tcp_connection_t *tc, hsi_tcp_tracker_t *trk)
   clib_atomic_fetch_or (&trk->flags, HSI_TRACKER_F_FIN_WAIT);
   trk->fin_wait_start = vlib_time_now (vlib_get_main ());
   hsi_worker_counter_inc (hsi_worker_get (tc->c_thread_index), tcp_fin_wait_started);
-  hsi_tcp_fin_wait_add (tc);
+  hsi_tcp_fin_wait_add (tc, trk->fin_wait_start);
+}
+
+/* Pair not ready for cleanup, check it again after another timeout */
+static void
+hsi_tcp_fin_wait_rearm (tcp_connection_t *tc, hsi_tcp_tracker_t *trk, f64 now)
+{
+  trk->fin_wait_start = now;
+  hsi_tcp_fin_wait_add (tc, now);
 }
 
 static void
@@ -1504,12 +1517,11 @@ void
 hsi_tcp_fin_wait_update_time (f64 time_now, u8 thread_index)
 {
   hsi_tcp_tracker_t *trk, *peer_trk;
+  hsi_tcp_fin_wait_elt_t *elt, e;
   session_handle_tu_t peer_sh;
   tcp_connection_t *tc, *peer_tc;
   session_t *peer_s;
   hsi_worker_t *wrk;
-  hash_pair_t *hp;
-  uword *keyp, *keys;
   session_t *s;
 
   wrk = hsi_worker_get (thread_index);
@@ -1519,28 +1531,34 @@ hsi_tcp_fin_wait_update_time (f64 time_now, u8 thread_index)
       return;
     }
 
-  keys = wrk->tcp_fin_wait_update_keys;
-  vec_reset_length (keys);
-  hash_foreach_pair (hp, wrk->tcp_fin_wait_by_session_conn, ({ vec_add1 (keys, hp->key); }));
-  wrk->tcp_fin_wait_update_keys = keys;
-
-  vec_foreach (keyp, keys)
+  while (clib_fifo_elts (wrk->tcp_fin_wait_fifo))
     {
+      elt = clib_fifo_head (wrk->tcp_fin_wait_fifo);
+      /* Deleted entries are dropped when they get to the head */
+      if (hash_get (wrk->tcp_fin_wait_by_session_conn, elt->key) &&
+	  time_now - elt->start < hsi_main.tcp_fin_wait_timeout)
+	break;
+
+      /* Handling the entry might add new ones */
+      clib_fifo_sub1 (wrk->tcp_fin_wait_fifo, e);
+      if (!hash_get (wrk->tcp_fin_wait_by_session_conn, e.key))
+	continue;
+
       session_handle_tu_t sh = {
-	.handle = session_make_handle (hsi_session_conn_key_session_index (*keyp), thread_index),
+	.handle = session_make_handle (hsi_session_conn_key_session_index (e.key), thread_index),
       };
 
       s = session_get_from_handle_if_valid (sh);
-      if (!s || s->connection_index != hsi_session_conn_key_conn_index (*keyp))
+      if (!s || s->connection_index != hsi_session_conn_key_conn_index (e.key))
 	{
-	  hsi_tcp_fin_wait_del_key (thread_index, *keyp);
+	  hsi_tcp_fin_wait_del_key (thread_index, e.key);
 	  continue;
 	}
 
       tc = hsi_tcp_connection_at_session (s);
       if (!(tc->cfg_flags & TCP_CFG_F_TRACKED) || !hsi_tcp_connection_is_committed (tc))
 	{
-	  hsi_tcp_fin_wait_del_key (thread_index, *keyp);
+	  hsi_tcp_fin_wait_del_key (thread_index, e.key);
 	  continue;
 	}
 
@@ -1548,18 +1566,19 @@ hsi_tcp_fin_wait_update_time (f64 time_now, u8 thread_index)
       if (trk->magic != HSI_TCP_TRACKER_MAGIC || !(trk->flags & HSI_TRACKER_F_FIN_WAIT) ||
 	  (trk->flags & HSI_TRACKER_F_CLEANUP_PENDING))
 	{
-	  hsi_tcp_fin_wait_del_key (thread_index, *keyp);
+	  hsi_tcp_fin_wait_del_key (thread_index, e.key);
 	  continue;
 	}
 
-      if (time_now - trk->fin_wait_start < hsi_main.tcp_fin_wait_timeout)
+      /* Entry added before the tracker was rearmed */
+      if (trk->fin_wait_start != e.start)
 	continue;
 
       peer_sh.handle = trk->peer_session_handle;
       peer_s = hsi_session_peer_get_if_valid (peer_sh);
       if (!peer_s)
 	{
-	  hsi_tcp_fin_wait_del_key (thread_index, *keyp);
+	  hsi_tcp_fin_wait_del_key (thread_index, e.key);
 	  hsi_tcp_tracker_cleanup_mark_pending (trk);
 	  hsi_session_cleanup (s);
 	  continue;
@@ -1567,11 +1586,17 @@ hsi_tcp_fin_wait_update_time (f64 time_now, u8 thread_index)
 
       peer_tc = hsi_tcp_connection_at_session (peer_s);
       if (!(peer_tc->cfg_flags & TCP_CFG_F_TRACKED) || !hsi_tcp_connection_is_committed (peer_tc))
-	continue;
+	{
+	  hsi_tcp_fin_wait_rearm (tc, trk, time_now);
+	  continue;
+	}
 
       peer_trk = hsi_tcp_tracker_from_connection (peer_tc);
       if (!hsi_tcp_tracker_fin_received (trk) || !hsi_tcp_tracker_fin_received (peer_trk))
-	continue;
+	{
+	  hsi_tcp_fin_wait_rearm (tc, trk, time_now);
+	  continue;
+	}
 
       hsi_worker_counter_inc (hsi_worker_get (thread_index), tcp_fin_wait_cleanup);
       hsi_tcp_track_schedule_cleanup_pair (tc, trk, HSI_TCP_CLEANUP_REASON_FIN);
