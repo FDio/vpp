@@ -260,7 +260,6 @@ ige_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
       ige_reg_wr (dev, IGE_REG_EIAM, vectors);
     }
 
-  vnet_dev_poll_port_add (vm, port, 1, ige_port_status_poll);
   return VNET_DEV_OK;
 }
 
@@ -460,6 +459,7 @@ ige_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
     }
 
   vnet_dev_poll_port_add (vm, port, 3, ige_port_counter_poll);
+  vnet_dev_poll_port_add (vm, port, 1, ige_port_status_poll);
   return 0;
 
 error:
@@ -513,6 +513,7 @@ ige_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
   log_debug (dev, "port %u", port->port_id);
   ige_reg_rctl_t rctl;
   ige_reg_tctl_t tctl;
+  vnet_dev_poll_port_remove (vm, port, ige_port_status_poll);
   vnet_dev_poll_port_remove (vm, port, ige_port_counter_poll);
 
   if (port->attr.caps.interrupt_mode)
