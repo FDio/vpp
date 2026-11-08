@@ -425,6 +425,45 @@ func WaitProxyLitePendingRxAtLeast(vpp *VppInstance, minBytes int) {
 		lastOutput)
 }
 
+// WaitProxyLiteCounterAtLeast waits for a show proxy-lite counter, e.g.,
+// accepted or closed, to reach want
+func WaitProxyLiteCounterAtLeast(vpp *VppInstance, name string, want int) string {
+	re := regexp.MustCompile(`\b` + regexp.QuoteMeta(name) + ` (\d+)`)
+	var output string
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		output = vpp.Vppctl("show proxy-lite")
+		if m := re.FindStringSubmatch(output); m != nil {
+			if n, err := strconv.Atoi(m[1]); err == nil && n >= want {
+				return output
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	AssertFail("timed out waiting for proxy-lite %s >= %d:\n%s", name, want, output)
+	return output
+}
+
+// WaitProxyLiteSessionGoneWithin waits until vpp has no client, and if
+// withTarget no target, proxy-lite session
+func WaitProxyLiteSessionGoneWithin(s *HsiSuite, timeout time.Duration, withTarget bool) {
+	vpp := s.Containers.Vpp.VppInstance
+	proxyClientConn := fmt.Sprintf("[T] %s:%d->%s", s.ServerAddr(), s.Ports.Server,
+		s.Interfaces.Client.Host.Ip4AddressString())
+	proxyTargetConn := fmt.Sprintf("->%s:%d", s.ServerAddr(), s.Ports.Server)
+	var sessions string
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		sessions = HsiShowSessions(vpp)
+		if !strings.Contains(sessions, proxyClientConn) &&
+			(!withTarget || !strings.Contains(sessions, proxyTargetConn)) {
+			return
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	AssertFail("timed out waiting for proxy-lite sessions cleanup:\n%s", sessions)
+}
+
 // HsiShowSessions returns verbose sessions of all threads. Unlike plain show
 // session, it doesn't suppress threads with many sessions.
 func HsiShowSessions(vpp *VppInstance) string {
