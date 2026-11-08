@@ -129,6 +129,7 @@ typedef struct
   u64 *counter_values;
   u32 tx_parent_teid;
   u16 n_rx_vectors;
+  u32 link_speed;
   u8 lport;
   ice_rss_t *rss;
   u8 rss_config_failed : 1;
@@ -193,7 +194,7 @@ vnet_dev_rv_t ice_aq_configure (vlib_main_t *, vnet_dev_t *, ice_port_t *, u16, 
 void ice_aq_stop (vlib_main_t *, vnet_dev_t *, ice_port_t *);
 vnet_dev_rv_t ice_aq_get_link_state (vlib_main_t *, vnet_dev_port_t *, u8, u8 *, u32 *);
 u32 ice_aq_link_speed_from_status (const ice_aqc_link_status_t *);
-vnet_dev_rv_t ice_aq_set_link_speed (vlib_main_t *, vnet_dev_port_t *, u32);
+vnet_dev_rv_t ice_aq_set_link (vlib_main_t *, vnet_dev_port_t *, u32, u8);
 vnet_dev_rv_t ice_aq_request_resource (vlib_main_t *, vnet_dev_t *, u16, u16, u32);
 vnet_dev_rv_t ice_aq_release_resource (vlib_main_t *, vnet_dev_t *, u16);
 vnet_dev_rv_t ice_aq_add_vsi (vlib_main_t *, vnet_dev_t *, ice_aqc_vsi_props_t *, u16 *);
