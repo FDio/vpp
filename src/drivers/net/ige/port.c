@@ -315,6 +315,9 @@ ige_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 
   log_debug (dev, "port %u", port->port_id);
 
+  if ((rv = ige_phy_set_power (vm, dev, 1)) != VNET_DEV_OK)
+    return rv;
+
   ip->last_status.as_u32 = 0;
   ige_change_primary_hw_addr (vm, port, &port->primary_hw_addr);
 
@@ -583,6 +586,9 @@ ige_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
 	  ige_reg_wr (dev, IGE_REG_TDWBAH (txq->queue_id), 0);
 	}
     }
+
+  /* power down the PHY so the link partner sees link down */
+  ige_phy_set_power (vm, dev, 0);
 }
 
 static vnet_dev_rv_t
