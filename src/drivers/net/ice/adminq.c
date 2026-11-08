@@ -1536,7 +1536,7 @@ ice_aq_events_stop (vlib_main_t *vm, vnet_dev_t *dev)
 }
 
 vnet_dev_rv_t
-ice_aq_set_link_speed (vlib_main_t *vm, vnet_dev_port_t *port, u32 link_speed_kbps)
+ice_aq_set_link (vlib_main_t *vm, vnet_dev_port_t *port, u32 link_speed_kbps, u8 link_enabled)
 {
   ice_port_t *ip = vnet_dev_get_port_data (port);
   ice_phy_type_low_t new_low = {};
@@ -1592,7 +1592,7 @@ ice_aq_set_link_speed (vlib_main_t *vm, vnet_dev_port_t *port, u32 link_speed_kb
       .tx_pause = caps.caps_flags.pause_tx,
       .rx_pause = caps.caps_flags.pause_rx,
       .low_power = caps.caps_flags.low_power,
-      .link_enabled = 1,
+      .link_enabled = link_enabled,
       .auto_link_update = 1,
       .lesm = caps.caps_flags.lesm,
       .auto_fec = caps.caps_flags.auto_fec,
@@ -1605,10 +1605,11 @@ ice_aq_set_link_speed (vlib_main_t *vm, vnet_dev_port_t *port, u32 link_speed_kb
   };
 
   log_debug (port->dev,
-	     "port %u lport %u requested speed %u kbps: PHY types "
+	     "port %u lport %u requested speed %u kbps link %sabled: PHY types "
 	     "0x%016lx/0x%016lx, media types 0x%016lx/0x%016lx, caps 0x%02x FEC 0x%02x",
-	     port->port_id, ip->lport, link_speed_kbps, cfg.phy_type_low, cfg.phy_type_high,
-	     caps.phy_type_low, caps.phy_type_high, cfg.caps, cfg.link_fec_opt);
+	     port->port_id, ip->lport, link_speed_kbps, link_enabled ? "en" : "dis",
+	     cfg.phy_type_low, cfg.phy_type_high, caps.phy_type_low, caps.phy_type_high, cfg.caps,
+	     cfg.link_fec_opt);
   d = (ice_aq_desc_t) { .opcode = ICE_AQC_OP_SET_PHY_CFG, .flags.read = 1 };
   d.params.phy_caps.lport_num = ip->lport;
   return ice_aq_send (vm, port->dev, &d, &cfg, sizeof (cfg), 1.0);

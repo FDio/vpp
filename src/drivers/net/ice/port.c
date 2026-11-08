@@ -187,7 +187,8 @@ ice_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
       ice_reg_write (dev, ICE_GLINT_ITR0 (i + 1), ICE_RX_ITR0_VALUE);
     }
 
-  return VNET_DEV_OK;
+  /* keep the link down until the port is started */
+  return ice_aq_set_link (vm, port, ip->link_speed, 0);
 }
 
 void
@@ -396,6 +397,10 @@ ice_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 
   log_debug (port->dev, "starting port %u", port->port_id);
 
+  rv = ice_aq_set_link (vm, port, ip->link_speed, 1);
+  if (rv)
+    return rv;
+
   foreach_vnet_dev_port_rx_queue (rxq, port)
     {
       u16 vector = clib_min (rxq->rx_thread_index + 1, ip->n_rx_vectors);
@@ -440,6 +445,14 @@ ice_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
 
   log_debug (port->dev, "stopping port %u", port->port_id);
   vnet_dev_poll_port_remove (vm, port, ice_port_status_poll);
+
+  /* disable the link so the link partner sees it going down */
+  ice_aq_set_link (vm, port, ip->link_speed, 0);
+  vnet_dev_port_state_change (vm, port,
+			      (vnet_dev_port_state_changes_t) {
+				.change.link_state = 1,
+				.change.link_speed = 1,
+			      });
 
   foreach_vnet_dev_port_rx_queue (rxq, port)
     {
@@ -526,7 +539,14 @@ ice_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port, vnet_dev_port_cfg_c
     case VNET_DEV_PORT_CFG_SET_RSS_CONFIG:
       return ice_rss_set_config (vm, port, &req->rss_config);
     case VNET_DEV_PORT_CFG_SET_LINK_SPEED:
-      return ice_aq_set_link_speed (vm, port, req->link_speed);
+      {
+	ice_port_t *ip = vnet_dev_get_port_data (port);
+	vnet_dev_rv_t rv = ice_aq_set_link (vm, port, req->link_speed, port->started);
+
+	if (rv == VNET_DEV_OK)
+	  ip->link_speed = req->link_speed;
+	return rv;
+      }
     case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_ENABLE:
       return ice_port_cfg_rxq_intr_mode (port, req, /* enable */ 1);
     case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_DISABLE:
