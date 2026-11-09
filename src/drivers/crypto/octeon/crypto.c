@@ -7,12 +7,8 @@
 
 #include <vnet/dev/dev.h>
 #include <vnet/devices/devices.h>
-#include <octeon.h>
+#include <octeon_common.h>
 #include <crypto.h>
-#include <base/roc_api.h>
-#include "common.h"
-
-extern oct_plt_init_param_t oct_plt_init_param;
 
 oct_crypto_main_t oct_crypto_main;
 oct_crypto_dev_t oct_crypto_dev;
@@ -1434,7 +1430,7 @@ oct_init_crypto_engine_handlers (vlib_main_t *vm, vnet_dev_t *dev __clib_unused)
   vnet_crypto_frame_enq_fn_t *fn;
   u32 engine_index;
 
-  engine_index = vnet_crypto_register_engine (vm, "octteon_cpt", 100, "Octeon CPT Engine");
+  engine_index = vnet_crypto_register_engine (vm, "octeon_cpt", 100, "Octeon CPT Engine");
 
   vnet_crypto_register_dequeue_handler (vm, engine_index, oct_crypto_frame_dequeue);
 
