@@ -94,6 +94,7 @@ clib_dt_read_from_sysfs (clib_dt_main_t *dm)
       if (!e)
 	{
 	  closedir (dir);
+	  dir = 0;
 	  if (vec_len (dir_stack) == 0)
 	    break;
 
@@ -185,6 +186,8 @@ clib_dt_read_from_sysfs (clib_dt_main_t *dm)
     }
 
 done:
+  if (dir)
+    closedir (dir);
   if (err)
     clib_dt_main_free (dm);
   while (vec_len (dir_stack))
