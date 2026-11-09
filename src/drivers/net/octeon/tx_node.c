@@ -37,6 +37,40 @@ typedef struct
   lmt_line_t *lmt_lines;
 } oct_tx_ctx_t;
 
+static_always_inline void
+oct_tx_set_offload (union nix_send_hdr_w1_u *w1, vlib_buffer_t *b)
+{
+  vnet_buffer_oflags_t oflags = vnet_buffer (b)->oflags;
+  u32 l3_off = vnet_buffer (b)->l3_hdr_offset - b->current_data;
+
+  if (!(oflags & (VNET_BUFFER_OFFLOAD_F_IP_CKSUM | VNET_BUFFER_OFFLOAD_F_UDP_CKSUM |
+		  VNET_BUFFER_OFFLOAD_F_TCP_CKSUM)))
+    return;
+
+  w1->ol3ptr = l3_off;
+
+  if (b->flags & VNET_BUFFER_F_IS_IP6)
+    w1->ol3type = NIX_SENDL3TYPE_IP6;
+  else if (oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM)
+    {
+      w1->ol3type = NIX_SENDL3TYPE_IP4_CKSUM;
+      w1->ol4ptr = l3_off + sizeof (ip4_header_t);
+    }
+  else
+    w1->ol3type = NIX_SENDL3TYPE_IP4;
+
+  if (oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)
+    {
+      w1->ol4type = NIX_SENDL4TYPE_UDP_CKSUM;
+      w1->ol4ptr = vnet_buffer (b)->l4_hdr_offset - b->current_data;
+    }
+  else if (oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM)
+    {
+      w1->ol4type = NIX_SENDL4TYPE_TCP_CKSUM;
+      w1->ol4ptr = vnet_buffer (b)->l4_hdr_offset - b->current_data;
+    }
+}
+
 #ifdef PLATFORM_OCTEON9
 static_always_inline u32
 oct_batch_free (vlib_main_t *vm, oct_tx_ctx_t *ctx, vnet_dev_tx_queue_t *txq,
@@ -250,25 +284,7 @@ oct_tx_enq1 (vlib_main_t *vm, oct_tx_ctx_t *ctx, vlib_buffer_t *b,
     }
 
   if (!simple && flags & VNET_BUFFER_F_OFFLOAD)
-    {
-      vnet_buffer_oflags_t oflags = vnet_buffer (b)->oflags;
-      if (oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM)
-	{
-	  d.hdr_w1.ol3type = NIX_SENDL3TYPE_IP4_CKSUM;
-	  d.hdr_w1.ol3ptr = vnet_buffer (b)->l3_hdr_offset - b->current_data;
-	  d.hdr_w1.ol4ptr = d.hdr_w1.ol3ptr + sizeof (ip4_header_t);
-	}
-      if (oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)
-	{
-	  d.hdr_w1.ol4type = NIX_SENDL4TYPE_UDP_CKSUM;
-	  d.hdr_w1.ol4ptr = vnet_buffer (b)->l4_hdr_offset - b->current_data;
-	}
-      else if (oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM)
-	{
-	  d.hdr_w1.ol4type = NIX_SENDL4TYPE_TCP_CKSUM;
-	  d.hdr_w1.ol4ptr = vnet_buffer (b)->l4_hdr_offset - b->current_data;
-	}
-    }
+    oct_tx_set_offload (&d.hdr_w1, b);
 
   total_len += d.sg[0].seg1_size = b->current_length;
   d.hdr_w0.total = total_len;
@@ -519,8 +535,6 @@ static_always_inline u64
 oct_add_send_hdr (struct nix_send_hdr_s *hdr, vlib_buffer_t *b, u64 aura_handle, u64 sq,
 		  u64 n_dwords)
 {
-  vnet_buffer_oflags_t oflags;
-
   hdr->w0.u = 0;
   hdr->w1.u = 0;
   hdr->w0.sq = sq;
@@ -531,29 +545,8 @@ oct_add_send_hdr (struct nix_send_hdr_s *hdr, vlib_buffer_t *b, u64 aura_handle,
   if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
     hdr->w0.total = vlib_buffer_length_in_chain (vlib_get_main (), b);
 
-  if (!(b->flags & VNET_BUFFER_F_OFFLOAD))
-    return OCT_SEND_HDR_DWORDS;
-
   if (b->flags & VNET_BUFFER_F_OFFLOAD)
-    {
-      oflags = vnet_buffer (b)->oflags;
-      if (oflags & VNET_BUFFER_OFFLOAD_F_IP_CKSUM)
-	{
-	  hdr->w1.ol3type = NIX_SENDL3TYPE_IP4_CKSUM;
-	  hdr->w1.ol3ptr = vnet_buffer (b)->l3_hdr_offset - b->current_data;
-	  hdr->w1.ol4ptr = hdr->w1.ol3ptr + sizeof (ip4_header_t);
-	}
-      if (oflags & VNET_BUFFER_OFFLOAD_F_UDP_CKSUM)
-	{
-	  hdr->w1.ol4type = NIX_SENDL4TYPE_UDP_CKSUM;
-	  hdr->w1.ol4ptr = vnet_buffer (b)->l4_hdr_offset - b->current_data;
-	}
-      else if (oflags & VNET_BUFFER_OFFLOAD_F_TCP_CKSUM)
-	{
-	  hdr->w1.ol4type = NIX_SENDL4TYPE_TCP_CKSUM;
-	  hdr->w1.ol4ptr = vnet_buffer (b)->l4_hdr_offset - b->current_data;
-	}
-    }
+    oct_tx_set_offload (&hdr->w1, b);
 
   return OCT_SEND_HDR_DWORDS;
 }
