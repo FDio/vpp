@@ -272,6 +272,7 @@ ige_port_deinit (vlib_main_t *vm, vnet_dev_port_t *port)
   if (!ip->irq_registered)
     return;
 
+  /* coverity[tainted_data] - n_rx_vectors is set at port init */
   rv = vnet_dev_pci_msix_disable (vm, port->dev, 1, ip->n_rx_vectors);
   if (rv == VNET_DEV_OK)
     rv = vnet_dev_pci_msix_remove_handler (vm, port->dev, 1, ip->n_rx_vectors);
