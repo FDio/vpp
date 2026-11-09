@@ -386,6 +386,7 @@ ice_rx_one_queue (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queue_
   n_descs = ice_rx_descs_scan_extract (hw_descs + slot, n, sts, pl, &n_eops);
 
   if (n_descs == n && n < n_desc_limit)
+    /* coverity[overflow_sink] - n_desc_limit - n is at most 256 */
     n_descs +=
       ice_rx_descs_scan_extract (hw_descs, n_desc_limit - n, sts + n_descs, pl + n_descs, &n_eops);
 
@@ -410,6 +411,7 @@ ice_rx_one_queue (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queue_
 
   slot = head & mask;
   n = clib_min (n_descs, size - slot);
+  /* coverity[overflow_sink] - n is at most 256 */
   vlib_get_buffers (vm, buffer_indices + slot, bufs, n);
 
   if (PREDICT_FALSE (n < n_descs))

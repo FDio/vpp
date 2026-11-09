@@ -546,5 +546,6 @@ retry:
       vlib_error_count (vm, node->node_index, ICE_TX_NODE_CTR_NO_FREE_SLOTS, n_left);
     }
 
+  /* coverity[return_overflow] - n_left never exceeds frame->n_vectors */
   return frame->n_vectors - n_left;
 }
