@@ -335,13 +335,11 @@ unformat_session (unformat_input_t *input, va_list *args)
     return 0;
 
   if (is_ip4)
-    s = session_lookup_safe4 (fib_index, &lcl.ip4, &rmt.ip4,
-			      clib_host_to_net_u16 (lcl_port),
-			      clib_host_to_net_u16 (rmt_port), proto);
+    s = session_lookup_safe4 (fib_index, &lcl.ip4, &rmt.ip4, clib_host_to_net_u16 (lcl_port),
+			      clib_host_to_net_u16 (rmt_port), proto, NULL);
   else
-    s = session_lookup_safe6 (fib_index, &lcl.ip6, &rmt.ip6,
-			      clib_host_to_net_u16 (lcl_port),
-			      clib_host_to_net_u16 (rmt_port), proto);
+    s = session_lookup_safe6 (fib_index, &lcl.ip6, &rmt.ip6, clib_host_to_net_u16 (lcl_port),
+			      clib_host_to_net_u16 (rmt_port), proto, NULL);
   if (s)
     {
       *result = s;

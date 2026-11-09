@@ -1610,8 +1610,8 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 				      &is_filtered);
   SESSION_TEST ((tc->c_index == listener->connection_index),
 		"lookup should return the listener");
-  s = session_lookup_safe4 (0, &lcl_pref.fp_addr.ip4, &rmt_pref.fp_addr.ip4,
-			    lcl_port, rmt_port, TRANSPORT_PROTO_TCP);
+  s = session_lookup_safe4 (0, &lcl_pref.fp_addr.ip4, &rmt_pref.fp_addr.ip4, lcl_port, rmt_port,
+			    TRANSPORT_PROTO_TCP, NULL);
   SESSION_TEST ((s->connection_index == listener->connection_index),
 		"safe lookup should return the listener");
   session_endpoint_t sep = {
