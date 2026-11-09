@@ -261,6 +261,7 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
   if ((rrv = roc_nix_mac_mtu_set (nix, port->max_rx_frame_size - VNET_DEV_ETH_FCS_LEN)))
     {
       rv = oct_roc_err (dev, rrv, "roc_nix_mac_mtu_set() failed");
+      oct_port_deinit (vm, port);
       return rv;
     }
 
