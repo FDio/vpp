@@ -234,12 +234,18 @@ daq_vpp_instantiate (DAQ_ModuleConfig_h modcfg, DAQ_ModuleInstance_h modinst,
   end_of_name = strchrnul (input_name, ':');
   input_name_len = end_of_name - input_name;
   ctx = calloc (1, sizeof (daq_vpp_ctx_t));
+  if (ctx == 0)
+    return DAQ_ERROR_NOMEM;
   ctx->modinst = modinst;
+  ctx->epoll_fd = -1;
   ctx->timeout = (int) vdm->daq_base_api.config_get_timeout (modcfg);
   ctx->instance_id = instance_id;
 
   if (input_name_len >= DAQ_VPP_MAX_INST_NAME_LEN)
-    return daq_vpp_err (ctx, "input name '%s' too long", input_name);
+    {
+      rv = daq_vpp_err (ctx, "input name '%s' too long", input_name);
+      goto err;
+    }
 
   strncpy (name, input_name, input_name_len);
   name[input_name_len] = 0;
@@ -267,7 +273,7 @@ daq_vpp_instantiate (DAQ_ModuleConfig_h modcfg, DAQ_ModuleInstance_h modinst,
 			msg_pool_size * sizeof (daq_vpp_msg_pool_entry_t));
   if (ctx == 0)
     {
-      free (oldctx);
+      ctx = oldctx;
       rv = daq_vpp_err (ctx, "failed to realloc");
       goto err;
     }
