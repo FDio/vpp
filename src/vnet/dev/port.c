@@ -1079,7 +1079,7 @@ vnet_dev_port_add_sec_if (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
 	vm, q, (vnet_dev_rx_queue_rt_req_t){ .update_next_index = 1 });
     }
 
-  if (sif && port->port_ops.add_sec_if)
+  if (port->port_ops.add_sec_if)
     rv = port->port_ops.add_sec_if (vm, port, sif);
 
   if (rv != VNET_DEV_OK)
