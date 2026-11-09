@@ -344,6 +344,7 @@ oct_port_poll (vlib_main_t *vm, vnet_dev_port_t *port)
   struct roc_nix *nix = cd->nix;
   struct roc_nix_link_info link_info = {};
   vnet_dev_port_state_changes_t changes = {};
+  u32 speed;
   int rrv;
 
   if (oct_port_get_stats (vm, port))
@@ -375,26 +376,18 @@ oct_port_poll (vlib_main_t *vm, vnet_dev_port_t *port)
 	return;
     }
 
-  if (cd->status != link_info.status)
+  speed = link_info.status ? link_info.speed * 1000 : 0;
+
+  if (port->link_up != link_info.status)
     {
       changes.change.link_state = 1;
       changes.link_state = link_info.status;
-      cd->status = link_info.status;
     }
 
-  if (cd->full_duplex != link_info.full_duplex)
-    {
-      changes.change.link_duplex = 1;
-      changes.full_duplex = link_info.full_duplex;
-      cd->full_duplex = link_info.full_duplex;
-    }
-
-  if (cd->speed != link_info.speed)
+  if (port->speed != speed)
     {
       changes.change.link_speed = 1;
-      /* Convert to Kbps */
-      changes.link_speed = link_info.speed * 1000;
-      cd->speed = link_info.speed;
+      changes.link_speed = speed;
     }
 
   if (changes.change.any == 0)
@@ -571,11 +564,6 @@ oct_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
 
   foreach_vnet_dev_port_tx_queue (q, port)
     oct_txq_stop (vm, q);
-
-
-  /* Update the device status */
-  cd->status = 0;
-  cd->speed = 0;
 }
 
 vnet_dev_rv_t
