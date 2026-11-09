@@ -60,6 +60,7 @@ vnet_dev_bus_platform_dt_node_from_device_id (clib_dt_node_t **nodep,
     }
 
   link = format (0, PLATFORM_DEV_PATH "/%s/of_node%c", name, 0);
+  /* coverity[fs_check_call] - sysfs link, not controlled by an unprivileged user */
   r = readlink ((char *) link, path, sizeof (path) - 1);
 
   if (r < 1)
@@ -301,6 +302,7 @@ vnet_dev_platform_map_uio_region (vnet_dev_t *dev, char *name, void **va)
   map_size = round_pow2 (page_offset + uio_size, page_size);
   if (map_size > CLIB_UWORD_MAX)
     {
+      /* coverity[dead_error_begin] - map_size can exceed uword on 32 bit */
       close (fd);
       return VNET_DEV_ERR_INVALID_ARG;
     }
