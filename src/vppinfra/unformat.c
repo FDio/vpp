@@ -395,7 +395,7 @@ unformat_integer_value_ok (uword value, uword sign, uword is_signed, uword data_
 	case 4:
 	  return value <= CLIB_U32_MAX;
 	case 8:
-	  return value <= CLIB_U64_MAX;
+	  return 1;
 	default:
 	  return 0;
 	}
