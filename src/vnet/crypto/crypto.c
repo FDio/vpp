@@ -313,7 +313,7 @@ vnet_crypto_set_handlers (vnet_crypto_set_handlers_args_t *a)
   vnet_crypto_engine_t *e;
   vnet_crypto_alg_t alg;
   vnet_crypto_engine_id_t engine;
-  int i;
+  u8 i;
 
   p = hash_get_mem (cm->alg_index_by_name, a->handler_name);
   if (!p)
