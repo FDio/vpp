@@ -97,9 +97,6 @@ tap_free_used_device_desc (vlib_main_t *vm, tap_txq_t *txq)
 	}
     }
 
-  if (n_free == 0)
-    return;
-
   vlib_buffer_free (vm, to_free, n_free);
 
   txq->desc_freelist_head = desc_freelist;
