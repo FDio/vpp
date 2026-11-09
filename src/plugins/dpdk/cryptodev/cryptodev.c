@@ -910,6 +910,7 @@ dpdk_cryptodev_engine_init (vnet_crypto_engine_registration_t *r __clib_unused)
 
   cmt->iova_mode = rte_eal_iova_mode ();
 
+  /* coverity[overflow_const] - the end of the bitmap is not assigned to node */
   clib_bitmap_foreach (node, tm->cpu_socket_bitmap)
     {
       if (node >= nodes)
