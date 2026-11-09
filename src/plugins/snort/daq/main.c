@@ -339,9 +339,8 @@ daq_vpp_instantiate (DAQ_ModuleConfig_h modcfg, DAQ_ModuleInstance_h modinst,
 	  qp = daq_vpp_find_qpair (in, qpair_ids[i]);
 	  if (!qp)
 	    {
-	      rv = daq_vpp_err (ctx, "cannot find qpair %u.%u",
-				qpair_ids[i].thread_id, qpair_ids[i].queue_id,
-				ctx->instance_id);
+	      rv = daq_vpp_err (ctx, "cannot find qpair %u.%u", qpair_ids[i].thread_id,
+				qpair_ids[i].queue_id);
 	      goto err;
 	    }
 	  rv = daq_vpp_add_qpair_to_instance (ctx, qp);
