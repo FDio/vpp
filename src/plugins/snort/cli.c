@@ -146,9 +146,7 @@ snort_disconnect_client_command_fn (vlib_main_t *vm, unformat_input_t *input,
   int rv = 0;
   u32 client_index = SNORT_INVALID_CLIENT_INDEX;
 
-  unformat (input, "%u", &client_index);
-
-  if (client_index == SNORT_INVALID_CLIENT_INDEX)
+  if (!unformat (input, "%u", &client_index) || client_index == SNORT_INVALID_CLIENT_INDEX)
     {
       err = clib_error_return (0, "please specify client index");
       goto done;
