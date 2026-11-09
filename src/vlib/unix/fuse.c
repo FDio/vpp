@@ -779,7 +779,8 @@ exec_fusermount3 (int *out_fd, char *mp, char *opts, int is_mount)
 	}
 
       close (errpipe[0]);
-      dup2 (errpipe[1], STDERR_FILENO);
+      if (dup2 (errpipe[1], STDERR_FILENO) < 0)
+	_exit (127);
       close (errpipe[1]);
 
       execvp (argv_mount[0], is_mount ? argv_mount : argv_umount);
