@@ -17,6 +17,24 @@
       "tag": "prview:acf1f2f46deca57143342256fb687248:5db238064b5dd24188c2fcab8e51a41e94ed4f80",
       "revId": "5db238064b5dd24188c2fcab8e51a41e94ed4f80",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ff32839e_5fa19662",
+        "filename": "test/test_ikev2.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 879,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-09T12:07:18Z",
+      "side": 1,
+      "message": "Done in patch set 8: every GRE test class carries @unittest.skipIf(\"gre\" in config.excluded_plugins, ...), so they skip instead of calling config_gre_tunnel() against an excluded plugin.",
+      "parentUuid": "0fccd79c_f895d324",
+      "revId": "5db238064b5dd24188c2fcab8e51a41e94ed4f80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
