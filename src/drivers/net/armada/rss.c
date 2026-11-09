@@ -3,7 +3,7 @@
  * Copyright (c) 2026 Cisco Systems, Inc.
  */
 
-#include <pp2/pp2.h>
+#include <pp2.h>
 
 VLIB_REGISTER_LOG_CLASS (mvpp2_log, static) = {
   .class_name = "armada",

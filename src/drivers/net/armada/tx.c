@@ -7,8 +7,8 @@
 #include <vnet/dev/dev.h>
 #include <vnet/ethernet/ethernet.h>
 
-#include <pp2/pp2.h>
-#include <pp2/pp2_hw.h>
+#include <pp2.h>
+#include <pp2_hw.h>
 
 static_always_inline u16
 mvpp2_tx_gather (vlib_main_t *vm, vlib_buffer_t **bufs, u32 *bi, u16 n_pkts, u16 n_slots,

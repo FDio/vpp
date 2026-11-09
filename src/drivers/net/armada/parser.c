@@ -3,7 +3,7 @@
  * Copyright (c) 2026 Cisco Systems, Inc.
  */
 
-#include <pp2/pp2.h>
+#include <pp2.h>
 
 #include <sys/ioctl.h>
 #include <net/if_arp.h>
