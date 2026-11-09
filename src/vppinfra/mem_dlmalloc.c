@@ -151,8 +151,8 @@ clib_mem_destroy (void)
   if (heap == clib_mem_trace_get_current_heap ())
     clib_mem_trace_heap (heap, 0);
 
-  for (int i = vec_len (clib_mem_main.heaps) - 1; i >= 0; i--)
-    clib_mem_destroy_heap (clib_mem_main.heaps[i]);
+  for (u32 i = vec_len (clib_mem_main.heaps); i > 0; i--)
+    clib_mem_destroy_heap (clib_mem_main.heaps[i - 1]);
 
   clib_mem_set_heap (0);
   clib_mem_main.main_heap = 0;
