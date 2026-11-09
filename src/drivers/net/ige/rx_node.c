@@ -84,7 +84,7 @@ ige_rx_deq_64_desc (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queu
     return 0;
 
   /* remove descriptors from incomplete packets */
-  while (dc[n_descs - 1].eop == 0)
+  while (n_descs && dc[n_descs - 1].eop == 0)
     n_descs--;
 
   /* advance head */
