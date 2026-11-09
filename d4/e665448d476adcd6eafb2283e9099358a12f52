@@ -1,0 +1,8 @@
+Code-Review+2: Matthew Smith <mgsmith@netgate.com>
+Verified+1: FDio GitHub Actions <releng+fdio-github@linuxfoundation.org>
+Code-Review+1: Pieter Meyer <pieteras.meyer@gmail.com>
+Submitted-by: Matthew Smith <mgsmith@netgate.com>
+Submitted-at: Mon, 09 Nov 2026 14:18:00 +0000
+Reviewed-on: https://gerrit.fd.io/r/c/vpp/+/47294
+Project: vpp
+Branch: refs/heads/master
