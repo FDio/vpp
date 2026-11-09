@@ -17,6 +17,24 @@
       "tag": "prview:39c15ddf76fee48108828c86e0b5b926:05e690950589f709d38172c83cddf3745927a5b7",
       "revId": "05e690950589f709d38172c83cddf3745927a5b7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "771c9de4_218be54c",
+        "filename": "src/plugins/ikev2/ikev2_crypto.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 925,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-09T12:07:14Z",
+      "side": 1,
+      "message": "Done in patch set 6: a NULL from EVP_CIPHER_fetch/EVP_MD_fetch rolls the transform back out of supported_transforms (IKEV2_SET_CIPHER/IKEV2_SET_MD), so unavailable transforms are never offered.",
+      "parentUuid": "bec57f6a_d6bad019",
+      "revId": "05e690950589f709d38172c83cddf3745927a5b7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
