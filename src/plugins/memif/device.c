@@ -666,6 +666,7 @@ no_free_slots:
       __atomic_store_n (&mq->ring->tail, slot, __ATOMIC_RELEASE);
     }
 
+  /* coverity[return_overflow] - n_left is only decremented while it is not zero */
   return n_left;
 }
 
