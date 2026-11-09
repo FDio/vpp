@@ -369,7 +369,7 @@ daq_vpp_find_or_add_input (daq_vpp_ctx_t *ctx, char *name,
     }
 
   req.type = DAQ_VPP_MSG_TYPE_GET_INPUT;
-  strcpy (req.get_input.input_name, name);
+  snprintf (req.get_input.input_name, sizeof (req.get_input.input_name), "%s", name);
   vrv = daq_vpp_request (&req, &reply, 1, &fd);
 
   if (vrv != DAQ_VPP_OK)
