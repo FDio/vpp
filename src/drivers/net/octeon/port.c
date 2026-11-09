@@ -54,6 +54,31 @@ oct_roc_err (vnet_dev_t *dev, int rv, char *fmt, ...)
   return VNET_DEV_ERR_INTERNAL;
 }
 
+static vnet_dev_rv_t
+oct_port_rss_setup (vnet_dev_port_t *port)
+{
+  vnet_dev_t *dev = port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  oct_port_t *cp = vnet_dev_get_port_data (port);
+  struct roc_nix *nix = cd->nix;
+  int rrv;
+
+  rrv = roc_nix_rss_default_setup (nix, cp->rss_flowkey);
+  if (rrv)
+    return oct_roc_err (dev, rrv, "roc_nix_rss_default_setup() failed");
+
+  roc_nix_rss_key_set (nix, port->rss_config.key);
+
+  if (port->rss_config.set_lut)
+    {
+      rrv = roc_nix_rss_reta_set (nix, 0, port->rss_config.lut);
+      if (rrv)
+	return oct_roc_err (dev, rrv, "roc_nix_rss_reta_set() failed");
+    }
+
+  return VNET_DEV_OK;
+}
+
 /* only a physical function owns the MAC link, a VF cannot control it */
 static vnet_dev_rv_t
 oct_port_link_enable (vnet_dev_port_t *port, int enable)
@@ -227,13 +252,11 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
       return oct_roc_err (dev, rrv, "roc_nix_tm_hierarchy_enable() failed");
     }
 
-  if ((rrv = roc_nix_rss_default_setup (nix, cp->rss_flowkey)))
+  if ((rv = oct_port_rss_setup (port)))
     {
       oct_port_deinit (vm, port);
-      return oct_roc_err (dev, rrv, "roc_nix_rss_default_setup() failed");
+      return rv;
     }
-
-  roc_nix_rss_key_set (nix, port->rss_config.key);
 
   cp->npc.roc_nix = nix;
   cp->npc.flow_prealloc_size = OCT_FLOW_PREALLOC_SIZE;
@@ -762,9 +785,8 @@ oct_port_add_del_eth_addr (vlib_main_t *vm, vnet_dev_port_t *port,
 {
   vnet_dev_t *dev = port->dev;
   oct_device_t *cd = vnet_dev_get_data (dev);
-  oct_port_t *cp = vnet_dev_get_port_data (port);
   struct roc_nix *nix = cd->nix;
-  vnet_dev_rv_t rv = VNET_DEV_OK;
+  vnet_dev_rv_t rv = VNET_DEV_OK, rss_rv;
   i32 rrv;
 
   if (is_primary)
@@ -789,9 +811,9 @@ oct_port_add_del_eth_addr (vlib_main_t *vm, vnet_dev_port_t *port,
 		}
 	    }
 
-	  rrv = roc_nix_rss_default_setup (nix, cp->rss_flowkey);
-	  if (rrv)
-	    rv = oct_roc_err (dev, rrv, "roc_nix_rss_default_setup() failed");
+	  rss_rv = oct_port_rss_setup (port);
+	  if (rss_rv)
+	    rv = rss_rv;
 	}
     }
 
