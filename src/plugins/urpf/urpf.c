@@ -369,12 +369,29 @@ urpf_cli_accept (vlib_main_t * vm,
       goto done;
     }
 
+  /*
+   * Each exemption holds a lock on the table, so the table is not
+   * destroyed while it still has exempt entries. Deleting the table
+   * with an exemption left in it would remove the default route under
+   * the exempt entry, which tracks it as its cover.
+   */
   if (is_add)
-    fib_table_entry_special_add (fib_index,
-				 &fpfx,
-				 FIB_SOURCE_URPF_EXEMPT, FIB_ENTRY_FLAG_DROP);
+    {
+      fib_table_lock (fib_index, fpfx.fp_proto, FIB_SOURCE_URPF_EXEMPT);
+      fib_table_entry_special_add (fib_index, &fpfx, FIB_SOURCE_URPF_EXEMPT, FIB_ENTRY_FLAG_DROP);
+    }
   else
-    fib_table_entry_special_remove (fib_index, &fpfx, FIB_SOURCE_URPF_EXEMPT);
+    {
+      fib_node_index_t fei;
+
+      fei = fib_table_lookup_exact_match (fib_index, &fpfx);
+
+      if (FIB_NODE_INDEX_INVALID != fei && fib_entry_is_sourced (fei, FIB_SOURCE_URPF_EXEMPT))
+	{
+	  fib_table_entry_special_remove (fib_index, &fpfx, FIB_SOURCE_URPF_EXEMPT);
+	  fib_table_unlock (fib_index, fpfx.fp_proto, FIB_SOURCE_URPF_EXEMPT);
+	}
+    }
 
 done:
   unformat_free (line_input);

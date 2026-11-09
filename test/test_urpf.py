@@ -11,6 +11,7 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 
 from vpp_papi import VppEnum
+from vpp_ip_route import VppIpTable
 from config import config
 
 N_PKTS = 63
@@ -373,6 +374,64 @@ class TestURPF(VppTestCase):
             af=e.vl_api_address_family_t.ADDRESS_IP6,
             sw_if_index=self.loop2.sw_if_index,
         )
+
+    def table_exists(self, table_id, is_ip6):
+        for t in self.vapi.ip_table_dump():
+            if t.table.table_id == table_id and t.table.is_ip6 == is_ip6:
+                return True
+        return False
+
+    def urpf_accept_table_delete(self, is_ip6, prefixes):
+        table = VppIpTable(self, 102, is_ip6=is_ip6, register=False)
+        table.add_vpp_config()
+
+        for p in prefixes:
+            self.vapi.cli("set urpf-accept table 102 %s" % p)
+
+        # the exemptions hold the table, so deleting it must neither
+        # crash nor free the table
+        table.remove_vpp_config()
+        self.assertTrue(self.table_exists(102, is_ip6))
+        af = "ip6" if is_ip6 else "ip"
+        for p in prefixes:
+            fib = self.vapi.cli("show %s fib table 102 %s" % (af, p))
+            self.assertIn("urpf-exempt", fib)
+
+        # removing the last exemption frees the table
+        for p in prefixes:
+            self.vapi.cli("set urpf-accept table 102 del %s" % p)
+        self.assertFalse(self.table_exists(102, is_ip6))
+
+    def test_urpf4_accept_table_delete(self):
+        """uRPF IP4 accept entries and table delete"""
+        self.urpf_accept_table_delete(False, ["10.0.0.0/8"])
+
+    def test_urpf6_accept_table_delete(self):
+        """uRPF IP6 accept entries and table delete"""
+        self.urpf_accept_table_delete(True, ["fe80::/10", "2001:db8::/32"])
+
+    def test_urpf_accept_twice_table_delete(self):
+        """uRPF accept entry added twice and table delete"""
+        for is_ip6, p in [(False, "10.0.0.0/8"), (True, "fe80::/10")]:
+            table = VppIpTable(self, 102, is_ip6=is_ip6, register=False)
+            table.add_vpp_config()
+
+            # the same prefix added twice holds the table twice
+            self.vapi.cli("set urpf-accept table 102 %s" % p)
+            self.vapi.cli("set urpf-accept table 102 %s" % p)
+            table.remove_vpp_config()
+            self.assertTrue(self.table_exists(102, is_ip6))
+
+            # one del leaves the exemption and the table
+            self.vapi.cli("set urpf-accept table 102 del %s" % p)
+            self.assertTrue(self.table_exists(102, is_ip6))
+            af = "ip6" if is_ip6 else "ip"
+            fib = self.vapi.cli("show %s fib table 102 %s" % (af, p))
+            self.assertIn("urpf-exempt", fib)
+
+            # the second del frees the table
+            self.vapi.cli("set urpf-accept table 102 del %s" % p)
+            self.assertFalse(self.table_exists(102, is_ip6))
 
 
 if __name__ == "__main__":
