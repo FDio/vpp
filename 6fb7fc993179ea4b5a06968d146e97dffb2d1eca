@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "91be547d_d455fbc4",
+        "filename": "test/util.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 293,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-09T08:57:32Z",
+      "side": 1,
+      "message": "Ack. It now always returns `(bool, str)`.",
+      "parentUuid": "3e77d65b_359780bc",
+      "revId": "6fb7fc993179ea4b5a06968d146e97dffb2d1eca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f3b54750_f8e5aba7",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d4d5e921_becca1cd",
+        "filename": "test/util.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 298,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-09T08:57:32Z",
+      "side": 1,
+      "message": "Done.",
+      "parentUuid": "f3b54750_f8e5aba7",
+      "revId": "6fb7fc993179ea4b5a06968d146e97dffb2d1eca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "fe4b552b_5dcff2d4",
@@ -48,6 +84,24 @@
       "writtenOn": "2026-11-09T07:18:50Z",
       "side": 1,
       "message": "The second part \"VPP core files may not be written...\" has nothing to do in this function. This function is a setter, keep it a setter, explain elsewhere.",
+      "revId": "6fb7fc993179ea4b5a06968d146e97dffb2d1eca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5c90dd2b_c64efc70",
+        "filename": "test/util.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-09T08:57:32Z",
+      "side": 1,
+      "message": "Agreed, removed. A write failure now returns only `(False, \"OSError raised while opening or writing /proc/sys/kernel/core_pattern: \u003cstrerror\u003e\")`. The warning that cores and backtraces will be lost when the core directory cannot be created or written stays in `check_core_dir()`.",
+      "parentUuid": "fe4b552b_5dcff2d4",
       "revId": "6fb7fc993179ea4b5a06968d146e97dffb2d1eca",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
