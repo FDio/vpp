@@ -277,7 +277,7 @@ quicly_test_cancel_rx_complete (vlib_main_t *vm, quic_quicly_main_t *qqm,
 {
   quic_main_t *qm = qqm->qm;
   session_worker_t *sw = &session_main.wrk[thread_index];
-  session_event_t rx_evt, close_evt;
+  session_event_t half_close_evts[3], close_evt;
   session_evt_elt_t *head, *elt;
   struct _st_quicly_conn_public_t conn = {};
   quicly_stream_t stream = { .conn = (quicly_conn_t *) &conn };
@@ -310,18 +310,23 @@ quicly_test_cancel_rx_complete (vlib_main_t *vm, quic_quicly_main_t *qqm,
   QUICLY_TEST (session_transport_attribute (session, 0, &attr) < 0 && ctx->app_err_code_rx == 0x100,
 	       "invalid RX error code leaves the configured value intact");
   session_half_close (session, 1 /* is_rx */);
-  QUICLY_TEST ((session->flags & (SESSION_F_RX_READY | SESSION_F_TX_READY)) == SESSION_F_TX_READY,
-	       "RX half-close disables RX notifications and preserves TX readiness");
+  session_half_close (session, 0 /* is_rx */);
   session_half_close (session, 1 /* is_rx */);
-  head = clib_llist_elt (sw->event_elts, sw->ctrl_head);
-  elt = clib_llist_next (sw->event_elts, evt_list, head);
-  rx_evt = elt->evt;
-  clib_llist_remove (sw->event_elts, evt_list, elt);
-  clib_llist_put (sw->event_elts, elt);
-  QUICLY_TEST (rx_evt.event_type == SESSION_CTRL_EVT_HALF_CLOSE &&
-		 rx_evt.session_handle == session_handle (session) &&
-		 clib_llist_next (sw->event_elts, evt_list, head) == head,
-	       "RX half-close queues one event and repeated RX close queues none");
+  QUICLY_TEST (session->flags == SESSION_F_RX_READY,
+	       "queuing half-closes leaves session flags unchanged");
+  for (u32 i = 0; i < ARRAY_LEN (half_close_evts); i++)
+    {
+      head = clib_llist_elt (sw->event_elts, sw->ctrl_head);
+      elt = clib_llist_next (sw->event_elts, evt_list, head);
+      QUICLY_TEST (elt != head, "half-close event is queued");
+      half_close_evts[i] = elt->evt;
+      clib_llist_remove (sw->event_elts, evt_list, elt);
+      clib_llist_put (sw->event_elts, elt);
+      QUICLY_TEST (half_close_evts[i].event_type == SESSION_CTRL_EVT_HALF_CLOSE &&
+		     half_close_evts[i].session_handle == session_handle (session) &&
+		     half_close_evts[i].as_u64[1] == (i != 1),
+		   "queued RX/TX/RX half-closes retain their own direction");
+    }
   session_close (session);
   elt = clib_llist_next (sw->event_elts, evt_list, head);
   close_evt = elt->evt;
@@ -336,7 +341,7 @@ quicly_test_cancel_rx_complete (vlib_main_t *vm, quic_quicly_main_t *qqm,
   QUICLY_TEST (!session_transport_attribute (session, 0, &attr) && ctx->app_err_code_rx == 0x100,
 	       "a later reset error code does not overwrite the pending RX error code");
   /* No receive ranges and eos == 0 model a request already received through FIN. */
-  engine->proto_on_half_close (ctx_index, thread_index, !!(session->flags & SESSION_F_TX_READY));
+  engine->proto_on_half_close (ctx_index, thread_index, half_close_evts[0].as_u64[1]);
   tp_vfts[TRANSPORT_PROTO_QUIC].half_close (ctx_index, thread_index, 1 /* is_rx */);
   QUICLY_TEST (ctx->flags == (QUIC_F_IS_STREAM | QUIC_F_APP_CLOSED_RX),
 	       "receive cancellation preserves TX and session ownership");
