@@ -17,6 +17,24 @@
       "tag": "prview:293cad83c2def377bd4334642e91cf07:eb21ff5a11110e545f539b8eb55bb07d57de58e0",
       "revId": "eb21ff5a11110e545f539b8eb55bb07d57de58e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2c5cd3ba_6b35e18b",
+        "filename": "src/plugins/ikev2/ikev2_crypto.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 929,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-09T12:07:16Z",
+      "side": 1,
+      "message": "Done in patch set 6: both fetch helpers use the log_warn() helper now.",
+      "parentUuid": "1745699a_cdfbefe1",
+      "revId": "eb21ff5a11110e545f539b8eb55bb07d57de58e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
