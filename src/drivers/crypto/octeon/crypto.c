@@ -7,12 +7,8 @@
 
 #include <vnet/dev/dev.h>
 #include <vnet/devices/devices.h>
-#include <octeon.h>
+#include <octeon_common.h>
 #include <crypto.h>
-#include <base/roc_api.h>
-#include "common.h"
-
-extern oct_plt_init_param_t oct_plt_init_param;
 
 oct_crypto_main_t oct_crypto_main;
 oct_crypto_dev_t oct_crypto_dev;

@@ -18,6 +18,7 @@
 #include <vnet/ip/igmp_packet.h>
 #include <vnet/gre/packet.h>
 #include <base/roc_api.h>
+#include <octeon_common.h>
 #include <hw_defs.h>
 
 /* Minimal VXLAN header shape used by octeon flow parser. */
@@ -32,8 +33,6 @@ typedef struct
 
 #define OCT_NPA_MAX_POOLS	   128
 #define OCT_BATCH_ALLOC_IOVA0_MASK 0xFFFFFFFFFFFFFF80
-#define OCT_BAR_ALIGN		   (ROC_AURA_ID_MASK + 1)
-#define OCT_BAR_DEFAULT_SIZE	   (32ULL << 20)
 
 typedef enum
 {
@@ -51,26 +50,9 @@ typedef enum
 
 typedef enum
 {
-  OCT_DEV_ARG_CRYPTO_N_DESC = 1,
-  OCT_DEV_ARG_EGRESS_TM,
+  OCT_DEV_ARG_EGRESS_TM = 1,
   OCT_DEV_ARG_END,
 } oct_dev_args_t;
-
-typedef enum
-{
-  OCT_DEVICE_TYPE_UNKNOWN = 0,
-  OCT_DEVICE_TYPE_RVU_PF,
-  OCT_DEVICE_TYPE_RVU_VF,
-  OCT_DEVICE_TYPE_LBK_VF,
-  OCT_DEVICE_TYPE_SDP_VF,
-  OCT_DEVICE_TYPE_O10K_CPT_VF,
-  OCT_DEVICE_TYPE_O9K_CPT_VF,
-} __clib_packed oct_device_type_t;
-
-#define OCT_DEVTYPE_IS_VF(type)                                                                    \
-  ((type) == OCT_DEVICE_TYPE_RVU_VF || (type) == OCT_DEVICE_TYPE_LBK_VF ||                         \
-   (type) == OCT_DEVICE_TYPE_SDP_VF || (type) == OCT_DEVICE_TYPE_O10K_CPT_VF ||                    \
-   (type) == OCT_DEVICE_TYPE_O9K_CPT_VF)
 
 typedef struct
 {
@@ -109,16 +91,14 @@ typedef struct
 
 typedef struct
 {
-  oct_device_type_t type;
+  oct_dev_common_t common;
   u8 nix_initialized : 1;
   u8 txq_fini_failed : 1;
   u8 status : 1;
   u8 full_duplex : 1;
   u8 egress_tm : 1;
   u32 speed;
-  struct plt_pci_device plt_pci_dev;
   struct roc_nix *nix;
-  oct_msix_handler_info_t *msix_handler;
   oct_txq_t **ctqs;
   oct_per_thread_data_t *per_thread_data;
 } oct_device_t;
@@ -215,22 +195,6 @@ vnet_dev_rv_t oct_rxq_get_stats (vlib_main_t *, vnet_dev_port_t *,
 vnet_dev_rv_t oct_txq_get_stats (vlib_main_t *, vnet_dev_port_t *,
 				 vnet_dev_tx_queue_t *);
 
-#define log_debug(dev, f, ...)                                                \
-  vlib_log (VLIB_LOG_LEVEL_DEBUG, oct_log.class, "%U: " f,                    \
-	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
-#define log_info(dev, f, ...)                                                 \
-  vlib_log (VLIB_LOG_LEVEL_INFO, oct_log.class, "%U: " f,                     \
-	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
-#define log_notice(dev, f, ...)                                               \
-  vlib_log (VLIB_LOG_LEVEL_NOTICE, oct_log.class, "%U: " f,                   \
-	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
-#define log_warn(dev, f, ...)                                                 \
-  vlib_log (VLIB_LOG_LEVEL_WARNING, oct_log.class, "%U: " f,                  \
-	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
-#define log_err(dev, f, ...)                                                  \
-  vlib_log (VLIB_LOG_LEVEL_ERR, oct_log.class, "%U: " f,                      \
-	    format_vnet_dev_addr, (dev), ##__VA_ARGS__)
-
 #define foreach_oct_tx_node_counter                                                                \
   _ (CHAIN_TOO_LONG, chain_too_long, ERROR, "drop due to buffer chain > 6")                        \
   _ (NO_FREE_SLOTS, no_free_slots, ERROR, "no free tx slots")                                      \
@@ -261,5 +225,22 @@ typedef struct
 } oct_tx_trace_t;
 
 extern vnet_tm_system_t oct_tm_ops;
+
+static_always_inline u32
+oct_aura_free_all_buffers (vlib_main_t *vm, u64 aura_handle, u16 hdr_off, u32 num_buffers)
+{
+  u32 n = 0;
+  u64 iova;
+
+  while ((iova = roc_npa_aura_op_alloc (aura_handle, 0)))
+    {
+      vlib_buffer_t *b = (void *) iova + hdr_off;
+      vlib_buffer_free_one (vm, vlib_get_buffer_index (vm, b));
+      n++;
+      if (num_buffers && n == num_buffers)
+	break;
+    }
+  return n;
+}
 
 #endif /* _OCTEON_H_ */

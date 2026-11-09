@@ -2,26 +2,17 @@
  * Copyright (c) 2023-2026 Cisco Systems, Inc.
  */
 
-#include <sys/mman.h>
-
 #include <vnet/vnet.h>
 #include <vnet/dev/dev.h>
-#include <vnet/dev/bus/pci.h>
 #include <vnet/dev/counters.h>
 #include <vnet/ethernet/ethernet.h>
 #include <octeon.h>
-#include <crypto.h>
 
-#include <base/roc_api.h>
-#include "common.h"
-
-struct roc_model oct_model;
 oct_main_t oct_main;
-extern oct_plt_init_param_t oct_plt_init_param;
 
 VLIB_REGISTER_LOG_CLASS (oct_log, static) = {
   .class_name = "octeon",
-  .subclass_name = "init",
+  .subclass_name = "net-init",
 };
 
 #define OCT_BATCH_ALLOC_FINI_WAIT_US (100 * 1000)
@@ -46,29 +37,6 @@ vnet_dev_node_t oct_tx_tm_node = {
   .format_trace = format_oct_tx_trace,
   .error_counters = oct_tx_node_counters,
   .n_error_counters = ARRAY_LEN (oct_tx_node_counters),
-};
-
-static struct
-{
-  u16 device_id;
-  oct_device_type_t type;
-  char *description;
-} oct_dev_types[] = {
-
-#define _(id, device_type, desc)                                              \
-  {                                                                           \
-    .device_id = (id), .type = OCT_DEVICE_TYPE_##device_type,                 \
-    .description = (desc)                                                     \
-  }
-
-  _ (0xa063, RVU_PF, "Marvell Octeon Resource Virtualization Unit PF"),
-  _ (0xa064, RVU_VF, "Marvell Octeon Resource Virtualization Unit VF"),
-  _ (0xa0f8, LBK_VF, "Marvell Octeon Loopback Unit VF"),
-  _ (0xa0f7, SDP_VF, "Marvell Octeon System DPI Packet Interface Unit VF"),
-  _ (0xa0f3, O10K_CPT_VF,
-     "Marvell Octeon-10 Cryptographic Accelerator Unit VF"),
-  _ (0xa0fe, O9K_CPT_VF, "Marvell Octeon-9 Cryptographic Accelerator Unit VF"),
-#undef _
 };
 
 static clib_arg_t oct_drv_args[] = {
@@ -153,14 +121,6 @@ static clib_arg_t oct_port_args_lbk_sdp[] = {
 
 static clib_arg_t oct_dev_args[] = {
   {
-    .name = "n_desc",
-    .desc = "number of cpt descriptors, applicable to cpt devices only",
-    .type = CLIB_ARG_TYPE_UINT32,
-    .min = OCT_CPT_LF_MIN_NB_DESC,
-    .max = OCT_CPT_LF_MAX_NB_DESC,
-    .default_val.uint32 = OCT_CPT_LF_DEF_NB_DESC,
-  },
-  {
     .name = "egress_tm",
     .desc = "Egress traffic manager enable (network devices only)",
     .type = CLIB_ARG_TYPE_BOOL,
@@ -230,32 +190,7 @@ static const u32 oct_mac_modes[CGX_MODE_MAX + 1] = {
 static u8 *
 oct_probe (vlib_main_t *vm, vnet_dev_probe_args_t *args)
 {
-  vnet_dev_bus_pci_device_info_t *di = args->device_info;
-
-  if (di->vendor_id != 0x177d) /* Cavium */
-    return 0;
-
-  FOREACH_ARRAY_ELT (dt, oct_dev_types)
-    {
-      if (dt->device_id == di->device_id)
-	return format (0, "%s", dt->description);
-    }
-
-  return 0;
-}
-
-vnet_dev_rv_t
-cnx_return_roc_err (vnet_dev_t *dev, int rrv, char *fmt, ...)
-{
-  va_list va;
-  va_start (va, fmt);
-  u8 *s = va_format (0, fmt, &va);
-  va_end (va);
-
-  log_err (dev, "%v: %s [%d]", s, roc_error_msg_get (rrv), rrv);
-  vec_free (s);
-
-  return VNET_DEV_ERR_UNSUPPORTED_DEVICE;
+  return oct_dev_probe (args, 0);
 }
 
 static vnet_dev_rv_t
@@ -340,10 +275,10 @@ oct_init_nix (vlib_main_t *vm, vnet_dev_t *dev)
   int rrv;
   oct_port_t oct_port = {};
 
-  *cd->nix = (struct roc_nix){
+  *cd->nix = (struct roc_nix) {
     .reta_sz = ROC_NIX_RSS_RETA_SZ_256,
     .max_sqb_count = 512,
-    .pci_dev = &cd->plt_pci_dev,
+    .pci_dev = &cd->common.plt_pci_dev,
     .hw_vlan_ins = true,
   };
 
@@ -448,157 +383,6 @@ oct_init_nix (vlib_main_t *vm, vnet_dev_t *dev)
   return vnet_dev_port_add (vm, dev, 0, &port_add_args);
 }
 
-static int
-oct_conf_cpt (vlib_main_t *vm, vnet_dev_t *dev, oct_crypto_dev_t *ocd,
-	      int nb_lf)
-{
-  struct roc_cpt *roc_cpt = ocd->roc_cpt;
-  int rrv;
-
-  if ((rrv = roc_cpt_eng_grp_add (roc_cpt, CPT_ENG_TYPE_SE)) < 0)
-    {
-      log_err (dev, "Could not add CPT SE engines");
-      return cnx_return_roc_err (dev, rrv, "roc_cpt_eng_grp_add");
-    }
-  if ((rrv = roc_cpt_eng_grp_add (roc_cpt, CPT_ENG_TYPE_IE)) < 0)
-    {
-      log_err (dev, "Could not add CPT IE engines");
-      return cnx_return_roc_err (dev, rrv, "roc_cpt_eng_grp_add");
-    }
-  if (roc_cpt->eng_grp[CPT_ENG_TYPE_IE] != ROC_LEGACY_CPT_DFLT_ENG_GRP_SE_IE)
-    {
-      log_err (dev, "Invalid CPT IE engine group configuration");
-      return -1;
-    }
-  if (roc_cpt->eng_grp[CPT_ENG_TYPE_SE] != ROC_LEGACY_CPT_DFLT_ENG_GRP_SE)
-    {
-      log_err (dev, "Invalid CPT SE engine group configuration");
-      return -1;
-    }
-  if ((rrv = roc_cpt_dev_configure (roc_cpt, nb_lf, false, 0)) < 0)
-    {
-      log_err (dev, "could not configure crypto device %U",
-	       format_vlib_pci_addr, roc_cpt->pci_dev->addr);
-      return cnx_return_roc_err (dev, rrv, "roc_cpt_dev_configure");
-    }
-  return 0;
-}
-
-static vnet_dev_rv_t
-oct_conf_cpt_queue (vlib_main_t *vm, vnet_dev_t *dev, oct_crypto_dev_t *ocd)
-{
-  struct roc_cpt *roc_cpt = ocd->roc_cpt;
-  struct roc_cpt_lmtline *cpt_lmtline;
-  struct roc_cpt_lf *cpt_lf;
-  int rrv;
-
-  cpt_lf = &ocd->lf;
-  cpt_lmtline = &ocd->lmtline;
-
-  cpt_lf->nb_desc = ocd->n_desc;
-  cpt_lf->lf_id = 0;
-  if ((rrv = roc_cpt_lf_init (roc_cpt, cpt_lf)) < 0)
-    return cnx_return_roc_err (dev, rrv, "roc_cpt_lf_init");
-
-  roc_cpt_iq_enable (cpt_lf);
-
-  if ((rrv = roc_cpt_lmtline_init (roc_cpt, cpt_lmtline, 0, false) < 0))
-    return cnx_return_roc_err (dev, rrv, "roc_cpt_lmtline_init");
-
-  return 0;
-}
-
-static vnet_dev_rv_t
-oct_init_cpt (vlib_main_t *vm, vnet_dev_t *dev)
-{
-  oct_crypto_main_t *ocm = &oct_crypto_main;
-  extern oct_plt_init_param_t oct_plt_init_param;
-  oct_device_t *cd = vnet_dev_get_data (dev);
-  oct_crypto_dev_t *ocd = NULL;
-  int rrv;
-
-  if (ocm->n_cpt == OCT_MAX_N_CPT_DEV || ocm->started)
-    return VNET_DEV_ERR_NOT_SUPPORTED;
-
-  ocd = oct_plt_init_param.oct_plt_zmalloc (sizeof (oct_crypto_dev_t),
-					    CLIB_CACHE_LINE_BYTES);
-
-  ocd->roc_cpt = oct_plt_init_param.oct_plt_zmalloc (sizeof (struct roc_cpt),
-						     CLIB_CACHE_LINE_BYTES);
-  ocd->roc_cpt->pci_dev = &cd->plt_pci_dev;
-
-  ocd->dev = dev;
-  ocd->n_desc = clib_args_get_uint32_val_by_name (dev->args, "n_desc");
-
-  if ((rrv = roc_cpt_dev_init (ocd->roc_cpt)))
-    return cnx_return_roc_err (dev, rrv, "roc_cpt_dev_init");
-
-  if ((rrv = oct_conf_cpt (vm, dev, ocd, 1)))
-    return rrv;
-
-  if ((rrv = oct_conf_cpt_queue (vm, dev, ocd)))
-    return rrv;
-
-  if (!ocm->n_cpt)
-    {
-      /*
-       * Initialize s/w queues, which are common across multiple
-       * crypto devices
-       */
-      oct_conf_sw_queue (vm, dev, ocd);
-
-      ocm->crypto_dev[0] = ocd;
-    }
-
-  ocm->crypto_dev[1] = ocd;
-
-  oct_init_crypto_engine_handlers (vm, dev);
-
-  ocm->n_cpt++;
-
-  return VNET_DEV_OK;
-}
-
-static vnet_dev_rv_t
-oct_dev_pci_map_region (vlib_main_t *vm, vnet_dev_t *dev, u32 bar, void **addr)
-{
-  uword sys_page_sz = clib_mem_get_page_size ();
-  vlib_pci_dev_handle_t h = vnet_dev_get_pci_handle (dev);
-
-  if (sys_page_sz < OCT_BAR_ALIGN)
-    {
-      u64 bar_size = 0;
-      clib_error_t *err;
-      uword va, reserve_sz;
-
-      err = vlib_pci_get_region_size (vm, h, bar, &bar_size);
-      if (err)
-	{
-	  clib_error_free (err);
-	  bar_size = OCT_BAR_DEFAULT_SIZE;
-	}
-
-      va = clib_mem_vm_reserve (0, bar_size, 16);
-      if (va != ~0)
-	{
-	  /* clib_mem_vm_reserve rounds size up to alignment and leaves a
-	   * guard page before va; release the entire reservation so
-	   * vlib_pci_map_region_fixed can re-map at this address. */
-	  reserve_sz = round_pow2 (bar_size, OCT_BAR_ALIGN);
-	  munmap ((void *) (va - sys_page_sz), reserve_sz + sys_page_sz);
-	  err = vlib_pci_map_region_fixed (vm, h, bar, (u8 *) va, addr);
-	  if (err)
-	    {
-	      clib_error_free (err);
-	      return VNET_DEV_ERR_BUS;
-	    }
-	  return VNET_DEV_OK;
-	}
-    }
-
-  return vnet_dev_pci_map_region (vm, dev, bar, addr);
-}
-
 static vnet_dev_rv_t
 oct_init (vlib_main_t *vm, vnet_dev_t *dev)
 {
@@ -609,7 +393,6 @@ oct_init (vlib_main_t *vm, vnet_dev_t *dev)
   struct npa_aura_s aura = {};
   oct_device_t *cd = vnet_dev_get_data (dev);
   oct_per_thread_data_t *ptd;
-  vlib_pci_config_hdr_t pci_hdr;
   vnet_dev_rv_t rv;
 
   /*
@@ -619,76 +402,13 @@ oct_init (vlib_main_t *vm, vnet_dev_t *dev)
   if (!oct_main.is_config_done)
     oct_main.is_config_done = 1;
 
-  rv = vnet_dev_pci_read_config_header (vm, dev, &pci_hdr);
+  rv = oct_dev_pci_init (vm, dev, 0);
   if (rv != VNET_DEV_OK)
     return rv;
 
-  if (pci_hdr.vendor_id != 0x177d)
-    return VNET_DEV_ERR_UNSUPPORTED_DEVICE;
-
-  FOREACH_ARRAY_ELT (dt, oct_dev_types)
-    {
-      if (dt->device_id == pci_hdr.device_id)
-	cd->type = dt->type;
-    }
-
-  if (cd->type == OCT_DEVICE_TYPE_UNKNOWN)
-    return rv;
-
-  rv = VNET_DEV_ERR_UNSUPPORTED_DEVICE;
-
-  cd->plt_pci_dev = (struct plt_pci_device){
-    .id.vendor_id = pci_hdr.vendor_id,
-    .id.device_id = pci_hdr.device_id,
-    .id.class_id = pci_hdr.class << 16 | pci_hdr.subclass,
-    .pci_handle = vnet_dev_get_pci_handle (dev),
-  };
-  cd->msix_handler = NULL;
-
-  rv = oct_dev_pci_map_region (vm, dev, 2, &cd->plt_pci_dev.mem_resource[2].addr);
+  rv = oct_init_nix (vm, dev);
   if (rv != VNET_DEV_OK)
     return rv;
-
-  if (!(roc_model_is_cn10k () && OCT_DEVTYPE_IS_VF (cd->type)))
-    {
-      rv = oct_dev_pci_map_region (vm, dev, 4, &cd->plt_pci_dev.mem_resource[4].addr);
-      if (rv != VNET_DEV_OK)
-	return rv;
-    }
-
-  STATIC_ASSERT (sizeof (cd->plt_pci_dev.name) == sizeof (dev->device_id), "");
-
-  if ((rv = vnet_dev_pci_bus_master_enable (vm, dev)))
-    return rv;
-
-  strncpy ((char *) cd->plt_pci_dev.name, dev->device_id,
-	   sizeof (dev->device_id));
-
-  cd->plt_pci_dev.intr_handle = malloc (sizeof (struct oct_pci_intr_handle));
-  if (!cd->plt_pci_dev.intr_handle)
-    return VNET_DEV_ERR_DMA_MEM_ALLOC_FAIL;
-  memset (cd->plt_pci_dev.intr_handle, 0x0,
-	  sizeof (struct oct_pci_intr_handle));
-  cd->plt_pci_dev.intr_handle->pci_handle = cd->plt_pci_dev.pci_handle;
-
-  switch (cd->type)
-    {
-    case OCT_DEVICE_TYPE_RVU_PF:
-    case OCT_DEVICE_TYPE_RVU_VF:
-    case OCT_DEVICE_TYPE_LBK_VF:
-    case OCT_DEVICE_TYPE_SDP_VF:
-      rv = oct_init_nix (vm, dev);
-      if (rv != VNET_DEV_OK)
-	return rv;
-      break;
-
-    case OCT_DEVICE_TYPE_O10K_CPT_VF:
-    case OCT_DEVICE_TYPE_O9K_CPT_VF:
-      return oct_init_cpt (vm, dev);
-
-    default:
-      return VNET_DEV_ERR_UNSUPPORTED_DEVICE;
-    }
 
   vec_validate_aligned (cd->per_thread_data, tm->n_vlib_mains - 1, CLIB_CACHE_LINE_BYTES);
   for (int i = 0; i < tm->n_vlib_mains; i++)
@@ -831,23 +551,11 @@ oct_npa_max_pools_set_cb (struct plt_pci_device *pci_dev)
 static vnet_dev_rv_t
 oct_driver_init (vlib_main_t *vm, vnet_dev_driver_t *drv __clib_unused)
 {
-  int rv;
+  vnet_dev_rv_t rv;
 
-  rv = oct_plt_init (&oct_plt_init_param);
-  if (rv)
-    return VNET_DEV_ERR_INIT_FAILED;
-
-  rv = roc_model_init (&oct_model);
-  if (rv)
-    return VNET_DEV_ERR_INIT_FAILED;
-
-#ifdef PLATFORM_OCTEON9
-  if (!roc_model_is_cn9k ())
-    return VNET_DEV_ERR_UNSUPPORTED_DEVICE;
-#else
-  if (!roc_model_is_cn10k ())
-    return VNET_DEV_ERR_UNSUPPORTED_DEVICE;
-#endif
+  rv = oct_roc_init ();
+  if (rv != VNET_DEV_OK)
+    return rv;
 
   /* set default values in oct_main */
   oct_main.npa_max_pools = OCT_NPA_MAX_POOLS;
@@ -857,9 +565,9 @@ oct_driver_init (vlib_main_t *vm, vnet_dev_driver_t *drv __clib_unused)
   return VNET_DEV_OK;
 }
 
-VNET_DEV_REGISTER_DRIVER (octeon) = {
-  .name = "octeon",
-  .description = "Marvell Octeon",
+VNET_DEV_REGISTER_DRIVER (octeon_net) = {
+  .name = "octeon_net",
+  .description = "Marvell Octeon network",
   .bus = "pci",
   .device = {
     .data_sz = sizeof (oct_device_t),
