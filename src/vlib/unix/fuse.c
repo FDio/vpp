@@ -833,6 +833,7 @@ exec_fusermount3 (int *out_fd, char *mp, char *opts, int is_mount)
 	err = clib_error_return_unix (0, "%s: recvmsg", __func__);
     }
 
+  /* coverity[overflow_sink] - len is always lower than sizeof (buf) - 1 here */
   while ((n = read (errpipe[0], buf + len, sizeof (buf) - 1 - len)) > 0)
     {
       len += n;
@@ -842,6 +843,7 @@ exec_fusermount3 (int *out_fd, char *mp, char *opts, int is_mount)
 
   if (len > 0)
     {
+      /* coverity[overflow_sink] - len is lower than sizeof (buf) */
       buf[len] = 0;
       err = clib_error_return (err, "%s", buf);
     }
