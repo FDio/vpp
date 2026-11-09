@@ -29,10 +29,10 @@ typedef struct session_lookup_main_
 
 __clib_export session_t *session_lookup_safe4 (u32 fib_index, ip4_address_t *lcl,
 					       ip4_address_t *rmt, u16 lcl_port, u16 rmt_port,
-					       u8 proto);
+					       u8 proto, session_lookup_result_t *result);
 __clib_export session_t *session_lookup_safe6 (u32 fib_index, ip6_address_t *lcl,
 					       ip6_address_t *rmt, u16 lcl_port, u16 rmt_port,
-					       u8 proto);
+					       u8 proto, session_lookup_result_t *result);
 __clib_export transport_connection_t *
 session_lookup_connection_wt4 (u32 fib_index, ip4_address_t *lcl, ip4_address_t *rmt, u16 lcl_port,
 			       u16 rmt_port, u8 proto, clib_thread_index_t thread_index,
