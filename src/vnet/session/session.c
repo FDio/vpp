@@ -26,10 +26,8 @@ typedef enum
 } session_evt_family_t;
 
 static inline int
-session_send_evt_to_thread (void *data, void *args,
-			    clib_thread_index_t thread_index,
-			    session_evt_type_t evt_type,
-			    session_evt_family_t family)
+session_send_evt_to_thread (void *data, u64 args, clib_thread_index_t thread_index,
+			    session_evt_type_t evt_type, session_evt_family_t family)
 {
   session_worker_t *wrk = session_main_get_worker (thread_index);
   session_event_t *evt;
@@ -51,7 +49,7 @@ session_send_evt_to_thread (void *data, void *args,
       msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
       evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->rpc_args.fp = data;
-      evt->rpc_args.arg = args;
+      evt->rpc_args.arg = uword_to_pointer (args, void *);
       break;
     case SESSION_EVT_IO:
       ASSERT (evt_type == SESSION_IO_EVT_RX || evt_type == SESSION_IO_EVT_TX ||
@@ -68,6 +66,7 @@ session_send_evt_to_thread (void *data, void *args,
       msg = svm_msg_q_alloc_msg_w_ring (mq, SESSION_MQ_IO_EVT_RING);
       evt = (session_event_t *) svm_msg_q_msg_data (mq, &msg);
       evt->session_handle = session_handle ((session_t *) data);
+      evt->as_u64[1] = args;
       break;
     default:
       ASSERT (0);
@@ -151,7 +150,7 @@ void
 session_send_rpc_evt_to_thread_force (clib_thread_index_t thread_index,
 				      void *fp, void *rpc_args)
 {
-  session_send_evt_to_thread (fp, rpc_args, thread_index, SESSION_CTRL_EVT_RPC,
+  session_send_evt_to_thread (fp, pointer_to_uword (rpc_args), thread_index, SESSION_CTRL_EVT_RPC,
 			      SESSION_EVT_RPC);
 }
 
@@ -220,7 +219,7 @@ sesssion_reschedule_tx (transport_connection_t * tc)
 }
 
 static void
-session_program_transport_ctrl_evt (session_t * s, session_evt_type_t evt)
+session_program_transport_ctrl_evt_w_data (session_t *s, session_evt_type_t evt, u64 data)
 {
   clib_thread_index_t thread_index = vlib_get_thread_index ();
   session_evt_elt_t *elt;
@@ -234,13 +233,20 @@ session_program_transport_ctrl_evt (session_t * s, session_evt_type_t evt)
       elt = session_evt_alloc_ctrl (wrk);
       clib_memset (&elt->evt, 0, sizeof (session_event_t));
       elt->evt.session_handle = session_handle (s);
+      elt->evt.as_u64[1] = data;
       elt->evt.event_type = evt;
 
       if (PREDICT_FALSE (wrk->state == SESSION_WRK_INTERRUPT))
 	vlib_node_set_interrupt_pending (wrk->vm, session_queue_node.index);
     }
   else
-    session_send_ctrl_evt_to_thread (s, evt);
+    session_send_evt_to_thread (s, data, s->thread_index, evt, SESSION_EVT_SESSION);
+}
+
+static void
+session_program_transport_ctrl_evt (session_t *s, session_evt_type_t evt)
+{
+  session_program_transport_ctrl_evt_w_data (s, evt, 0);
 }
 
 session_t *
@@ -255,7 +261,6 @@ session_alloc (clib_thread_index_t thread_index)
   s->thread_index = thread_index;
   s->al_index = APP_INVALID_INDEX;
   s->listener_handle = SESSION_INVALID_HANDLE;
-  s->flags = SESSION_F_TX_READY;
 
   return s;
 }
@@ -1528,13 +1533,10 @@ session_stop_listen (session_t * s)
 void
 session_half_close (session_t *s, u8 is_rx)
 {
-  session_flags_t ready_flag = is_rx ? SESSION_F_RX_READY : SESSION_F_TX_READY;
-
-  if (!s || !(s->flags & ready_flag))
+  if (!s)
     return;
 
-  s->flags &= ~ready_flag;
-  session_program_transport_ctrl_evt (s, SESSION_CTRL_EVT_HALF_CLOSE);
+  session_program_transport_ctrl_evt_w_data (s, SESSION_CTRL_EVT_HALF_CLOSE, is_rx);
 }
 
 /**
@@ -1656,6 +1658,13 @@ session_transport_half_close (session_t *s, u8 is_rx)
   if (s->session_state != SESSION_STATE_READY &&
       s->session_state != SESSION_STATE_TRANSPORT_CLOSING && !pending_rx_close)
     return;
+
+  if (is_rx)
+    {
+      if (!(s->flags & SESSION_F_RX_READY))
+	return;
+      s->flags &= ~SESSION_F_RX_READY;
+    }
 
   transport_half_close (session_get_transport_proto (s), s->connection_index, s->thread_index,
 			is_rx);
