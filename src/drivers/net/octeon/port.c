@@ -466,6 +466,29 @@ oct_txq_stop (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
 {
 }
 
+static vnet_dev_rv_t
+oct_port_rx_mode_set (vnet_dev_port_t *port, int promisc)
+{
+  vnet_dev_t *dev = port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  struct roc_nix *nix = cd->nix;
+  int rrv;
+
+  rrv = roc_nix_npc_mcast_config (nix, true, promisc);
+  if (rrv)
+    return oct_roc_err (dev, rrv, "roc_nix_npc_mcast_config failed");
+
+  if (!roc_nix_is_pf (nix))
+    return VNET_DEV_OK;
+
+  rrv = roc_nix_mac_promisc_mode_enable (nix, promisc);
+  if (rrv)
+    return oct_roc_err (dev, rrv, "roc_nix_mac_promisc_mode_enable(%s) failed",
+			promisc ? "true" : "false");
+
+  return VNET_DEV_OK;
+}
+
 vnet_dev_rv_t
 oct_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 {
@@ -497,25 +520,9 @@ oct_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 
   if (!(roc_nix_is_sdp (nix) || roc_nix_is_lbk (nix)))
     {
-
-      rrv = roc_nix_npc_promisc_ena_dis (nix, port->promisc);
-      if (rrv)
-	{
-	  rv = oct_roc_err (dev, rrv, "roc_nix_npc_promisc_ena_dis failed");
-	  goto done;
-	}
-
-      if (roc_nix_is_pf (nix))
-	{
-
-	  rrv = roc_nix_mac_promisc_mode_enable (nix, port->promisc);
-	  if (rrv)
-	    {
-	      rv = oct_roc_err (dev, rrv, "roc_nix_mac_promisc_mode_enable(%s) failed",
-				port->promisc ? "true" : "false");
-	      goto done;
-	    }
-	}
+      rv = oct_port_rx_mode_set (port, port->promisc);
+      if (rv != VNET_DEV_OK)
+	goto done;
     }
 
   vnet_dev_poll_port_add (vm, port, 0.5, oct_port_poll);
@@ -709,29 +716,7 @@ oct_validate_config_promisc_mode (vnet_dev_port_t *port, int enable)
 vnet_dev_rv_t
 oct_op_config_promisc_mode (vlib_main_t *vm, vnet_dev_port_t *port, int enable)
 {
-  vnet_dev_t *dev = port->dev;
-  oct_device_t *cd = vnet_dev_get_data (dev);
-  struct roc_nix *nix = cd->nix;
-  int rv;
-
-  rv = roc_nix_npc_promisc_ena_dis (nix, enable);
-  if (rv)
-    {
-      return oct_roc_err (dev, rv, "roc_nix_npc_promisc_ena_dis failed");
-    }
-
-  if (!roc_nix_is_pf (nix))
-    return VNET_DEV_OK;
-
-  rv = roc_nix_mac_promisc_mode_enable (nix, enable);
-  if (rv)
-    {
-      return oct_roc_err (dev, rv,
-			  "roc_nix_mac_promisc_mode_enable(%s) failed",
-			  enable ? "true" : "false");
-    }
-
-  return VNET_DEV_OK;
+  return oct_port_rx_mode_set (port, enable);
 }
 
 static vnet_dev_rv_t
