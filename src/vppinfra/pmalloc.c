@@ -339,6 +339,8 @@ pmalloc_update_lookup_table (clib_pmalloc_main_t *pm, u32 first, u32 count)
 
 done:
   linear_pa_offset = pm->lookup_table[0];
+  /* coverity[check_after_deref] - the null check is inside vec_len () */
+  /* coverity[tainted_data] - lookup_table is filled from pagemap, length is ours */
   for (p = 1; p < vec_len (pm->lookup_table); p++)
     if (pm->lookup_table[p] != linear_pa_offset)
       {
@@ -419,6 +421,7 @@ pmalloc_map_pages (clib_pmalloc_main_t * pm, clib_pmalloc_arena_t * a,
     }
 
   va = pm->base + (((uword) vec_len (pm->pages)) << pm->def_log2_page_sz);
+  /* coverity[leaked_storage] - fixed mapping at va, tracked by the arena */
   if (mmap (va, size, PROT_READ | PROT_WRITE, mmap_flags, a->fd, 0) ==
       MAP_FAILED)
     {
