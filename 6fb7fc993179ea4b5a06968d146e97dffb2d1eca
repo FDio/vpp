@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3e77d65b_359780bc",
+        "filename": "test/util.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 293,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-09T07:18:50Z",
+      "side": 1,
+      "message": "Why don\u0027t you return the message and result here too? I mean here we don\u0027t set it, so result is false and the message is the reason - so we can document why we don\u0027t set it. Then the caller no longer has to test for None: `if set_ci_core_pattern():`...",
+      "revId": "6fb7fc993179ea4b5a06968d146e97dffb2d1eca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f3b54750_f8e5aba7",
+        "filename": "test/util.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 298,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-09T07:18:50Z",
+      "side": 1,
+      "message": "I\u0027d return a more descriptive `f\"OSError raised while opening or reading {CORE_PATTERN_PROC}: {e.strerror}\"`",
+      "revId": "6fb7fc993179ea4b5a06968d146e97dffb2d1eca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fe4b552b_5dcff2d4",
+        "filename": "test/util.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-09T07:18:50Z",
+      "side": 1,
+      "message": "The second part \"VPP core files may not be written...\" has nothing to do in this function. This function is a setter, keep it a setter, explain elsewhere.",
+      "revId": "6fb7fc993179ea4b5a06968d146e97dffb2d1eca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
