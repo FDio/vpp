@@ -607,8 +607,8 @@ pci_ids_helper (u16 vid, u16 did)
       if (c == UNFORMAT_END_OF_INPUT)
 	break;
 
-      if (c != '\t' && c != '#' && c != '\n')
-	unformat (&input, "%x", &id);
+      if (c != '\t' && c != '#' && c != '\n' && !unformat (&input, "%x", &id))
+	id = CLIB_U32_MAX;
 
       if (id == vid)
 	break;
