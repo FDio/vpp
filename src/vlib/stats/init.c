@@ -220,6 +220,7 @@ stats_segment_socket_init (void)
 
   clib_file_t template = { 0 };
   template.read_function = stats_socket_accept_ready;
+  /* coverity[overflow_const] - s->fd is valid when clib_socket_init succeeds */
   template.file_descriptor = s->fd;
   template.description = format (0, "stats segment listener %s", s->config);
   clib_file_add (&file_main, &template);

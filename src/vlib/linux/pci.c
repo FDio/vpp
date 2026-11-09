@@ -1506,6 +1506,7 @@ vlib_pci_get_region_size (vlib_main_t *vm, vlib_pci_dev_handle_t h, u32 bar, u64
   err = vlib_pci_region (vm, h, bar, &fd, size, &offset);
   if (p->type == LINUX_PCI_DEVICE_TYPE_UIO && fd >= 0)
     close (fd);
+  /* coverity[leaked_handle] - for VFIO fd is owned by the pci device */
   return err;
 }
 
