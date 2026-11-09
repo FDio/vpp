@@ -6,7 +6,6 @@
 #include <vnet/dev/dev.h>
 #include <vnet/dev/counters.h>
 #include <octeon.h>
-#include "common.h"
 #include <vnet/ethernet/ethernet.h>
 #include <tm.h>
 

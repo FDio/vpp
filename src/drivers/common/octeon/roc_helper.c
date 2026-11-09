@@ -8,8 +8,7 @@
 #include <vlib/pci/pci.h>
 #include <vlib/linux/vfio.h>
 #include <base/roc_api.h>
-#include "common.h"
-#include "octeon.h"
+#include <octeon_common.h>
 
 static oct_plt_memzone_list_t memzone_list;
 
@@ -190,7 +189,7 @@ static void
 plt_msix_handler (vlib_main_t *vm, vlib_pci_dev_handle_t handle, uint16_t line)
 {
   vnet_dev_t *dev = (vnet_dev_t *) vlib_pci_get_private_data (vm, handle);
-  oct_device_t *cd = vnet_dev_get_data (dev);
+  oct_dev_common_t *cd = vnet_dev_get_data (dev);
 
   if (cd->msix_handler && cd->msix_handler[line].fn)
     cd->msix_handler[line].fn (cd->msix_handler[line].data);
@@ -211,7 +210,7 @@ oct_plt_intr_enable (oct_pci_dev_handle_t handle, uint16_t start,
 {
   vlib_main_t *vm = vlib_get_main ();
   vnet_dev_t *dev = (vnet_dev_t *) vlib_pci_get_private_data (vm, handle);
-  oct_device_t *cd = vnet_dev_get_data (dev);
+  oct_dev_common_t *cd = vnet_dev_get_data (dev);
   clib_error_t *error = NULL;
 
   if (op == OCT_MSIX_RSRC_ALLOC)
@@ -253,7 +252,7 @@ oct_plt_intr_config (oct_pci_dev_handle_t handle, uint32_t vec,
 {
   vlib_main_t *vm = vlib_get_main ();
   vnet_dev_t *dev = (vnet_dev_t *) vlib_pci_get_private_data (vm, handle);
-  oct_device_t *cd = vnet_dev_get_data (dev);
+  oct_dev_common_t *cd = vnet_dev_get_data (dev);
   clib_error_t *error = NULL;
 
   /* Skip AF_PF_MBOX interrupt FIXME */

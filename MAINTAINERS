@@ -470,11 +470,13 @@ I:	armada
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/drivers/net/armada/
 
-Marvell Octeon device driver
+Marvell Octeon device drivers
 I:	octeon
 M:	Monendra Singh Kushwaha <kmonendra@marvell.com>
 M:	Damjan Marion <damarion@cisco.com>
-F:	src/drivers/octeon/
+F:	src/drivers/net/octeon/
+F:	src/drivers/crypto/octeon/
+F:	src/drivers/common/octeon/
 
 Intel E8xx (ice) device driver
 I:	ice
