@@ -9,8 +9,8 @@
 #include <vnet/dev/counters.h>
 #include <vnet/dev/bus/platform.h>
 #include <vppinfra/ring.h>
-#include <pp2/pp2.h>
-#include <pp2/pp2_hw.h>
+#include <pp2.h>
+#include <pp2_hw.h>
 
 VLIB_REGISTER_LOG_CLASS (mvpp2_log, static) = {
   .class_name = "armada",
