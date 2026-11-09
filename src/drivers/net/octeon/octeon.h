@@ -94,10 +94,7 @@ typedef struct
   oct_dev_common_t common;
   u8 nix_initialized : 1;
   u8 txq_fini_failed : 1;
-  u8 status : 1;
-  u8 full_duplex : 1;
   u8 egress_tm : 1;
-  u32 speed;
   struct roc_nix *nix;
   oct_txq_t **ctqs;
   oct_per_thread_data_t *per_thread_data;
