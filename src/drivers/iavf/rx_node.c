@@ -84,6 +84,7 @@ iavf_rxq_refill (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       if (use_va_dma)
 	{
+	  /* coverity[overrun-buffer-val] - only 8 buffers are requested */
 	  vlib_get_buffers_with_offset (vm, arq->buffer_indices + slot, p, 8,
 					sizeof (vlib_buffer_t));
 	  iavf_rx_desc_write (d + 0, pointer_to_uword (p[0]));
@@ -97,6 +98,7 @@ iavf_rxq_refill (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
       else
 	{
+	  /* coverity[overrun-buffer-val] - only 8 buffers are requested */
 	  vlib_get_buffers (vm, arq->buffer_indices + slot, b, 8);
 	  iavf_rx_desc_write (d + 0, vlib_buffer_get_pa (vm, b[0]));
 	  iavf_rx_desc_write (d + 1, vlib_buffer_get_pa (vm, b[1]));

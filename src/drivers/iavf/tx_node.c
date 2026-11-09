@@ -400,6 +400,7 @@ iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      if (!has_next)
 		break;
 
+	      /* coverity[overflow_const] - checked against n_desc_needed */
 	      n_desc_left -= 1;
 	      d += 1;
 	      tb += 1;
