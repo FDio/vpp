@@ -396,6 +396,7 @@ iavf_tx_prepare (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    {
 	      iavf_tx_fill_data_desc (vm, d, b[0], cmd, use_va_dma);
 
+	      /* coverity[overflow_const] - checked against n_desc_needed */
 	      n_desc_left -= 1;
 	      d += 1;
 	      tb += 1;
