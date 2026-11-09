@@ -485,8 +485,8 @@ daq_vpp_inject_relative (void *handle, DAQ_Msg_h msg, const uint8_t *data,
     vdm->bpools[empty_buf_desc->buffer_pool].base + empty_buf_desc->offset;
 
   if (empty_buf_desc->length < data_len)
-    return daq_vpp_err (ctx, "descriptor %u buffer too small (%u < %u)",
-			tail & mask, empty_buf_desc->length, data_len);
+    return daq_vpp_err (ctx, "descriptor %lu buffer too small (%u < %u)", tail & mask,
+			empty_buf_desc->length, data_len);
 
   memcpy (buf_data, data, data_len);
   empty_buf_desc->length = data_len;
