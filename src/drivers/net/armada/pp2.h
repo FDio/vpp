@@ -15,7 +15,7 @@
 
 #include <net/if.h>
 
-#include <pp2/pp2_hw.h>
+#include <pp2_hw.h>
 
 #define MVPP2_NUM_HIFS	       9
 #define MVPP2_REGSPACE_SIZE	  0x10000
@@ -165,7 +165,7 @@ typedef struct
   mvpp2_bpool_t bpool;
 } mvpp2_port_t;
 
-#include <pp2/pp2_funcs.h>
+#include <pp2_funcs.h>
 
 /* classifier.c */
 vnet_dev_rv_t mvpp2_cls_mng_init (vnet_dev_t *);

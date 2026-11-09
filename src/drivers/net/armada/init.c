@@ -8,7 +8,7 @@
 #include <vnet/dev/bus/platform.h>
 #include <vppinfra/ring.h>
 #include <vppinfra/linux/sysfs.h>
-#include <pp2/pp2.h>
+#include <pp2.h>
 #include <vnet/ethernet/ethernet.h>
 
 #include <net/if.h>

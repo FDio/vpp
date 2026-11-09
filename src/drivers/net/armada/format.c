@@ -6,7 +6,7 @@
 #include <vnet/dev/dev.h>
 #include <vnet/dev/counters.h>
 #include <vnet/dev/bus/platform.h>
-#include <pp2/pp2.h>
+#include <pp2.h>
 #include <vppinfra/format_table.h>
 
 typedef struct
