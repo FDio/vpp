@@ -115,10 +115,20 @@ typedef struct
 
 typedef struct
 {
+  vnet_dev_port_t *port;
+  oct_msix_handler_fn_t fn;
+  void *data;
+  u16 queue_id;
+} oct_cq_irq_t;
+
+typedef struct
+{
   u8 lf_allocated : 1;
   u8 tm_initialized : 1;
   u8 npc_initialized : 1;
   u8 q_intr_enabled : 1;
+  u8 cq_irqs_registered : 1;
+  oct_cq_irq_t *cq_irq;
   struct roc_npc npc;
   oct_flow_entry_t *flow_entries;
   u32 rss_flowkey;

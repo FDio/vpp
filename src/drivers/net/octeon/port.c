@@ -141,6 +141,107 @@ oct_port_is_arg_valid (clib_args_handle_t h, char *fmt, ...)
   return false;
 }
 
+static void
+oct_cq_irq_handler (void *arg)
+{
+  oct_cq_irq_t *ci = arg;
+  vnet_dev_port_t *port = ci->port;
+  oct_device_t *cd = vnet_dev_get_data (port->dev);
+  vnet_dev_rx_queue_t *rxq = vnet_dev_get_port_rx_queue_by_id (port, ci->queue_id);
+
+  ci->fn (ci->data);
+  roc_nix_rx_queue_intr_disable (cd->nix, ci->queue_id);
+
+  if (!rxq || !port->rx_node_assigned)
+    return;
+
+  vlib_node_set_interrupt_pending (vlib_get_main_by_index (rxq->rx_thread_index),
+				   vnet_dev_get_port_rx_node_index (port));
+}
+
+static void
+oct_port_cq_irqs_unregister (vnet_dev_port_t *port)
+{
+  oct_device_t *cd = vnet_dev_get_data (port->dev);
+  oct_port_t *cp = vnet_dev_get_port_data (port);
+
+  if (cp->cq_irqs_registered)
+    roc_nix_unregister_cq_irqs (cd->nix);
+
+  cp->cq_irqs_registered = 0;
+  vec_free (cp->cq_irq);
+}
+
+/* ROC registers its own handler for each CQ vector, which only clears the interrupt. Replace
+ * them with ones which also disable the queue interrupt and wake up the RX node. */
+static void
+oct_port_cq_irqs_register (vnet_dev_port_t *port)
+{
+  vnet_dev_t *dev = port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  oct_port_t *cp = vnet_dev_get_port_data (port);
+  oct_msix_handler_info_t *h = cd->common.msix_handler;
+  u32 n_vec = cd->common.plt_pci_dev.intr_handle->max_intr;
+  u16 n_rxq = port->interfaces->num_rx_queues, q = 0;
+  clib_bitmap_t *used = 0;
+  int rrv;
+
+  if (h == 0 || cd->nix->cints < n_rxq)
+    return;
+
+  for (u32 v = 0; v < n_vec; v++)
+    if (h[v].fn)
+      used = clib_bitmap_set (used, v, 1);
+
+  rrv = roc_nix_register_cq_irqs (cd->nix);
+  if (rrv)
+    {
+      oct_roc_err (dev, rrv, "roc_nix_register_cq_irqs() failed");
+      goto done;
+    }
+
+  cp->cq_irqs_registered = 1;
+  vec_validate (cp->cq_irq, n_rxq - 1);
+
+  for (u32 v = 0; v < n_vec && q < n_rxq; v++)
+    {
+      if (h[v].fn == 0 || clib_bitmap_get (used, v))
+	continue;
+
+      cp->cq_irq[q] = (oct_cq_irq_t) {
+	.port = port,
+	.fn = h[v].fn,
+	.data = h[v].data,
+	.queue_id = q,
+      };
+      h[v].fn = oct_cq_irq_handler;
+      h[v].data = &cp->cq_irq[q];
+      q++;
+    }
+
+  if (q != n_rxq)
+    {
+      log_warn (dev, "found %u of %u CQ interrupt vectors, RX interrupt mode disabled", q, n_rxq);
+      oct_port_cq_irqs_unregister (port);
+      goto done;
+    }
+
+  port->attr.caps.interrupt_mode = 1;
+
+done:
+  clib_bitmap_free (used);
+}
+
+static void
+oct_port_rx_intr_disarm (vnet_dev_port_t *port, vnet_dev_rx_queue_t *only)
+{
+  oct_device_t *cd = vnet_dev_get_data (port->dev);
+
+  foreach_vnet_dev_port_rx_queue (q, port)
+    if (only == 0 || only == q)
+      roc_nix_rx_queue_intr_disable (cd->nix, q->queue_id);
+}
+
 vnet_dev_rv_t
 oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
 {
@@ -282,6 +383,8 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
   cp->q_intr_enabled = 1;
   oct_port_add_counters (vm, port);
 
+  oct_port_cq_irqs_register (port);
+
   if (cd->egress_tm)
     {
       oct_init_tm_args (&vnet_tm_system_ops);
@@ -320,6 +423,8 @@ oct_port_deinit (vlib_main_t *vm, vnet_dev_port_t *port)
       roc_nix_tm_fini (nix);
       cp->tm_initialized = 0;
     }
+
+  oct_port_cq_irqs_unregister (port);
 
   /* Unregister queue irqs */
   if (cp->q_intr_enabled)
@@ -558,6 +663,9 @@ oct_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
       oct_roc_err (dev, rrv, "roc_nix_npc_rx_ena_dis() failed");
       return;
     }
+
+  if (port->attr.caps.interrupt_mode)
+    oct_port_rx_intr_disarm (port, 0);
 
   foreach_vnet_dev_port_rx_queue (q, port)
     oct_rxq_stop (vm, q);
@@ -839,6 +947,12 @@ oct_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,
     case VNET_DEV_PORT_CFG_PROMISC_MODE:
       rv = oct_validate_config_promisc_mode (port, req->promisc);
       break;
+    case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_ENABLE:
+    case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_DISABLE:
+      if (!port->attr.caps.interrupt_mode)
+	rv = VNET_DEV_ERR_NOT_SUPPORTED;
+      break;
+
     case VNET_DEV_PORT_CFG_CHANGE_PRIMARY_HW_ADDR:
     case VNET_DEV_PORT_CFG_ADD_SECONDARY_HW_ADDR:
     case VNET_DEV_PORT_CFG_REMOVE_SECONDARY_HW_ADDR:
@@ -882,6 +996,17 @@ oct_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
       rv = oct_port_add_del_eth_addr (vm, port, &req->addr,
 				      /* is_add */ 1,
 				      /* is_primary */ 1);
+      break;
+
+    case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_ENABLE:
+      /* the RX node arms the queue interrupt when it finds the queue empty */
+      break;
+
+    case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_DISABLE:
+      if (req->all_queues)
+	oct_port_rx_intr_disarm (port, 0);
+      else
+	oct_port_rx_intr_disarm (port, vnet_dev_get_port_rx_queue_by_id (port, req->queue_id));
       break;
 
     case VNET_DEV_PORT_CFG_ADD_SECONDARY_HW_ADDR:

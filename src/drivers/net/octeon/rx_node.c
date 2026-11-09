@@ -452,6 +452,34 @@ refill:
   return ctx->n_rx_pkts;
 }
 
+static_always_inline int
+oct_rxq_cq_has_entries (oct_rxq_t *crq)
+{
+  oct_nix_lf_cq_op_status_t status;
+
+  status.as_u64 = roc_atomic64_add_sync (crq->cq.wdata, crq->cq.status);
+  return ((status.tail - status.head) & crq->cq.qmask) != 0;
+}
+
+static_always_inline void
+oct_rxq_intr_arm (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queue_t *rxq)
+{
+  oct_device_t *cd = vnet_dev_get_data (rxq->port->dev);
+  oct_rxq_t *crq = vnet_dev_get_rx_queue_data (rxq);
+
+  if (oct_rxq_cq_has_entries (crq))
+    {
+      vlib_node_set_interrupt_pending (vm, node->node_index);
+      return;
+    }
+
+  roc_nix_rx_queue_intr_enable (cd->nix, rxq->queue_id);
+
+  /* a completion which arrived before the interrupt got enabled */
+  if (oct_rxq_cq_has_entries (crq))
+    vlib_node_set_interrupt_pending (vm, node->node_index);
+}
+
 VNET_DEV_NODE_FN (oct_rx_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
@@ -464,6 +492,9 @@ VNET_DEV_NODE_FN (oct_rx_node)
 	continue;
 
       n_rx += oct_rx_node_inline (vm, node, frame, port, rxq, 0);
+
+      if (PREDICT_FALSE (rxq->interrupt_mode))
+	oct_rxq_intr_arm (vm, node, rxq);
     }
 
   return n_rx;
