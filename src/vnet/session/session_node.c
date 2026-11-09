@@ -1925,10 +1925,11 @@ always_inline void
 session_update_time_subscribers (session_worker_t *wrk, clib_time_type_t now,
 				 clib_thread_index_t thread_index)
 {
-  session_update_time_fn *fn;
+  u32 i;
 
-  vec_foreach (fn, wrk->update_time_fns)
-    (*fn) (now, thread_index);
+  /* By index, subscribers might register or unregister while called */
+  for (i = 0; i < vec_len (wrk->update_time_fns); i++)
+    wrk->update_time_fns[i](now, thread_index);
 }
 
 always_inline void
