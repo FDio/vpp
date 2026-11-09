@@ -30,8 +30,7 @@ static const u64 rxq_cfg =
 static int
 oct_init_tm_args (vnet_tm_system_t *tm)
 {
-  memset (tm, 0, sizeof (vnet_tm_system_t));
-  memcpy (tm, &oct_tm_ops, sizeof (vnet_tm_system_t));
+  *tm = oct_tm_ops;
   /* Initialize flow_id -> tm_node_id mapping hash early */
   if (oct_tm_flow_id_to_node_id_hash == 0)
     oct_tm_flow_id_to_node_id_hash = hash_create (0, sizeof (uword));
