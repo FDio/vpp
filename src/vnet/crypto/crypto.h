@@ -768,7 +768,7 @@ vnet_crypto_get_key_data_for_thread (vnet_crypto_ctx_t *ctx, vnet_crypto_handler
   vnet_crypto_thread_key_data_t key_data;
 
   ASSERT (ctx->key_data_stride[t] != 0);
-  key_data_offset = thread_index * ctx->key_data_stride[t];
+  key_data_offset = (uword) thread_index * ctx->key_data_stride[t];
   key_data = vnet_crypto_get_key_data (ctx, t, key_data_offset);
 
   ASSERT ((pointer_to_uword (key_data) & (__alignof__ (vnet_crypto_thread_key_data_t) - 1)) == 0);
