@@ -237,6 +237,12 @@ alloc_fail:
   vlib_buffer_unalloc_to_pool (vm, buffer_indices, n_alloc, bpi);
   return 0;
 }
+
+static_always_inline u32
+oct_rxq_refill_expected (u16 n_refill)
+{
+  return n_refill < 256 ? 0 : n_refill;
+}
 #else
 static_always_inline void
 oct_rxq_refill_batch (vlib_main_t *vm, u64 lmt_id, u64 addr,
@@ -333,6 +339,12 @@ oct_rxq_refill (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq, u16 n_refill)
 
   return n_enq;
 }
+
+static_always_inline u32
+oct_rxq_refill_expected (u16 n_refill)
+{
+  return n_refill / 15 * 15;
+}
 #endif
 
 static_always_inline void
@@ -368,7 +380,7 @@ oct_rx_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   vnet_main_t *vnm = vnet_get_main ();
   u32 thr_idx = vlib_get_thread_index ();
   oct_rxq_t *crq = vnet_dev_get_rx_queue_data (rxq);
-  u32 n_desc, head, n, n_enq;
+  u32 n_desc, head, n, n_enq, n_refill, n_new;
   u32 cq_size = crq->cq.nb_desc;
   u32 cq_mask = crq->cq.qmask;
   oct_nix_rx_cqe_desc_t *descs = crq->cq.desc_base;
@@ -382,7 +394,10 @@ oct_rx_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   /* get head and tail from NIX_LF_CQ_OP_STATUS */
   status.as_u64 = roc_atomic64_add_sync (crq->cq.wdata, crq->cq.status);
   if (status.cq_err || status.op_err)
-    return 0;
+    {
+      vlib_error_count (vm, node->node_index, OCT_RX_NODE_CTR_CQ_ERROR, 1);
+      return 0;
+    }
 
   head = status.head;
   n_desc = (status.tail - head) & cq_mask;
@@ -407,7 +422,10 @@ oct_rx_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
       status.as_u64 = roc_atomic64_add_sync (crq->cq.wdata, crq->cq.status);
       if (status.cq_err || status.op_err)
-	break;
+	{
+	  vlib_error_count (vm, node->node_index, OCT_RX_NODE_CTR_CQ_ERROR, 1);
+	  break;
+	}
 
       head = status.head;
       n_desc = (status.tail - head) & cq_mask;
@@ -446,8 +464,13 @@ oct_rx_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 refill:
   n_enq = crq->n_enq - ctx->n_segs;
-  n_enq += oct_rxq_refill (vm, rxq, rxq->size - n_enq);
-  crq->n_enq = n_enq;
+  n_refill = rxq->size - n_enq;
+  n_new = oct_rxq_refill (vm, rxq, n_refill);
+  crq->n_enq = n_enq + n_new;
+
+  if (PREDICT_FALSE (n_new < oct_rxq_refill_expected (n_refill)))
+    vlib_error_count (vm, node->node_index, OCT_RX_NODE_CTR_BUFFER_ALLOC_FAIL,
+		      oct_rxq_refill_expected (n_refill) - n_new);
 
   return ctx->n_rx_pkts;
 }
