@@ -16,6 +16,7 @@ atl_rxq_refill_one_batch (vlib_main_t *vm, atl_rx_desc_t *desc_ring, u32 *bi_rin
   if (!vlib_buffer_strict_alloc_to_ring_from_pool (vm, bi_ring, off, ring_size, n_descs, bpi))
     return 0;
 
+  /* coverity[overrun-buffer-val] - at most 4 * ATL_RX_REFILL_BATCH_SZ */
   vlib_get_buffers_with_offset (vm, bi_ring + off, (void **) data, n_descs,
 				STRUCT_OFFSET_OF (vlib_buffer_t, data));
 
