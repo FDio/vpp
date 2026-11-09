@@ -19,6 +19,13 @@ var (
 		"thread0 + 0x7c",
 		"0x7c7143c6c6e3",
 	}
+	// per worker session event pool free indices, noise
+	tbSessionEventPoolPut = []string{
+		"_vec_add1",
+		"_pool_put_index",
+		"session_event_dispatch_io",
+		"session_queue_node_fn",
+	}
 	// CLI machinery serving the vppctl call that dumps the trace, noise
 	tbUnixCli = []string{
 		"_vec_alloc_internal + 0x11c",
@@ -87,6 +94,7 @@ func TestMemTraceIsReportNoise(t *testing.T) {
 		noise     bool
 	}{
 		{name: "session tx scratch vector", traceback: tbSessionTxVecValidate, noise: true},
+		{name: "session event pool put", traceback: tbSessionEventPoolPut, noise: true},
 		{name: "unix cli", traceback: tbUnixCli, noise: true},
 		{name: "pair on last two frames", traceback: tbPairAtCap, noise: true},
 		{name: "deliberate leak", traceback: tbDeliberateLeak, noise: false},
