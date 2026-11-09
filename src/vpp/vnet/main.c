@@ -259,8 +259,18 @@ main (int argc, char *argv[])
     {
       /* construct config out of argvs */
       for (i = config_arg_index; i < argc; i++)
-	cfg_len += sprintf ((char *) (config + cfg_len), "%s%s",
+	{
+	  int n = snprintf ((char *) (config + cfg_len), config_max_size - cfg_len, "%s%s",
 			    cfg_len ? " " : "", argv[i]);
+
+	  if (n >= config_max_size - cfg_len)
+	    {
+	      fprintf (stderr, "startup config is too large\n");
+	      munmap (config, config_max_size);
+	      return 1;
+	    }
+	  cfg_len += n;
+	}
       config[cfg_len] = 0;
     }
 
