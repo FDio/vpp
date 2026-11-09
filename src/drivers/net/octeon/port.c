@@ -280,7 +280,6 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
       return rv;
     }
   cp->q_intr_enabled = 1;
-  oct_port_add_counters (vm, port);
 
   if (cd->egress_tm)
     {
