@@ -283,7 +283,7 @@ vnet_crypto_ctx_alloc (const vnet_crypto_ctx_layout_t *kl)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_ctx_t *ctx, **ctxp;
-  uword o = 0;
+  uword o;
   uword key_data_base;
   uword key_sz;
   vnet_crypto_handler_type_t t;
