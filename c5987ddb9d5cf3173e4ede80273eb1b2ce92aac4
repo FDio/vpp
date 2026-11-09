@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "603e5a55_16eefc32",
+        "filename": "test/util.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 294,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-09T09:36:44Z",
+      "side": 1,
+      "message": "nit: these two try..except blocks could be one block. Otherwise the reader will scan for differences in the except blocks.",
+      "revId": "c5987ddb9d5cf3173e4ede80273eb1b2ce92aac4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
