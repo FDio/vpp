@@ -415,7 +415,7 @@ transport_icmp_dest_unreachable (vlib_main_t *vm, vlib_node_runtime_t *node,
       dst_port = src_port + 1;
       s0 = session_lookup_safe4 (
 	vnet_buffer (b[0])->ip.fib_index, &ip0->dst_address, &ip0->src_address,
-	*src_port, *dst_port, transport_proto_from_ip_proto (ip1->protocol));
+	*src_port, *dst_port, transport_proto_from_ip_proto (ip1->protocol), NULL);
       if (s0)
 	{
 	  /* direct calls here since vft used only for N to S notifications

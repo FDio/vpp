@@ -138,14 +138,14 @@ hsi_udp_lookup (vlib_buffer_t *b, void *ip_hdr, udp_header_t **rhdr, u8 is_ip4)
       ip4_header_t *ip4 = (ip4_header_t *) ip_hdr;
       *rhdr = hdr = ip4_next_header (ip4);
       s = session_lookup_safe4 (vnet_buffer (b)->ip.fib_index, &ip4->dst_address, &ip4->src_address,
-				hdr->dst_port, hdr->src_port, TRANSPORT_PROTO_UDP);
+				hdr->dst_port, hdr->src_port, TRANSPORT_PROTO_UDP, NULL);
     }
   else
     {
       ip6_header_t *ip6 = (ip6_header_t *) ip_hdr;
       *rhdr = hdr = ip6_next_header (ip6);
       s = session_lookup_safe6 (vnet_buffer (b)->ip.fib_index, &ip6->dst_address, &ip6->src_address,
-				hdr->dst_port, hdr->src_port, TRANSPORT_PROTO_UDP);
+				hdr->dst_port, hdr->src_port, TRANSPORT_PROTO_UDP, NULL);
     }
 
   return s;
