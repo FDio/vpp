@@ -549,6 +549,7 @@ vnet_crypto_load_engines (vlib_main_t *vm)
 	  vec_set_len (path, path_len);
 	  path = format (path, "/%s%c", entry->d_name, 0);
 
+	  /* coverity[leaked_storage] - engines stay loaded for the life of the process */
 	  if (!dlopen ((char *) path, RTLD_LAZY))
 	    {
 	      log_err ("failed to dlopen %s", path);
