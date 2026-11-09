@@ -220,7 +220,7 @@ oct_plt_intr_enable (oct_pci_dev_handle_t handle, uint16_t start,
 	  clib_warning ("MSIX handlers already allocated\n");
 	  return -EINVAL;
 	}
-      cd->msix_handler = malloc (sizeof (*cd->msix_handler) * (start + count));
+      cd->msix_handler = calloc (start + count, sizeof (*cd->msix_handler));
       if (!cd->msix_handler)
 	{
 	  clib_warning ("MSIX handlers alilocation failed\n");
