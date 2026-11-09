@@ -581,6 +581,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	{
 	  int j;
 	  q = 0;
+	  /* coverity[overflow_const] - the end of the bitmap is not assigned to j */
 	  clib_bitmap_foreach (j, devconf->workers)
 	    {
 	      dpdk_rx_queue_t *rxq = vec_elt_at_index (xd->rx_queues, q);
