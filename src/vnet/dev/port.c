@@ -493,6 +493,7 @@ vnet_dev_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
 
     case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_ENABLE:
       enable = 1;
+      /* fallthrough */
     case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_DISABLE:
       if (req->all_queues)
 	{
