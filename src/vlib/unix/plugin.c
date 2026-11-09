@@ -1098,8 +1098,8 @@ vlib_plugins_show_cmd_fn (vlib_main_t * vm,
     {
       pi = vec_elt_at_index (pm->plugin_info, index);
       s = format (s, "%3d. %-40s %-32s %s\n", index + 1, pi->name, pi->version,
-		  (pi && pi->reg && pi->reg->description) ? pi->reg->description : "");
-      if (verbose && pi->reg->load_after)
+		  (pi->reg && pi->reg->description) ? pi->reg->description : "");
+      if (verbose && pi->reg && pi->reg->load_after)
 	s = format (s, "   must load after %s\n", pi->reg->load_after);
     }
 
