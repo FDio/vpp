@@ -1207,7 +1207,7 @@ vlib_pci_disable_msix_irq (vlib_main_t * vm, vlib_pci_dev_handle_t h,
 			    VFIO_IRQ_SET_ACTION_TRIGGER, fds)))
     return err;
 
-  for (i = 0; i < count; i++)
+  for (i = 0; i < count && start + i < vec_len (p->msix_irqs); i++)
     vec_elt_at_index (p->msix_irqs, start + i)->enabled = 0;
 
   return 0;
