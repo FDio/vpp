@@ -316,7 +316,7 @@ iavf_aq_init (vlib_main_t *vm, vnet_dev_t *dev)
   iavf_reg_write (ad, IAVF_ARQBAH, (u32) (pa >> 32));	/* Base Address High */
   iavf_reg_write (ad, IAVF_ARQLEN, len | (1ULL << 31)); /* len & ena */
 
-  for (int i = 0; i < len; i++)
+  for (u16 i = 0; i < len; i++)
     iavf_aq_arq_slot_init (vm, dev, i);
   iavf_reg_write (ad, IAVF_ARQT, len - 1); /* Tail */
 
