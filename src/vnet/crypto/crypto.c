@@ -544,6 +544,7 @@ vnet_crypto_load_engines (vlib_main_t *vm)
 	  if (!ext || strncmp (ext, ".so", 3) != 0)
 	    {
 	      log_debug ("skipping %s, not .so", entry->d_name);
+	      continue;
 	    }
 	  vec_set_len (path, path_len);
 	  path = format (path, "/%s%c", entry->d_name, 0);
