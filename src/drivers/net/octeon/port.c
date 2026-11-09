@@ -54,6 +54,25 @@ oct_roc_err (vnet_dev_t *dev, int rv, char *fmt, ...)
   return VNET_DEV_ERR_INTERNAL;
 }
 
+/* only a physical function owns the MAC link, a VF cannot control it */
+static vnet_dev_rv_t
+oct_port_link_enable (vnet_dev_port_t *port, int enable)
+{
+  vnet_dev_t *dev = port->dev;
+  oct_device_t *cd = vnet_dev_get_data (dev);
+  struct roc_nix *nix = cd->nix;
+  int rrv;
+
+  if (roc_nix_is_vf_or_sdp (nix) || roc_nix_is_lbk (nix))
+    return VNET_DEV_OK;
+
+  rrv = roc_nix_mac_link_state_set (nix, enable);
+  if (rrv)
+    return oct_roc_err (dev, rrv, "roc_nix_mac_link_state_set(%u) failed", enable);
+
+  return VNET_DEV_OK;
+}
+
 vnet_dev_rv_t
 oct_port_pause_flow_control_init (vlib_main_t *vm, vnet_dev_port_t *port)
 {
@@ -288,7 +307,11 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
       vnet_tm_system_register (&vnet_tm_system_ops, ifs->primary_interface.hw_if_index);
     }
 
-  return VNET_DEV_OK;
+  rv = oct_port_link_enable (port, 0);
+  if (rv != VNET_DEV_OK)
+    oct_port_deinit (vm, port);
+
+  return rv;
 }
 
 void
@@ -511,6 +534,10 @@ oct_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 	}
     }
 
+  rv = oct_port_link_enable (port, 1);
+  if (rv != VNET_DEV_OK)
+    goto done;
+
   vnet_dev_poll_port_add (vm, port, 0.5, oct_port_poll);
 
   if (roc_nix_eeprom_info_get (nix, &eeprom_info) == 0)
@@ -557,6 +584,8 @@ oct_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
 
   foreach_vnet_dev_port_tx_queue (q, port)
     oct_txq_stop (vm, q);
+
+  oct_port_link_enable (port, 0);
 }
 
 vnet_dev_rv_t
@@ -670,13 +699,17 @@ oct_op_config_link_speed (vlib_main_t *vm, vnet_dev_port_t *port, u32 link_speed
   if (rrv)
     {
       vnet_dev_rv_t rv = oct_roc_err (dev, rrv, "roc_nix_mac_link_info_set() failed");
-      roc_nix_mac_link_state_set (nix, 1);
+      if (port->started)
+	roc_nix_mac_link_state_set (nix, 1);
       return rv;
     }
 
-  rrv = roc_nix_mac_link_state_set (nix, 1);
-  if (rrv)
-    oct_roc_err (dev, rrv, "roc_nix_mac_link_state_set(up) failed");
+  if (port->started)
+    {
+      rrv = roc_nix_mac_link_state_set (nix, 1);
+      if (rrv)
+	oct_roc_err (dev, rrv, "roc_nix_mac_link_state_set(up) failed");
+    }
 
   return VNET_DEV_OK;
 }
