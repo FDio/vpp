@@ -273,7 +273,7 @@ oct_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
       return rv;
     }
 
-  if (roc_nix_register_queue_irqs (nix))
+  if ((rrv = roc_nix_register_queue_irqs (nix)))
     {
       rv = oct_roc_err (dev, rrv, "roc_nix_register_queue_irqs() failed");
       oct_port_deinit (vm, port);
