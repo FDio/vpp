@@ -192,6 +192,18 @@ vnet_dev_rv_t oct_rxq_get_stats (vlib_main_t *, vnet_dev_port_t *,
 vnet_dev_rv_t oct_txq_get_stats (vlib_main_t *, vnet_dev_port_t *,
 				 vnet_dev_tx_queue_t *);
 
+#define foreach_oct_rx_node_counter                                                                \
+  _ (BUFFER_ALLOC_FAIL, buffer_alloc_fail, ERROR,                                                  \
+     "buffer allocation failed, rx queue not refilled")                                            \
+  _ (CQ_ERROR, cq_error, ERROR, "completion queue error")
+
+typedef enum
+{
+#define _(f, n, s, d) OCT_RX_NODE_CTR_##f,
+  foreach_oct_rx_node_counter
+#undef _
+} oct_rx_node_counter_t;
+
 #define foreach_oct_tx_node_counter                                                                \
   _ (CHAIN_TOO_LONG, chain_too_long, ERROR, "drop due to buffer chain > 6")                        \
   _ (NO_FREE_SLOTS, no_free_slots, ERROR, "no free tx slots")                                      \

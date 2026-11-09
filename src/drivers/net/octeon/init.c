@@ -20,11 +20,14 @@ VLIB_REGISTER_LOG_CLASS (oct_log, static) = {
 #define _(f, n, s, d)                                                         \
   { .name = #n, .desc = d, .severity = VL_COUNTER_SEVERITY_##s },
 
+vlib_error_desc_t oct_rx_node_counters[] = { foreach_oct_rx_node_counter };
 vlib_error_desc_t oct_tx_node_counters[] = { foreach_oct_tx_node_counter };
 #undef _
 
 vnet_dev_node_t oct_rx_node = {
   .format_trace = format_oct_rx_trace,
+  .error_counters = oct_rx_node_counters,
+  .n_error_counters = ARRAY_LEN (oct_rx_node_counters),
 };
 
 vnet_dev_node_t oct_tx_node = {
