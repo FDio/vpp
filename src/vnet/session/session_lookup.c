@@ -1111,8 +1111,8 @@ session_lookup_connection4 (u32 fib_index, ip4_address_t * lcl,
  * Typically used by dgram connections
  */
 session_t *
-session_lookup_safe4 (u32 fib_index, ip4_address_t * lcl, ip4_address_t * rmt,
-		      u16 lcl_port, u16 rmt_port, u8 proto)
+session_lookup_safe4 (u32 fib_index, ip4_address_t *lcl, ip4_address_t *rmt, u16 lcl_port,
+		      u16 rmt_port, u8 proto, session_lookup_result_t *result)
 {
   session_table_t *st;
   session_kv4_t kv4;
@@ -1142,7 +1142,11 @@ session_lookup_safe4 (u32 fib_index, ip4_address_t * lcl, ip4_address_t * rmt,
       if (session_lookup_action_index_is_valid (action_index))
 	{
 	  if (action_index == SESSION_RULES_TABLE_ACTION_DROP)
-	    return 0;
+	    {
+	      if (result)
+		*result = SESSION_LOOKUP_RESULT_FILTERED;
+	      return 0;
+	    }
 	  return session_lookup_action_to_session (action_index,
 						   FIB_PROTOCOL_IP4, proto);
 	}
@@ -1327,8 +1331,8 @@ session_lookup_connection6 (u32 fib_index, ip6_address_t * lcl,
  * Typically used by dgram connections
  */
 session_t *
-session_lookup_safe6 (u32 fib_index, ip6_address_t * lcl, ip6_address_t * rmt,
-		      u16 lcl_port, u16 rmt_port, u8 proto)
+session_lookup_safe6 (u32 fib_index, ip6_address_t *lcl, ip6_address_t *rmt, u16 lcl_port,
+		      u16 rmt_port, u8 proto, session_lookup_result_t *result)
 {
   session_table_t *st;
   session_kv6_t kv6;
@@ -1353,7 +1357,11 @@ session_lookup_safe6 (u32 fib_index, ip6_address_t * lcl, ip6_address_t * rmt,
       if (session_lookup_action_index_is_valid (action_index))
 	{
 	  if (action_index == SESSION_RULES_TABLE_ACTION_DROP)
-	    return 0;
+	    {
+	      if (result)
+		*result = SESSION_LOOKUP_RESULT_FILTERED;
+	      return 0;
+	    }
 	  return session_lookup_action_to_session (action_index,
 						   FIB_PROTOCOL_IP6, proto);
 	}

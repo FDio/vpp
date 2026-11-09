@@ -221,9 +221,8 @@ udp_parse_and_lookup_buffer (vlib_buffer_t *b, session_dgram_hdr_t *hdr,
       hdr->data_length = clib_net_to_host_u16 (ip4->length);
       hdr->data_length -= sizeof (ip4_header_t) + sizeof (udp_header_t);
       if (!is_nolookup)
-	s = session_lookup_safe4 (fib_index, &ip4->dst_address,
-				  &ip4->src_address, udp->dst_port,
-				  udp->src_port, TRANSPORT_PROTO_UDP);
+	s = session_lookup_safe4 (fib_index, &ip4->dst_address, &ip4->src_address, udp->dst_port,
+				  udp->src_port, TRANSPORT_PROTO_UDP, NULL);
     }
   else
     {
@@ -235,9 +234,8 @@ udp_parse_and_lookup_buffer (vlib_buffer_t *b, session_dgram_hdr_t *hdr,
       hdr->data_length = clib_net_to_host_u16 (ip60->payload_length);
       hdr->data_length -= sizeof (udp_header_t);
       if (!is_nolookup)
-	s = session_lookup_safe6 (fib_index, &ip60->dst_address,
-				  &ip60->src_address, udp->dst_port,
-				  udp->src_port, TRANSPORT_PROTO_UDP);
+	s = session_lookup_safe6 (fib_index, &ip60->dst_address, &ip60->src_address, udp->dst_port,
+				  udp->src_port, TRANSPORT_PROTO_UDP, NULL);
     }
 
   if (is_nolookup)
@@ -262,13 +260,11 @@ udp_connection_is_accepted (u32 fib_index, session_dgram_hdr_t *hdr, u8 is_ip4)
   session_t *s;
 
   if (is_ip4)
-    s =
-      session_lookup_safe4 (fib_index, &hdr->lcl_ip.ip4, &hdr->rmt_ip.ip4,
-			    hdr->lcl_port, hdr->rmt_port, TRANSPORT_PROTO_UDP);
+    s = session_lookup_safe4 (fib_index, &hdr->lcl_ip.ip4, &hdr->rmt_ip.ip4, hdr->lcl_port,
+			      hdr->rmt_port, TRANSPORT_PROTO_UDP, NULL);
   else
-    s =
-      session_lookup_safe6 (fib_index, &hdr->lcl_ip.ip6, &hdr->rmt_ip.ip6,
-			    hdr->lcl_port, hdr->rmt_port, TRANSPORT_PROTO_UDP);
+    s = session_lookup_safe6 (fib_index, &hdr->lcl_ip.ip6, &hdr->rmt_ip.ip6, hdr->lcl_port,
+			      hdr->rmt_port, TRANSPORT_PROTO_UDP, NULL);
 
   return (s && s->session_state != SESSION_STATE_LISTENING);
 }
