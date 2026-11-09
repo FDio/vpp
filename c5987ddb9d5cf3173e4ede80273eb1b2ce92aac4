@@ -16,6 +16,24 @@
       "message": "nit: these two try..except blocks could be one block. Otherwise the reader will scan for differences in the except blocks.",
       "revId": "c5987ddb9d5cf3173e4ede80273eb1b2ce92aac4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6dc455b9_7603465a",
+        "filename": "test/util.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 294,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-09T16:43:31Z",
+      "side": 1,
+      "message": "Ack, combined both operations into one `try`/`except` block.",
+      "parentUuid": "603e5a55_16eefc32",
+      "revId": "c5987ddb9d5cf3173e4ede80273eb1b2ce92aac4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
