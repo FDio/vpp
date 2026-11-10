@@ -741,9 +741,26 @@ u8 *http_get_app_target (http_ctx_t *req, http_msg_t *msg);
  * @param req HTTP request.
  * @param msg HTTP msg sent by app.
  *
- * @note Use for streaming of body sent by app.
+ * @note STREAMING uses a FIFO buffer with an internal unlimited length.
  */
-void http_req_tx_buffer_init (http_ctx_t *req, http_msg_t *msg);
+void http_req_tx_buffer_init (http_ctx_t *req, const http_msg_t *msg);
+
+always_inline void
+http_req_app_close (http_ctx_t *req, u8 is_shutdown)
+{
+  req->req_flags |= HTTP_REQ_F_TX_EOF;
+  if (!is_shutdown)
+    req->req_flags |= HTTP_REQ_F_APP_CLOSED;
+}
+
+always_inline int
+http_req_rx_mark_eof (http_ctx_t *req)
+{
+  if (req->req_flags & HTTP_REQ_F_RX_EOF)
+    return 0;
+  req->req_flags |= HTTP_REQ_F_RX_EOF;
+  return 1;
+}
 
 /**
  * Open new stream on existing transport connection.
@@ -1035,6 +1052,14 @@ http_io_as_max_read (http_ctx_t *req)
 {
   session_t *as = session_get (req->c_s_index, req->c_thread_index);
   return svm_fifo_max_dequeue_cons (as->tx_fifo);
+}
+
+always_inline int
+http_req_tx_is_last_data (http_ctx_t *req, u32 len)
+{
+  if (req->req_flags & HTTP_REQ_F_TX_STREAMING)
+    return (req->req_flags & HTTP_REQ_F_TX_EOF) && len == http_io_as_max_read (req);
+  return len == http_buffer_bytes_left (&req->tx_buf);
 }
 
 always_inline void

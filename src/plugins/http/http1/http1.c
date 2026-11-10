@@ -1506,7 +1506,8 @@ http1_req_state_transport_io_more_streaming_data (http_ctx_t *hc, http_ctx_t *re
 	case HTTP1_CHUNKED_MORE:
 	  goto done;
 	case HTTP1_CHUNKED_DONE:
-	  req->req_flags |= HTTP_REQ_F_RX_EOF;
+	  if (!http_req_rx_mark_eof (req))
+	    return HTTP_SM_STOP;
 	  http_req_state_change (req, hc->flags & HTTP_CONN_F_IS_SERVER ?
 					HTTP_REQ_STATE_WAIT_APP_REPLY :
 					HTTP_REQ_STATE_IDLE);
@@ -1872,7 +1873,6 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
 
   if (req->req_flags & HTTP_REQ_F_TX_STREAMING)
     {
-      msg.data.body_len = CLIB_U64_MAX;
       http_req_tx_buffer_init (req, &msg);
       next_state = HTTP_REQ_STATE_APP_IO_MORE_STREAMING_DATA;
       sm_result = HTTP_SM_CONTINUE;
@@ -1978,7 +1978,6 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
   if (chunked)
     {
       req->req_flags |= HTTP_REQ_F_TX_STREAMING;
-      msg.data.body_len = CLIB_U64_MAX;
       segs[n_segs++] = (svm_fifo_seg_t) { (u8 *) chunked_header.base, chunked_header.len };
       request_len += segs[n_segs - 1].len;
       segs[n_segs++] = (svm_fifo_seg_t) { (u8 *) http_token_lit ("Connection: close\r\n") };
@@ -2068,8 +2067,8 @@ http1_req_state_app_io_more_data (http_ctx_t *hc, http_ctx_t *req, transport_sen
   if (PREDICT_FALSE (!n_written))
     goto check_fifo;
 
+  finished = http_req_tx_is_last_data (req, n_written);
   http_buffer_drain (hb, n_written);
-  finished = http_buffer_bytes_left (hb) == 0;
 
   if (finished)
     {
@@ -2149,7 +2148,7 @@ http1_req_state_app_io_more_streaming_data (http_ctx_t *hc, http_ctx_t *req,
   if (!chunk_size)
     return HTTP_SM_STOP;
 
-  finished = (req->req_flags & HTTP_REQ_F_TX_EOF) && chunk_size == http_io_as_max_read (req);
+  finished = http_req_tx_is_last_data (req, chunk_size);
   hdr_len = snprintf ((char *) chunk_hdr, sizeof (chunk_hdr), "%x\r\n", chunk_size);
   segs[0] = (svm_fifo_seg_t) { chunk_hdr, hdr_len };
   clib_memcpy_fast (segs + 1, payload, n_segs * sizeof (*payload));
@@ -2472,7 +2471,7 @@ http1_app_close_callback (http_ctx_t *hc, u32 req_index, clib_thread_index_t thr
       HTTP_DBG (1, "req already deleted");
       return;
     }
-  req->req_flags |= HTTP_REQ_F_TX_EOF;
+  http_req_app_close (req, is_shutdown);
 
   if (hc->state != HTTP_CONN_STATE_CLOSED)
     {
