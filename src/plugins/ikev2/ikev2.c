@@ -4077,6 +4077,15 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 		  goto dispatch0;
 		}
 
+	      /* The IKE_AUTH response is processed once. A duplicate must not
+		 run authentication and Child SA setup again on an IKE SA that is
+		 already established or was refused. */
+	      if (sa0->is_initiator && sa0->state != IKEV2_STATE_SA_INIT)
+		{
+		  vlib_node_increment_counter (vm, node->node_index, IKEV2_ERROR_IKE_REQ_IGNORE, 1);
+		  goto dispatch0;
+		}
+
 	      sa0->dst_port = clib_net_to_host_u16 (udp0->src_port);
 	      res = ikev2_process_auth_req (vm, sa0, ike0, rlen);
 	      if (res)
@@ -4099,6 +4108,17 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 		{
 		  sa0->last_msg_id = ~0;
 		  ikev2_del_sa_init (sa0->ispi);
+		  /* RFC 7296 section 2.21.2: a Child SA failure leaves the IKE SA
+		     established. The peer accepted and installed the Child SA; when
+		     it cannot be installed here, section 1.4.1 is the way to close
+		     the half the peer holds instead of leaving it dangling. */
+		  if (sa0->state == IKEV2_STATE_NO_PROPOSAL_CHOSEN && vec_len (sa0->childs) &&
+		      sa0->childs[0].r_proposals)
+		    {
+		      ikev2_send_informational_delete (vm, sa0, IKEV2_PROTOCOL_ESP,
+						       sa0->childs[0].i_proposals[0].spi);
+		      ikev2_sa_del_child_sa (sa0, &sa0->childs[0]);
+		    }
 		}
 	      else
 		{
