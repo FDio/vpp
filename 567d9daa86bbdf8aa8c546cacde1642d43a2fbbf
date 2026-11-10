@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8956924c_f2e68d82",
+        "filename": "src/vnet/dev/kdi/linux/ethernet_phy.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 135,
+      "author": {
+        "id": 198
+      },
+      "writtenOn": "2026-11-10T15:01:49Z",
+      "side": 1,
+      "message": "This is introduced in QSDK commit 31666c4fb64afa86db2862057c96c60ed579432c, but it doesn\u0027t seem like it has made / will make it to upstream.\n\nApparently getting some pushback here: https://lists.infradead.org/pipermail/linux-mediatek/2025-May/093241.html",
+      "range": {
+        "startLine": 135,
+        "startChar": 45,
+        "endLine": 135,
+        "endChar": 59
+      },
+      "revId": "567d9daa86bbdf8aa8c546cacde1642d43a2fbbf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
