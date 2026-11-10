@@ -628,6 +628,7 @@ void vnet_dev_wait_for_startup_config_complete (vlib_main_t *);
 vnet_dev_t *vnet_dev_alloc (vlib_main_t *, vnet_dev_device_id_t,
 			    vnet_dev_driver_t *);
 vnet_dev_op_no_rv_t vnet_dev_free;
+vnet_dev_op_no_rv_t vnet_dev_discard;
 vnet_dev_op_t vnet_dev_init;
 vnet_dev_op_no_rv_t vnet_dev_deinit;
 vnet_dev_op_t vnet_dev_reset;

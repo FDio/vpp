@@ -346,6 +346,13 @@ vnet_dev_detach (vlib_main_t *vm, vnet_dev_t *dev)
   vnet_dev_free (vm, dev);
 }
 
+void
+vnet_dev_discard (vlib_main_t *vm, vnet_dev_t *dev)
+{
+  vnet_dev_process_quit (vm, dev);
+  vnet_dev_free (vm, dev);
+}
+
 vnet_dev_rv_t
 vnet_dev_dma_mem_alloc (vlib_main_t *vm, vnet_dev_t *dev, u32 size, u32 align, void **pp, char *fmt,
 			...)
