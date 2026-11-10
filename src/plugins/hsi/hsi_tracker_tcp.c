@@ -698,7 +698,7 @@ hsi_tcp_track_cleanup_tcp_state (tcp_connection_t *tc)
     tc->cc_algo->cleanup (tc);
 
   tcp_sack_clear_blocks (tc);
-  vec_free (tc->snd_sack_hist);
+  vec_free (tc->snd_sacks);
   vec_free (tc->rcv_opts.sacks);
   pool_free (tc->sack_sb.holes);
   clib_memset (&tc->sack_sb, 0, sizeof (tc->sack_sb));
