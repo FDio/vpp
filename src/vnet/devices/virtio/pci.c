@@ -1636,12 +1636,6 @@ virtio_pci_create_if (vlib_main_t * vm, virtio_pci_create_if_args_t * args)
 	}
     }
 
-  if ((error = vlib_pci_io_region (vm, h, 0)))
-    {
-      virtio_log_error (vif, "error encountered on pci io region");
-      goto error;
-    }
-
   interrupt_count = vlib_pci_get_num_msix_interrupts (vm, h);
   if (interrupt_count > 1)
     {
@@ -1810,7 +1804,8 @@ virtio_pci_delete_if (vlib_main_t * vm, virtio_if_t * vif)
   if (vif->features & VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ))
     virtio_pci_del_queue (vm, vif, vif->max_queue_pairs * 2);
 
-  virtio_pci_device_reset (vm, vif);
+  if (vif->bar)
+    virtio_pci_device_reset (vm, vif);
 
   if (vif->hw_if_index)
     {
