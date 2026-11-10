@@ -458,7 +458,7 @@ F:	src/drivers/net/atlantic/
 IAVF Device driver
 I:	iavf
 M:	Damjan Marion <damarion@cisco.com>
-F:	src/drivers/iavf/
+F:	src/drivers/net/iavf/
 
 IGE Device driver
 I:	ige
