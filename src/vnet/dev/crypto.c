@@ -261,7 +261,6 @@ static void
 vnet_dev_crypto_engine_assign (vnet_dev_crypto_engine_t *e, u32 n_threads)
 {
   vnet_dev_crypto_queue_t **queues = 0;
-  u32 n_queues = 0;
   u8 multi = 0;
   uword ti;
 
@@ -283,7 +282,6 @@ vnet_dev_crypto_engine_assign (vnet_dev_crypto_engine_t *e, u32 n_threads)
 
 	  multi = cq->group->multi_queue_per_thread;
 	  clib_bitmap_zero (cq->assigned_threads);
-	  n_queues++;
 
 	  if (cq->index < vec_len (cc->queues))
 	    threads = cc->queues[cq->index].threads;
@@ -305,10 +303,6 @@ vnet_dev_crypto_engine_assign (vnet_dev_crypto_engine_t *e, u32 n_threads)
 	vnet_dev_crypto_queue_assign_thread (e, queues[k++], i);
 
   vec_free (queues);
-
-  for (ti = 0; ti < n_threads && n_queues; ti++)
-    if (vec_len (e->thread_queues[ti]) == 0)
-      log_warn (0, "thread %u has no %s queue, its requests will fail", ti, e->name);
 }
 
 static void
