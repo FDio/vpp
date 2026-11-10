@@ -424,6 +424,11 @@ ikev2_parse_sa_payload (ike_payload_header_t * ikep, u32 rlen)
           transform_ptr += tlen;
 	}
 
+      /* RFC 7296 section 3.3.1: the length covers the header, SPI and all
+	 Transforms. This also keeps proposal_ptr advancing on every pass. */
+      if (transform_ptr != proposal_ptr + clib_net_to_host_u16 (sap->proposal_len))
+	goto data_corrupted;
+
       proposal_ptr += clib_net_to_host_u16 (sap->proposal_len);
     }
   while (proposal_ptr < (plen - sizeof (*ikep)) && sap->last_or_more == 2);
