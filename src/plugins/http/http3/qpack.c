@@ -1333,6 +1333,21 @@ qpack_parse_headers_prefix (u8 **src, u8 *end, qpack_decoder_ctx_t *ctx)
 }
 
 __clib_export http3_error_t
+qpack_parse_trailers (u8 *src, u32 src_len, u8 *dst, u32 dst_len, qpack_decoder_ctx_t *decoder_ctx)
+{
+  u8 *p = src, *end = src + src_len;
+  hpack_error_t rv;
+
+  if (src_len < 2)
+    return HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED;
+  rv = qpack_parse_headers_prefix (&p, end, decoder_ctx);
+  if (rv)
+    return hpack_error_to_http3_error[rv];
+  rv = hpack_decode_trailers (p, end, dst, dst_len, decoder_ctx, qpack_decode_header);
+  return hpack_error_to_http3_error[rv];
+}
+
+__clib_export http3_error_t
 qpack_parse_request (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
 		     hpack_request_control_data_t *control_data,
 		     http_field_line_t **headers,

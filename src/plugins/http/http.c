@@ -12,7 +12,7 @@
 #include <http/http_private.h>
 #include <http/http_timer.h>
 
-http_main_t http_main;
+__clib_export http_main_t http_main;
 
 static http_engine_vft_t *http_vfts;
 
@@ -392,10 +392,12 @@ http_connect_transport_stream (u32 parent_index, clib_thread_index_t thread_inde
   if ((error = vnet_connect_stream (cargs)))
     {
       HTTP_DBG (1, "stream connect failed: %U", format_session_error, error);
-      http_ctx_free (hc);
+      http_ctx_free (http_ctx_get_w_thread (hc_index, thread_index));
       return error;
     }
 
+  /* Transport callbacks can allocate more HTTP contexts. */
+  hc = http_ctx_get_w_thread (hc_index, thread_index);
   HTTP_DBG (1, "stream connected");
   hc->hc_tc_session_handle = cargs->sh;
   hc->state = HTTP_CONN_STATE_ESTABLISHED;
@@ -454,7 +456,9 @@ http_half_close_transport_stream (http_ctx_t *stream)
     .app_index = http_main.app_index,
   };
 
-  stream->state = HTTP_CONN_STATE_HALF_CLOSED;
+  /* Preserve a received FIN until the transport close is acknowledged. */
+  if (stream->state != HTTP_CONN_STATE_TRANSPORT_CLOSED)
+    stream->state = HTTP_CONN_STATE_HALF_CLOSED;
 
   if (vnet_shutdown_session (&a))
     clib_warning ("shutdown returned");
@@ -548,12 +552,20 @@ http_get_rx_buf_len (http_ctx_t *hc, u32 len)
   return hm->rx_bufs[hc->c_thread_index];
 }
 
-void
-http_req_tx_buffer_init (http_ctx_t *req, http_msg_t *msg)
+__clib_export void
+http_req_tx_buffer_init (http_ctx_t *req, const http_msg_t *msg)
 {
   session_t *as = session_get (req->c_s_index, req->c_thread_index);
-  http_buffer_init (&req->tx_buf, msg_to_buf_type[msg->data.type], as->tx_fifo,
-		    msg->data.body_len);
+  u64 len = msg->data.body_len;
+
+  if (msg->data.type == HTTP_MSG_DATA_STREAMING)
+    {
+      req->req_flags |= HTTP_REQ_F_TX_STREAMING;
+      len = CLIB_U64_MAX;
+    }
+  else
+    req->req_flags &= ~HTTP_REQ_F_TX_STREAMING;
+  http_buffer_init (&req->tx_buf, msg_to_buf_type[msg->data.type], as->tx_fifo, len);
 }
 
 static void
@@ -1620,13 +1632,14 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
   u32 max_burst_sz, sent, hc_index;
   http_ctx_t *hc;
   http_req_handle_t hr_handle;
+  clib_thread_index_t thread_index = as->thread_index;
   hr_handle.as_u32 = as->connection_index;
 
-  hc_index = http_hc_index_get_by_req_index (hr_handle.req_index, as->thread_index);
-  HTTP_DBG (1, "hc [%u]%x", as->thread_index, hc_index);
+  hc_index = http_hc_index_get_by_req_index (hr_handle.req_index, thread_index);
+  HTTP_DBG (1, "hc [%u]%x", thread_index, hc_index);
 
-  ASSERT (http_hc_is_valid (hc_index, as->thread_index));
-  hc = http_ctx_get_w_thread (hc_index, as->thread_index);
+  ASSERT (http_hc_is_valid (hc_index, thread_index));
+  hc = http_ctx_get_w_thread (hc_index, thread_index);
 
   if (hc->state == HTTP_CONN_STATE_CLOSED)
     {
@@ -1644,7 +1657,7 @@ http_app_tx_callback (void *session, transport_send_params_t *sp)
     HTTP_DBG (1, "ignoring tx callback with empty app fifo");
 
   if (hc->state == HTTP_CONN_STATE_APP_CLOSED || hc->state == HTTP_CONN_STATE_APP_SHUTDOWN)
-    http_vfts[hc->version].app_close_callback (hc, hr_handle.req_index, as->thread_index,
+    http_vfts[hc->version].app_close_callback (hc, hr_handle.req_index, thread_index,
 					       hc->state == HTTP_CONN_STATE_APP_SHUTDOWN);
 
   sent = max_burst_sz - sp->max_burst_size;
@@ -1658,14 +1671,17 @@ http_app_rx_evt_cb (transport_connection_t *tc)
   http_ctx_t *req = (http_ctx_t *) tc;
   http_ctx_t *hc;
   http_req_handle_t hr_handle;
+  u32 hc_index = req->hr_hc_index;
+  clib_thread_index_t thread_index = req->c_thread_index;
 
   HTTP_DBG (1, "hc [%u]%x", req->c_thread_index, req->hr_hc_index);
 
   hr_handle.as_u32 = req->hr_req_handle;
-  ASSERT (http_hc_is_valid (req->hr_hc_index, req->c_thread_index));
-  hc = http_ctx_get_w_thread (req->hr_hc_index, req->c_thread_index);
-  http_vfts[hr_handle.version].app_rx_evt_callback (hc, hr_handle.req_index,
-						    req->c_thread_index);
+  ASSERT (http_hc_is_valid (hc_index, thread_index));
+  hc = http_ctx_get_w_thread (hc_index, thread_index);
+  http_vfts[hr_handle.version].app_rx_evt_callback (hc, hr_handle.req_index, thread_index);
+  /* Stream reuse can grow the HTTP context pool. */
+  hc = http_ctx_get_w_thread (hc_index, thread_index);
   if (hc->state == HTTP_CONN_STATE_TRANSPORT_CLOSED)
     {
       if (http_ctx_is_stream (hc))

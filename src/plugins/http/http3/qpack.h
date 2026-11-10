@@ -9,6 +9,10 @@
 #include <http/http2/hpack.h>
 #include <http/http3/http3.h>
 
+/** Validate and discard a bounded trailer field section. */
+http3_error_t qpack_parse_trailers (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
+				    qpack_decoder_ctx_t *decoder_ctx);
+
 /**
  * Request parser
  *

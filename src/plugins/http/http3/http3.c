@@ -155,7 +155,8 @@ http3_stream_notify_error (http_ctx_t *stream, http_ctx_t *req)
   stream->state = HTTP_CONN_STATE_CLOSED;
   if (stream->flags & HTTP_CONN_F_NO_APP_SESSION)
     return;
-  if (!(req->req_flags & HTTP_REQ_F_APP_CLOSED))
+  if (!(req->req_flags & HTTP_REQ_F_APP_CLOSED) &&
+      ((stream->flags & HTTP_CONN_F_IS_SERVER) || !(req->req_flags & HTTP_REQ_F_RX_EOF)))
     session_transport_reset_notify (&req->connection);
   session_transport_closed_notify (&req->connection);
 }
@@ -212,7 +213,7 @@ http3_conn_terminate (http_ctx_t *hc, http3_error_t err)
       parent_req = http_ctx_get_w_thread (hc->hc_parent_req_index, hc->c_thread_index);
       if (!(hc->flags & HTTP_CONN_F_NO_APP_SESSION))
 	{
-	  if (!(parent_req->req_flags & HTTP_REQ_F_APP_CLOSED))
+	  if (!(parent_req->req_flags & (HTTP_REQ_F_APP_CLOSED | HTTP_REQ_F_RX_EOF)))
 	    session_transport_reset_notify (&parent_req->connection);
 	  session_transport_closed_notify (&parent_req->connection);
 	}
@@ -293,6 +294,38 @@ http3_stream_ctx_reset (http_ctx_t *old_stream, http_ctx_t *req)
     }
   new_stream->http_req_index = req_index;
   req->hr_hc_index = new_stream->hc_hc_index;
+}
+
+static void
+http3_stream_ctx_reset_rpc (void *arg)
+{
+  session_t *as = session_get_from_handle_if_valid (pointer_to_uword (arg));
+  http_ctx_t *stream, *req;
+  http_req_handle_t handle;
+  u32 stream_index;
+  clib_thread_index_t thread_index;
+
+  if (!as || as->session_state != SESSION_STATE_READY ||
+      session_get_transport_proto (as) != TRANSPORT_PROTO_HTTP)
+    return;
+  handle.as_u32 = as->connection_index;
+  if (handle.version != HTTP_VERSION_3)
+    return;
+  thread_index = as->thread_index;
+  req = http_ctx_get_w_thread (handle.req_index, thread_index);
+  if (!req->stream_reuse_pending)
+    return;
+  stream_index = req->hr_hc_index;
+  stream = http_ctx_get_w_thread (stream_index, thread_index);
+  if (http3_stream_close_if_conn_closed (stream))
+    return;
+
+  req->stream_reuse_pending = 0;
+  http_req_state_change (req, HTTP_REQ_STATE_WAIT_APP_METHOD);
+  http3_stream_ctx_reset (stream, req);
+  req = http_ctx_get_w_thread (handle.req_index, thread_index);
+  if (req->hr_hc_index != stream_index && transport_connection_is_descheduled (&req->connection))
+    transport_connection_reschedule (&req->connection);
 }
 
 static_always_inline int
@@ -456,6 +489,44 @@ http3_stream_app_close_tunnel (http_ctx_t *req, http_ctx_t *stream, u8 is_shutdo
 /* request state machine handlers TX */
 /*************************************/
 
+static void
+http3_stream_tx_complete (http_ctx_t *stream, http_ctx_t *req, transport_send_params_t *sp)
+{
+  http_buffer_free (&req->tx_buf);
+  req->tx_buf.vft = 0;
+  if (!(stream->flags & HTTP_CONN_F_IS_SERVER) && (req->req_flags & HTTP_REQ_F_APP_CLOSED) &&
+      http3_stream_cancel_rx (stream, req))
+    return;
+  if ((stream->flags & HTTP_CONN_F_IS_SERVER) || (req->req_flags & HTTP_REQ_F_APP_CLOSED))
+    {
+      http_req_state_change (req, HTTP_REQ_STATE_IDLE);
+      http3_stream_close (stream, req);
+    }
+  else
+    {
+      if (!(req->req_flags & HTTP_REQ_F_RX_HEADERS_RECEIVED))
+	http_req_state_change (req, HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY);
+      http_half_close_transport_stream (stream);
+      if ((req->req_flags & HTTP_REQ_F_RX_HEADERS_RECEIVED) &&
+	  req->req_state == HTTP_REQ_STATE_WAIT_APP_METHOD)
+	{
+	  /* Opening a replacement stream can relocate the session pool. Defer it
+	   * until the session-node custom-TX caller has returned. */
+	  session_t *as = session_get (req->c_s_index, req->c_thread_index);
+	  req->stream_reuse_pending = 1;
+	  http_req_state_change (req, HTTP_REQ_STATE_IDLE);
+	  /* Keep producer events coalesced until the RPC reactivates TX. */
+	  svm_fifo_set_event (as->tx_fifo);
+	  if (sp)
+	    http_req_deschedule (req, sp);
+	  else
+	    transport_connection_deschedule (&req->connection);
+	  session_send_rpc_evt_to_thread_force (req->c_thread_index, http3_stream_ctx_reset_rpc,
+						uword_to_pointer (as->handle, void *));
+	}
+    }
+}
+
 static http_sm_result_t
 http3_req_state_wait_app_reply (http_ctx_t *stream, http_ctx_t *req, transport_send_params_t *sp,
 				http3_error_t *error, u32 *n_sent)
@@ -488,7 +559,8 @@ http3_req_state_wait_app_reply (http_ctx_t *stream, http_ctx_t *req, transport_s
   vec_reset_length (http_tx_buf (stream));
   date = format (0, "%U", format_http_time_now, stream);
 
-  control_data.content_len = msg.data.body_len;
+  control_data.content_len =
+    msg.data.type == HTTP_MSG_DATA_STREAMING ? HPACK_ENCODER_SKIP_CONTENT_LEN : msg.data.body_len;
   control_data.server_name = stream->app_name;
   control_data.server_name_len = vec_len (stream->app_name);
   control_data.date = date;
@@ -523,6 +595,14 @@ http3_req_state_wait_app_reply (http_ctx_t *stream, http_ctx_t *req, transport_s
 	}
     }
   control_data.sc = msg.code;
+  if (msg.data.type == HTTP_MSG_DATA_STREAMING &&
+      ((req->req_flags & HTTP_REQ_F_IS_TUNNEL) || http_status_code_str[msg.code][0] == '1' ||
+       msg.code == HTTP_STATUS_NO_CONTENT || msg.code == HTTP_STATUS_NOT_MODIFIED))
+    {
+      vec_free (date);
+      http3_stream_terminate (stream, req, HTTP3_ERROR_INTERNAL_ERROR);
+      return HTTP_SM_STOP;
+    }
 
   if (msg.data.headers_len)
     app_headers = http_get_app_header_list (req, &msg);
@@ -542,12 +622,24 @@ http3_req_state_wait_app_reply (http_ctx_t *stream, http_ctx_t *req, transport_s
   *n_sent += n_written;
   ASSERT (n_written == (fh_len + headers_len));
 
-  if (msg.data.body_len)
+  if (msg.data.body_len || msg.data.type == HTTP_MSG_DATA_STREAMING)
     {
       ASSERT (!(req->req_flags & HTTP_REQ_F_IS_TUNNEL));
       http_req_tx_buffer_init (req, &msg);
-      http_req_state_change (req, HTTP_REQ_STATE_APP_IO_MORE_DATA);
+      http_req_state_change (req, msg.data.type == HTTP_MSG_DATA_STREAMING ?
+				    HTTP_REQ_STATE_APP_IO_MORE_STREAMING_DATA :
+				    HTTP_REQ_STATE_APP_IO_MORE_DATA);
       rv = HTTP_SM_CONTINUE;
+      if (msg.data.type == HTTP_MSG_DATA_STREAMING)
+	{
+	  sp->bytes_dequeued += sizeof (msg) + msg.data.headers_len;
+	  if (!http_io_as_max_read (req))
+	    {
+	      if (req->req_flags & HTTP_REQ_F_TX_EOF)
+		http3_stream_tx_complete (stream, req, sp);
+	      rv = HTTP_SM_STOP;
+	    }
+	}
     }
   else
     {
@@ -573,8 +665,16 @@ http3_req_state_wait_app_method (http_ctx_t *stream, http_ctx_t *req, transport_
   u8 fh_len;
   http_req_state_t new_state = HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY;
 
+  req->req_flags &= ~(HTTP_REQ_F_RX_STREAMING | HTTP_REQ_F_RX_EOF | HTTP_REQ_F_RX_HEADERS_RECEIVED |
+		      HTTP_REQ_F_RX_TRAILERS | HTTP_REQ_F_PEER_CLOSED);
   http_get_app_msg (req, &msg, 1);
   ASSERT (msg.type == HTTP_MSG_REQUEST);
+  if (msg.data.type == HTTP_MSG_DATA_STREAMING &&
+      (msg.method_type == HTTP_REQ_CONNECT || msg.method_type == HTTP_REQ_CONNECT_UDP))
+    {
+      http3_stream_terminate (stream, req, HTTP3_ERROR_INTERNAL_ERROR);
+      return HTTP_SM_STOP;
+    }
 
   /* make sure ts tx fifo can actually buffer request message, this should be overestimated since
    * strings are huffman encoded, cap it up to fifo size */
@@ -649,8 +749,9 @@ http3_req_state_wait_app_method (http_ctx_t *stream, http_ctx_t *req, transport_
     }
   control_data.user_agent = stream->app_name;
   control_data.user_agent_len = vec_len (stream->app_name);
-  control_data.content_len =
-    msg.data.body_len ? msg.data.body_len : HPACK_ENCODER_SKIP_CONTENT_LEN;
+  control_data.content_len = msg.data.type == HTTP_MSG_DATA_STREAMING || !msg.data.body_len ?
+			       HPACK_ENCODER_SKIP_CONTENT_LEN :
+			       msg.data.body_len;
 
   if (msg.data.headers_len)
     app_headers = http_get_app_header_list (req, &msg);
@@ -668,11 +769,13 @@ http3_req_state_wait_app_method (http_ctx_t *stream, http_ctx_t *req, transport_
   n_written = http_io_ts_write_segs (stream, segs, 2, 0, 0);
   ASSERT (n_written == (fh_len + headers_len));
 
-  if (msg.data.body_len)
+  if (msg.data.body_len || msg.data.type == HTTP_MSG_DATA_STREAMING)
     {
       ASSERT (!(req->req_flags & HTTP_REQ_F_IS_TUNNEL));
       http_req_tx_buffer_init (req, &msg);
-      new_state = HTTP_REQ_STATE_APP_IO_MORE_DATA;
+      new_state = msg.data.type == HTTP_MSG_DATA_STREAMING ?
+		    HTTP_REQ_STATE_APP_IO_MORE_STREAMING_DATA :
+		    HTTP_REQ_STATE_APP_IO_MORE_DATA;
     }
   else if (!(req->req_flags & HTTP_REQ_F_IS_TUNNEL))
     {
@@ -682,9 +785,62 @@ http3_req_state_wait_app_method (http_ctx_t *stream, http_ctx_t *req, transport_
 
   *n_sent += n_written;
   http_req_state_change (req, new_state);
+  if (msg.data.type == HTTP_MSG_DATA_STREAMING)
+    sp->bytes_dequeued += sizeof (msg) + msg.data.target_path_len + msg.data.headers_len;
   http_stats_requests_sent_inc (stream->c_thread_index);
 
-  return new_state == HTTP_REQ_STATE_APP_IO_MORE_DATA ? HTTP_SM_CONTINUE : HTTP_SM_STOP;
+  if (msg.data.type == HTTP_MSG_DATA_STREAMING && !http_io_as_max_read (req))
+    {
+      if (req->req_flags & HTTP_REQ_F_TX_EOF)
+	http3_stream_tx_complete (stream, req, sp);
+      return HTTP_SM_STOP;
+    }
+
+  return new_state == HTTP_REQ_STATE_APP_IO_MORE_DATA ||
+	     new_state == HTTP_REQ_STATE_APP_IO_MORE_STREAMING_DATA ?
+	   HTTP_SM_CONTINUE :
+	   HTTP_SM_STOP;
+}
+
+static http_sm_result_t
+http3_req_state_app_io_more_streaming_data (http_ctx_t *stream, http_ctx_t *req,
+					    transport_send_params_t *sp, http3_error_t *error,
+					    u32 *n_sent)
+{
+  svm_fifo_seg_t segs[HTTP_BUFFER_MAX_SEGS + 1], *app_segs;
+  u8 fh[HTTP3_FRAME_HEADER_MAX_LEN];
+  u32 max_write, n_read, n_segs, n_written;
+
+  max_write = http_io_ts_max_write (stream, sp);
+  if (max_write <= HTTP3_FRAME_HEADER_MAX_LEN)
+    {
+      if (http_io_ts_max_write (stream, 0) <= HTTP3_FRAME_HEADER_MAX_LEN)
+	{
+	  http_stats_ts_fifo_efull_inc (stream->c_thread_index);
+	  http_req_deschedule (req, sp);
+	  http_io_ts_add_want_deq_ntf (stream);
+	}
+      return HTTP_SM_STOP;
+    }
+  n_read =
+    http_buffer_get_segs (&req->tx_buf, max_write - HTTP3_FRAME_HEADER_MAX_LEN, &app_segs, &n_segs);
+  ASSERT (n_read > 0);
+  if (PREDICT_FALSE (http_io_ts_provision_chunks (stream, n_read + HTTP3_FRAME_HEADER_MAX_LEN)))
+    {
+      http_stats_ts_fifo_egrow_inc (stream->c_thread_index);
+      return HTTP_SM_STOP;
+    }
+
+  segs[0].data = fh;
+  segs[0].len = http3_frame_header_write (HTTP3_FRAME_TYPE_DATA, n_read, fh);
+  clib_memcpy_fast (segs + 1, app_segs, n_segs * sizeof (*segs));
+  n_written = http_io_ts_write_segs (stream, segs, n_segs + 1, sp, 0);
+  *n_sent += n_written;
+  ASSERT (n_written == n_read + segs[0].len);
+  http_buffer_drain (&req->tx_buf, n_read);
+  if ((req->req_flags & HTTP_REQ_F_TX_EOF) && !http_io_as_max_read (req))
+    http3_stream_tx_complete (stream, req, sp);
+  return HTTP_SM_STOP;
 }
 
 static http_sm_result_t
@@ -693,7 +849,7 @@ http3_req_state_app_io_more_data (http_ctx_t *stream, http_ctx_t *req, transport
 {
   http_buffer_t *hb = &req->tx_buf;
   u32 max_write, n_read, n_segs, n_written;
-  svm_fifo_seg_t *app_segs, *segs = 0;
+  svm_fifo_seg_t segs[HTTP_BUFFER_MAX_SEGS + 1], *app_segs;
   u8 fh_buf[HTTP3_FRAME_HEADER_MAX_LEN];
   u8 fh_len, finished;
 
@@ -728,15 +884,13 @@ http3_req_state_app_io_more_data (http_ctx_t *stream, http_ctx_t *req, transport
     }
 
   fh_len = http3_frame_header_write (HTTP3_FRAME_TYPE_DATA, n_read, fh_buf);
-  vec_validate (segs, 0);
   segs[0].len = fh_len;
   segs[0].data = fh_buf;
-  vec_append (segs, app_segs);
+  clib_memcpy_fast (segs + 1, app_segs, n_segs * sizeof (*segs));
   n_written = http_io_ts_write_segs (stream, segs, n_segs + 1, sp, 0);
   *n_sent += n_written;
   n_written -= fh_len;
   ASSERT (n_written == n_read);
-  vec_free (segs);
   http_buffer_drain (hb, n_written);
   finished = (http_buffer_bytes_left (hb) == 0);
 
@@ -1036,6 +1190,7 @@ http3_req_state_wait_transport_method (http_ctx_t *stream, http_ctx_t *req,
   req->control_data_len = control_data.control_data_len;
   req->headers_offset = control_data.headers - wrk->header_list;
   req->headers_len = control_data.headers_len;
+  req->body_len = 0;
 
   if (hpack_validate_request_pseudo_headers (&control_data, hc->settings.enable_connect_protocol))
     {
@@ -1107,6 +1262,12 @@ http3_req_state_wait_transport_method (http_ctx_t *stream, http_ctx_t *req,
   /* Body processing follows validation and the early response decisions. */
   if (req->content_len_header_index != ~0 && req->body_len)
     new_state = HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA;
+  else if (req->content_len_header_index == ~0 && !(req->req_flags & HTTP_REQ_F_IS_TUNNEL) &&
+	   !(!http_io_ts_max_read (stream) && (req->req_flags & HTTP_REQ_F_PEER_CLOSED)))
+    {
+      req->req_flags |= HTTP_REQ_F_RX_STREAMING;
+      new_state = HTTP_REQ_STATE_TRANSPORT_IO_MORE_STREAMING_DATA;
+    }
   res = (req->req_flags & HTTP_REQ_F_IS_TUNNEL) ? HTTP_SM_STOP : HTTP_SM_CONTINUE;
   req->to_recv = req->body_len;
 
@@ -1129,7 +1290,8 @@ http3_req_state_wait_transport_method (http_ctx_t *stream, http_ctx_t *req,
 
   msg.type = HTTP_MSG_REQUEST;
   msg.method_type = control_data.method;
-  msg.data.type = HTTP_MSG_DATA_INLINE;
+  msg.data.type =
+    req->req_flags & HTTP_REQ_F_RX_STREAMING ? HTTP_MSG_DATA_STREAMING : HTTP_MSG_DATA_INLINE;
   msg.data.len = req->control_data_len;
   msg.data.scheme = control_data.scheme;
   msg.data.target_authority_offset = control_data.authority - wrk->header_list;
@@ -1222,12 +1384,33 @@ http3_req_state_wait_transport_reply (http_ctx_t *stream, http_ctx_t *req,
   req->headers_offset = control_data.headers - wrk->header_list;
   req->headers_len = control_data.headers_len;
   req->status_code = control_data.sc;
+  req->body_len = 0;
+  req->content_len_header_index = control_data.content_len_header_index;
 
   if (!(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_STATUS_PARSED))
     {
       HTTP_DBG (1, ":status pseudo-header missing in request");
       http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
       return HTTP_SM_STOP;
+    }
+
+  /* Informational headers do not start or complete the response body. */
+  if (http_status_code_str[req->status_code][0] == '1')
+    {
+      req->fh.length = 0;
+      return HTTP_SM_CONTINUE;
+    }
+
+  /* Rejections may stop the upload; successful responses can be full-duplex. */
+  if (http_status_code_str[req->status_code][0] != '2' && http_req_tx_streaming_pending (req))
+    {
+      http_buffer_free (&req->tx_buf);
+      req->tx_buf.vft = 0;
+      http_io_as_drain_all (req);
+      req->req_flags |= HTTP_REQ_F_TX_EOF | HTTP_REQ_F_TX_CANCELLED;
+      http_half_close_transport_stream (stream);
+      if (req->req_flags & HTTP_REQ_F_PEER_CLOSED)
+	stream->state = HTTP_CONN_STATE_TRANSPORT_CLOSED;
     }
 
   if ((req->req_flags & HTTP_REQ_F_IS_TUNNEL) && http_status_code_str[req->status_code][0] == '2')
@@ -1245,24 +1428,43 @@ http3_req_state_wait_transport_reply (http_ctx_t *stream, http_ctx_t *req,
       /* cleanup some stuff we don't need anymore in tunnel mode */
       vec_free (req->headers);
     }
-  else if (control_data.content_len_header_index != ~0)
-    {
-      req->content_len_header_index = control_data.content_len_header_index;
-      if (http_parse_content_length (req, wrk->header_list))
-	{
-	  http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
-	  return HTTP_SM_STOP;
-	}
-      new_state = HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA;
-      res = HTTP_SM_CONTINUE;
-    }
   else
     {
-      /* we are done wait for the next app request */
-      clib_thread_index_t thread_index = stream->c_thread_index;
-      u32 req_index = ((http_req_handle_t) req->hr_req_handle).req_index;
-      http3_stream_ctx_reset (stream, req);
-      req = http_ctx_get_w_thread (req_index, thread_index);
+      /* failed CONNECT response use ordinary HTTP body framing */
+      req->req_flags &= ~HTTP_REQ_F_IS_TUNNEL;
+      if (req->content_len_header_index != ~0)
+	{
+	  if (http_parse_content_length (req, wrk->header_list))
+	    {
+	      http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
+	      return HTTP_SM_STOP;
+	    }
+	}
+      if (req->status_code == HTTP_STATUS_NO_CONTENT ||
+	  req->status_code == HTTP_STATUS_NOT_MODIFIED)
+	req->body_len = 0;
+      if (req->body_len)
+	{
+	  new_state = HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA;
+	  res = HTTP_SM_CONTINUE;
+	}
+      else if (req->content_len_header_index == ~0 && req->status_code != HTTP_STATUS_NO_CONTENT &&
+	       req->status_code != HTTP_STATUS_NOT_MODIFIED &&
+	       !(!http_io_ts_max_read (stream) && (req->req_flags & HTTP_REQ_F_PEER_CLOSED)))
+	{
+	  req->req_flags |= HTTP_REQ_F_RX_STREAMING;
+	  new_state = HTTP_REQ_STATE_TRANSPORT_IO_MORE_STREAMING_DATA;
+	  res = HTTP_SM_CONTINUE;
+	}
+      else if (http_req_tx_streaming_pending (req))
+	http_req_rx_mark_eof (req);
+      else
+	{
+	  clib_thread_index_t thread_index = stream->c_thread_index;
+	  u32 req_index = ((http_req_handle_t) req->hr_req_handle).req_index;
+	  http3_stream_ctx_reset (stream, req);
+	  req = http_ctx_get_w_thread (req_index, thread_index);
+	}
     }
   req->to_recv = req->body_len;
 
@@ -1274,16 +1476,98 @@ http3_req_state_wait_transport_reply (http_ctx_t *stream, http_ctx_t *req,
   msg.data.headers_ctx = pointer_to_uword (req->headers);
   msg.data.body_offset = req->control_data_len;
   msg.data.body_len = req->body_len;
-  msg.data.type = HTTP_MSG_DATA_INLINE;
+  msg.data.type =
+    req->req_flags & HTTP_REQ_F_RX_STREAMING ? HTTP_MSG_DATA_STREAMING : HTTP_MSG_DATA_INLINE;
 
   svm_fifo_seg_t segs[2] = { { (u8 *) &msg, sizeof (msg) },
 			     { wrk->header_list, req->control_data_len } };
   HTTP_DBG (3, "%U", format_http_bytes, wrk->header_list, req->control_data_len);
   http_io_as_write_segs (req, segs, 2);
   http_req_state_change (req, new_state);
+  req->req_flags |= HTTP_REQ_F_RX_HEADERS_RECEIVED;
   http_app_worker_rx_notify (req);
   req->fh.length = 0;
 
+  return res;
+}
+
+static http_sm_result_t
+http3_req_state_transport_trailers (http_ctx_t *stream, http_ctx_t *req,
+				    transport_send_params_t *sp, http3_error_t *error, u32 *n_deq)
+{
+  http_worker_t *wrk = http_worker_get (stream->c_thread_index);
+  http_ctx_t *hc;
+  u8 *buf;
+
+  *n_deq = 0;
+  if (req->fh.length > http_io_ts_fifo_size (stream, 1))
+    {
+      *error = HTTP3_ERROR_EXCESSIVE_LOAD;
+      return HTTP_SM_ERROR;
+    }
+  if (req->fh.length > http_io_ts_max_read (stream))
+    {
+      *error = HTTP3_ERROR_INCOMPLETE;
+      return HTTP_SM_ERROR;
+    }
+  buf = http_get_rx_buf_len (stream, clib_max (req->fh.length, 1));
+  if (req->fh.length)
+    http_io_ts_read (stream, buf, req->fh.length, 0);
+  *n_deq = req->fh.length;
+  hc = http_ctx_get_w_thread (stream->hc_http_conn_index, stream->c_thread_index);
+  *error = qpack_parse_trailers (buf, req->fh.length, wrk->header_list,
+				 hc->settings.max_field_section_size, &hc->qpack_decoder_ctx);
+  if (*error == HTTP3_ERROR_MESSAGE_ERROR || *error == HTTP3_ERROR_INTERNAL_ERROR)
+    {
+      http3_stream_terminate (stream, req,
+			      *error == HTTP3_ERROR_MESSAGE_ERROR ? HTTP3_ERROR_MESSAGE_ERROR :
+								    HTTP3_ERROR_EXCESSIVE_LOAD);
+      return HTTP_SM_STOP;
+    }
+  if (*error != HTTP3_ERROR_NO_ERROR)
+    return HTTP_SM_ERROR;
+  if (req->content_len_header_index != ~0 && req->to_recv)
+    {
+      http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
+      return HTTP_SM_STOP;
+    }
+  req->req_flags |= HTTP_REQ_F_RX_TRAILERS;
+  req->fh.length = 0;
+  return HTTP_SM_CONTINUE;
+}
+
+static http_sm_result_t
+http3_req_state_transport_io_more_streaming_data (http_ctx_t *stream, http_ctx_t *req,
+						  transport_send_params_t *sp, http3_error_t *error,
+						  u32 *n_deq)
+{
+  u32 max_deq, max_enq, n_written, n_segs = 2;
+  svm_fifo_seg_t segs[2];
+  http_sm_result_t res = HTTP_SM_CONTINUE;
+
+  *n_deq = 0;
+  max_deq = clib_min (http_io_ts_max_read (stream), req->fh.length);
+  if (!max_deq)
+    return HTTP_SM_STOP;
+  max_enq = http_io_as_max_write (req);
+  if (!max_enq)
+    {
+      http_stats_as_fifo_efull_inc (stream->c_thread_index);
+      http_io_as_add_want_deq_ntf (req);
+      return HTTP_SM_STOP;
+    }
+
+  http_io_ts_read_segs (stream, segs, &n_segs, clib_min (max_deq, max_enq));
+  n_written = http_io_as_write_segs (req, segs, n_segs);
+  req->fh.length -= n_written;
+  http_io_ts_drain (stream, n_written);
+  *n_deq = n_written;
+  if (n_written < max_deq)
+    {
+      http_io_as_add_want_deq_ntf (req);
+      res = HTTP_SM_STOP;
+    }
+  http_app_worker_rx_notify (req);
   return res;
 }
 
@@ -1342,10 +1626,15 @@ http3_req_state_transport_io_more_data (http_ctx_t *stream, http_ctx_t *req,
 	{
 	  /* we are done wait for the next app request */
 	  http_req_state_change (req, HTTP_REQ_STATE_WAIT_APP_METHOD);
-	  clib_thread_index_t thread_index = stream->c_thread_index;
-	  u32 req_index = ((http_req_handle_t) req->hr_req_handle).req_index;
-	  http3_stream_ctx_reset (stream, req);
-	  req = http_ctx_get_w_thread (req_index, thread_index);
+	  if (http_req_tx_streaming_pending (req))
+	    http_req_rx_mark_eof (req);
+	  else
+	    {
+	      clib_thread_index_t thread_index = stream->c_thread_index;
+	      u32 req_index = ((http_req_handle_t) req->hr_req_handle).req_index;
+	      http3_stream_ctx_reset (stream, req);
+	      req = http_ctx_get_w_thread (req_index, thread_index);
+	    }
 	}
       res = is_server ? HTTP_SM_CONTINUE : HTTP_SM_STOP;
     }
@@ -1528,7 +1817,7 @@ static http3_sm_handler tx_state_funcs[HTTP_REQ_N_STATES] = {
   http3_req_state_tunnel_tx,
   http3_req_state_udp_tunnel_tx,
   http3_req_state_udp_tunnel_draft03_tx,
-  0, /* app io more streaming data */
+  http3_req_state_app_io_more_streaming_data,
 };
 
 static http3_sm_handler rx_state_funcs[HTTP_REQ_N_STATES] = {
@@ -1543,12 +1832,14 @@ static http3_sm_handler rx_state_funcs[HTTP_REQ_N_STATES] = {
   http3_req_state_udp_tunnel_rx,
   http3_req_state_udp_tunnel_draft03_rx,
   0, /* app io more streaming data */
+  0, /* transport io drop */
+  http3_req_state_transport_io_more_streaming_data,
 };
 
 static_always_inline int
 http3_req_state_is_tx_valid (http_ctx_t *req)
 {
-  return tx_state_funcs[req->req_state] ? 1 : 0;
+  return http_req_tx_streaming_pending (req) || tx_state_funcs[req->req_state];
 }
 
 static_always_inline http3_error_t
@@ -1560,7 +1851,10 @@ http3_req_run_tx_state_machine (http_ctx_t *stream, http_ctx_t *req, transport_s
 
   do
     {
-      res = tx_state_funcs[req->req_state](stream, req, sp, &error, &n_sent);
+      http3_sm_handler handler = http_req_tx_streaming_pending (req) ?
+				   http3_req_state_app_io_more_streaming_data :
+				   tx_state_funcs[req->req_state];
+      res = handler (stream, req, sp, &error, &n_sent);
       if (res == HTTP_SM_ERROR)
 	{
 	  HTTP_DBG (1, "protocol error %U", format_http3_error, error);
@@ -1902,9 +2196,8 @@ http3_stream_rx_closed (http_ctx_t *stream, http_ctx_t *req)
 {
   u32 available;
 
-  if (!(req->req_flags & HTTP_REQ_F_PEER_CLOSED) || (req->req_flags & HTTP_REQ_F_RX_PROCESSING) ||
-      http3_stream_close_if_conn_closed (stream) || !(stream->flags & HTTP_CONN_F_IS_SERVER) ||
-      (req->req_flags & HTTP_REQ_F_IS_TUNNEL))
+  if (!(req->req_flags & HTTP_REQ_F_PEER_CLOSED) || http3_stream_close_if_conn_closed (stream) ||
+      (stream->flags & HTTP_CONN_F_RX_CANCELLED) || (req->req_flags & HTTP_REQ_F_IS_TUNNEL))
     return;
 
   available = http_io_ts_max_read (stream);
@@ -1917,9 +2210,19 @@ http3_stream_rx_closed (http_ctx_t *stream, http_ctx_t *req)
   if (available)
     return;
   if (!(req->req_flags & HTTP_REQ_F_RX_HEADERS_RECEIVED))
-    http3_stream_terminate (stream, req, HTTP3_ERROR_REQUEST_INCOMPLETE);
+    http3_stream_terminate (stream, req,
+			    stream->flags & HTTP_CONN_F_IS_SERVER ? HTTP3_ERROR_REQUEST_INCOMPLETE :
+								    HTTP3_ERROR_MESSAGE_ERROR);
   else if (req->content_len_header_index != ~0 && req->to_recv)
     http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
+  else if (req->req_flags & HTTP_REQ_F_RX_STREAMING)
+    {
+      req->req_flags |= HTTP_REQ_F_RX_EOF;
+      http_req_state_change (req, stream->flags & HTTP_CONN_F_IS_SERVER ?
+				    HTTP_REQ_STATE_WAIT_APP_REPLY :
+				    HTTP_REQ_STATE_IDLE);
+      session_transport_closing_notify (&req->connection);
+    }
 }
 
 static u32
@@ -1932,8 +2235,18 @@ http3_stream_transport_rx_req (http_ctx_t *req, http_ctx_t *stream, http_req_sta
   u32 req_index = stream->http_req_index;
   clib_thread_index_t thread_index = stream->c_thread_index;
 
-  if (http3_stream_close_if_conn_closed (stream) || (req->req_flags & HTTP_REQ_F_RX_PROCESSING))
+  /* Both RX entry callbacks check connection state before dispatching here. */
+  if (req->req_flags & (HTTP_REQ_F_RX_PROCESSING | HTTP_REQ_F_RX_EOF))
     return 0;
+  if ((req->req_state == headers_state ||
+       (headers_state == HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY &&
+	req->req_state == HTTP_REQ_STATE_APP_IO_MORE_STREAMING_DATA)) &&
+      !(req->req_flags & (HTTP_REQ_F_PEER_CLOSED | HTTP_REQ_F_IS_TUNNEL)))
+    {
+      session_t *ts = session_get_from_handle (stream->hc_tc_session_handle);
+      if (PREDICT_FALSE (ts->session_state >= SESSION_STATE_TRANSPORT_CLOSING))
+	return 0;
+    }
   /* CONNECT payload waits for the application's tunnel establishment reply. */
   if ((req->req_flags & HTTP_REQ_F_IS_TUNNEL) && req->req_state == HTTP_REQ_STATE_WAIT_APP_REPLY)
     return 0;
@@ -1956,39 +2269,57 @@ http3_stream_transport_rx_req (http_ctx_t *req, http_ctx_t *stream, http_req_sta
 	  left_deq -= req->fh.header_len;
 	}
 
-      /* FIN means all remaining request bytes are already in the FIFO. */
+      /* FIN means all remaining message bytes are already in the FIFO. */
       if ((req->req_flags & HTTP_REQ_F_PEER_CLOSED) && req->fh.length > left_deq)
 	{
 	  err = HTTP3_ERROR_FRAME_ERROR;
 	  goto error;
 	}
 
+      http3_sm_handler rx_handler = rx_state_funcs[req->req_state];
       switch (req->fh.type)
 	{
 	case HTTP3_FRAME_TYPE_HEADERS:
 	  HTTP_DBG (1, "headers received");
-	  if (req->req_state != headers_state)
+	  if (req->req_flags & HTTP_REQ_F_RX_HEADERS_RECEIVED)
+	    {
+	      if (req->req_flags & (HTTP_REQ_F_RX_TRAILERS | HTTP_REQ_F_IS_TUNNEL))
+		{
+		  err = HTTP3_ERROR_FRAME_UNEXPECTED;
+		  goto error;
+		}
+	      rx_handler = http3_req_state_transport_trailers;
+	      break;
+	    }
+	  if (req->req_state != headers_state &&
+	      !(!(stream->flags & HTTP_CONN_F_IS_SERVER) &&
+		req->req_state == HTTP_REQ_STATE_APP_IO_MORE_STREAMING_DATA))
 	    {
 	      HTTP_DBG (1, "unexpected frame, state: %U", format_http_req_state, req->req_state);
 	      err = HTTP3_ERROR_FRAME_UNEXPECTED;
 	      goto error;
 	    }
+	  rx_handler = rx_state_funcs[headers_state];
 	  break;
 	case HTTP3_FRAME_TYPE_DATA:
 	  HTTP_DBG (1, "data received");
-	  if ((stream->flags & HTTP_CONN_F_IS_SERVER) &&
-	      (req->req_flags & HTTP_REQ_F_RX_HEADERS_RECEIVED) &&
+	  if (req->req_flags & HTTP_REQ_F_RX_TRAILERS)
+	    {
+	      err = HTTP3_ERROR_FRAME_UNEXPECTED;
+	      goto error;
+	    }
+	  if ((req->req_flags & HTTP_REQ_F_RX_HEADERS_RECEIVED) &&
 	      !(req->req_flags & HTTP_REQ_F_IS_TUNNEL) && req->content_len_header_index != ~0 &&
 	      req->fh.length > req->to_recv)
 	    {
 	      http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
 	      goto done;
 	    }
-	  if ((stream->flags & HTTP_CONN_F_IS_SERVER) &&
-	      (req->req_flags & HTTP_REQ_F_RX_HEADERS_RECEIVED) &&
+	  if ((req->req_flags & HTTP_REQ_F_RX_HEADERS_RECEIVED) &&
 	      !(req->req_flags & HTTP_REQ_F_IS_TUNNEL) && !req->to_recv && !req->fh.length)
 	    continue;
 	  if (!(req->req_state == HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA ||
+		req->req_state == HTTP_REQ_STATE_TRANSPORT_IO_MORE_STREAMING_DATA ||
 		req->req_state == HTTP_REQ_STATE_TUNNEL ||
 		req->req_state == HTTP_REQ_STATE_UDP_TUNNEL ||
 		req->req_state == HTTP_REQ_STATE_UDP_TUNNEL_DRAFT03))
@@ -2011,7 +2342,7 @@ http3_stream_transport_rx_req (http_ctx_t *req, http_ctx_t *stream, http_req_sta
 	  continue;
 	}
 
-      res = rx_state_funcs[req->req_state](stream, req, 0, &err, &n_deq);
+      res = rx_handler (stream, req, 0, &err, &n_deq);
       left_deq -= n_deq;
       /* pool grow, regrab stream and request */
       stream = http_ctx_get_w_thread (stream_index, thread_index);
@@ -2239,9 +2570,17 @@ http3_app_tx_callback (http_ctx_t *stream, u32 req_index, transport_send_params_
 
   req = http_ctx_get_w_thread (req_index, thread_index);
   HTTP_DBG (1, "stream [%u]%x req %x", thread_index, stream->hc_hc_index, req_index);
+  /* Ignore late producer events after the upload was cancelled. */
+  if (req->req_flags & HTTP_REQ_F_TX_CANCELLED)
+    {
+      http_io_as_drain_all (req);
+      http_req_deschedule (req, sp);
+      return;
+    }
   if (!http3_req_state_is_tx_valid (req))
     {
-      if (req->req_state == HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA &&
+      if ((req->req_state == HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA ||
+	   req->req_state == HTTP_REQ_STATE_TRANSPORT_IO_MORE_STREAMING_DATA) &&
 	  (stream->flags & HTTP_CONN_F_IS_SERVER))
 	{
 	  /* server app might send error earlier */
@@ -2305,7 +2644,38 @@ http3_app_close_callback (http_ctx_t *stream, u32 req_index, clib_thread_index_t
   HTTP_DBG (1, "stream [%u]%x req %x", stream->c_thread_index, stream->hc_hc_index, req_index);
 
   req = http_ctx_get_w_thread (req_index, thread_index);
-  req->req_flags |= HTTP_REQ_F_APP_CLOSED;
+  if (req->req_flags & HTTP_REQ_F_IS_TUNNEL)
+    req->req_flags |= HTTP_REQ_F_APP_CLOSED;
+  else
+    http_req_app_close (req, is_shutdown);
+
+  if (http_req_tx_streaming_pending (req))
+    {
+      if (!http_io_as_max_read (req))
+	http3_stream_tx_complete (stream, req, 0);
+      else if (transport_connection_is_descheduled (&req->connection))
+	transport_connection_reschedule (&req->connection);
+      return;
+    }
+
+  /* EOF can precede parsing the message metadata. */
+  if ((req->req_state == HTTP_REQ_STATE_WAIT_APP_METHOD ||
+       req->req_state == HTTP_REQ_STATE_WAIT_APP_REPLY) &&
+      http_io_as_max_read (req) >= sizeof (http_msg_t))
+    {
+      http_msg_t msg;
+      http_get_app_msg (req, &msg, 1);
+      if (msg.data.type == HTTP_MSG_DATA_STREAMING)
+	return;
+    }
+  if ((req->req_flags & HTTP_REQ_F_TX_STREAMING) && !(stream->flags & HTTP_CONN_F_IS_SERVER))
+    {
+      if (is_shutdown)
+	return;
+      if (!http3_stream_cancel_rx (stream, req))
+	http3_stream_close (stream, req);
+      return;
+    }
   req->app_closed_cb (req, stream, is_shutdown);
 }
 
@@ -2448,7 +2818,14 @@ http3_transport_close_callback (http_ctx_t *hc)
   if (hc->hc_parent_req_index != SESSION_INVALID_INDEX)
     {
       parent_req = http_ctx_get_w_thread (hc->hc_parent_req_index, hc->c_thread_index);
-      session_transport_closing_notify (&parent_req->connection);
+      if ((parent_req->req_flags & HTTP_REQ_F_RX_STREAMING) &&
+	  !(parent_req->req_flags & HTTP_REQ_F_RX_EOF))
+	{
+	  session_transport_reset_notify (&parent_req->connection);
+	  session_transport_closed_notify (&parent_req->connection);
+	}
+      else
+	session_transport_closing_notify (&parent_req->connection);
     }
   hc->our_ctrl_stream_index = SESSION_INVALID_INDEX;
   hc->peer_ctrl_stream_index = SESSION_INVALID_INDEX;
@@ -2467,8 +2844,11 @@ http3_transport_reset_callback (http_ctx_t *hc)
   if (hc->hc_parent_req_index != SESSION_INVALID_INDEX)
     {
       parent_req = http_ctx_get_w_thread (hc->hc_parent_req_index, hc->c_thread_index);
-      session_transport_reset_notify (&parent_req->connection);
-      session_transport_closed_notify (&parent_req->connection);
+      if (!(parent_req->req_flags & HTTP_REQ_F_RX_EOF))
+	{
+	  session_transport_reset_notify (&parent_req->connection);
+	  session_transport_closed_notify (&parent_req->connection);
+	}
     }
   hc->our_ctrl_stream_index = SESSION_INVALID_INDEX;
   hc->peer_ctrl_stream_index = SESSION_INVALID_INDEX;
@@ -2483,8 +2863,11 @@ http3_transport_conn_reschedule_callback (http_ctx_t *stream)
 
   HTTP_DBG (1, "hc [%u]%x", stream->c_thread_index, stream->hc_hc_index);
   ASSERT (http_ctx_is_stream (stream));
+  if (stream->http_req_index == SESSION_INVALID_INDEX || http3_stream_close_if_conn_closed (stream))
+    return;
   req = http_ctx_get_w_thread (stream->http_req_index, stream->c_thread_index);
-  transport_connection_reschedule (&req->connection);
+  if (transport_connection_is_descheduled (&req->connection))
+    transport_connection_reschedule (&req->connection);
 }
 
 static int
@@ -2576,8 +2959,13 @@ http3_transport_stream_close_callback (http_ctx_t *stream)
 	    {
 	      /* A connection error still needs each stream's close acknowledgement
 	       * and application notification, without parsing or choosing a new error. */
+	      if ((req->req_flags & HTTP_REQ_F_RX_STREAMING) &&
+		  !(req->req_flags & HTTP_REQ_F_RX_EOF))
+		http3_stream_notify_error (stream, req);
 	      if (stream->flags & HTTP_CONN_F_IS_SERVER)
-		http3_stream_close (stream, req);
+		{
+		  http3_stream_close (stream, req);
+		}
 	      else
 		{
 		  if (!(req->req_flags & HTTP_REQ_F_APP_CLOSED))
@@ -2609,31 +2997,32 @@ http3_transport_stream_close_callback (http_ctx_t *stream)
 		}
 	      return;
 	    }
-	  /* for server stream is closed for receiving */
+	  /* FIN can precede RX, including when the client already half-closed TX. */
+	  req->req_flags |= HTTP_REQ_F_PEER_CLOSED;
 	  if (stream->flags & HTTP_CONN_F_IS_SERVER)
+	    stream->state = HTTP_CONN_STATE_HALF_CLOSED;
+	  if (req->req_flags & HTTP_REQ_F_RX_PROCESSING)
+	    return;
+	  /* FIN can precede the queued RX event. Parse buffered bytes now,
+	   * including headers, before deciding whether the message is complete. */
+	  http3_transport_rx_callback (stream);
+	  /* pool grow, regrab stream after processing buffered input */
+	  stream = http_ctx_get_w_thread_if_valid (stream_index, thread_index);
+	  if (stream && !http3_stream_close_if_conn_closed (stream) &&
+	      stream->http_req_index != SESSION_INVALID_INDEX)
 	    {
-	      HTTP_DBG (1, "server stream half-closed");
-	      req->req_flags |= HTTP_REQ_F_PEER_CLOSED;
-	      stream->state = HTTP_CONN_STATE_HALF_CLOSED;
-	      if (req->req_flags & HTTP_REQ_F_RX_PROCESSING)
-		return;
-	      /* FIN can precede the queued RX event. Parse buffered bytes now,
-	       * including headers, before deciding whether the request is complete. */
-	      http3_transport_rx_callback (stream);
-	      /* pool grow, regrab stream after processing buffered input */
-	      stream = http_ctx_get_w_thread_if_valid (stream_index, thread_index);
-	      if (stream && !http3_stream_close_if_conn_closed (stream) &&
-		  stream->http_req_index != SESSION_INVALID_INDEX)
+	      req = http_ctx_get_w_thread (stream->http_req_index, thread_index);
+	      if (req->req_flags & HTTP_REQ_F_IS_TUNNEL)
 		{
-		  req = http_ctx_get_w_thread (stream->http_req_index, thread_index);
-		  if (req->req_flags & HTTP_REQ_F_IS_TUNNEL)
-		    {
-		      stream->state = HTTP_CONN_STATE_TRANSPORT_CLOSED;
-		      http3_transport_stream_close_callback (stream);
-		    }
+		  stream->state = HTTP_CONN_STATE_TRANSPORT_CLOSED;
+		  http3_transport_stream_close_callback (stream);
+		  return;
 		}
-	      return;
 	    }
+	  else
+	    return;
+	  if (stream->flags & HTTP_CONN_F_IS_SERVER)
+	    return;
 	  /* for client we can confirm close if app already close (read all data) */
 	  if (req->req_flags & HTTP_REQ_F_APP_CLOSED)
 	    {
@@ -2682,7 +3071,8 @@ http3_transport_stream_reset_callback (http_ctx_t *stream)
 	  return;
 	}
       http_stats_stream_reset_by_peer_inc (stream->c_thread_index);
-      if (!(req->req_flags & HTTP_REQ_F_APP_CLOSED))
+      if (!(req->req_flags & HTTP_REQ_F_APP_CLOSED) &&
+	  ((stream->flags & HTTP_CONN_F_IS_SERVER) || !(req->req_flags & HTTP_REQ_F_RX_EOF)))
 	session_transport_reset_notify (&req->connection);
       session_transport_closed_notify (&req->connection);
     }
@@ -2788,6 +3178,15 @@ http3_stream_cleanup_callback (http_ctx_t *stream)
       if (req->req_flags & HTTP_REQ_F_IS_PARENT)
 	{
 	  req->hr_hc_index = stream->hc_http_conn_index;
+	  /* full parent close waits for queued request DATA and FIN to retire */
+	  if ((req->req_flags & (HTTP_REQ_F_TX_STREAMING | HTTP_REQ_F_APP_CLOSED)) ==
+	      (HTTP_REQ_F_TX_STREAMING | HTTP_REQ_F_APP_CLOSED))
+	    {
+	      http_ctx_t *hc =
+		http_ctx_get_w_thread (stream->hc_http_conn_index, stream->c_thread_index);
+	      if (hc->state != HTTP_CONN_STATE_CLOSED)
+		http_disconnect_transport (hc);
+	    }
 	  return;
 	}
       if (!(stream->flags & HTTP_CONN_F_NO_APP_SESSION))

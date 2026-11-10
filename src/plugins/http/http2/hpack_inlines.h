@@ -783,6 +783,36 @@ hpack_preprocess_header (u8 *name, u32 name_len, u8 *value, u32 value_len,
   return HPACK_ERROR_NONE;
 }
 
+/* Validate and discard trailers without changing the initial field list.
+ * Continue decoding after a semantic error to preserve HPACK table updates. */
+always_inline hpack_error_t
+hpack_decode_trailers (u8 *src, u8 *end, u8 *dst, u32 dst_len, void *decoder_ctx,
+		       hpack_header_decoder_fn *decoder_fn)
+{
+  u8 *p = src, *b = dst, *name, never_index, message_error = 0;
+  u32 name_len, value_len;
+  uword b_left = dst_len, content_len_index = ~0;
+  hpack_error_t rv;
+
+  while (p != end)
+    {
+      name = b;
+      never_index = 0;
+      rv = decoder_fn (&p, end, &b, &b_left, &name_len, &value_len, decoder_ctx, &never_index);
+      if (rv)
+	return rv;
+      if (message_error)
+	continue;
+      if (!hpack_header_name_is_valid (name, name_len) ||
+	  !hpack_header_value_is_valid (name + name_len, value_len) ||
+	  hpack_preprocess_header (name, name_len, name + name_len, value_len, 0,
+				   &content_len_index) ||
+	  content_len_index != ~0)
+	message_error = 1;
+    }
+  return message_error ? HPACK_ERROR_PROTOCOL : HPACK_ERROR_NONE;
+}
+
 always_inline hpack_error_t
 hpack_decode_request (u8 *src, u8 *end, u8 *dst, u32 dst_len,
 		      hpack_request_control_data_t *control_data, http_field_line_t **headers,
