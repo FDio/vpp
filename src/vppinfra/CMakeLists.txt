@@ -243,6 +243,7 @@ set(VPPINFRA_HEADERS
   warnings.h
   xxhash.h
   linux/sysfs.h
+  linux/netns.h
 )
 
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
