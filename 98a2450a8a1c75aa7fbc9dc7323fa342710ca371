@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9f6c8ab0_a37ce8d1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-11-10T23:01:31Z",
+      "side": 1,
+      "message": "nits",
+      "revId": "98a2450a8a1c75aa7fbc9dc7323fa342710ca371",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f8f746ba_3ef159f0",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2109,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-11-10T23:01:31Z",
+      "side": 1,
+      "message": "do we need this?",
+      "revId": "98a2450a8a1c75aa7fbc9dc7323fa342710ca371",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cfdd5bb9_296b6ec8",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2112,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-11-10T23:01:31Z",
+      "side": 1,
+      "message": "Isn\u0027t this caught by the epoll loop?",
+      "revId": "98a2450a8a1c75aa7fbc9dc7323fa342710ca371",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
