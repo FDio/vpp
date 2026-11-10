@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright(c) 2022-2026 Cisco Systems, Inc.
 
-# Shared by the octeon_net and octeon_crypto drivers. Expanded in the caller's
+# Shared by the octeon_net and octeon_cpt drivers. Expanded in the caller's
 # scope, so return() leaves the calling driver's CMakeLists.txt.
 macro(octeon_driver_prereqs name)
   if (NOT VPP_PLATFORM_NAME STREQUAL "octeon10" AND NOT VPP_PLATFORM_NAME STREQUAL "octeon9")
