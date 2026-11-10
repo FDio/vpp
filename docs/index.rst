@@ -106,6 +106,7 @@ For more details click on the links below or press next.
     :maxdepth: 2
 
     contributing/gitreview
+    contributing/committer-etiquette
     contributing/writingdocs
     contributing/reportingissues/index
 
