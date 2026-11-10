@@ -61,7 +61,7 @@ more:
        */
       b->current_data = -hdr_sz;
       clib_memset (vlib_buffer_get_current (b), 0, hdr_sz);
-      d->addr = vlib_buffer_get_current_pa (vm, b);
+      d->addr = virtio_buffer_dma_addr (vm, vif, b);
       d->len = vlib_buffer_get_default_data_size (vm) + hdr_sz;
       d->flags = VRING_DESC_F_WRITE;
       vring->avail->ring[avail & mask] = next;
@@ -122,7 +122,7 @@ more:
        */
       b->current_data = -hdr_sz;
       clib_memset (vlib_buffer_get_current (b), 0, hdr_sz);
-      d->addr = vlib_buffer_get_current_pa (vm, b);
+      d->addr = virtio_buffer_dma_addr (vm, vif, b);
       d->len = vlib_buffer_get_default_data_size (vm) + hdr_sz;
 
       if (vring->avail_wrap_counter)

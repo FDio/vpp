@@ -252,22 +252,38 @@ u8
 virtio_pci_setup_queue (vlib_main_t *vm, virtio_if_t *vif, u16 queue_id,
 			vnet_virtio_vring_t *vring)
 {
+  void *mem[3];
   u64 desc, avail, used;
 
   virtio_pci_set_queue_select (vif, queue_id);
 
   if (vif->is_packed)
     {
-      desc = vlib_physmem_get_pa (vm, vring->packed_desc);
-      avail = vlib_physmem_get_pa (vm, vring->driver_event);
-      used = vlib_physmem_get_pa (vm, vring->device_event);
+      mem[0] = vring->packed_desc;
+      mem[1] = vring->driver_event;
+      mem[2] = vring->device_event;
     }
   else
     {
-      desc = vlib_physmem_get_pa (vm, vring->desc);
-      avail = vlib_physmem_get_pa (vm, vring->avail);
-      used = vlib_physmem_get_pa (vm, vring->used);
+      mem[0] = vring->desc;
+      mem[1] = vring->avail;
+      mem[2] = vring->used;
     }
+
+  for (int i = 0; vif->va_dma && i < ARRAY_LEN (mem); i++)
+    {
+      clib_error_t *err = vlib_pci_map_dma (vm, vif->pci_dev_handle, mem[i]);
+      if (err)
+	{
+	  virtio_log_error (vif, "queue %u: %U", queue_id, format_clib_error, err);
+	  clib_error_free (err);
+	  return 1;
+	}
+    }
+
+  desc = virtio_dma_addr (vm, vif, mem[0]);
+  avail = virtio_dma_addr (vm, vif, mem[1]);
+  used = virtio_dma_addr (vm, vif, mem[2]);
 
   virtio_pci_set_queue_desc (vif, desc);
   if (desc != virtio_pci_get_queue_desc (vif))
