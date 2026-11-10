@@ -1884,7 +1884,17 @@ ikev2_process_create_child_sa_req (vlib_main_t *vm, ikev2_sa_t *sa, ike_header_t
   if (!proposal || !nonce ||
       (proposal->protocol_id != IKEV2_PROTOCOL_ESP &&
        proposal->protocol_id != IKEV2_PROTOCOL_IKE))
-    goto cleanup_and_exit;
+    {
+      /* An error response to a locally initiated rekey carries no SA payload.
+	 That exchange is over: stop reporting a rekey in progress, or every
+	 later request from the peer is refused with TEMPORARY_FAILURE. Only
+	 the response to the latest request counts; a late answer to an
+	 earlier attempt must not discard the record of a retry. */
+      if (ike_hdr_is_response (ike) && sa->is_initiator &&
+	  clib_net_to_host_u32 (ike->msgid) == sa->last_init_msg_id - 1)
+	vec_reset_length (sa->rekey);
+      goto cleanup_and_exit;
+    }
 
   use_transport_mode &= ikev2_transport_mode_capable (sa);
 
@@ -5848,6 +5858,11 @@ ikev2_initiate_rekey_child_sa (vlib_main_t * vm, u32 ispi)
     {
       if (vec_len (fsa->childs) != 1)
 	return clib_error_return (0, "Additional Child SA is pending Delete");
+      /* The previous rekey still holds its old inbound SA for the grace
+	 period; a second rekey would overwrite that record and leave the SA
+	 locked. */
+      if (fsa->old_remote_id_present)
+	return clib_error_return (0, "Previous Child SA rekey is in its grace period");
       ikev2_rekey_child_sa_internal (vm, fsa, fchild);
     }
 
@@ -6048,6 +6063,10 @@ ikev2_mngr_process_child_sa (vlib_main_t *vm, ikev2_sa_t *sa, ikev2_child_sa_t *
 	}
       if (!csa->is_expired || csa->rekey_retries > 0)
 	{
+	  /* Wait for the previous rekey's grace period; see
+	     ikev2_initiate_rekey_child_sa (). */
+	  if (sa->old_remote_id_present)
+	    return res;
 	  ikev2_rekey_child_sa_internal (vm, sa, csa);
 	  csa->time_to_expiration = now + p->handover;
 	  csa->is_expired = 1;
@@ -6069,6 +6088,8 @@ ikev2_mngr_process_child_sa (vlib_main_t *vm, ikev2_sa_t *sa, ikev2_child_sa_t *
 	}
       else
 	{
+	  /* The rekey got no usable answer; it is no longer in progress. */
+	  vec_reset_length (sa->rekey);
 	  /* The callee logs a failure; the expired Child is retried next tick. */
 	  ikev2_delete_child_sa_internal (vm, sa, csa);
 	  res |= 1;
