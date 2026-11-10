@@ -10,108 +10,146 @@
 #include <vnet/crypto/crypto.h>
 #include <vnet/ip/ip.h>
 
-#define OCT_MAX_N_CPT_DEV 2
+/* index of the engine in the driver registration */
 
-#define OCT_CPT_LF_DEF_NB_DESC 16384
+#define OCT_CPT_LF_DEF_NB_DESC 4096
 
 #define OCT_CPT_LF_MIN_NB_DESC 1024
-#define OCT_CPT_LF_MAX_NB_DESC 128000
-
-#define OCT_MOD_INC(i, l) ((i) == (l - 1) ? (i) = 0 : (i)++)
-
-#define OCT_SCATTER_GATHER_BUFFER_SIZE 1024
-
-#define CPT_LMT_SIZE_COPY (sizeof (struct cpt_inst_s) / 16)
-#define OCT_MAX_LMT_SZ	  16
-
-#define SRC_IOV_SIZE                                                          \
-  (sizeof (struct roc_se_iov_ptr) +                                           \
-   (sizeof (struct roc_se_buf_ptr) * ROC_MAX_SG_CNT))
-
-#define OCT_CPT_LMT_GET_LINE_ADDR(lmt_addr, lmt_num)                          \
-  (void *) ((u64) (lmt_addr) + ((u64) (lmt_num) << ROC_LMT_LINE_SIZE_LOG2))
+#define OCT_CPT_LF_MAX_NB_DESC 32768
 
 typedef struct
 {
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  oct_dev_common_t common;
   struct roc_cpt *roc_cpt;
-  struct roc_cpt_lmtline lmtline;
-  struct roc_cpt_lf lf;
-  vnet_dev_t *dev;
-  u32 n_desc;
-} oct_crypto_dev_t;
+  u8 hw_ctx_cache;
+} oct_crypto_device_t;
+
+typedef union cpt_res_s cpt_res_t;
+
+#ifdef PLATFORM_OCTEON9
+typedef struct roc_sglist_comp oct_sg_comp_t;
+#define OCT_SG_PER_COMP 4
+#define OCT_SG_MAX_COMP 2
+#else
+typedef struct roc_sg2list_comp oct_sg_comp_t;
+#define OCT_SG_PER_COMP 3
+#define OCT_SG_MAX_COMP 3
+#endif
+
+/* per request data read and written by CPT, gather entry 0 covers ctrl, IV and AAD.
+   Result writes are slow when other requests share the 128 byte line. */
+typedef struct
+{
+  u64 offset_ctrl;
+  u8 iv[16];
+  u8 aad[16];
+#ifdef PLATFORM_OCTEON9
+  u16 sg_hdr[4];
+  /* scatter components follow the used gather components */
+  oct_sg_comp_t sg[2 * OCT_SG_MAX_COMP];
+  cpt_res_t res;
+#else
+  cpt_res_t res __clib_aligned (16);
+  oct_sg_comp_t gather[OCT_SG_MAX_COMP] __clib_aligned (64);
+  oct_sg_comp_t scatter[OCT_SG_MAX_COMP];
+#endif
+} __clib_aligned (ROC_ALIGN)
+oct_crypto_meta_t;
+
+STATIC_ASSERT_SIZEOF (oct_crypto_meta_t, 256);
 
 typedef struct
 {
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  /** CPT opcode */
-  u16 cpt_op : 4;
-  /** Flag for AES GCM */
-  u16 aes_gcm : 1;
-  /** IV length in bytes */
+  struct roc_se_ctx *enc_ctx;
+  struct roc_se_ctx *dec_ctx;
+  u64 enc_inst_w4;
+  u64 dec_inst_w4;
+  u64 enc_inst_w7;
+  u64 dec_inst_w7;
   u8 iv_length;
-  /** CPT inst word 7 */
-  u64 cpt_inst_w7;
-  /* initialise as part of first packet */
-  u8 initialised;
-  oct_crypto_dev_t *crypto_dev;
-  struct roc_se_ctx cpt_ctx;
-} oct_crypto_sess_t;
-
-typedef struct
-{
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  oct_crypto_sess_t *sess[VNET_CRYPTO_OP_N_TYPES];
+  u8 mac_len;
+  u8 cbc_pad : 1;
+  u8 flush_on_free : 1;
 } oct_crypto_key_t;
 
-typedef struct oct_crypto_scatter_gather
-{
-  u8 buf[OCT_SCATTER_GATHER_BUFFER_SIZE];
-} oct_crypto_scatter_gather_t;
-
 typedef struct
 {
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  /** Result data */
-  volatile union cpt_res_s res;
-  /** Frame pointer */
-  vnet_crypto_async_frame_t *frame;
-  /** Set if this is last element in frame */
-  bool last_elts;
-  /** Index of element in frame */
-  int index;
-} __plt_cache_aligned oct_crypto_inflight_req_t;
-
-typedef struct
-{
-  /** Array of pending request */
-  oct_crypto_inflight_req_t *req_queue;
-  /** Number of inflight operations in queue */
-  u32 n_crypto_inflight;
-  /** Number of frames in queue */
-  u32 n_crypto_frame;
-  /** Tail of queue to be used for enqueue */
-  u16 enq_tail;
-  /** Head of queue to be used for dequeue */
-  u16 deq_head;
-  /** Number of descriptors */
+  vlib_frame_t **frames;
+  u16 elt_head;
+  u16 elt_tail;
+  u16 frame_head;
+  u16 frame_tail;
+  u16 deq_left;
+  u16 deq_next;
   u16 n_desc;
-  /** Scatter gather data */
-  void *sg_data;
-} oct_crypto_pending_queue_t;
+  oct_crypto_meta_t *meta;
+  struct roc_cpt_lf *lf;
+  struct roc_cpt_lmtline lmtline;
+} oct_crypto_queue_t;
 
 typedef struct
 {
-  oct_crypto_dev_t *crypto_dev[OCT_MAX_N_CPT_DEV];
-  oct_crypto_pending_queue_t *pend_q;
-  int n_cpt;
-  u8 started;
-} oct_crypto_main_t;
+  u16 lf_id;
+  u16 slot;
+  struct cpt_inst_s inst;
+} oct_crypto_enq_trace_t;
 
-extern oct_crypto_main_t oct_crypto_main;
+typedef struct
+{
+  u16 lf_id;
+  u16 slot;
+  cpt_res_t res;
+} oct_crypto_deq_trace_t;
 
+typedef struct
+{
+  roc_se_cipher_type cipher_type;
+  roc_se_auth_type auth_type;
+  u8 aad_len;
+  u8 digest_len;
+  u8 iv_length;
+  u16 opcode_minor_flags;
+  u8 valid;
+} oct_crypto_alg_data_t;
+
+/* algs.c */
+extern const oct_crypto_alg_data_t oct_crypto_algs[VNET_CRYPTO_N_ALGS];
+vnet_dev_crypto_alg_handlers_t *oct_crypto_get_alg_handlers (union cpt_eng_caps *caps);
+
+/* key.c */
 void oct_crypto_key_change_handler (vnet_crypto_ctx_t *ctx, vnet_crypto_key_change_args_t *args);
-vnet_crypto_frame_dequeue_t oct_crypto_frame_dequeue;
-int oct_init_crypto_engine_handlers (vlib_main_t *vm, vnet_dev_t *dev);
-int oct_conf_sw_queue (vlib_main_t *vm, vnet_dev_t *dev, oct_crypto_dev_t *ocd);
+
+/* deq.c */
+extern vnet_dev_node_t oct_crypto_deq_node;
+
+/* enq.c, one enqueue node per handler variant */
+#define foreach_oct_crypto_enqueue_node                                                            \
+  _ (enc, "enc", 0, 0, 1)                                                                          \
+  _ (dec, "dec", 0, 0, 0)                                                                          \
+  _ (aead_aad0_enc, "aead-aad0-enc", 1, 0, 1)                                                      \
+  _ (aead_aad0_dec, "aead-aad0-dec", 1, 0, 0)                                                      \
+  _ (aead_aad8_enc, "aead-aad8-enc", 1, 8, 1)                                                      \
+  _ (aead_aad8_dec, "aead-aad8-dec", 1, 8, 0)                                                      \
+  _ (aead_aad12_enc, "aead-aad12-enc", 1, 12, 1)                                                   \
+  _ (aead_aad12_dec, "aead-aad12-dec", 1, 12, 0)
+
+#define _(n, s, is_aead, aad_len, is_enc) extern vnet_dev_node_t oct_crypto_enq_##n##_node;
+foreach_oct_crypto_enqueue_node
+#undef _
+
+  /* format.c */
+  format_function_t format_oct_cpt_dev_info;
+format_function_t format_oct_cpt_queue_info;
+format_function_t format_oct_cpt_enq_trace;
+format_function_t format_oct_cpt_deq_trace;
+
+/* queue.c */
+vnet_dev_rv_t oct_crypto_queue_init (vlib_main_t *vm, vnet_dev_crypto_queue_t *cq);
+void oct_crypto_queue_deinit (vlib_main_t *vm, vnet_dev_crypto_queue_t *cq);
+void oct_crypto_queue_stop (vlib_main_t *vm, vnet_dev_crypto_queue_t *cq);
+
+/* session.c */
+i32 oct_crypto_session_init (vlib_main_t *vm, oct_crypto_key_t *ckey, vnet_crypto_ctx_t *ctx,
+			     oct_crypto_device_t *cd);
+
 #endif /* _CRYPTO_H_ */
