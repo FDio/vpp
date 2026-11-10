@@ -1893,8 +1893,6 @@ ikev2_process_create_child_sa_req (vlib_main_t *vm, ikev2_sa_t *sa, ike_header_t
       rekey = &peer->child;
       rekey->protocol_id = IKEV2_PROTOCOL_ESP;
       child_sa = n ? ikev2_sa_get_child (sa, n->spi, n->protocol_id, 0) : 0;
-      if (n && (!child_sa || n->protocol_id != IKEV2_PROTOCOL_ESP))
-	goto cleanup_and_exit;
       peer->additional_child = n == 0;
       if (!n)
 	{
@@ -1908,8 +1906,15 @@ ikev2_process_create_child_sa_req (vlib_main_t *vm, ikev2_sa_t *sa, ike_header_t
 	      }
 	}
       peer->child_index = child_sa ? child_sa - sa->childs : INDEX_INVALID;
+      if (n && (!child_sa || n->protocol_id != IKEV2_PROTOCOL_ESP))
+	{
+	  /* RFC 7296 section 2.25: a rekey of a Child SA that does not exist is
+	     answered with CHILD_SA_NOT_FOUND carrying the SPI from REKEY_SA. */
+	  rekey->notify_type = IKEV2_NOTIFY_MSG_CHILD_SA_NOT_FOUND;
+	  rekey->spi = n->spi;
+	}
       /* shortcut: one additional Child until Delete; widen with multi-Child rekey support. */
-      if (vec_len (sa->rekey) || sa->old_remote_id_present)
+      else if (vec_len (sa->rekey) || sa->old_remote_id_present)
 	rekey->notify_type = IKEV2_NOTIFY_MSG_TEMPORARY_FAILURE;
       else if (peer->additional_child && vec_len (sa->childs) != 1)
 	rekey->notify_type = IKEV2_NOTIFY_MSG_NO_ADDITIONAL_SAS;
@@ -3358,6 +3363,15 @@ ikev2_generate_message (vlib_main_t *vm, vlib_buffer_t *b, ikev2_sa_t *sa, ike_h
 	      data[0] = peer->keys.dh_group >> 8;
 	      data[1] = peer->keys.dh_group & 0xff;
 	      ikev2_payload_add_notify (chain, peer->child.notify_type, data);
+	      vec_free (data);
+	    }
+	  else if (peer->child.notify_type == IKEV2_NOTIFY_MSG_CHILD_SA_NOT_FOUND)
+	    {
+	      ikev2_notify_t notify = { .protocol_id = IKEV2_PROTOCOL_ESP, .spi = peer->child.spi };
+	      u32 spi = clib_host_to_net_u32 (notify.spi);
+	      u8 *data = 0;
+	      vec_add (data, (u8 *) &spi, sizeof (spi));
+	      ikev2_payload_add_notify_2 (chain, peer->child.notify_type, data, &notify);
 	      vec_free (data);
 	    }
 	  else if (peer->child.notify_type)
