@@ -212,7 +212,7 @@ virtio_pci_send_ctrl_msg_packed (vlib_main_t * vm, virtio_if_t * vif,
       first_desc_flags &= ~VRING_DESC_F_AVAIL;
       first_desc_flags |= VRING_DESC_F_USED;
     }
-  d->addr = vlib_buffer_get_current_pa (vm, b);
+  d->addr = virtio_buffer_dma_addr (vm, vif, b);
   d->len = sizeof (virtio_net_ctrl_hdr_t);
   d->id = next;
 
@@ -236,8 +236,7 @@ virtio_pci_send_ctrl_msg_packed (vlib_main_t * vm, virtio_if_t * vif,
       flags &= ~VRING_DESC_F_AVAIL;
       flags |= VRING_DESC_F_USED;
     }
-  d->addr = vlib_buffer_get_current_pa (vm, b) +
-    STRUCT_OFFSET_OF (virtio_ctrl_msg_t, data);
+  d->addr = virtio_buffer_dma_addr (vm, vif, b) + STRUCT_OFFSET_OF (virtio_ctrl_msg_t, data);
   d->len = len;
   d->id = next;
   d->flags = flags;
@@ -262,8 +261,7 @@ virtio_pci_send_ctrl_msg_packed (vlib_main_t * vm, virtio_if_t * vif,
       flags &= ~VRING_DESC_F_AVAIL;
       flags |= VRING_DESC_F_USED;
     }
-  d->addr = vlib_buffer_get_current_pa (vm, b) +
-    STRUCT_OFFSET_OF (virtio_ctrl_msg_t, status);
+  d->addr = virtio_buffer_dma_addr (vm, vif, b) + STRUCT_OFFSET_OF (virtio_ctrl_msg_t, status);
   d->len = sizeof (data->status);
   d->id = next;
   d->flags = flags;
@@ -342,7 +340,7 @@ virtio_pci_send_ctrl_msg_split (vlib_main_t * vm, virtio_if_t * vif,
   b->current_data = 0;
   clib_memcpy (vlib_buffer_get_current (b), data, sizeof (virtio_ctrl_msg_t));
   d->flags = VRING_DESC_F_NEXT;
-  d->addr = vlib_buffer_get_current_pa (vm, b);
+  d->addr = virtio_buffer_dma_addr (vm, vif, b);
   d->len = sizeof (virtio_net_ctrl_hdr_t);
   vring->avail->ring[avail & mask] = next;
   avail++;
@@ -352,8 +350,7 @@ virtio_pci_send_ctrl_msg_split (vlib_main_t * vm, virtio_if_t * vif,
 
   d = &vring->desc[next];
   d->flags = VRING_DESC_F_NEXT;
-  d->addr = vlib_buffer_get_current_pa (vm, b) +
-    STRUCT_OFFSET_OF (virtio_ctrl_msg_t, data);
+  d->addr = virtio_buffer_dma_addr (vm, vif, b) + STRUCT_OFFSET_OF (virtio_ctrl_msg_t, data);
   d->len = len;
   next = (next + 1) & mask;
   d->next = next;
@@ -361,8 +358,7 @@ virtio_pci_send_ctrl_msg_split (vlib_main_t * vm, virtio_if_t * vif,
 
   d = &vring->desc[next];
   d->flags = VRING_DESC_F_WRITE;
-  d->addr = vlib_buffer_get_current_pa (vm, b) +
-    STRUCT_OFFSET_OF (virtio_ctrl_msg_t, status);
+  d->addr = virtio_buffer_dma_addr (vm, vif, b) + STRUCT_OFFSET_OF (virtio_ctrl_msg_t, status);
   d->len = sizeof (data->status);
   next = (next + 1) & mask;
   used++;
@@ -1167,7 +1163,8 @@ virtio_negotiate_features (vlib_main_t * vm, virtio_if_t * vif,
     VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_VQ) | VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_RX) |
     VIRTIO_FEATURE (VIRTIO_NET_F_MQ) | VIRTIO_FEATURE (VIRTIO_NET_F_CTRL_MAC_ADDR) |
     VIRTIO_FEATURE (VIRTIO_F_NOTIFY_ON_EMPTY) | VIRTIO_FEATURE (VIRTIO_F_ANY_LAYOUT) |
-    VIRTIO_FEATURE (VIRTIO_RING_F_INDIRECT_DESC) | VIRTIO_FEATURE (VIRTIO_F_VERSION_1);
+    VIRTIO_FEATURE (VIRTIO_RING_F_INDIRECT_DESC) | VIRTIO_FEATURE (VIRTIO_F_VERSION_1) |
+    VIRTIO_FEATURE (VIRTIO_F_IOMMU_PLATFORM);
 
   if (vif->rss_enabled)
     supported_features |= VIRTIO_FEATURE (VIRTIO_NET_F_RSS);
@@ -1200,6 +1197,15 @@ virtio_negotiate_features (vlib_main_t * vm, virtio_if_t * vif,
 
   virtio_pci_set_driver_features (vm, vif, vif->features);
   vif->features = virtio_pci_get_driver_features (vm, vif);
+
+  /*
+   * Without VIRTIO_F_IOMMU_PLATFORM, the device bypasses the IOMMU and uses
+   * physical addresses, even if VPP has it in a vfio container.
+   */
+  vif->va_dma = (vif->features & VIRTIO_FEATURE (VIRTIO_F_IOMMU_PLATFORM)) &&
+		vlib_pci_supports_virtual_addr_dma (vm, vif->pci_dev_handle);
+  if (vif->va_dma)
+    virtio_log_debug (vif, "using virtual addresses for DMA");
 }
 
 void

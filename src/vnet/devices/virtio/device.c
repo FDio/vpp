@@ -462,7 +462,7 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0))
     {
-      d->addr = vlib_buffer_get_current_pa (vm, b) - hdr_sz;
+      d->addr = virtio_buffer_dma_addr (vm, vif, b) - hdr_sz;
       d->len = b->current_length + hdr_sz;
       d->flags = 0;
     }
@@ -492,8 +492,8 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
       vnet_virtio_vring_desc_t *id =
 	(vnet_virtio_vring_desc_t *) vlib_buffer_get_current (indirect_desc);
       u32 count = 1;
-      d->addr = vlib_physmem_get_pa (vm, id);
-      id->addr = vlib_buffer_get_current_pa (vm, b) - hdr_sz;
+      d->addr = virtio_dma_addr (vm, vif, id);
+      id->addr = virtio_buffer_dma_addr (vm, vif, b) - hdr_sz;
 
       /*
        * If VIRTIO_F_ANY_LAYOUT is not negotiated, then virtio_net_hdr
@@ -509,7 +509,7 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  id->next = count;
 	  count++;
 	  id++;
-	  id->addr = vlib_buffer_get_current_pa (vm, b);
+	  id->addr = virtio_buffer_dma_addr (vm, vif, b);
 	  id->len = b->current_length;
 	}
 	  while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
@@ -519,7 +519,7 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      count++;
 	      id++;
 	      b = vlib_get_buffer (vm, b->next_buffer);
-	      id->addr = vlib_buffer_get_current_pa (vm, b);
+	      id->addr = virtio_buffer_dma_addr (vm, vif, b);
 	      id->len = b->current_length;
 	      if (PREDICT_FALSE (count == VIRTIO_TX_MAX_CHAIN_LEN))
 		{
@@ -554,7 +554,7 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
       if (n_buffers_in_chain > free_desc_count)
 	return n_buffers_in_chain;
 
-      d->addr = vlib_buffer_get_current_pa (vm, b) - hdr_sz;
+      d->addr = virtio_buffer_dma_addr (vm, vif, b) - hdr_sz;
       d->len = b->current_length + hdr_sz;
 
       while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
@@ -567,7 +567,7 @@ add_buffer_to_slot (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  d->next = count;
 	  d = &vring->desc[count];
 	  b = vlib_get_buffer (vm, bi);
-	  d->addr = vlib_buffer_get_current_pa (vm, b);
+	  d->addr = virtio_buffer_dma_addr (vm, vif, b);
 	  d->len = b->current_length;
 	}
       d->flags = 0;
@@ -632,7 +632,7 @@ add_buffer_to_slot_packed (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0))
     {
-      d->addr = vlib_buffer_get_current_pa (vm, b) - hdr_sz;
+      d->addr = virtio_buffer_dma_addr (vm, vif, b) - hdr_sz;
       d->len = b->current_length + hdr_sz;
     }
   else if (is_indirect)
@@ -662,8 +662,8 @@ add_buffer_to_slot_packed (vlib_main_t *vm, vlib_node_runtime_t *node,
 	(vnet_virtio_vring_packed_desc_t *) vlib_buffer_get_current (
 	  indirect_desc);
       u32 count = 1;
-      d->addr = vlib_physmem_get_pa (vm, id);
-      id->addr = vlib_buffer_get_current_pa (vm, b) - hdr_sz;
+      d->addr = virtio_dma_addr (vm, vif, id);
+      id->addr = virtio_buffer_dma_addr (vm, vif, b) - hdr_sz;
 
       /*
        * If VIRTIO_F_ANY_LAYOUT is not negotiated, then virtio_net_hdr
@@ -679,7 +679,7 @@ add_buffer_to_slot_packed (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  id->id = 0;
 	  count++;
 	  id++;
-	  id->addr = vlib_buffer_get_current_pa (vm, b);
+	  id->addr = virtio_buffer_dma_addr (vm, vif, b);
 	  id->len = b->current_length;
 	}
 	  while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
@@ -689,7 +689,7 @@ add_buffer_to_slot_packed (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      count++;
 	      id++;
 	      b = vlib_get_buffer (vm, b->next_buffer);
-	      id->addr = vlib_buffer_get_current_pa (vm, b);
+	      id->addr = virtio_buffer_dma_addr (vm, vif, b);
 	      id->len = b->current_length;
 	      if (PREDICT_FALSE (count == VIRTIO_TX_MAX_CHAIN_LEN))
 		{
