@@ -2631,6 +2631,20 @@ class TestInitiatorRekey(TestInitiatorPsk):
         self.verify_ipsec_sas(is_rekey=True)
 
 
+class TestInitiatorRekeyDuringGrace(TestInitiatorRekey):
+    """A second local rekey waits for the previous rekey's grace period."""
+
+    def test_initiator(self):
+        super().test_initiator()
+        ispi = int.from_bytes(self.sa.child_sas[0].ispi, "little")
+        self.pg0.enable_capture()
+        self.pg_start()
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.ikev2_initiate_rekey_child_sa(ispi=ispi)
+        self.pg0.assert_nothing_captured()
+        self.verify_ipsec_sas(is_rekey=True)
+
+
 class TestInitiatorNATPortRekey(TestInitiatorRekey):
     """Local Child rekey uses the authenticated peer's NAT mapping."""
 
@@ -2668,8 +2682,12 @@ class TestInitiatorPeerRekey(TestInitiatorPsk):
     additional_child = False
     delete_new_child = False
 
+    def after_handshake(self):
+        pass
+
     def test_initiator(self):
         super().test_initiator()
+        self.after_handshake()
         old_spi = self.sa.child_sas[0].rspi
         old_local_spi = self.sa.child_sas[0].ispi
         old_child = copy(self.sa.child_sas[0])
@@ -2906,6 +2924,33 @@ class TestInitiatorPeerRekey(TestInitiatorPsk):
             self.pg0,
         )[0]
         self.assertEqual(outbound.decrypt(result[IP])[Raw].load, b"peer-rekey")
+
+
+class TestInitiatorPeerRekeyAfterRefusal(TestInitiatorPeerRekey):
+    """A refused local rekey does not block a later peer-initiated rekey."""
+
+    def after_handshake(self):
+        ispi = int.from_bytes(self.sa.child_sas[0].ispi, "little")
+        self.pg0.enable_capture()
+        self.pg_start()
+        self.vapi.ikev2_initiate_rekey_child_sa(ispi=ispi)
+        request = self.get_ike_header(self.pg0.get_capture(1)[0])
+        self.assertEqual(request.exch_type, 36)  # CREATE_CHILD_SA
+        self.assertNotIn("Response", request.flags)
+        header = ikev2.IKEv2(
+            init_SPI=self.sa.ispi,
+            resp_SPI=self.sa.rspi,
+            flags="Response",
+            exch_type=36,
+            id=request.id,
+            next_payload="Encrypted",
+        )
+        refusal = ikev2.IKEv2_payload_Notify(type=43)  # TEMPORARY_FAILURE
+        packet = self.create_packet(
+            self.pg0, self.encrypt_ike_msg(header, refusal, "Notify")
+        )
+        self.send_and_assert_no_replies(self.pg0, packet)
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 2)
 
 
 class TestInitiatorPeerPfsRekey(TestInitiatorPeerRekey):
