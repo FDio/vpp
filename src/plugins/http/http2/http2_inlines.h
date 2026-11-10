@@ -30,6 +30,15 @@ http2_req_schedule_data_tx_w_worker (http_worker_t *wrk, http_ctx_t *hc, http_ct
 }
 
 static_always_inline int
+http2_req_tx_empty_eof (http_ctx_t *req)
+{
+  return req->tx_buf.vft &&
+	 (req->req_flags & (HTTP_REQ_F_TX_STREAMING | HTTP_REQ_F_TX_EOF)) ==
+	   (HTTP_REQ_F_TX_STREAMING | HTTP_REQ_F_TX_EOF) &&
+	 !http_io_as_max_read (req);
+}
+
+static_always_inline int
 http2_req_update_peer_window (http_worker_t *wrk, http_ctx_t *hc, http_ctx_t *req, i64 delta)
 {
   i64 new_value;
@@ -39,8 +48,11 @@ http2_req_update_peer_window (http_worker_t *wrk, http_ctx_t *hc, http_ctx_t *re
     return -1;
   req->peer_stream_window = (i32) new_value;
   HTTP_DBG (1, "new window size %ld", req->peer_stream_window);
+  /* Late credit must not restart an already finished streaming producer. */
+  if ((req->req_flags & HTTP_REQ_F_TX_STREAMING) && !req->tx_buf.vft)
+    return 0;
   /* settings change can make stream window negative */
-  if (req->peer_stream_window <= 0)
+  if (req->peer_stream_window <= 0 && !http2_req_tx_empty_eof (req))
     {
       HTTP_DBG (1, "descheduling need stream window update");
       req->req_flags |= HTTP_REQ_F_NEED_WINDOW_UPDATE;

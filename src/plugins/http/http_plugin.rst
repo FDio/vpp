@@ -28,7 +28,7 @@ It relies on the hoststack constructs and uses ``http_msg_data_t`` data structur
 Sending streamed bodies
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-HTTP/1 clients can stream GET, POST and PUT request bodies. Servers can stream
+HTTP/1 and HTTP/2 clients can stream GET, POST and PUT request bodies. Servers can stream
 responses whose status permits a body. Set ``msg.data.type`` to
 ``HTTP_MSG_DATA_STREAMING`` and ``msg.data.body_len`` to zero. Enqueue one
 ``http_msg_t``, followed by the request target (for requests), serialized headers
@@ -36,8 +36,9 @@ and raw body bytes, using the inline layout shown below.
 
 The application can enqueue body bytes over multiple TX callbacks, handling FIFO
 backpressure and scheduling TX events as usual. Further writes contain only body
-bytes, without additional message metadata or chunk framing. The transport adds
-``Transfer-Encoding: chunked``, omits ``Content-Length`` and encodes the chunks.
+bytes, without additional message metadata or chunk framing. HTTP/1 adds
+``Transfer-Encoding: chunked`` and encodes the chunks. HTTP/2 and HTTP/3 send raw
+body bytes in DATA frames. These protocols omit ``Content-Length``.
 
 After writing all body bytes to the TX FIFO, signal EOF with
 ``vnet_shutdown_session()``:
@@ -51,16 +52,29 @@ After writing all body bytes to the TX FIFO, signal EOF with
   rv = vnet_shutdown_session (&args);
   ASSERT (rv == 0);
 
-The transport drains pending TX data and sends the terminating chunk. The
+The transport drains pending TX data and sends the terminating chunk (HTTP/1),
+``END_STREAM`` (HTTP/2), or QUIC stream FIN (HTTP/3).
+HTTP/2 sets ``END_STREAM`` on the final DATA payload,
+or sends an empty DATA frame if EOF arrives after the FIFO has drained. Empty
+final DATA does not require stream or connection flow-control credit. The
 application can signal EOF while data remains in the TX FIFO; an empty body also
 requires EOF. Client request shutdown keeps RX open for the response. For server
 responses, shutdown finishes the response and closes the session.
 ``vnet_disconnect_session()`` also finishes pending streamed data, but fully closes
 the session, including the response direction on a client.
 
-Streamed HTTP/1 messages use one request and response per connection. The
+Streamed HTTP/1 messages use one request and response per connection. Streamed
+HTTP/2 and HTTP/3 messages use one request and response per application session;
+finishing a response leaves the shared connection available for other streams. The
 ``HTTP_MSG_DATA_INLINE`` and ``HTTP_MSG_DATA_PTR`` examples below describe bodies
 with a known length.
+
+``HTTP_MSG_DATA_STREAMING`` selects an unknown body length independently of the
+number of bytes currently queued. Its ``body_len`` stays zero; the transport uses
+its own body buffer accounting. For known-length messages, zero ``body_len``
+means an empty body and no shutdown is needed to indicate body completion.
+TX shutdown records that no more body bytes will be enqueued. It does not mean
+that pending bytes or the protocol's end-of-message framing have been sent.
 
 Receiving streamed bodies
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -75,6 +89,27 @@ drain any remaining data from its RX FIFO before finishing the message. Malforme
 or incomplete chunked bodies reset the session instead. A streamed HTTP/1 exchange
 uses one request and response per connection; the server can still send its
 response after receiving request EOF.
+
+HTTP/2 requests and responses with a body of unknown length use the same
+``HTTP_MSG_DATA_STREAMING`` layout and completion callback. DATA payloads are
+delivered as raw bytes; ``END_STREAM`` completes the message after its payload
+has been queued in the application RX FIFO. Initial HEADERS that already end an
+empty message retain the known-empty ``HTTP_MSG_DATA_INLINE`` layout. A present
+``Content-Length: 0`` also denotes a known-empty body rather than streaming.
+An interrupted connection or reset before ``END_STREAM`` resets the application
+session. Receiving request EOF leaves the response direction available. A streamed
+exchange uses one application session. HTTP/2 stream EOF itself does not close
+the shared connection; explicit parent-session
+disconnect retains its connection-close semantics.
+
+HTTP/3 uses the same streaming receive layout when ``Content-Length`` is absent
+and the body is not already known to be empty. QUIC stream FIN completes the body
+after all HTTP/3 frames have been validated and their DATA payloads have been
+queued in the application RX FIFO. Incomplete framing, stream resets and a
+connection close before message completion reset the application session.
+Receiving request FIN leaves the response direction available. A streamed
+response uses one application session and does not close the shared connection
+until the application explicitly disconnects its parent session.
 
 Server application
 ^^^^^^^^^^^^^^^^^^

@@ -211,7 +211,7 @@ static int
 hc_shutdown_tx (session_t *s, hc_session_t *hs)
 {
   hc_main_t *hcm = &hc_main;
-  if (hcm->http_version == HTTP_VERSION_1 && hc_msg_data_type (hcm) == HTTP_MSG_DATA_STREAMING &&
+  if (hc_msg_data_type (hcm) == HTTP_MSG_DATA_STREAMING &&
       !(hs->session_flags & HC_S_FLAG_TX_EOF) && hs->data_offset == vec_len (hcm->data))
     {
       vnet_shutdown_args_t a = { .handle = s->handle, .app_index = hcm->app_index };
@@ -503,7 +503,8 @@ hc_session_connected_callback (u32 app_index, u32 ho_index, session_t *s,
 				vec_len (header->value));
 
       wrk->msg.method_type = hcm->req_method;
-      if (hc_req_method_has_body (hcm->req_method))
+      if (hc_req_method_has_body (hcm->req_method) &&
+	  hc_msg_data_type (hcm) != HTTP_MSG_DATA_STREAMING)
 	wrk->msg.data.body_len = vec_len (hcm->data);
       else
 	wrk->msg.data.body_len = 0;
@@ -1515,12 +1516,8 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   if (hcm->req_method == HTTP_REQ_PUT)
     {
-      if (hcm->http_version != HTTP_VERSION_NA && hcm->http_version != HTTP_VERSION_1)
-	{
-	  err = clib_error_return (0, "put is only supported with http1");
-	  goto done;
-	}
-      hcm->http_version = HTTP_VERSION_1;
+      if (hcm->http_version == HTTP_VERSION_NA)
+	hcm->http_version = HTTP_VERSION_1;
 
       if (hcm->use_ptr)
 	{

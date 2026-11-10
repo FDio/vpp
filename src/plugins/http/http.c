@@ -548,12 +548,20 @@ http_get_rx_buf_len (http_ctx_t *hc, u32 len)
   return hm->rx_bufs[hc->c_thread_index];
 }
 
-void
-http_req_tx_buffer_init (http_ctx_t *req, http_msg_t *msg)
+__clib_export void
+http_req_tx_buffer_init (http_ctx_t *req, const http_msg_t *msg)
 {
   session_t *as = session_get (req->c_s_index, req->c_thread_index);
-  http_buffer_init (&req->tx_buf, msg_to_buf_type[msg->data.type], as->tx_fifo,
-		    msg->data.body_len);
+  u64 len = msg->data.body_len;
+
+  if (msg->data.type == HTTP_MSG_DATA_STREAMING)
+    {
+      req->req_flags |= HTTP_REQ_F_TX_STREAMING;
+      len = CLIB_U64_MAX;
+    }
+  else
+    req->req_flags &= ~HTTP_REQ_F_TX_STREAMING;
+  http_buffer_init (&req->tx_buf, msg_to_buf_type[msg->data.type], as->tx_fifo, len);
 }
 
 static void

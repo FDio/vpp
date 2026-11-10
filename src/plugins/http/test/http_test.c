@@ -2932,6 +2932,137 @@ done:
 }
 
 static int
+http_test_streaming_lifecycle (vlib_main_t *vm)
+{
+  session_enable_disable_args_t session_args = {
+    .is_en = 1,
+    .rt_engine_type = RT_BACKEND_ENGINE_RULE_TABLE,
+  };
+  fifo_segment_main_t fsm = {};
+  fifo_segment_create_args_t args = {
+    .segment_type = SSVM_SEGMENT_PRIVATE,
+    .segment_size = 1 << 20,
+    .segment_name = "http-streaming-lifecycle",
+  };
+  void (*init_tx_buffer) (http_ctx_t *, const http_msg_t *);
+  clib_error_t *error;
+  fifo_segment_t *fs = 0;
+  svm_fifo_t *fifo = 0;
+  session_t *as = 0;
+  http_ctx_t req = {};
+  http_msg_t msg = {}, original;
+  u8 body[] = "body";
+  uword body_ptr = pointer_to_uword (body);
+  http_req_flags_t flags;
+  int result = 1;
+
+#define STREAM_TEST(_cond, _comment)                                                               \
+  do                                                                                               \
+    {                                                                                              \
+      if (!HTTP_TEST_I ((_cond), _comment))                                                        \
+	goto done;                                                                                 \
+    }                                                                                              \
+  while (0)
+
+  init_tx_buffer = vlib_get_plugin_symbol ("http_plugin.so", "http_req_tx_buffer_init");
+  STREAM_TEST (init_tx_buffer != 0, "TX buffer initializer resolved");
+  error = vnet_session_enable_disable (vm, &session_args);
+  if (error)
+    {
+      clib_error_report (error);
+      return 1;
+    }
+  fifo_segment_main_init (&fsm, 0, 5);
+  STREAM_TEST (!fifo_segment_create (&fsm, &args), "streaming test segment allocated");
+  fs = fifo_segment_get_segment (&fsm, args.new_segment_indices[0]);
+  fifo = fifo_segment_alloc_fifo_w_slice (fs, 0, 4096, FIFO_SEGMENT_TX_FIFO);
+  STREAM_TEST (fifo != 0, "streaming test FIFO allocated");
+  as = session_alloc (vm->thread_index);
+  as->tx_fifo = fifo;
+  req.c_s_index = as->session_index;
+  req.c_thread_index = as->thread_index;
+
+  msg.data.type = HTTP_MSG_DATA_STREAMING;
+  original = msg;
+  init_tx_buffer (&req, &msg);
+  STREAM_TEST (!memcmp (&msg, &original, sizeof (msg)), "streaming preserves app metadata");
+  STREAM_TEST (req.tx_buf.type == HTTP_BUFFER_FIFO &&
+		 http_buffer_bytes_left (&req.tx_buf) == CLIB_U64_MAX,
+	       "streaming uses a FIFO buffer with an internal unlimited length");
+  STREAM_TEST (!http_req_tx_is_last_data (&req, 0), "empty FIFO before EOF waits for app data");
+  STREAM_TEST (svm_fifo_enqueue (fifo, 4, body) == 4, "body bytes enqueued");
+  STREAM_TEST (!http_req_tx_is_last_data (&req, 4),
+	       "draining queued bytes before EOF is not final");
+  http_buffer_drain (&req.tx_buf, 4);
+  STREAM_TEST (!http_req_tx_is_last_data (&req, 0), "drained FIFO still waits for EOF");
+  STREAM_TEST (svm_fifo_enqueue (fifo, 4, body) == 4, "later body bytes enqueued");
+  http_req_app_close (&req, 1 /* is_shutdown */);
+  STREAM_TEST ((req.req_flags & HTTP_REQ_F_TX_EOF) && !(req.req_flags & HTTP_REQ_F_APP_CLOSED),
+	       "TX shutdown records EOF without full application close");
+  STREAM_TEST (!http_req_tx_is_last_data (&req, 2) && http_req_tx_is_last_data (&req, 4),
+	       "EOF waits for all queued bytes before sending the terminator");
+  http_buffer_drain (&req.tx_buf, 4);
+  STREAM_TEST (http_req_tx_is_last_data (&req, 0),
+	       "EOF after draining permits an empty terminator");
+  http_buffer_free (&req.tx_buf);
+
+  /* EOF may be queued before the transport processes even an empty message. */
+  init_tx_buffer (&req, &msg);
+  STREAM_TEST (http_req_tx_is_last_data (&req, 0), "buffer initialization preserves pending EOF");
+  http_buffer_free (&req.tx_buf);
+
+  req.req_flags |= HTTP_REQ_F_RX_STREAMING | HTTP_REQ_F_PEER_CLOSED;
+  STREAM_TEST (!(req.req_flags & HTTP_REQ_F_RX_EOF), "peer close does not imply delivered RX EOF");
+  STREAM_TEST (http_req_rx_mark_eof (&req), "validated and delivered RX completes once");
+  STREAM_TEST (!http_req_rx_mark_eof (&req), "repeated RX completion does not notify again");
+  STREAM_TEST (!(req.req_flags & HTTP_REQ_F_APP_CLOSED), "RX completion leaves the response open");
+  http_req_app_close (&req, 0 /* is_shutdown */);
+  STREAM_TEST (req.req_flags & HTTP_REQ_F_APP_CLOSED, "full close remains possible after shutdown");
+  flags = req.req_flags;
+  http_req_app_close (&req, 1 /* is_shutdown */);
+  STREAM_TEST (req.req_flags == flags, "late shutdown does not undo full close");
+
+  req.req_flags = 0;
+  msg.data.type = HTTP_MSG_DATA_INLINE;
+  msg.data.body_len = 4;
+  init_tx_buffer (&req, &msg);
+  STREAM_TEST (!http_req_tx_is_last_data (&req, 0) && !http_req_tx_is_last_data (&req, 2) &&
+		 http_req_tx_is_last_data (&req, 4),
+	       "known-length inline body completes by length without shutdown");
+  http_buffer_free (&req.tx_buf);
+
+  msg.data.body_len = 0;
+  init_tx_buffer (&req, &msg);
+  STREAM_TEST (http_req_tx_is_last_data (&req, 0), "known empty body completes without shutdown");
+  http_buffer_free (&req.tx_buf);
+
+  msg.data.type = HTTP_MSG_DATA_PTR;
+  msg.data.body_len = 4;
+  STREAM_TEST (svm_fifo_enqueue (fifo, sizeof (body_ptr), (u8 *) &body_ptr) == sizeof (body_ptr),
+	       "body pointer enqueued");
+  init_tx_buffer (&req, &msg);
+  STREAM_TEST (req.tx_buf.type == HTTP_BUFFER_PTR && http_req_tx_is_last_data (&req, 4),
+	       "known-length pointer body completes by payload length");
+  http_buffer_drain (&req.tx_buf, 4);
+  STREAM_TEST (svm_fifo_max_dequeue_cons (fifo) == 0,
+	       "completed pointer body releases its pointer");
+  result = 0;
+
+done:
+  http_buffer_free (&req.tx_buf);
+  if (as)
+    session_free (as);
+  if (fifo)
+    fifo_segment_free_fifo (fs, fifo);
+  if (fs)
+    fifo_segment_delete (&fsm, fs);
+  vec_free (args.new_segment_indices);
+  pool_free (fsm.segments);
+  return result;
+#undef STREAM_TEST
+}
+
+static int
 http_test_encode_u64_decimal (vlib_main_t *vm)
 {
   static const struct
@@ -3689,11 +3820,15 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_encode_u64_decimal (vm);
       else if (unformat (input, "rx-publication"))
 	res = http_test_rx_publication (vm);
+      else if (unformat (input, "streaming-lifecycle"))
+	res = http_test_streaming_lifecycle (vm);
       else if (unformat (input, "decode-varint"))
 	res = http_test_decode_varint (vm);
       else if (unformat (input, "all"))
 	{
 	  if ((res = http_test_rx_publication (vm)))
+	    goto done;
+	  if ((res = http_test_streaming_lifecycle (vm)))
 	    goto done;
 	  if ((res = http_test_decode_varint (vm)))
 	    goto done;
