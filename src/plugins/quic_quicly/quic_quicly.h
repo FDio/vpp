@@ -97,15 +97,9 @@ quic_quicly_get_quic_ctx (u32 ctx_index, u32 thread_index)
 static_always_inline int
 quic_quicly_handshake_is_complete (quicly_conn_t *conn)
 {
-  quicly_stats_t stats;
-
-  if (!conn)
-    return 0;
-
-  if (quicly_get_stats (conn, &stats))
-    return 0;
-
-  return stats.handshake_confirmed_msec != UINT64_MAX;
+  /* Peer streams can arrive before HANDSHAKE_DONE confirms a client's handshake.
+   * Publish the parent session once TLS completes, before accepting its streams. */
+  return conn && ptls_handshake_is_complete (quicly_get_tls (conn));
 }
 
 #endif /* __included_quic_quicly_h__ */

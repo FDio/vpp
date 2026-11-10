@@ -1872,7 +1872,6 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
 
   if (req->req_flags & HTTP_REQ_F_TX_STREAMING)
     {
-      msg.data.body_len = CLIB_U64_MAX;
       http_req_tx_buffer_init (req, &msg);
       next_state = HTTP_REQ_STATE_APP_IO_MORE_STREAMING_DATA;
       sm_result = HTTP_SM_CONTINUE;
@@ -1978,7 +1977,6 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
   if (chunked)
     {
       req->req_flags |= HTTP_REQ_F_TX_STREAMING;
-      msg.data.body_len = CLIB_U64_MAX;
       segs[n_segs++] = (svm_fifo_seg_t) { (u8 *) chunked_header.base, chunked_header.len };
       request_len += segs[n_segs - 1].len;
       segs[n_segs++] = (svm_fifo_seg_t) { (u8 *) http_token_lit ("Connection: close\r\n") };
@@ -2472,7 +2470,7 @@ http1_app_close_callback (http_ctx_t *hc, u32 req_index, clib_thread_index_t thr
       HTTP_DBG (1, "req already deleted");
       return;
     }
-  req->req_flags |= HTTP_REQ_F_TX_EOF;
+  http_req_app_close (req, is_shutdown);
 
   if (hc->state != HTTP_CONN_STATE_CLOSED)
     {

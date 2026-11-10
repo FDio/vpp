@@ -1588,6 +1588,7 @@ http_parse_from_location_header (const http_token_t *location_header,
     http_location->uri_type = HTTP_URI_TYPE_RELATIVE;
   else
     {
+      u32 authority_offset;
       http_location->uri_type = HTTP_URI_TYPE_ABSOLUTE;
       if (http_token_contains (location_header->base, location_header->len,
 			       http_token_lit ("http://")))
@@ -1608,15 +1609,15 @@ http_parse_from_location_header (const http_token_t *location_header,
 	  return -1;
 	}
 
-      if ((rv = http_parse_authority (
-	     (u8 *) location_header->base + http_location->path_offset,
-	     location_header->len - http_location->path_offset,
-	     &http_location->http_authority)))
-	return rv;
-
+      authority_offset = http_location->path_offset;
       while (http_location->path_offset < location_header->len &&
 	     location_header->base[http_location->path_offset] != '/')
 	http_location->path_offset++;
+
+      if ((rv = http_parse_authority ((u8 *) location_header->base + authority_offset,
+				      http_location->path_offset - authority_offset,
+				      &http_location->http_authority)))
+	return rv;
 
       if (http_location->path_offset == location_header->len)
 	http_location->path_offset = 0;

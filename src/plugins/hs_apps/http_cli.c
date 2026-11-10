@@ -199,7 +199,7 @@ hcs_finish_tx (session_t *s, hcs_session_t *hs)
       return;
     }
   hs->tx_eof = 1;
-  if (hs->close_after_tx || !hs->stream)
+  if (hs->close_after_tx || !hs->stream || hs->rx_streaming)
     {
       vnet_disconnect_args_t a = { .handle = s->handle, .app_index = hcm->app_index };
       vnet_disconnect_session (&a);

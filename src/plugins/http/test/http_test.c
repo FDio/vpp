@@ -968,6 +968,120 @@ http_test_literal_field (u8 *dst, const char *name, const char *value, u8 qpack)
 }
 
 static int
+http_test_trailers (vlib_main_t *vm)
+{
+  http2_error_t (*parse_h2) (u8 *, u32, u8 *, u32, hpack_dynamic_table_t *);
+  http3_error_t (*parse_h3) (u8 *, u32, u8 *, u32, qpack_decoder_ctx_t *);
+  void (*table_init) (hpack_dynamic_table_t *, u32);
+  void (*table_free) (hpack_dynamic_table_t *);
+  parse_h2 = vlib_get_plugin_symbol ("http_plugin.so", "hpack_parse_trailers");
+  parse_h3 = vlib_get_plugin_symbol ("http_plugin.so", "qpack_parse_trailers");
+  table_init = vlib_get_plugin_symbol ("http_plugin.so", "hpack_dynamic_table_init");
+  table_free = vlib_get_plugin_symbol ("http_plugin.so", "hpack_dynamic_table_free");
+  HTTP_TEST (parse_h2 && parse_h3 && table_init && table_free, "trailer parser symbols");
+  const struct
+  {
+    const char *name, *value;
+    u8 valid;
+  } cases[] = {
+    { "x-checksum", "abc123", 1 },
+    { "server-timing", "total;dur=12", 1 },
+    { "x-empty", "", 1 },
+    { ":status", "200", 0 },
+    { ":method", "GET", 0 },
+    { "X-Upper", "value", 0 },
+    { "bad name", "value", 0 },
+    { "", "value", 0 },
+    { "x-test", "bad\r\nvalue", 0 },
+    { "x-test", " leading", 0 },
+    { "content-length", "0", 0 },
+    { "transfer-encoding", "chunked", 0 },
+    { "connection", "close", 0 },
+    { "upgrade", "h2c", 0 },
+  };
+  u8 buf[256], *input = 0;
+  for (u32 qpack = 0; qpack < 2; qpack++)
+    for (u32 i = 0; i < ARRAY_LEN (cases); i++)
+      {
+	hpack_dynamic_table_t table;
+	qpack_decoder_ctx_t decoder = {};
+	table_init (&table, 4096);
+	vec_reset_length (input);
+	if (qpack)
+	  {
+	    vec_add1 (input, 0);
+	    vec_add1 (input, 0);
+	  }
+	input = http_test_literal_field (input, cases[i].name, cases[i].value, qpack);
+	u32 rv = qpack ? parse_h3 (input, vec_len (input), buf, sizeof (buf), &decoder) :
+			 parse_h2 (input, vec_len (input), buf, sizeof (buf), &table);
+	u32 expected = cases[i].valid ?
+			 (qpack ? HTTP3_ERROR_NO_ERROR : HTTP2_ERROR_NO_ERROR) :
+			 (qpack ? HTTP3_ERROR_MESSAGE_ERROR : HTTP2_ERROR_PROTOCOL_ERROR);
+	table_free (&table);
+	HTTP_TEST (rv == expected, "%s trailer %s: %u expected %u", qpack ? "QPACK" : "HPACK",
+		   cases[i].name, rv, expected);
+	// Decoded size, rather than compressed size, bounds field sections.
+	if (cases[i].valid)
+	  {
+	    table_init (&table, 4096);
+	    rv = qpack ? parse_h3 (input, vec_len (input), buf, 1, &decoder) :
+			 parse_h2 (input, vec_len (input), buf, 1, &table);
+	    table_free (&table);
+	    HTTP_TEST (rv == (qpack ? HTTP3_ERROR_INTERNAL_ERROR : HTTP2_ERROR_INTERNAL_ERROR),
+		       "%s decoded trailer size limit", qpack ? "QPACK" : "HPACK");
+	  }
+      }
+  vec_free (input);
+
+  hpack_dynamic_table_t table;
+  qpack_decoder_ctx_t decoder = {};
+  table_init (&table, 4096);
+  HTTP_TEST (parse_h2 (buf, 0, buf, sizeof (buf), &table) == HTTP2_ERROR_NO_ERROR,
+	     "empty HPACK trailers");
+  u8 empty_qpack[] = { 0, 0 };
+  HTTP_TEST (parse_h3 (empty_qpack, sizeof (empty_qpack), buf, sizeof (buf), &decoder) ==
+	       HTTP3_ERROR_NO_ERROR,
+	     "empty QPACK trailers");
+  // Insert a field after an invalid pseudo-header, then reference it in another block.
+  u8 indexed[] = { 0x88, 0x40, 6, 'x', '-', 's', 'y', 'n', 'c', 2, 'o', 'k' };
+  HTTP_TEST (parse_h2 (indexed, sizeof (indexed), buf, sizeof (buf), &table) ==
+	       HTTP2_ERROR_PROTOCOL_ERROR,
+	     "invalid trailer still decodes following fields");
+  u8 reference[] = { 0xbe };
+  HTTP_TEST (parse_h2 (reference, sizeof (reference), buf, sizeof (buf), &table) ==
+		 HTTP2_ERROR_NO_ERROR &&
+	       !memcmp (buf, "x-syncok", 8),
+	     "trailer HPACK dynamic table remains synchronized");
+  u8 size_only[] = { 0x20 };
+  HTTP_TEST (parse_h2 (size_only, sizeof (size_only), buf, sizeof (buf), &table) ==
+		 HTTP2_ERROR_NO_ERROR &&
+	       table.used == 0 && table.size == 0,
+	     "empty trailer with table size update evicts entries");
+  HTTP_TEST (parse_h2 (reference, sizeof (reference), buf, sizeof (buf), &table) ==
+	       HTTP2_ERROR_COMPRESSION_ERROR,
+	     "evicted trailer index is invalid");
+  u8 mid_update[] = { 0x90, 0x20 };
+  HTTP_TEST (parse_h2 (mid_update, sizeof (mid_update), buf, sizeof (buf), &table) ==
+	       HTTP2_ERROR_COMPRESSION_ERROR,
+	     "table size update after field is invalid");
+  u8 bad_hpack[] = { 0x88, 0x80 };
+  HTTP_TEST (parse_h2 (bad_hpack, sizeof (bad_hpack), buf, sizeof (buf), &table) ==
+	       HTTP2_ERROR_COMPRESSION_ERROR,
+	     "HPACK compression error after semantic error");
+  table_free (&table);
+  const u8 bad_qpack[][4] = { { 1, 0, 0, 0 }, { 0, 0x80, 0, 0 }, { 0, 0, 0xd9, 0xff } };
+  for (u32 i = 0; i < ARRAY_LEN (bad_qpack); i++)
+    HTTP_TEST (parse_h3 ((u8 *) bad_qpack[i], sizeof (bad_qpack[i]), buf, sizeof (buf), &decoder) ==
+		 HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED,
+	       "invalid QPACK trailer %u", i);
+  HTTP_TEST (parse_h3 (empty_qpack, 1, buf, sizeof (buf), &decoder) ==
+	       HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED,
+	     "truncated QPACK prefix");
+  return 0;
+}
+
+static int
 http_test_validation (vlib_main_t *vm)
 {
   const char token_chars[] =
@@ -2932,6 +3046,130 @@ done:
 }
 
 static int
+http_test_streaming_lifecycle (vlib_main_t *vm)
+{
+  session_enable_disable_args_t session_args = {
+    .is_en = 1,
+    .rt_engine_type = RT_BACKEND_ENGINE_RULE_TABLE,
+  };
+  fifo_segment_main_t fsm = {};
+  fifo_segment_create_args_t args = {
+    .segment_type = SSVM_SEGMENT_PRIVATE,
+    .segment_size = 1 << 20,
+    .segment_name = "http-streaming-lifecycle",
+  };
+  void (*init_tx_buffer) (http_ctx_t *, const http_msg_t *);
+  clib_error_t *error;
+  fifo_segment_t *fs = 0;
+  svm_fifo_t *fifo = 0;
+  session_t *as = 0;
+  http_ctx_t req = {};
+  http_msg_t msg = {}, original;
+  u8 body[] = "body";
+  uword body_ptr = pointer_to_uword (body);
+  http_req_flags_t flags;
+  int result = 1;
+
+#define STREAM_TEST(_cond, _comment)                                                               \
+  do                                                                                               \
+    {                                                                                              \
+      if (!HTTP_TEST_I ((_cond), _comment))                                                        \
+	goto done;                                                                                 \
+    }                                                                                              \
+  while (0)
+
+  init_tx_buffer = vlib_get_plugin_symbol ("http_plugin.so", "http_req_tx_buffer_init");
+  STREAM_TEST (init_tx_buffer != 0, "TX buffer initializer resolved");
+  error = vnet_session_enable_disable (vm, &session_args);
+  if (error)
+    {
+      clib_error_report (error);
+      return 1;
+    }
+  fifo_segment_main_init (&fsm, 0, 5);
+  STREAM_TEST (!fifo_segment_create (&fsm, &args), "streaming test segment allocated");
+  fs = fifo_segment_get_segment (&fsm, args.new_segment_indices[0]);
+  fifo = fifo_segment_alloc_fifo_w_slice (fs, 0, 4096, FIFO_SEGMENT_TX_FIFO);
+  STREAM_TEST (fifo != 0, "streaming test FIFO allocated");
+  as = session_alloc (vm->thread_index);
+  as->tx_fifo = fifo;
+  req.c_s_index = as->session_index;
+  req.c_thread_index = as->thread_index;
+
+  msg.data.type = HTTP_MSG_DATA_STREAMING;
+  original = msg;
+  init_tx_buffer (&req, &msg);
+  STREAM_TEST (!memcmp (&msg, &original, sizeof (msg)), "streaming preserves app metadata");
+  STREAM_TEST (req.tx_buf.type == HTTP_BUFFER_FIFO &&
+		 http_buffer_bytes_left (&req.tx_buf) == CLIB_U64_MAX,
+	       "streaming uses a FIFO buffer with an internal unlimited length");
+  STREAM_TEST (svm_fifo_enqueue (fifo, 4, body) == 4, "body bytes enqueued");
+  http_req_app_close (&req, 1 /* is_shutdown */);
+  STREAM_TEST ((req.req_flags & HTTP_REQ_F_TX_EOF) && !(req.req_flags & HTTP_REQ_F_APP_CLOSED),
+	       "TX shutdown records EOF without full application close");
+  STREAM_TEST (svm_fifo_max_dequeue_cons (fifo) == 4 && req.tx_buf.vft,
+	       "TX shutdown keeps queued body bytes available for draining");
+  http_buffer_drain (&req.tx_buf, 4);
+  STREAM_TEST (svm_fifo_max_dequeue_cons (fifo) == 0, "streaming buffer drains after EOF");
+  http_buffer_free (&req.tx_buf);
+
+  /* EOF may be queued before the transport processes even an empty message. */
+  init_tx_buffer (&req, &msg);
+  STREAM_TEST (req.req_flags & HTTP_REQ_F_TX_EOF, "buffer initialization preserves pending EOF");
+  http_buffer_free (&req.tx_buf);
+
+  req.req_flags |= HTTP_REQ_F_RX_STREAMING | HTTP_REQ_F_PEER_CLOSED;
+  STREAM_TEST (!(req.req_flags & HTTP_REQ_F_RX_EOF), "peer close does not imply delivered RX EOF");
+  STREAM_TEST (http_req_rx_mark_eof (&req), "validated and delivered RX completes once");
+  STREAM_TEST (!http_req_rx_mark_eof (&req), "repeated RX completion does not notify again");
+  STREAM_TEST (!(req.req_flags & HTTP_REQ_F_APP_CLOSED), "RX completion leaves the response open");
+  http_req_app_close (&req, 0 /* is_shutdown */);
+  STREAM_TEST (req.req_flags & HTTP_REQ_F_APP_CLOSED, "full close remains possible after shutdown");
+  flags = req.req_flags;
+  http_req_app_close (&req, 1 /* is_shutdown */);
+  STREAM_TEST (req.req_flags == flags, "late shutdown does not undo full close");
+
+  req.req_flags = 0;
+  msg.data.type = HTTP_MSG_DATA_INLINE;
+  msg.data.body_len = 4;
+  init_tx_buffer (&req, &msg);
+  STREAM_TEST (req.tx_buf.type == HTTP_BUFFER_FIFO && http_buffer_bytes_left (&req.tx_buf) == 4 &&
+		 !(req.req_flags & HTTP_REQ_F_TX_STREAMING),
+	       "known-length inline buffer uses its declared length");
+  http_buffer_free (&req.tx_buf);
+
+  msg.data.body_len = 0;
+  init_tx_buffer (&req, &msg);
+  STREAM_TEST (http_buffer_bytes_left (&req.tx_buf) == 0, "known empty buffer has zero length");
+  http_buffer_free (&req.tx_buf);
+
+  msg.data.type = HTTP_MSG_DATA_PTR;
+  msg.data.body_len = 4;
+  STREAM_TEST (svm_fifo_enqueue (fifo, sizeof (body_ptr), (u8 *) &body_ptr) == sizeof (body_ptr),
+	       "body pointer enqueued");
+  init_tx_buffer (&req, &msg);
+  STREAM_TEST (req.tx_buf.type == HTTP_BUFFER_PTR && http_buffer_bytes_left (&req.tx_buf) == 4,
+	       "known-length pointer buffer uses its declared length");
+  http_buffer_drain (&req.tx_buf, 4);
+  STREAM_TEST (svm_fifo_max_dequeue_cons (fifo) == 0,
+	       "completed pointer body releases its pointer");
+  result = 0;
+
+done:
+  http_buffer_free (&req.tx_buf);
+  if (as)
+    session_free (as);
+  if (fifo)
+    fifo_segment_free_fifo (fs, fifo);
+  if (fs)
+    fifo_segment_delete (&fsm, fs);
+  vec_free (args.new_segment_indices);
+  pool_free (fsm.segments);
+  return result;
+#undef STREAM_TEST
+}
+
+static int
 http_test_encode_u64_decimal (vlib_main_t *vm)
 {
   static const struct
@@ -3415,6 +3653,833 @@ http_test_parse_content_length (vlib_main_t *vm)
   return 0;
 }
 
+typedef struct
+{
+  http_worker_t worker;
+  u32 order[4];
+  u32 count;
+} http_test_h2_data_scheduler_t;
+
+static http_test_h2_data_scheduler_t *http_test_h2_data_scheduler;
+
+static int
+http_test_h2_data_dispatch (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions)
+{
+  http_test_h2_data_scheduler_t *test = http_test_h2_data_scheduler;
+
+  test->order[test->count++] = req->stream_id;
+  ++*n_emissions;
+  ++req->payload_len;
+  if (hc->peer_window)
+    --hc->peer_window;
+  if (--req->body_len)
+    http2_req_schedule_data_tx_w_worker (&test->worker, hc, req);
+  return 0;
+}
+
+static int
+http_test_h2_data_scheduling (vlib_main_t *vm)
+{
+  http_test_h2_data_scheduler_t test = {};
+  http_worker_t *wrk = &test.worker;
+  session_enable_disable_args_t args = { .is_en = 1 };
+  svm_fifo_shared_t shared = { .size = 2 * HTTP_FIFO_THRESH };
+  svm_fifo_t fifo = { .shr = &shared };
+  http_buffer_vft_t vft = {};
+  session_t *ts = NULL;
+  http_ctx_t *hc, *req, *first, *second;
+  u32 hc_index, head_index, indices[2];
+  clib_error_t *error;
+  u8 emissions, retry;
+  int result = 1;
+
+#define SCHED_TEST(_cond, _comment)                                                                \
+  do                                                                                               \
+    {                                                                                              \
+      if (!HTTP_TEST_I ((_cond), _comment))                                                        \
+	goto done;                                                                                 \
+    }                                                                                              \
+  while (0)
+
+  error = vnet_session_enable_disable (vm, &args);
+  if (error)
+    {
+      clib_error_report (error);
+      return 1;
+    }
+  ts = session_alloc (vm->thread_index);
+  ts->tx_fifo = &fifo;
+  pool_get_zero (wrk->ctx_pool, hc);
+  hc_index = hc - wrk->ctx_pool;
+  head_index = clib_llist_make_head (wrk->ctx_pool, stream_sched_list);
+  for (u32 i = 0; i < ARRAY_LEN (indices); i++)
+    {
+      pool_get_zero (wrk->ctx_pool, req);
+      indices[i] = req - wrk->ctx_pool;
+      req->stream_id = 1 + 2 * i;
+      req->c_s_index = ts->session_index;
+      req->c_thread_index = ts->thread_index;
+      req->stream_sched_list.next = CLIB_LLIST_INVALID_INDEX;
+      req->stream_sched_list.prev = CLIB_LLIST_INVALID_INDEX;
+      req->dispatch_data_cb = http_test_h2_data_dispatch;
+    }
+  hc = pool_elt_at_index (wrk->ctx_pool, hc_index);
+  hc->old_tx_streams = head_index;
+  hc->hc_tc_session_handle = session_handle (ts);
+  hc->flags = HTTP_CONN_F_HAS_REQUEST;
+  first = pool_elt_at_index (wrk->ctx_pool, indices[0]);
+  second = pool_elt_at_index (wrk->ctx_pool, indices[1]);
+  http_test_h2_data_scheduler = &test;
+  SCHED_TEST (!http_io_ts_check_write_thresh (hc), "transport FIFO has room for DATA");
+
+  hc->peer_window = 8;
+  first->body_len = 8;
+  http2_req_schedule_data_tx_w_worker (wrk, hc, first);
+  emissions = 0;
+  retry = http2_sched_dispatch_data_queue (wrk, hc, &emissions, 4);
+  vlib_cli_output (vm, "single stream: %u emissions, %u dispatches", emissions, first->payload_len);
+  SCHED_TEST (emissions == 4 && first->payload_len == 4 && first->body_len == 4,
+	      "single active stream uses the emission budget in one scheduler pass");
+  SCHED_TEST (retry, "unfinished DATA requests another scheduler pass");
+  clib_llist_remove (wrk->ctx_pool, stream_sched_list, first);
+
+  test.count = 0;
+  hc->peer_window = 8;
+  first->body_len = second->body_len = 8;
+  first->payload_len = second->payload_len = 0;
+  http2_req_schedule_data_tx_w_worker (wrk, hc, first);
+  http2_req_schedule_data_tx_w_worker (wrk, hc, second);
+  emissions = 0;
+  retry = http2_sched_dispatch_data_queue (wrk, hc, &emissions, 4);
+  SCHED_TEST (retry && emissions == 4 && first->payload_len == 2 && second->payload_len == 2 &&
+		test.order[0] == 1 && test.order[1] == 3 && test.order[2] == 1 &&
+		test.order[3] == 3,
+	      "active streams share the emission budget round-robin");
+  clib_llist_remove (wrk->ctx_pool, stream_sched_list, first);
+  clib_llist_remove (wrk->ctx_pool, stream_sched_list, second);
+
+  test.count = 0;
+  hc->peer_window = 0;
+  first->body_len = second->body_len = 1;
+  first->payload_len = second->payload_len = 0;
+  second->req_flags = HTTP_REQ_F_TX_STREAMING | HTTP_REQ_F_TX_EOF;
+  second->tx_buf.vft = &vft;
+  http2_req_schedule_data_tx_w_worker (wrk, hc, first);
+  http2_req_schedule_data_tx_w_worker (wrk, hc, second);
+  emissions = 0;
+  retry = http2_sched_dispatch_data_queue (wrk, hc, &emissions, 4);
+  SCHED_TEST (!retry && emissions == 1 && !first->payload_len && second->payload_len == 1,
+	      "zero-credit scan skips blocked payload, sends EOF and then stops");
+  clib_llist_remove (wrk->ctx_pool, stream_sched_list, first);
+
+  test.count = 0;
+  first->body_len = second->body_len = 1;
+  first->req_flags = second->req_flags;
+  first->tx_buf.vft = &vft;
+  http2_req_schedule_data_tx_w_worker (wrk, hc, first);
+  http2_req_schedule_data_tx_w_worker (wrk, hc, second);
+  emissions = 0;
+  retry = http2_sched_dispatch_data_queue (wrk, hc, &emissions, 1);
+  SCHED_TEST (retry && emissions == 1 && test.count == 1,
+	      "budget exhaustion preserves queued EOF work with zero connection credit");
+  emissions = 0;
+  retry = http2_sched_dispatch_data_queue (wrk, hc, &emissions, 1);
+  SCHED_TEST (!retry && emissions == 1 && test.count == 2,
+	      "next scheduler pass finishes the remaining EOF");
+  result = 0;
+
+done:
+  http_test_h2_data_scheduler = NULL;
+  pool_free (wrk->ctx_pool);
+  if (ts)
+    session_free (ts);
+  return result;
+#undef SCHED_TEST
+}
+
+/* Exercise the real app callbacks through the registered HTTP transport. */
+static int
+http_test_h2_app_cancel_close (vlib_main_t *vm)
+{
+  session_enable_disable_args_t session_args = { .is_en = 1 };
+  fifo_segment_main_t fsm = {};
+  fifo_segment_create_args_t args = {
+    .segment_type = SSVM_SEGMENT_PRIVATE,
+    .segment_size = 1 << 20,
+    .segment_name = "http2-app-cancel-close",
+  };
+  const transport_proto_vft_t *vft;
+  http_main_t *hm;
+  http_worker_t *wrk = 0;
+  http_wrk_stats_t saved_stats = {};
+  fifo_segment_t *fs = 0;
+  svm_fifo_t *fifo = 0;
+  svm_fifo_t *rx_fifo = 0;
+  session_t *as = 0, *ts = 0;
+  application_t *http_app;
+  void (*init_tx_buffer) (http_ctx_t *, const http_msg_t *);
+  http_ctx_t *hc, *req;
+  http_ctrl_msg_t *ctrl_head, *ctrl_msg;
+  http_req_handle_t handle = { .version = HTTP_VERSION_2 };
+  http_msg_t msg = {};
+  clib_error_t *error;
+  u32 hc_index = ~0, req_index = ~0;
+  u32 ctrl_head_index = ~0;
+  u8 body[128];
+  int result = 1;
+
+#define APP_TEST(_cond, _comment)                                                                  \
+  do                                                                                               \
+    {                                                                                              \
+      if (!HTTP_TEST_I ((_cond), _comment))                                                        \
+	goto done;                                                                                 \
+    }                                                                                              \
+  while (0)
+
+  hm = vlib_get_plugin_symbol ("http_plugin.so", "http_main");
+  APP_TEST (hm != 0, "HTTP main resolved");
+  error = vnet_session_enable_disable (vm, &session_args);
+  if (error)
+    {
+      clib_error_report (error);
+      return 1;
+    }
+  vft = &tp_vfts[TRANSPORT_PROTO_HTTP];
+  fifo_segment_main_init (&fsm, 0, 5);
+  APP_TEST (!fifo_segment_create (&fsm, &args), "app callback test segment allocated");
+  fs = fifo_segment_get_segment (&fsm, args.new_segment_indices[0]);
+  fifo = fifo_segment_alloc_fifo_w_slice (fs, 0, 4096, FIFO_SEGMENT_TX_FIFO);
+  APP_TEST (fifo != 0, "app callback test FIFO allocated");
+  as = session_alloc (vm->thread_index);
+  u32 as_index = as->session_index;
+  ts = session_alloc (vm->thread_index);
+  as = session_get (as_index, vm->thread_index);
+  as->tx_fifo = fifo;
+  as->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_HTTP, 1 /* is_ip4 */);
+  /* Suppress app notifications; the fixture owns session/context cleanup. */
+  as->session_state = SESSION_STATE_TRANSPORT_DELETED;
+  as->app_wrk_index = APP_INVALID_INDEX;
+  wrk = &hm->wrk[vm->thread_index];
+  saved_stats = wrk->stats;
+  pool_get_aligned_zero (wrk->ctx_pool, hc, CLIB_CACHE_LINE_BYTES);
+  hc_index = hc - wrk->ctx_pool;
+  pool_get_aligned_zero (wrk->ctx_pool, req, CLIB_CACHE_LINE_BYTES);
+  req_index = req - wrk->ctx_pool;
+  hc = pool_elt_at_index (wrk->ctx_pool, hc_index);
+  hc->hc_hc_index = hc_index;
+  hc->c_thread_index = vm->thread_index;
+  hc->version = HTTP_VERSION_2;
+  hc->state = HTTP_CONN_STATE_ESTABLISHED;
+  hc->sched_list.next = hc->sched_list.prev = CLIB_LLIST_INVALID_INDEX;
+  handle.req_index = req_index;
+  as->connection_index = handle.as_u32;
+  req->hr_req_handle = handle.as_u32;
+  req->hr_hc_index = hc_index;
+  req->c_s_index = as->session_index;
+  req->c_thread_index = as->thread_index;
+  req->stream_sched_list.next = req->stream_sched_list.prev = CLIB_LLIST_INVALID_INDEX;
+
+  /* Raw upload bytes must be discarded both during RX and after response
+   * completion resets the request to WAIT_APP_METHOD/IDLE. */
+  clib_memset (body, 0xa5, sizeof (body));
+  req->req_flags = HTTP_REQ_F_TX_CANCELLED;
+  req->stream_state = HTTP2_STREAM_STATE_HALF_CLOSED;
+  for (u32 i = 0; i < 2; i++)
+    {
+      transport_send_params_t sp = { .max_burst_size = 1 };
+      http_req_state_t state =
+	i ? HTTP_REQ_STATE_WAIT_APP_METHOD : HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA;
+      req->req_state = state;
+      if (i)
+	req->stream_state = HTTP2_STREAM_STATE_IDLE;
+      APP_TEST (svm_fifo_enqueue (fifo, sizeof (body), body) == sizeof (body),
+		"late upload bytes enqueued");
+      vft->custom_tx (as, &sp);
+      APP_TEST (!svm_fifo_max_dequeue (fifo) && req->req_state == state &&
+		  req->stream_state ==
+		    (i ? HTTP2_STREAM_STATE_IDLE : HTTP2_STREAM_STATE_HALF_CLOSED) &&
+		  (req->req_flags & HTTP_REQ_F_TX_CANCELLED),
+		"late TX drains bytes without changing response state or parsing metadata");
+      req->req_flags |= HTTP_REQ_F_IS_PARENT;
+      hc->hc_parent_req_index = req_index;
+      hc->req_num = 2;
+      vft->half_close (handle.as_u32, as->thread_index, 0 /* is_rx */);
+      APP_TEST ((req->req_flags & HTTP_REQ_F_TX_CANCELLED) &&
+		  !(req->req_flags & HTTP_REQ_F_APP_CLOSED) && req->req_state == state &&
+		  hc->state == HTTP_CONN_STATE_ESTABLISHED && hc->req_num == 2 &&
+		  hc->hc_parent_req_index == req_index,
+		"TX shutdown after upload cancellation preserves the parent and its children");
+      req->req_flags &= ~HTTP_REQ_F_IS_PARENT;
+      hc->hc_parent_req_index = SESSION_INVALID_INDEX;
+    }
+
+  for (u32 i = 0; i < 4; i++)
+    {
+      msg.data.type = i < 3 ? i : HTTP_MSG_DATA_STREAMING;
+      req->req_flags = i == 3 ? HTTP_REQ_F_TX_CANCELLED : 0;
+      req->stream_state = HTTP2_STREAM_STATE_IDLE;
+      hc->req_num = 1;
+      APP_TEST (svm_fifo_enqueue (fifo, sizeof (msg), (u8 *) &msg) == sizeof (msg),
+		"request metadata enqueued before close");
+      vft->close (handle.as_u32, as->thread_index);
+      APP_TEST ((req->req_flags & HTTP_REQ_F_APP_CLOSED) &&
+		  (i == HTTP_MSG_DATA_STREAMING ?
+		     req->stream_state == HTTP2_STREAM_STATE_IDLE && hc->req_num == 1 :
+		     req->stream_state == HTTP2_STREAM_STATE_CLOSED && hc->req_num == 0),
+		"pre-metadata disconnect defers only streaming requests");
+      svm_fifo_dequeue_drop_all (fifo);
+    }
+
+  ctrl_head_index = clib_llist_make_head (wrk->ctrl_msg_pool, sched_list);
+  hc->pending_ctrl_frames = ctrl_head_index;
+  const http_req_state_t rx_states[] = { HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY,
+					 HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA,
+					 HTTP_REQ_STATE_TRANSPORT_IO_MORE_STREAMING_DATA };
+  for (u32 i = 0; i < ARRAY_LEN (rx_states); i++)
+    {
+      req->req_flags = HTTP_REQ_F_TX_STREAMING | HTTP_REQ_F_TX_EOF;
+      req->req_state = rx_states[i];
+      req->stream_state = HTTP2_STREAM_STATE_HALF_CLOSED;
+      req->stream_id = clib_host_to_net_u32 (3);
+      hc->req_num = 2;
+      hash_set (hc->req_by_stream_id, req->stream_id, req_index);
+      vft->half_close (handle.as_u32, as->thread_index, 0 /* is_rx */);
+      APP_TEST (!(req->req_flags & HTTP_REQ_F_APP_CLOSED) && hc->req_num == 2 &&
+		  req->stream_state == HTTP2_STREAM_STATE_HALF_CLOSED &&
+		  req->req_state == rx_states[i] &&
+		  clib_llist_is_empty (wrk->ctrl_msg_pool, sched_list,
+				       clib_llist_elt (wrk->ctrl_msg_pool, ctrl_head_index)),
+		"repeated TX shutdown after upload EOF preserves the response");
+
+      vft->close (handle.as_u32, as->thread_index);
+      APP_TEST ((req->req_flags & HTTP_REQ_F_APP_CLOSED) &&
+		  req->stream_state == HTTP2_STREAM_STATE_CLOSED && hc->req_num == 1 &&
+		  !hash_get (hc->req_by_stream_id, req->stream_id) &&
+		  hc->state == HTTP_CONN_STATE_ESTABLISHED,
+		"disconnect after upload EOF releases the child and preserves its connection");
+      ctrl_head = clib_llist_elt (wrk->ctrl_msg_pool, ctrl_head_index);
+      APP_TEST (!clib_llist_is_empty (wrk->ctrl_msg_pool, sched_list, ctrl_head),
+		"disconnect after upload EOF queues peer cancellation");
+      ctrl_msg = clib_llist_next (wrk->ctrl_msg_pool, sched_list, ctrl_head);
+      APP_TEST (ctrl_msg->msg_type == HTTP_CTRL_MSG_RST_STREAM &&
+		  ctrl_msg->stream_id == req->stream_id && ctrl_msg->error == HTTP2_ERROR_CANCEL,
+		"unfinished response is cancelled with RST_STREAM(CANCEL)");
+      clib_llist_remove (wrk->ctrl_msg_pool, sched_list, ctrl_msg);
+      clib_llist_put (wrk->ctrl_msg_pool, ctrl_msg);
+    }
+
+  /* Invoke the registered transport reset callback without a TCP timing race. */
+  http_app = application_get (hm->app_index);
+  ts->app_wrk_index = application_get_default_worker (http_app)->wrk_index;
+  ts->opaque = ((http_conn_handle_t) { .version = HTTP_VERSION_2, .conn_index = hc_index }).as_u32;
+  /* The fixture owns this mock transport session; suppress queued cleanup. */
+  ts->flags = SESSION_F_APP_CLOSED;
+  hc->hc_tc_session_handle = session_handle (ts);
+  rx_fifo = fifo_segment_alloc_fifo_w_slice (fs, 0, 4096, FIFO_SEGMENT_RX_FIFO);
+  APP_TEST (rx_fifo != 0, "TCP reset test RX FIFO allocated");
+  as->rx_fifo = rx_fifo;
+  APP_TEST (svm_fifo_enqueue (rx_fifo, sizeof (body), body) == sizeof (body),
+	    "completed response bytes await application consumption");
+  init_tx_buffer = vlib_get_plugin_symbol ("http_plugin.so", "http_req_tx_buffer_init");
+  APP_TEST (init_tx_buffer != 0, "TX buffer initialization resolved");
+  const struct
+  {
+    u8 is_server, rx_eof, is_parent;
+  } reset_cases[] = { { 0, 1, 1 }, { 0, 1, 0 }, { 0, 0, 0 }, { 1, 1, 0 } };
+  for (u32 i = 0; i < ARRAY_LEN (reset_cases); i++)
+    {
+      u8 preserve_rx = !reset_cases[i].is_server && reset_cases[i].rx_eof;
+      as->session_state = SESSION_STATE_ACCEPTING;
+      req->connection.flags &= ~TRANSPORT_CONNECTION_F_ERROR;
+      req->req_flags = (reset_cases[i].rx_eof ? HTTP_REQ_F_RX_EOF : 0) |
+		       (reset_cases[i].is_parent ? HTTP_REQ_F_IS_PARENT : 0);
+      req->stream_state = HTTP2_STREAM_STATE_HALF_CLOSED;
+      req->req_state = HTTP_REQ_STATE_WAIT_APP_METHOD;
+      hc->flags = reset_cases[i].is_server ? HTTP_CONN_F_IS_SERVER : 0;
+      hc->hc_parent_req_index = reset_cases[i].is_parent ? req_index : SESSION_INVALID_INDEX;
+      hc->state = HTTP_CONN_STATE_ESTABLISHED;
+      hash_set (hc->req_by_stream_id, req->stream_id, req_index);
+      msg.data.type = HTTP_MSG_DATA_STREAMING;
+      init_tx_buffer (req, &msg);
+      APP_TEST (svm_fifo_enqueue (fifo, sizeof (body), body) == sizeof (body),
+		"upload bytes remain pending before TCP reset");
+      http_app->cb_fns.session_reset_callback (ts);
+      if (preserve_rx)
+	{
+	  APP_TEST (as->session_state == SESSION_STATE_ACCEPTING &&
+		      !(req->connection.flags & TRANSPORT_CONNECTION_F_ERROR) &&
+		      svm_fifo_max_dequeue (rx_fifo) == sizeof (body),
+		    "TCP reset preserves completed client RX for parent and child streams");
+	  APP_TEST (!req->tx_buf.vft && !svm_fifo_max_dequeue (fifo) &&
+		      (req->req_flags & HTTP_REQ_F_TX_CANCELLED) &&
+		      req->stream_state == HTTP2_STREAM_STATE_CLOSED,
+		    "TCP reset cancels unfinished upload after completed response");
+	}
+      else
+	APP_TEST (req->connection.flags & TRANSPORT_CONNECTION_F_ERROR,
+		  "TCP reset still fails incomplete client RX and completed server requests");
+      http_buffer_free (&req->tx_buf);
+      req->tx_buf.vft = 0;
+      svm_fifo_dequeue_drop_all (fifo);
+      hash_unset (hc->req_by_stream_id, req->stream_id);
+    }
+  result = 0;
+
+done:
+  if (req_index != ~0)
+    http_buffer_free (&pool_elt_at_index (wrk->ctx_pool, req_index)->tx_buf);
+  if (ctrl_head_index != ~0)
+    {
+      ctrl_head = clib_llist_elt (wrk->ctrl_msg_pool, ctrl_head_index);
+      while (!clib_llist_is_empty (wrk->ctrl_msg_pool, sched_list, ctrl_head))
+	{
+	  ctrl_msg = clib_llist_next (wrk->ctrl_msg_pool, sched_list, ctrl_head);
+	  clib_llist_remove (wrk->ctrl_msg_pool, sched_list, ctrl_msg);
+	  clib_llist_put (wrk->ctrl_msg_pool, ctrl_msg);
+	}
+      clib_llist_put (wrk->ctrl_msg_pool, ctrl_head);
+    }
+  if (hc_index != ~0)
+    {
+      hc = pool_elt_at_index (wrk->ctx_pool, hc_index);
+      if (clib_llist_elt_is_linked (hc, sched_list))
+	clib_llist_remove (wrk->ctx_pool, sched_list, hc);
+      hash_free (hc->req_by_stream_id);
+    }
+  if (req_index != ~0)
+    pool_put_index (wrk->ctx_pool, req_index);
+  if (hc_index != ~0)
+    pool_put_index (wrk->ctx_pool, hc_index);
+  if (wrk)
+    wrk->stats = saved_stats;
+  if (as)
+    session_free (as);
+  if (ts)
+    session_free (ts);
+  if (fifo)
+    fifo_segment_free_fifo (fs, fifo);
+  if (rx_fifo)
+    fifo_segment_free_fifo (fs, rx_fifo);
+  if (fs)
+    fifo_segment_delete (&fsm, fs);
+  vec_free (args.new_segment_indices);
+  return result;
+#undef APP_TEST
+}
+
+typedef struct
+{
+  http_main_t *hm;
+  http_ctx_t *retired_contexts;
+  session_t *retired_sessions;
+  transport_connection_t connection;
+  u32 app_session_index, old_stream_index, new_session_index;
+  u32 rx_cancellations;
+} http_test_h3_lifecycle_t;
+
+static http_test_h3_lifecycle_t *http_test_h3_lifecycle;
+
+static int
+http_test_h3_connect_stream (transport_endpoint_cfg_t *tep, session_t *s, u32 *conn_index)
+{
+  http_test_h3_lifecycle_t *test = http_test_h3_lifecycle;
+  clib_thread_index_t ti = s->thread_index;
+  http_worker_t *wrk = &test->hm->wrk[ti];
+  session_worker_t *swrk = &session_main.wrk[ti];
+
+  test->new_session_index = s->session_index;
+  test->connection = (transport_connection_t) {
+    .c_index = 0,
+    .s_index = s->session_index,
+    .thread_index = ti,
+    .proto = TRANSPORT_PROTO_QUIC,
+    .is_ip4 = 1,
+  };
+  /* The stream-opening caller has not attached the transport connection yet. */
+  s->session_state = SESSION_STATE_CREATED;
+  test->retired_contexts = wrk->ctx_pool;
+  wrk->ctx_pool = pool_dup_aligned (wrk->ctx_pool, CLIB_CACHE_LINE_BYTES);
+  test->retired_sessions = swrk->sessions;
+  swrk->sessions = pool_dup_aligned (swrk->sessions, CLIB_CACHE_LINE_BYTES);
+  /* Make stale accesses fail deterministically while keeping retired storage
+   * allocated until the callback returns. */
+  test->retired_contexts[test->old_stream_index].hc_tc_session_handle = SESSION_INVALID_HANDLE;
+  test->retired_contexts[test->old_stream_index].state = HTTP_CONN_STATE_TRANSPORT_CLOSED;
+  test->retired_sessions[test->app_session_index].thread_index = (clib_thread_index_t) ~0;
+  test->retired_sessions[test->app_session_index].flags |= SESSION_F_CUSTOM_TX;
+  *conn_index = 0;
+  return 0;
+}
+
+static transport_connection_t *
+http_test_h3_get_connection (u32 index, clib_thread_index_t thread_index)
+{
+  return &http_test_h3_lifecycle->connection;
+}
+
+static int
+http_test_h3_attribute (u32 index, clib_thread_index_t thread_index, u8 is_get,
+			transport_endpt_attr_t *attr)
+{
+  if (is_get || attr->type != TRANSPORT_ENDPT_ATTR_APP_PROTO_ERR_CODE_RX ||
+      attr->app_proto_err_code_rx != HTTP3_ERROR_NO_ERROR)
+    return -1;
+  http_test_h3_lifecycle->rx_cancellations++;
+  return 0;
+}
+
+static void
+http_test_h3_app_closed (http_ctx_t *req, http_ctx_t *stream, u8 is_shutdown)
+{
+  stream->state = HTTP_CONN_STATE_CLOSED;
+}
+
+static u32
+http_test_h3_take_reuse_rpc (session_worker_t *wrk, u32 session_index, session_event_t *rpc)
+{
+  svm_msg_q_t *mq = wrk->vpp_event_queue;
+  svm_msg_q_msg_t msg, *saved = 0, *saved_msg;
+  session_event_t *evt;
+  u32 count = svm_msg_q_size (mq), found = 0;
+
+  /* Leave unrelated messages intact, including their ring storage. */
+  for (u32 i = 0; i < count; i++)
+    {
+      svm_msg_q_sub_raw (mq, &msg);
+      evt = svm_msg_q_msg_data (mq, &msg);
+      if (evt->event_type == SESSION_CTRL_EVT_RPC &&
+	  pointer_to_uword (evt->rpc_args.arg) ==
+	    session_make_handle (session_index, wrk->vm->thread_index))
+	{
+	  found++;
+	  if (rpc)
+	    *rpc = *evt;
+	  svm_msg_q_free_msg (mq, &msg);
+	}
+      else
+	vec_add1 (saved, msg);
+    }
+  vec_foreach (saved_msg, saved)
+    svm_msg_q_add (mq, saved_msg, 0 /* nowait */);
+  vec_free (saved);
+  return found;
+}
+
+static int
+http_test_h3_streaming_lifecycle_case (vlib_main_t *vm, u8 queue_data)
+{
+  http_test_h3_lifecycle_t test = { .new_session_index = ~0 };
+  session_enable_disable_args_t session_args = { .is_en = 1 };
+  fifo_segment_main_t fsm = {};
+  fifo_segment_create_args_t args = {
+    .segment_type = SSVM_SEGMENT_PRIVATE,
+    .segment_size = 1 << 20,
+    .segment_name = "http3-streaming-lifecycle",
+  };
+  transport_proto_vft_t saved_quic;
+  const transport_proto_vft_t *vft;
+  fifo_segment_t *fs = 0;
+  svm_fifo_t *app_fifo = 0, *transport_fifo = 0;
+  http_worker_t *wrk = 0;
+  session_worker_t *swrk = 0;
+  session_tx_context_t saved_tx_ctx = {};
+  session_evt_elt_t *elt, *ctrl_head, *ctrl_elt;
+  session_event_t reuse_rpc = {};
+  void (*reuse_cb) (void *);
+  clib_llist_index_t event_index = CLIB_LLIST_INVALID_INDEX;
+  http_wrk_stats_t saved_stats = {};
+  http_ctx_t *parent, *stream, *req, *spare_context;
+  session_t *as, *ts, *spare_session;
+  http_req_handle_t handle = { .version = HTTP_VERSION_3 };
+  void (*init_tx_buffer) (http_ctx_t *, const http_msg_t *);
+  http_msg_t msg = { .data.type = HTTP_MSG_DATA_STREAMING };
+  clib_error_t *error;
+  u32 parent_index = ~0, stream_index = ~0, req_index = ~0, as_index = ~0, ts_index = ~0;
+  u8 body[] = { 'b', 'o', 'd', 'y' }, frame[6], mocked = 0, tx_scheduled = 0;
+  int result = 1, n_tx_packets = 0;
+
+#define H3_TEST(_cond, _comment)                                                                   \
+  do                                                                                               \
+    {                                                                                              \
+      if (!HTTP_TEST_I ((_cond), _comment))                                                        \
+	goto done;                                                                                 \
+    }                                                                                              \
+  while (0)
+
+  test.hm = vlib_get_plugin_symbol ("http_plugin.so", "http_main");
+  H3_TEST (test.hm != 0, "HTTP main resolved for HTTP/3 lifecycle");
+  error = vnet_session_enable_disable (vm, &session_args);
+  if (error)
+    {
+      clib_error_report (error);
+      return 1;
+    }
+  init_tx_buffer = vlib_get_plugin_symbol ("http_plugin.so", "http_req_tx_buffer_init");
+  H3_TEST (init_tx_buffer != 0, "HTTP/3 TX buffer initialization resolved");
+  fifo_segment_main_init (&fsm, 0, 5);
+  H3_TEST (!fifo_segment_create (&fsm, &args), "HTTP/3 lifecycle FIFO segment allocated");
+  fs = fifo_segment_get_segment (&fsm, args.new_segment_indices[0]);
+  app_fifo = fifo_segment_alloc_fifo_w_slice (fs, 0, 4096, FIFO_SEGMENT_TX_FIFO);
+  transport_fifo = fifo_segment_alloc_fifo_w_slice (fs, 0, 4096, FIFO_SEGMENT_TX_FIFO);
+  H3_TEST (app_fifo && transport_fifo, "HTTP/3 lifecycle FIFOs allocated");
+  as = session_alloc (vm->thread_index);
+  as_index = as->session_index;
+  ts = session_alloc (vm->thread_index);
+  ts_index = ts->session_index;
+  /* Relocation is forced inside the deferred connect_stream callback. */
+  spare_session = session_alloc (vm->thread_index);
+  session_free (spare_session);
+  as = session_get (as_index, vm->thread_index);
+  ts = session_get (ts_index, vm->thread_index);
+  as->session_state = SESSION_STATE_READY;
+  as->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_HTTP, 1 /* is_ip4 */);
+  as->app_wrk_index = APP_INVALID_INDEX;
+  as->tx_fifo = app_fifo;
+  ts->session_state = SESSION_STATE_TRANSPORT_DELETED;
+  ts->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, 1);
+  ts->app_wrk_index =
+    application_get_default_worker (application_get (test.hm->app_index))->wrk_index;
+  ts->flags = SESSION_F_APP_CLOSED;
+  ts->tx_fifo = transport_fifo;
+  svm_fifo_set_event (transport_fifo); /* Suppress asynchronous TX on the mock transport. */
+  wrk = &test.hm->wrk[vm->thread_index];
+  saved_stats = wrk->stats;
+  pool_get_aligned_zero (wrk->ctx_pool, parent, CLIB_CACHE_LINE_BYTES);
+  parent_index = parent - wrk->ctx_pool;
+  pool_get_aligned_zero (wrk->ctx_pool, stream, CLIB_CACHE_LINE_BYTES);
+  stream_index = stream - wrk->ctx_pool;
+  pool_get_aligned_zero (wrk->ctx_pool, req, CLIB_CACHE_LINE_BYTES);
+  req_index = req - wrk->ctx_pool;
+  pool_get_aligned_zero (wrk->ctx_pool, spare_context, CLIB_CACHE_LINE_BYTES);
+  pool_put (wrk->ctx_pool, spare_context);
+  parent = pool_elt_at_index (wrk->ctx_pool, parent_index);
+  stream = pool_elt_at_index (wrk->ctx_pool, stream_index);
+  req = pool_elt_at_index (wrk->ctx_pool, req_index);
+  parent->hc_hc_index = parent_index;
+  parent->c_thread_index = vm->thread_index;
+  parent->version = HTTP_VERSION_3;
+  parent->state = HTTP_CONN_STATE_ESTABLISHED;
+  parent->hc_tc_session_handle = session_handle (ts);
+  stream->hc_hc_index = stream_index;
+  stream->hc_http_conn_index = parent_index;
+  stream->c_thread_index = vm->thread_index;
+  stream->version = HTTP_VERSION_3;
+  stream->flags = HTTP_CONN_F_BIDIRECTIONAL_STREAM;
+  stream->state = HTTP_CONN_STATE_TRANSPORT_CLOSED;
+  stream->hc_tc_session_handle = session_handle (ts);
+  stream->http_req_index = req_index;
+  handle.req_index = req_index;
+  as->connection_index = req->hr_req_handle = handle.as_u32;
+  req->hr_hc_index = stream_index;
+  req->c_s_index = as_index;
+  req->c_thread_index = vm->thread_index;
+  req->req_state = HTTP_REQ_STATE_WAIT_APP_METHOD;
+  req->req_flags = HTTP_REQ_F_RX_HEADERS_RECEIVED | HTTP_REQ_F_RX_EOF | HTTP_REQ_F_PEER_CLOSED |
+		   (queue_data ? HTTP_REQ_F_TX_EOF : 0);
+  init_tx_buffer (req, &msg);
+  H3_TEST (svm_fifo_enqueue (app_fifo, sizeof (body), body) == sizeof (body),
+	   "final upload bytes queued after a completed known-length response");
+  test.app_session_index = as_index;
+  test.old_stream_index = stream_index;
+  vft = &tp_vfts[TRANSPORT_PROTO_HTTP];
+  vlib_worker_thread_barrier_sync (vm);
+  saved_quic = tp_vfts[TRANSPORT_PROTO_QUIC];
+  tp_vfts[TRANSPORT_PROTO_QUIC].connect_stream = http_test_h3_connect_stream;
+  tp_vfts[TRANSPORT_PROTO_QUIC].get_connection = http_test_h3_get_connection;
+  tp_vfts[TRANSPORT_PROTO_QUIC].attribute = http_test_h3_attribute;
+  http_test_h3_lifecycle = &test;
+  mocked = 1;
+  swrk = &session_main.wrk[vm->thread_index];
+  saved_tx_ctx = swrk->ctx;
+  clib_llist_get (swrk->event_elts, elt);
+  elt->evt_list.next = elt->evt_list.prev = CLIB_LLIST_INVALID_INDEX;
+  event_index = clib_llist_entry_index (swrk->event_elts, elt);
+  elt->evt.event_type = SESSION_IO_EVT_TX;
+  elt->evt.session_index = as_index;
+  swrk->ctx.s = as;
+  svm_fifo_set_event (app_fifo);
+  session_main.session_tx_fns[as->session_type](swrk, 0, elt, &n_tx_packets);
+  as = session_get (as_index, vm->thread_index);
+  if (!queue_data)
+    vft->half_close (handle.as_u32, vm->thread_index, 0 /* is_rx */);
+  req = pool_elt_at_index (wrk->ctx_pool, req_index);
+  elt = clib_llist_elt (swrk->event_elts, event_index);
+  H3_TEST (swrk->ctx.s == as && !clib_llist_elt_is_linked (elt, evt_list) &&
+	     svm_fifo_has_event (app_fifo) &&
+	     transport_connection_is_descheduled (&req->connection) && n_tx_packets > 0,
+	   "EOF during TX and after FIFO drain holds the producer event while descheduled");
+  stream = pool_elt_at_index (wrk->ctx_pool, stream_index);
+  H3_TEST (!test.retired_contexts && !test.retired_sessions && req->stream_reuse_pending &&
+	     req->req_state == HTTP_REQ_STATE_IDLE && req->hr_hc_index == stream_index,
+	   "TX completion defers pool allocation and keeps the old stream attached");
+  H3_TEST (http_test_h3_take_reuse_rpc (swrk, as_index, &reuse_rpc) == 1,
+	   "TX completion queues one forced RPC for deferred stream reuse");
+  reuse_cb = reuse_rpc.rpc_args.fp;
+  if (queue_data)
+    {
+      H3_TEST (svm_fifo_enqueue (app_fifo, sizeof (body), body) == sizeof (body),
+	       "new application data queued before deferred stream reuse");
+      H3_TEST (!svm_fifo_set_event (app_fifo) && svm_fifo_max_dequeue (app_fifo) == sizeof (body) &&
+		 !test.retired_contexts,
+	       "new producer data stays buffered without queuing another TX event");
+      stream->state = HTTP_CONN_STATE_CLOSED;
+      reuse_cb (reuse_rpc.rpc_args.arg);
+      H3_TEST (!test.retired_contexts && req->stream_reuse_pending,
+	       "a deferred RPC cannot reopen a closed stream");
+      stream->state = HTTP_CONN_STATE_TRANSPORT_CLOSED;
+      as->session_state = SESSION_STATE_CLOSING;
+      reuse_cb (reuse_rpc.rpc_args.arg);
+      H3_TEST (!test.retired_contexts && req->stream_reuse_pending,
+	       "a deferred RPC cannot reuse a closing application session");
+      as->session_state = SESSION_STATE_READY;
+    }
+  reuse_cb (reuse_rpc.rpc_args.arg);
+  req = pool_elt_at_index (wrk->ctx_pool, req_index);
+  stream = pool_elt_at_index (wrk->ctx_pool, stream_index);
+  as = session_get (as_index, vm->thread_index);
+  H3_TEST (test.retired_contexts && test.retired_sessions,
+	   "deferred stream reuse relocates context and session pools after TX returns");
+  H3_TEST (req->hr_hc_index != stream_index && stream->http_req_index == SESSION_INVALID_INDEX,
+	   "completed upload reuses its request on a replacement stream");
+  ctrl_head = clib_llist_elt (swrk->event_elts, swrk->new_head);
+  clib_llist_foreach (swrk->event_elts, evt_list, ctrl_head, ctrl_elt, ({
+			if (ctrl_elt->evt.event_type == SESSION_IO_EVT_TX &&
+			    ctrl_elt->evt.session_index == as_index)
+			  tx_scheduled = 1;
+		      }));
+  H3_TEST (!req->stream_reuse_pending && req->req_state == HTTP_REQ_STATE_WAIT_APP_METHOD &&
+	     !transport_connection_is_descheduled (&req->connection) &&
+	     tx_scheduled == queue_data && svm_fifo_has_event (app_fifo) == queue_data,
+	   "RPC reactivates TX and queues an event only when application data is waiting");
+  H3_TEST (stream->state == HTTP_CONN_STATE_CLOSED,
+	   "deferred stream reuse acknowledges the earlier peer FIN before retiring the stream");
+  H3_TEST (svm_fifo_peek (transport_fifo, 0, sizeof (frame), frame) == sizeof (frame) &&
+	     frame[0] == HTTP3_FRAME_TYPE_DATA && frame[1] == sizeof (body) &&
+	     !memcmp (frame + 2, body, sizeof (body)),
+	   "final DATA remains on the old stream after pool relocation");
+  stream = pool_elt_at_index (wrk->ctx_pool, req->hr_hc_index);
+  ts = session_get (test.new_session_index, vm->thread_index);
+  H3_TEST (stream->hc_tc_session_handle == session_handle (ts) &&
+	     !svm_fifo_max_dequeue (ts->tx_fifo) && !req->tx_buf.vft,
+	   "replacement stream retains its own transport after pool relocation");
+  if (!queue_data)
+    {
+      result = 0;
+      goto done;
+    }
+  as->session_state = SESSION_STATE_TRANSPORT_DELETED;
+  for (u32 headers = 0; headers < 2; headers++)
+    {
+      stream->state = HTTP_CONN_STATE_ESTABLISHED;
+      stream->flags = HTTP_CONN_F_BIDIRECTIONAL_STREAM;
+      ts->flags = SESSION_F_APP_CLOSED;
+      req->req_flags = HTTP_REQ_F_TX_STREAMING | HTTP_REQ_F_TX_EOF |
+		       (headers ? HTTP_REQ_F_RX_HEADERS_RECEIVED : 0);
+      req->req_state = headers ? HTTP_REQ_STATE_TRANSPORT_IO_MORE_STREAMING_DATA :
+				 HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY;
+      req->app_closed_cb = http_test_h3_app_closed;
+      vft->half_close (handle.as_u32, vm->thread_index, 0 /* is_rx */);
+      H3_TEST (test.rx_cancellations == headers && stream->state == HTTP_CONN_STATE_ESTABLISHED,
+	       "TX shutdown preserves unfinished child RX before and after headers");
+      vft->close (handle.as_u32, vm->thread_index);
+      parent = pool_elt_at_index (wrk->ctx_pool, parent_index);
+      H3_TEST (
+	test.rx_cancellations == headers + 1 && (stream->flags & HTTP_CONN_F_RX_CANCELLED) &&
+	  stream->state == HTTP_CONN_STATE_CLOSED && parent->state == HTTP_CONN_STATE_ESTABLISHED,
+	"full disconnect cancels child RX before and after headers and preserves its parent");
+    }
+  result = 0;
+
+done:
+  if (swrk)
+    {
+      http_test_h3_take_reuse_rpc (swrk, as_index, 0);
+      elt = clib_llist_elt (swrk->event_elts, event_index);
+      if (clib_llist_elt_is_linked (elt, evt_list))
+	clib_llist_remove (swrk->event_elts, evt_list, elt);
+      clib_llist_put (swrk->event_elts, elt);
+      swrk->ctx = saved_tx_ctx;
+      u32 io_heads[] = { swrk->new_head, swrk->old_head };
+      for (u32 i = 0; i < ARRAY_LEN (io_heads); i++)
+	{
+	  ctrl_head = clib_llist_elt (swrk->event_elts, io_heads[i]);
+	  clib_llist_foreach_safe (swrk->event_elts, evt_list, ctrl_head, ctrl_elt, ({
+				     if (ctrl_elt->evt.event_type == SESSION_IO_EVT_TX &&
+					 ctrl_elt->evt.session_index == as_index)
+				       {
+					 clib_llist_remove (swrk->event_elts, evt_list, ctrl_elt);
+					 clib_llist_put (swrk->event_elts, ctrl_elt);
+				       }
+				   }));
+	}
+      /* Discard mock half-close events before restoring the real QUIC transport. */
+      ctrl_head = clib_llist_elt (swrk->event_elts, swrk->ctrl_head);
+      clib_llist_foreach_safe (
+	swrk->event_elts, evt_list, ctrl_head, ctrl_elt, ({
+	  if (ctrl_elt->evt.event_type == SESSION_CTRL_EVT_HALF_CLOSE &&
+	      (ctrl_elt->evt.session_handle == session_make_handle (ts_index, vm->thread_index) ||
+	       (test.new_session_index != ~0 &&
+		ctrl_elt->evt.session_handle ==
+		  session_make_handle (test.new_session_index, vm->thread_index))))
+	    {
+	      clib_llist_remove (swrk->event_elts, evt_list, ctrl_elt);
+	      clib_llist_put (swrk->event_elts, ctrl_elt);
+	    }
+	}));
+    }
+  if (as_index != ~0)
+    session_get_from_handle (session_make_handle (as_index, vm->thread_index))->session_state =
+      SESSION_STATE_TRANSPORT_DELETED;
+  if (req_index != ~0)
+    {
+      req = pool_elt_at_index (wrk->ctx_pool, req_index);
+      http_buffer_free (&req->tx_buf);
+      if (req->hr_hc_index != stream_index)
+	pool_put_index (wrk->ctx_pool, req->hr_hc_index);
+      pool_put_index (wrk->ctx_pool, req_index);
+    }
+  if (stream_index != ~0)
+    pool_put_index (wrk->ctx_pool, stream_index);
+  if (parent_index != ~0)
+    pool_put_index (wrk->ctx_pool, parent_index);
+  if (wrk)
+    wrk->stats = saved_stats;
+  if (test.new_session_index != ~0)
+    {
+      ts = session_get (test.new_session_index, vm->thread_index);
+      segment_manager_dealloc_fifos (ts->rx_fifo, ts->tx_fifo);
+      session_free (ts);
+    }
+  if (as_index != ~0)
+    session_free (session_get (as_index, vm->thread_index));
+  if (ts_index != ~0)
+    session_free (session_get (ts_index, vm->thread_index));
+  if (mocked)
+    {
+      tp_vfts[TRANSPORT_PROTO_QUIC] = saved_quic;
+      http_test_h3_lifecycle = 0;
+      vlib_worker_thread_barrier_release (vm);
+    }
+  pool_free (test.retired_contexts);
+  pool_free (test.retired_sessions);
+  if (app_fifo)
+    fifo_segment_free_fifo (fs, app_fifo);
+  if (transport_fifo)
+    fifo_segment_free_fifo (fs, transport_fifo);
+  if (fs)
+    fifo_segment_delete (&fsm, fs);
+  vec_free (args.new_segment_indices);
+  return result;
+#undef H3_TEST
+}
+
+static int
+http_test_h3_streaming_lifecycle (vlib_main_t *vm)
+{
+  return http_test_h3_streaming_lifecycle_case (vm, 0) ||
+	 http_test_h3_streaming_lifecycle_case (vm, 1);
+}
+
 static int
 http_test_h2_window_update_scheduling (vlib_main_t *vm)
 {
@@ -3673,8 +4738,16 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_h2_frame (vm);
       else if (unformat (input, "h2-window-update-scheduling"))
 	res = http_test_h2_window_update_scheduling (vm);
+      else if (unformat (input, "h2-data-scheduling"))
+	res = http_test_h2_data_scheduling (vm);
+      else if (unformat (input, "h2-app-cancel-close"))
+	res = http_test_h2_app_cancel_close (vm);
+      else if (unformat (input, "h3-streaming-lifecycle"))
+	res = http_test_h3_streaming_lifecycle (vm);
       else if (unformat (input, "qpack"))
 	res = http_test_qpack (vm);
+      else if (unformat (input, "trailers"))
+	res = http_test_trailers (vm);
       else if (unformat (input, "h3-frame"))
 	res = http_test_h3_frame (vm);
       else if (unformat (input, "lookup-header-name"))
@@ -3689,11 +4762,15 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_encode_u64_decimal (vm);
       else if (unformat (input, "rx-publication"))
 	res = http_test_rx_publication (vm);
+      else if (unformat (input, "streaming-lifecycle"))
+	res = http_test_streaming_lifecycle (vm);
       else if (unformat (input, "decode-varint"))
 	res = http_test_decode_varint (vm);
       else if (unformat (input, "all"))
 	{
 	  if ((res = http_test_rx_publication (vm)))
+	    goto done;
+	  if ((res = http_test_streaming_lifecycle (vm)))
 	    goto done;
 	  if ((res = http_test_decode_varint (vm)))
 	    goto done;
@@ -3713,7 +4790,15 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	    goto done;
 	  if ((res = http_test_h2_window_update_scheduling (vm)))
 	    goto done;
+	  if ((res = http_test_h2_data_scheduling (vm)))
+	    goto done;
+	  if ((res = http_test_h2_app_cancel_close (vm)))
+	    goto done;
+	  if ((res = http_test_h3_streaming_lifecycle (vm)))
+	    goto done;
 	  if ((res = http_test_qpack (vm)))
+	    goto done;
+	  if ((res = http_test_trailers (vm)))
 	    goto done;
 	  if ((res = http_test_h3_frame (vm)))
 	    goto done;

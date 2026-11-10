@@ -3,6 +3,7 @@
  */
 
 #include <quic_quicly/quic_quicly.h>
+#include <quic/quic_timer.h>
 #include <vnet/session/application.h>
 #include <vpp/app/version.h>
 
@@ -109,10 +110,188 @@ typedef struct
   i64 count;
 } quicly_test_conn_count_t;
 
+typedef struct
+{
+  quicly_stream_open_t super;
+  quic_stream_data_t data;
+} quicly_test_credit_stream_t;
+
+static void
+quicly_test_credit_destroy (quicly_stream_t *stream, quicly_error_t error)
+{
+}
+
+static quicly_error_t
+quicly_test_credit_open (quicly_stream_open_t *self, quicly_stream_t *stream)
+{
+  static const quicly_stream_callbacks_t callbacks = { .on_destroy = quicly_test_credit_destroy };
+  stream->data = &((quicly_test_credit_stream_t *) self)->data;
+  stream->callbacks = &callbacks;
+  return 0;
+}
+
 static void
 quicly_test_conn_count (quicly_update_open_count_t *self, ssize_t delta)
 {
   ((quicly_test_conn_count_t *) self)->count += delta;
+}
+
+static int
+quicly_test_rx_credit (vlib_main_t *vm, quic_quicly_main_t *qqm,
+		       const quicly_stream_callbacks_t *callbacks, const quic_engine_vft_t *engine)
+{
+  fifo_segment_main_t fsm = {};
+  fifo_segment_create_args_t args = { .segment_type = SSVM_SEGMENT_PRIVATE,
+				      .segment_size = 1 << 20,
+				      .segment_name = "quicly-rx-credit" };
+  fifo_segment_t *fs = NULL;
+  svm_fifo_t *txf = NULL;
+  quicly_context_t *spec, context;
+  ptls_context_t tls = {};
+  ptls_get_time_t *get_time;
+  typeof (quicly_connect) *connect;
+  typeof (quicly_open_stream) *open_stream;
+  typeof (quicly_recvstate_update) *receive;
+  typeof (quicly_free) *free_conn;
+  typeof (quicly_amend_ptls_context) *amend;
+  typeof (tw_timer_wheel_init_quic_twslov) *wheel_init;
+  typeof (tw_timer_wheel_free_quic_twslov) *wheel_free;
+  typeof (quic_conn_tx_timer_stop) *stop_timer;
+  quicly_test_credit_stream_t opened = { .super = { quicly_test_credit_open } };
+  quicly_cid_plaintext_t cid = {};
+  struct sockaddr_in peer = { .sin_family = AF_INET,
+			      .sin_port = 1234,
+			      .sin_addr.s_addr = clib_host_to_net_u32 (0x7f000001) };
+  quicly_conn_t *conn = NULL;
+  quicly_stream_t *stream;
+  session_t *session = NULL;
+  svm_fifo_shared_t shared = { .size = 4096 };
+  svm_fifo_t fifo = { .shr = &shared };
+  u8 emitted[4];
+  u32 thread = vlib_get_thread_index (), parent_index = ~0, stream_index = ~0;
+  quic_worker_ctx_t *wc = &qqm->qm->wrk_ctx[thread];
+  quic_ctx_t *parent, *child;
+  u8 wheel_ready = 0;
+  int res = 0;
+
+#define CREDIT_SYMBOL(symbol) vlib_get_plugin_symbol ("quic_quicly_plugin.so", #symbol)
+  spec = CREDIT_SYMBOL (quicly_spec_context);
+  connect = CREDIT_SYMBOL (quicly_connect);
+  open_stream = CREDIT_SYMBOL (quicly_open_stream);
+  receive = CREDIT_SYMBOL (quicly_recvstate_update);
+  free_conn = CREDIT_SYMBOL (quicly_free);
+  amend = CREDIT_SYMBOL (quicly_amend_ptls_context);
+  tls.random_bytes = CREDIT_SYMBOL (ptls_openssl_random_bytes);
+  tls.key_exchanges = CREDIT_SYMBOL (ptls_openssl_key_exchanges);
+  tls.cipher_suites = CREDIT_SYMBOL (ptls_openssl_cipher_suites);
+  get_time = CREDIT_SYMBOL (ptls_get_time);
+#undef CREDIT_SYMBOL
+  wheel_init = vlib_get_plugin_symbol ("quic_plugin.so", "tw_timer_wheel_init_quic_twslov");
+  wheel_free = vlib_get_plugin_symbol ("quic_plugin.so", "tw_timer_wheel_free_quic_twslov");
+  stop_timer = vlib_get_plugin_symbol ("quic_plugin.so", "quic_conn_tx_timer_stop");
+  QUICLY_TEST (spec && connect && open_stream && receive && free_conn && amend &&
+		 tls.random_bytes && tls.key_exchanges && tls.cipher_suites && get_time &&
+		 wheel_init && wheel_free && stop_timer,
+	       "RX credit fixture symbols loaded");
+  tls.get_time = get_time;
+  amend (&tls);
+  context = *spec;
+  context.tls = &tls;
+  context.stream_open = &opened.super;
+  context.transport_params.max_stream_data.bidi_local = shared.size;
+  QUICLY_TEST (connect (&conn, &context, "localhost", (void *) &peer, NULL, &cid,
+			ptls_iovec_init (NULL, 0), NULL, NULL, NULL) == 0,
+	       "RX credit engine connection created");
+  QUICLY_TEST (open_stream (conn, &stream, 0) == 0, "RX credit stream created");
+  fifo_segment_main_init (&fsm, 0, 5);
+  QUICLY_TEST (fifo_segment_create (&fsm, &args) == 0, "RX credit FIFO segment created");
+  fs = fifo_segment_get_segment (&fsm, args.new_segment_indices[0]);
+  txf = fifo_segment_alloc_fifo_w_slice (fs, 0, 4096, FIFO_SEGMENT_TX_FIFO);
+  QUICLY_TEST (txf != NULL, "RX credit TX FIFO allocated");
+  parent_index = quic_ctx_alloc (qqm->qm, thread);
+  stream_index = quic_ctx_alloc (qqm->qm, thread);
+  parent = pool_elt_at_index (wc->ctx_pool, parent_index);
+  child = pool_elt_at_index (wc->ctx_pool, stream_index);
+  parent->conn = conn;
+  parent->conn_state = QUIC_CONN_STATE_HANDSHAKE;
+  parent->c_s_index = QUIC_SESSION_INVALID;
+  child->stream = stream;
+  child->quic_connection_ctx_id = parent_index;
+  session = session_alloc (thread);
+  session->connection_index = stream_index;
+  session->rx_fifo = &fifo;
+  session->tx_fifo = txf;
+  child->c_s_index = session->session_index;
+  child->flags = QUIC_F_IS_STREAM | QUIC_F_STREAM_TX_DRAINED;
+  opened.data.ctx_id = stream_index;
+  opened.data.thread_index = thread;
+  wheel_init (&wc->timer_wheel, NULL, QUIC_TIMER_INTERVAL, ~0);
+  wheel_ready = 1;
+  wc->time_now = tls.get_time->cb (tls.get_time);
+  for (u32 i = 0; i < 4; i++)
+    {
+      size_t length = shared.size;
+      if (i == 1)
+	{
+	  QUICLY_TEST (svm_fifo_enqueue (txf, 4, (u8 *) "data") == 4, "first TX data queued");
+	  QUICLY_TEST (engine->stream_tx (child, session) == 1 &&
+			 !(child->flags & QUIC_F_STREAM_TX_DRAINED),
+		       "first write leaves the drained state");
+	  stop_timer (wc, parent);
+	}
+      else if (i == 2)
+	{
+	  size_t emitted_len = sizeof (emitted);
+	  int wrote_all = 0;
+	  callbacks->on_send_emit (stream, 0, emitted, &emitted_len, &wrote_all);
+	  QUICLY_TEST (emitted_len == 4 && wrote_all && !memcmp (emitted, "data", 4) &&
+			 (child->flags & QUIC_F_STREAM_TX_DRAINED),
+		       "emitting all TX data restores the drained state");
+	  callbacks->on_send_shift (stream, emitted_len);
+	}
+      else if (i == 3)
+	{
+	  engine->proto_on_half_close (stream_index, thread, 0 /* is_rx */);
+	  QUICLY_TEST ((child->flags & QUIC_F_APP_CLOSED_TX) &&
+			 (child->flags & QUIC_F_STREAM_TX_DRAINED),
+		       "TX shutdown preserves the drained state");
+	  stop_timer (wc, parent);
+	}
+      QUICLY_TEST (receive (&stream->recvstate, stream->recvstate.data_off, &length, 0, 32) == 0,
+		   "RX credit data received");
+      opened.data.app_rx_data_len = length; /* The application drained the FIFO. */
+      engine->ack_rx_data (session);
+      QUICLY_TEST (stream->recvstate.data_off == (i + 1) * shared.size,
+		   "application consumption advances the receive window");
+      if (i == 1)
+	QUICLY_TEST (parent->timers[QUIC_TIMER_TX] == QUIC_TIMER_HANDLE_INVALID,
+		     "active TX avoids an RX credit timer update");
+      else
+	QUICLY_TEST (parent->timers[QUIC_TIMER_TX] != QUIC_TIMER_HANDLE_INVALID,
+		     "idle RX credit rearms TX before first write, after drain and after shutdown");
+      stop_timer (wc, parent);
+    }
+done:
+  if (conn)
+    free_conn (conn);
+  if (wheel_ready)
+    {
+      wheel_free (&wc->timer_wheel);
+      clib_memset (&wc->timer_wheel, 0, sizeof (wc->timer_wheel));
+    }
+  if (session)
+    session_free (session);
+  if (stream_index != ~0)
+    quic_ctx_free (qqm->qm, pool_elt_at_index (wc->ctx_pool, stream_index));
+  if (parent_index != ~0)
+    quic_ctx_free (qqm->qm, pool_elt_at_index (wc->ctx_pool, parent_index));
+  if (txf)
+    fifo_segment_free_fifo (fs, txf);
+  if (fs)
+    fifo_segment_delete (&fsm, fs);
+  vec_free (args.new_segment_indices);
+  pool_free (fsm.segments);
+  return res;
 }
 
 static int
@@ -126,7 +305,7 @@ quicly_test_retired_rx (vlib_main_t *vm, quic_quicly_main_t *qqm, const quic_eng
   svm_fifo_t *fifo = NULL;
   quicly_context_t *spec, quicly_ctx;
   ptls_context_t tls = {};
-  ptls_get_time_t **get_time;
+  ptls_get_time_t *get_time;
   typeof (quicly_connect) *connect;
   typeof (quicly_amend_ptls_context) *amend;
   typeof (quicly_decode_packet) *decode;
@@ -159,7 +338,7 @@ quicly_test_retired_rx (vlib_main_t *vm, quic_quicly_main_t *qqm, const quic_eng
   QUICLY_TEST (spec && connect && amend && decode && tls.random_bytes && tls.key_exchanges &&
 		 tls.cipher_suites && get_time,
 	       "real engine fixture symbols loaded");
-  tls.get_time = *get_time;
+  tls.get_time = get_time;
   amend (&tls);
   quicly_ctx = *spec;
   quicly_ctx.tls = &tls;
@@ -361,6 +540,194 @@ done:
   return res ? clib_error_return (0, "receive cancellation test failed") : 0;
 }
 
+static int
+quicly_test_rx_fin (vlib_main_t *vm, quic_quicly_main_t *qqm,
+		    const quicly_stream_callbacks_t *callbacks, const quic_engine_vft_t *engine)
+{
+  static const struct
+  {
+    const char *name;
+    u32 body_len;
+    u8 tx_shutdown;
+    u8 pending_tx;
+    u8 fin_with_data;
+    u8 cancel_rx;
+  } tests[] = {
+    { "empty FIN with TX open", 0, 0, 0, 0, 0 },
+    { "empty FIN after TX shutdown", 0, 1, 0, 0, 0 },
+    { "DATA and FIN after TX shutdown", 4, 1, 0, 1, 0 },
+    { "FIN with a full RX FIFO", 4096, 1, 0, 0, 0 },
+    { "empty FIN with TX awaiting acknowledgment", 0, 1, 1, 0, 0 },
+    { "DATA and FIN with TX awaiting acknowledgment", 4, 1, 1, 1, 0 },
+    { "FIN after RX cancellation and TX shutdown", 0, 1, 0, 0, 1 },
+  };
+  fifo_segment_main_t fsm = {};
+  fifo_segment_create_args_t args = { .segment_type = SSVM_SEGMENT_PRIVATE,
+				      .segment_size = 1 << 20,
+				      .segment_name = "quicly-rx-fin" };
+  quic_main_t *qm = qqm->qm;
+  app_worker_t *app_wrk = application_get_default_worker (application_get (qm->app_index));
+  u32 thread_index = vlib_get_thread_index ();
+  i64 saved_streams = qqm->worker_stats[thread_index].n_streams;
+  session_event_t *saved_events = app_wrk->wrk_evts[thread_index];
+  session_event_t event;
+  struct _st_quicly_conn_public_t conn = {};
+  quicly_stream_t stream = { .conn = (quicly_conn_t *) &conn };
+  quic_stream_data_t *data = 0;
+  quicly_range_t range = {};
+  fifo_segment_t *fs = 0;
+  svm_fifo_t *rxf = 0, *txf = 0;
+  session_t *session = 0;
+  quic_ctx_t *ctx = 0;
+  u32 ctx_index, n_events;
+  u8 body[4096], received[4096];
+  int res = 0;
+
+  /* The CLI barrier protects the real app worker while its event FIFO and the
+   * session/context pools are replaced. Inspect notifications without dispatching
+   * callbacks into the application's real sessions. */
+  app_wrk->wrk_evts[thread_index] = 0;
+  session_main.wrk[thread_index].vm = vm;
+  fifo_segment_main_init (&fsm, 0, 5);
+  QUICLY_TEST (!fifo_segment_create (&fsm, &args), "FIN test FIFO segment created");
+  fs = fifo_segment_get_segment (&fsm, args.new_segment_indices[0]);
+  rxf = fifo_segment_alloc_fifo_w_slice (fs, 0, 4096, FIFO_SEGMENT_RX_FIFO);
+  txf = fifo_segment_alloc_fifo_w_slice (fs, 0, 4096, FIFO_SEGMENT_TX_FIFO);
+  QUICLY_TEST (rxf && txf, "FIN test FIFOs allocated");
+  session = session_alloc (thread_index);
+  session->rx_fifo = rxf;
+  session->tx_fifo = txf;
+  session->app_wrk_index = app_wrk->wrk_index;
+  session->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, 1);
+  ctx_index = quic_ctx_alloc (qm, thread_index);
+  ctx = pool_elt_at_index (qm->wrk_ctx[thread_index].ctx_pool, ctx_index);
+  ctx->c_c_index = ctx_index;
+  ctx->c_s_index = session->session_index;
+  ctx->c_proto = TRANSPORT_PROTO_QUIC;
+  session->connection_index = ctx_index;
+  for (u32 i = 0; i < sizeof (body); i++)
+    body[i] = (i * 17 + 3) & 0xff;
+
+  for (u32 i = 0; i < ARRAY_LEN (tests); i++)
+    {
+      vlib_cli_output (vm, "%s", tests[i].name);
+      stream = (quicly_stream_t) { .conn = (quicly_conn_t *) &conn };
+      data = clib_mem_alloc (sizeof (*data));
+      clib_memset (data, 0, sizeof (*data));
+      data->ctx_id = ctx_index;
+      data->thread_index = thread_index;
+      stream.data = data;
+      stream._recv_aux.window = 4096;
+      stream.recvstate.received.ranges = &range;
+      stream.recvstate.received.num_ranges = 1;
+      stream.recvstate.eos = UINT64_MAX;
+      range = (quicly_range_t) {};
+      stream.sendstate.final_size = tests[i].tx_shutdown ? 0 : UINT64_MAX;
+      ctx->flags = QUIC_F_IS_STREAM;
+      ctx->stream = &stream;
+      ctx->bytes_written = 0;
+      session->session_state = SESSION_STATE_READY;
+      session->flags = SESSION_F_RX_READY;
+      qqm->worker_stats[thread_index].n_streams = 1;
+      if (tests[i].tx_shutdown)
+	ctx->flags |= QUIC_F_APP_CLOSED_TX;
+      if (tests[i].pending_tx)
+	{
+	  QUICLY_TEST (svm_fifo_enqueue (txf, 4, body) == 4, "unacknowledged TX bytes queued");
+	  data->app_tx_data_len = 4;
+	  stream.sendstate.final_size = UINT64_MAX;
+	  ctx->flags &= ~QUIC_F_APP_CLOSED_TX;
+	  ctx->flags |= QUIC_F_STREAM_TX_DRAINED;
+	  engine->proto_on_half_close (ctx_index, thread_index, 0 /* is_rx */);
+	  QUICLY_TEST ((ctx->flags & QUIC_F_APP_CLOSED_TX) &&
+			 stream.sendstate.final_size == UINT64_MAX,
+		       "TX half-close waits for acknowledgment before sending FIN");
+	}
+      if (tests[i].cancel_rx)
+	ctx->flags |= QUIC_F_APP_CLOSED_RX;
+
+      callbacks->on_receive (&stream, 0, 0, 0);
+      QUICLY_TEST (session->session_state == SESSION_STATE_READY &&
+		     clib_fifo_elts (app_wrk->wrk_evts[thread_index]) == 0,
+		   "no EOF notification before receive transfer completes");
+      if (tests[i].body_len && !tests[i].fin_with_data)
+	{
+	  range.end = tests[i].body_len;
+	  callbacks->on_receive (&stream, 0, body, tests[i].body_len);
+	  QUICLY_TEST (session->session_state == SESSION_STATE_READY &&
+			 svm_fifo_max_enqueue_prod (rxf) == 0,
+		       "received body fills RX FIFO without completing the message");
+	}
+      stream.recvstate.received.num_ranges = 0;
+      stream.recvstate.eos = tests[i].body_len;
+      callbacks->on_receive (&stream, 0, tests[i].fin_with_data ? body : 0,
+			     tests[i].fin_with_data ? tests[i].body_len : 0);
+      n_events = tests[i].cancel_rx ? 0 : 1 + !!tests[i].body_len;
+      QUICLY_TEST (session->session_state ==
+		     (tests[i].cancel_rx ? SESSION_STATE_READY : SESSION_STATE_TRANSPORT_CLOSING),
+		   "FIN notifies receive EOF independently of TX shutdown");
+      QUICLY_TEST (clib_fifo_elts (app_wrk->wrk_evts[thread_index]) == n_events,
+		   "FIN queues exactly one disconnect event unless RX was cancelled");
+      if (n_events)
+	{
+	  if (tests[i].body_len)
+	    {
+	      clib_fifo_sub1 (app_wrk->wrk_evts[thread_index], event);
+	      QUICLY_TEST (event.event_type == SESSION_IO_EVT_RX,
+			   "body data event precedes disconnect");
+	    }
+	  clib_fifo_sub1 (app_wrk->wrk_evts[thread_index], event);
+	  QUICLY_TEST (event.event_type == SESSION_CTRL_EVT_DISCONNECTED,
+		       "disconnect follows any RX data event");
+	}
+      QUICLY_TEST (ctx->stream == &stream && !(ctx->flags & QUIC_F_APP_CLOSED) &&
+		     svm_fifo_max_dequeue_cons (txf) == (tests[i].pending_tx ? 4 : 0),
+		   "receive EOF preserves the engine stream and pending TX bytes");
+      callbacks->on_receive (&stream, 0, 0, 0);
+      QUICLY_TEST (clib_fifo_elts (app_wrk->wrk_evts[thread_index]) == 0,
+		   "repeated FIN does not duplicate disconnect");
+      if (!tests[i].pending_tx && !tests[i].cancel_rx)
+	{
+	  callbacks->on_destroy (&stream, 0);
+	  data = 0;
+	  stream.data = 0;
+	  QUICLY_TEST (clib_fifo_elts (app_wrk->wrk_evts[thread_index]) == 0,
+		       "later stream destruction does not duplicate disconnect");
+	}
+      if (tests[i].body_len)
+	QUICLY_TEST (svm_fifo_dequeue (rxf, tests[i].body_len, received) == tests[i].body_len &&
+		       !memcmp (body, received, tests[i].body_len),
+		     "all body bytes remain readable after EOF");
+      svm_fifo_dequeue_drop_all (txf);
+      clib_fifo_free (app_wrk->wrk_evts[thread_index]);
+      if (data)
+	{
+	  clib_mem_free (data);
+	  data = 0;
+	}
+    }
+
+done:
+  qqm->worker_stats[thread_index].n_streams = saved_streams;
+  clib_fifo_free (app_wrk->wrk_evts[thread_index]);
+  app_wrk->wrk_evts[thread_index] = saved_events;
+  if (data)
+    clib_mem_free (data);
+  if (ctx)
+    quic_ctx_free (qm, ctx);
+  if (session)
+    session_free (session);
+  if (rxf)
+    fifo_segment_free_fifo (fs, rxf);
+  if (txf)
+    fifo_segment_free_fifo (fs, txf);
+  if (fs)
+    fifo_segment_delete (&fsm, fs);
+  pool_free (fsm.segments);
+  vec_free (args.new_segment_indices);
+  return res;
+}
+
 static clib_error_t *
 quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
@@ -385,11 +752,17 @@ quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
     TEST_STREAM_CLOSE,
     TEST_RX,
     TEST_CANCEL_RX,
+    TEST_RX_FIN,
+    TEST_RX_CREDIT,
     TEST_ALL,
   } test = TEST_NONE;
 
   if (unformat (input, "stream-close"))
     test = TEST_STREAM_CLOSE;
+  else if (unformat (input, "rx-fin"))
+    test = TEST_RX_FIN;
+  else if (unformat (input, "rx-credit"))
+    test = TEST_RX_CREDIT;
   else if (unformat (input, "rx"))
     test = TEST_RX;
   else if (unformat (input, "cancel-rx"))
@@ -397,13 +770,14 @@ quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
   else if (unformat (input, "all"))
     test = TEST_ALL;
   if (test == TEST_NONE || unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    return clib_error_return (0, "expected exactly one of stream-close, rx, cancel-rx or all");
+    return clib_error_return (
+      0, "expected exactly one of stream-close, rx, cancel-rx, rx-fin, rx-credit or all");
   QUIC_LOAD_SYMBOL_FROM_PLUGIN_TO ("quic_plugin.so", quic_main, qm);
   QUIC_LOAD_SYMBOL_FROM_PLUGIN_TO ("quic_plugin.so", quic_engine_vfts, engines);
   QUIC_LOAD_SYMBOL_FROM_PLUGIN_TO ("quic_quicly_plugin.so", quic_quicly_main, qqm);
   QUIC_LOAD_SYMBOL_FROM_PLUGIN_TO ("quic_quicly_plugin.so", quic_quicly_stream_callbacks,
 				   callbacks);
-  if ((test == TEST_RX || test == TEST_ALL) &&
+  if ((test == TEST_RX || test == TEST_RX_FIN || test == TEST_RX_CREDIT || test == TEST_ALL) &&
       (qm->app_index == APP_INVALID_INDEX || !qm->engine_is_initialized[QUIC_ENGINE_QUICLY]))
     return clib_error_return (0, "QUIC RX tests require an enabled quicly engine (session enable)");
   quic_node = vlib_get_node_by_name (vm, (u8 *) "quic-input");
@@ -451,6 +825,10 @@ quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 	  vm, qqm, callbacks, &(*engines)[QUIC_ENGINE_QUICLY], thread_index);
 	res = cancel_error != 0;
       }
+  if (!res && (test == TEST_RX_FIN || test == TEST_ALL))
+    res = quicly_test_rx_fin (vm, qqm, callbacks, &(*engines)[QUIC_ENGINE_QUICLY]);
+  if (!res && (test == TEST_RX_CREDIT || test == TEST_ALL))
+    res = quicly_test_rx_credit (vm, qqm, callbacks, &(*engines)[QUIC_ENGINE_QUICLY]);
   qm->wrk_ctx = saved_workers;
   qm->quic_input_node = saved_node;
   session_main.wrk = saved_sessions;
@@ -464,6 +842,7 @@ quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
       pool_free (workers[i].ctx_pool);
       pool_free (sessions[i].sessions);
       clib_llist_free (sessions[i].event_elts);
+      clib_bitmap_free (sessions[i].app_wrks_pending_ntf);
     }
   vec_free (workers);
   vec_free (sessions);
@@ -478,7 +857,7 @@ quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 
 VLIB_CLI_COMMAND (quicly_test_command, static) = {
   .path = "test quicly",
-  .short_help = "test quicly [stream-close|rx|cancel-rx|all]",
+  .short_help = "test quicly [stream-close|rx|cancel-rx|rx-fin|rx-credit|all]",
   .function = quicly_test,
 };
 
