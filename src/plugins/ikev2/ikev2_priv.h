@@ -268,6 +268,7 @@ typedef struct
 {
   ikev2_state_t state;
   u8 unsupported_cp;
+  u8 delete_failed;
   u8 initial_contact;
   ip_address_t iaddr;
   ip_address_t raddr;
