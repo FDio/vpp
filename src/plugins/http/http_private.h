@@ -126,7 +126,9 @@ typedef enum http_target_form_ : u8
   _ (RX_STREAMING, "rx-streaming")                                                                 \
   _ (RX_EOF, "rx-eof")                                                                             \
   _ (RX_PROCESSING, "rx-processing")                                                               \
-  _ (RX_HEADERS_RECEIVED, "rx-headers-received")
+  _ (RX_HEADERS_RECEIVED, "rx-headers-received")                                                   \
+  _ (RX_TRAILERS, "rx-trailers")                                                                   \
+  _ (TX_CANCELLED, "tx-cancelled")
 
 typedef enum http_req_flags_bit_
 {
@@ -476,6 +478,7 @@ typedef struct http_ctx_
 	  http3_frame_header_t fh;
 	  u32 (*transport_rx_cb) (struct http_ctx_ *sctx, struct http_ctx_ *stream);
 	  void (*app_closed_cb) (struct http_ctx_ *sctx, struct http_ctx_ *stream, u8 is_shutdown);
+	  u8 stream_reuse_pending;
 	};
       };
     };
@@ -491,6 +494,7 @@ typedef enum http_ctrl_msg_type_ : u8
   HTTP_CTRL_MSG_PING_RESPONSE,
   HTTP_CTRL_MSG_WIN_UPDATE,
   HTTP_CTRL_MSG_RST_STREAM,
+  HTTP_CTRL_MSG_END_STREAM,
 } http_ctrl_msg_type_t;
 
 typedef struct
@@ -741,9 +745,32 @@ u8 *http_get_app_target (http_ctx_t *req, http_msg_t *msg);
  * @param req HTTP request.
  * @param msg HTTP msg sent by app.
  *
- * @note Use for streaming of body sent by app.
+ * @note STREAMING uses a FIFO buffer with an internal unlimited length.
  */
-void http_req_tx_buffer_init (http_ctx_t *req, http_msg_t *msg);
+void http_req_tx_buffer_init (http_ctx_t *req, const http_msg_t *msg);
+
+always_inline void
+http_req_app_close (http_ctx_t *req, u8 is_shutdown)
+{
+  req->req_flags |= HTTP_REQ_F_TX_EOF;
+  if (!is_shutdown)
+    req->req_flags |= HTTP_REQ_F_APP_CLOSED;
+}
+
+always_inline int
+http_req_tx_streaming_pending (http_ctx_t *req)
+{
+  return (req->req_flags & HTTP_REQ_F_TX_STREAMING) && req->tx_buf.vft;
+}
+
+always_inline int
+http_req_rx_mark_eof (http_ctx_t *req)
+{
+  if (req->req_flags & HTTP_REQ_F_RX_EOF)
+    return 0;
+  req->req_flags |= HTTP_REQ_F_RX_EOF;
+  return 1;
+}
 
 /**
  * Open new stream on existing transport connection.

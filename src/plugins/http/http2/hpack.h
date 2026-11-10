@@ -83,6 +83,10 @@ void hpack_dynamic_table_init (hpack_dynamic_table_t *table, u32 max_size);
  */
 void hpack_dynamic_table_free (hpack_dynamic_table_t *table);
 
+/** Validate and discard a bounded trailer field block, preserving the dynamic table. */
+http2_error_t hpack_parse_trailers (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
+				    hpack_dynamic_table_t *dynamic_table);
+
 u8 *format_hpack_dynamic_table (u8 *s, va_list *args);
 
 /**

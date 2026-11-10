@@ -674,9 +674,9 @@ quic_quicly_on_receive (quicly_stream_t *stream, size_t off, const void *src,
     svm_fifo_add_want_deq_ntf (f, SVM_FIFO_WANT_DEQ_NOTIF);
 
 check_eos:
-  /* send half-close notification to app */
-  if (!(sctx->flags & QUIC_F_APP_CLOSED_TX) &&
-      quicly_recvstate_transfer_complete (&stream->recvstate))
+  /* RX completion is independent of TX shutdown and pending TX acknowledgments.
+   * Notify while unread data is still available. */
+  if (quicly_recvstate_transfer_complete (&stream->recvstate))
     {
       QUIC_DBG (2,
 		"stream half-close: rcv side closed, stream_session handle 0x%lx, ctx_index "
@@ -884,7 +884,9 @@ quic_quicly_on_stream_open (quicly_stream_open_t *self, quicly_stream_t *stream)
   sctx->c_s_index = stream_session->session_index;
   sctx->stream = stream;
   sctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
-  sctx->flags |= QUIC_F_IS_STREAM;
+  /* Start TX-drained so RX consumption can schedule receive-window updates
+   * before the first application write. */
+  sctx->flags |= QUIC_F_IS_STREAM | QUIC_F_STREAM_TX_DRAINED;
   sctx->crypto_context_index = qctx->crypto_context_index;
   sctx->udp_session_handle = qctx->udp_session_handle;
 

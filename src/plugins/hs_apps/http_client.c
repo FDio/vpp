@@ -211,7 +211,7 @@ static int
 hc_shutdown_tx (session_t *s, hc_session_t *hs)
 {
   hc_main_t *hcm = &hc_main;
-  if (hcm->http_version == HTTP_VERSION_1 && hc_msg_data_type (hcm) == HTTP_MSG_DATA_STREAMING &&
+  if (hc_msg_data_type (hcm) == HTTP_MSG_DATA_STREAMING &&
       !(hs->session_flags & HC_S_FLAG_TX_EOF) && hs->data_offset == vec_len (hcm->data))
     {
       vnet_shutdown_args_t a = { .handle = s->handle, .app_index = hcm->app_index };
@@ -503,7 +503,8 @@ hc_session_connected_callback (u32 app_index, u32 ho_index, session_t *s,
 				vec_len (header->value));
 
       wrk->msg.method_type = hcm->req_method;
-      if (hc_req_method_has_body (hcm->req_method))
+      if (hc_req_method_has_body (hcm->req_method) &&
+	  hc_msg_data_type (hcm) != HTTP_MSG_DATA_STREAMING)
 	wrk->msg.data.body_len = vec_len (hcm->data);
       else
 	wrk->msg.data.body_len = 0;
@@ -566,7 +567,7 @@ hc_session_transport_closed_callback (session_t *s)
   hc_session_t *hs = hc_session_get (s->opaque, s->thread_index);
 
   HC_DBG ("transport closed [%u]%u", s->thread_index, s->opaque);
-  if (!hcm->repeat && (hs->session_flags & HC_S_FLAG_RX_STREAMING))
+  if (!hcm->repeat && (hs->session_flags & (HC_S_FLAG_RX_STREAMING | HC_S_FLAG_IS_CLOSED)))
     return;
   clib_spinlock_lock_if_init (&hcm->lock);
   if (s->session_state == SESSION_STATE_TRANSPORT_CLOSED && !(hs->session_flags & HC_S_FLAG_RX_EOF))
@@ -618,10 +619,11 @@ hc_redirect (session_t *s, hc_worker_t *wrk, hc_session_t *hc_session,
 	     http_status_code_t sc)
 {
   hc_main_t *hcm = &hc_main;
-  http_location_t http_location;
-  http_location.path_offset = 0;
+  http_location_t http_location = {};
   int rv = 0;
   int send_err = 0;
+  u8 is_streaming = (hc_session->session_flags & HC_S_FLAG_RX_STREAMING) ||
+		    wrk->msg.data.type == HTTP_MSG_DATA_STREAMING;
   const http_token_t *location_header = http_get_header (
     &hc_session->resp_headers, http_header_name_token (HTTP_HEADER_LOCATION));
 
@@ -686,7 +688,7 @@ hc_redirect (session_t *s, hc_worker_t *wrk, hc_session_t *hc_session,
 
   HC_DBG ("parsed target: %s", hcm->target);
 
-  if (!(hc_session->session_flags & HC_S_FLAG_RX_STREAMING) &&
+  if (!is_streaming &&
       ((http_location.uri_type == HTTP_URI_TYPE_RELATIVE) ||
        (ip46_address_is_equal (&hcm->connect_sep.ip, &http_location.http_authority.ip) &&
 	hcm->connect_sep.port == http_location.http_authority.port)))
@@ -722,13 +724,11 @@ hc_redirect (session_t *s, hc_worker_t *wrk, hc_session_t *hc_session,
 	{
 	  hcm->connect_sep.ip = http_location.http_authority.ip;
 	  hcm->connect_sep.port = http_location.http_authority.port;
+	  hcm->connect_sep.transport_proto = TRANSPORT_PROTO_HTTP;
 	  if (http_location.scheme == HTTP_URL_SCHEME_HTTP)
-	    hcm->connect_sep.transport_proto = TRANSPORT_PROTO_HTTP;
+	    hcm->connect_sep.flags &= ~SESSION_ENDPT_CFG_F_SECURE;
 	  else
-	    {
-	      hcm->connect_sep.transport_proto = TRANSPORT_PROTO_TLS;
-	      hcm->connect_sep.flags |= SESSION_ENDPT_CFG_F_SECURE;
-	    }
+	    hcm->connect_sep.flags |= SESSION_ENDPT_CFG_F_SECURE;
 	}
       wrk->has_common_headers = false;
 
@@ -738,8 +738,15 @@ hc_redirect (session_t *s, hc_worker_t *wrk, hc_session_t *hc_session,
 	  fclose (hc_session->file_ptr);
 	  hc_session->file_ptr = 0;
 	}
-      if (hc_session->session_flags & HC_S_FLAG_RX_STREAMING)
-	hc_session_disconnect (s);
+      if (is_streaming)
+	{
+	  /* Retire this session before queued callbacks can finish the redirect. */
+	  hc_session->session_flags |= HC_S_FLAG_IS_CLOSED;
+	  http_free_header_table (&hc_session->resp_headers);
+	  vec_free (hc_session->http_response);
+	  vec_free (hc_session->response_status);
+	  hc_session_disconnect (s);
+	}
       hc_connect ();
     }
 
@@ -897,18 +904,18 @@ hc_rx_callback (session_t *s)
       if (msg.data.type == HTTP_MSG_DATA_STREAMING)
 	hc_session->session_flags |= HC_S_FLAG_RX_STREAMING;
 
+      if (!hcm->repeat)
+	{
+	  http_version = http_session_get_version (s);
+	  vec_reset_length (hc_session->response_status);
+	  hc_session->response_status =
+	    format (hc_session->response_status, "%U %U", format_http_version, http_version,
+		    format_http_status_code, msg.code);
+	}
+
       if (msg.data.headers_len)
 	{
 	  http_init_header_table_buf (&hc_session->resp_headers, msg);
-
-	  if (!hcm->repeat)
-	    {
-	      http_version = http_session_get_version (s);
-	      vec_reset_length (hc_session->response_status);
-	      hc_session->response_status = format (
-		hc_session->response_status, "%U %U", format_http_version,
-		http_version, format_http_status_code, msg.code);
-	    }
 
 	  svm_fifo_dequeue_drop (s->rx_fifo, msg.data.headers_offset);
 
@@ -1024,7 +1031,7 @@ hc_tx_callback (session_t *s)
   u64 to_send;
   int rv;
 
-  if (hc_session->session_flags & (HC_S_FLAG_TX_EOF | HC_S_FLAG_IS_CLOSED | HC_S_FLAG_RX_STREAMING))
+  if (hc_session->session_flags & (HC_S_FLAG_TX_EOF | HC_S_FLAG_IS_CLOSED))
     return 0;
   to_send = vec_len (hcm->data) - hc_session->data_offset;
   if (!to_send)
@@ -1515,16 +1522,17 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
   if (hcm->req_method == HTTP_REQ_PUT)
     {
-      if (hcm->http_version != HTTP_VERSION_NA && hcm->http_version != HTTP_VERSION_1)
-	{
-	  err = clib_error_return (0, "put is only supported with http1");
-	  goto done;
-	}
-      hcm->http_version = HTTP_VERSION_1;
+      if (hcm->http_version == HTTP_VERSION_NA)
+	hcm->http_version = HTTP_VERSION_1;
 
       if (hcm->use_ptr)
 	{
 	  err = clib_error_return (0, "use-ptr is not supported with put");
+	  goto done;
+	}
+      if (hcm->repeat)
+	{
+	  err = clib_error_return (0, "repeat and duration are not supported with put");
 	  goto done;
 	}
     }

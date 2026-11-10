@@ -186,7 +186,7 @@ hpack_dynamic_table_free (hpack_dynamic_table_t *table)
 always_inline hpack_dynamic_table_entry_t *
 hpack_dynamic_table_get (hpack_dynamic_table_t *table, uword index)
 {
-  if (index > clib_ring_n_enq (table->entries))
+  if (index >= clib_ring_n_enq (table->entries))
     return 0;
 
   hpack_dynamic_table_entry_t *first = clib_ring_get_first (table->entries);
@@ -455,6 +455,38 @@ static const http2_error_t hpack_error_to_http2_error[] = {
   [HPACK_ERROR_PROTOCOL] = HTTP2_ERROR_PROTOCOL_ERROR,
   [HPACK_ERROR_UNKNOWN] = HTTP2_ERROR_INTERNAL_ERROR,
 };
+
+static hpack_error_t
+hpack_decode_trailer_header (u8 **src, u8 *end, u8 **buf, uword *buf_len, u32 *name_len,
+			     u32 *value_len, void *decoder_ctx, u8 *never_index)
+{
+  /* Size updates are only allowed at the start of a field block. */
+  if ((**src & 0xe0) == 0x20)
+    return HPACK_ERROR_COMPRESSION;
+  return hpack_decode_header (src, end, buf, buf_len, name_len, value_len, decoder_ctx,
+			      never_index);
+}
+
+__clib_export http2_error_t
+hpack_parse_trailers (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
+		      hpack_dynamic_table_t *dynamic_table)
+{
+  u8 *p = src, *end = src + src_len;
+  hpack_error_t rv;
+
+  /* A field block containing only table-size updates is a valid empty trailer. */
+  while (p != end && (*p & 0xe0) == 0x20)
+    {
+      uword size = hpack_decode_int (&p, end, 5);
+      if (size == HPACK_INVALID_INT || size > dynamic_table->max_size)
+	return HTTP2_ERROR_COMPRESSION_ERROR;
+      while (clib_ring_n_enq (dynamic_table->entries) && dynamic_table->used > size)
+	hpack_dynamic_table_evict_one (dynamic_table);
+      dynamic_table->size = size;
+    }
+  rv = hpack_decode_trailers (p, end, dst, dst_len, dynamic_table, hpack_decode_trailer_header);
+  return hpack_error_to_http2_error[rv];
+}
 
 __clib_export http2_error_t
 hpack_parse_request (u8 *src, u32 src_len, u8 *dst, u32 dst_len,

@@ -213,7 +213,9 @@ quic_connect_stream (transport_endpoint_cfg_t *tep, session_t *stream_session,
   sctx->quic_connection_ctx_id = qctx->c_c_index;
   sctx->c_c_index = sctx_index;
   sctx->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
-  sctx->flags |= QUIC_F_IS_STREAM;
+  /* Start TX-drained so RX consumption can schedule receive-window updates
+   * before the first application write. */
+  sctx->flags |= QUIC_F_IS_STREAM | QUIC_F_STREAM_TX_DRAINED;
   sctx->udp_session_handle = qctx->udp_session_handle;
   sctx->crypto_context_index = qctx->crypto_context_index;
 

@@ -239,7 +239,8 @@ var _ = DescribeMWSuite("Http2MWSuite", []string{"HTTP", "HTTP2", "MW"}, func() 
 })
 
 type h2specTest struct {
-	desc string
+	desc      string
+	cliServer bool
 }
 
 var genericTests = []h2specTest{
@@ -249,31 +250,26 @@ var genericTests = []h2specTest{
 	{desc: "generic/2/3"},
 	{desc: "generic/2/4"},
 	{desc: "generic/2/5"},
-	// TODO: message framing without content length using END_STREAM flag
-	// {desc: "generic/3.1/1"},
-	// {desc: "generic/3.1/2"},
-	// {desc: "generic/3.1/3"},
+	{desc: "generic/3.1/1", cliServer: true},
+	{desc: "generic/3.1/2", cliServer: true},
+	{desc: "generic/3.1/3", cliServer: true},
 	{desc: "generic/3.2/1"},
 	{desc: "generic/3.2/2"},
 	{desc: "generic/3.2/3"},
 	// generic/3.3/* PRIORITY is deprecated
-	// TODO: message framing without content length using END_STREAM flag
-	// {desc: "generic/3.4/1"},
+	{desc: "generic/3.4/1", cliServer: true},
 	{desc: "generic/3.5/1"},
 	{desc: "generic/3.7/1"},
 	{desc: "generic/3.8/1"},
 	{desc: "generic/3.9/1"},
 	{desc: "generic/3.9/2"},
-	// TODO: CONTINUATION
-	//{desc: "generic/3.10/1"},
-	//{desc: "generic/3.10/2"},
+	{desc: "generic/3.10/1", cliServer: true},
+	{desc: "generic/3.10/2", cliServer: true},
 	{desc: "generic/4/1"},
 	// HEAD method not supported
 	// {desc: "generic/4/2"},
-	// TODO: message framing without content length using END_STREAM flag
-	// {desc: "generic/4/3"},
-	// message framing using trailer section not supported
-	// {desc: "generic/4/4"},
+	{desc: "generic/4/3", cliServer: true},
+	{desc: "generic/4/4", cliServer: true},
 	{desc: "generic/5/1"},
 	{desc: "generic/5/2"},
 	{desc: "generic/5/3"},
@@ -307,8 +303,7 @@ var http2Tests = []h2specTest{
 	{desc: "http2/4.1/1"},
 	{desc: "http2/4.1/2"},
 	{desc: "http2/4.1/3"},
-	// TODO: message framing without content length using END_STREAM flag
-	// {desc: "http2/4.2/1"},
+	{desc: "http2/4.2/1", cliServer: true},
 	{desc: "http2/4.2/2"},
 	{desc: "http2/4.2/3"},
 	{desc: "http2/4.3/1"},
@@ -363,14 +358,12 @@ var http2Tests = []h2specTest{
 	{desc: "http2/6.8/1"},
 	{desc: "http2/6.9.1/1"},
 	{desc: "http2/6.9.1/2"},
-	// TODO: message framing without content length using END_STREAM flag
-	// {desc: "http2/6.9.1/3"},
+	{desc: "http2/6.9.1/3", cliServer: true},
 	{desc: "http2/6.9.2/1"},
 	{desc: "http2/6.9.2/2"},
 	{desc: "http2/6.9.2/3"},
 	{desc: "http2/6.9/1"},
-	// TODO: message framing without content length using END_STREAM flag
-	// {desc: "http2/6.9/2"},
+	{desc: "http2/6.9/2", cliServer: true},
 	{desc: "http2/6.9/3"},
 	{desc: "http2/6.10/1"},
 	{desc: "http2/6.10/2"},
@@ -379,8 +372,7 @@ var http2Tests = []h2specTest{
 	{desc: "http2/6.10/5"},
 	{desc: "http2/6.10/6"},
 	{desc: "http2/7/1"},
-	// TODO: message framing without content length using END_STREAM flag
-	// {desc: "http2/7/2"},
+	{desc: "http2/7/2", cliServer: true},
 	{desc: "http2/8.1.2.1/1"},
 	{desc: "http2/8.1.2.1/2"},
 	{desc: "http2/8.1.2.1/3"},
@@ -448,12 +440,18 @@ var _ = Describe("H2SpecSuite", Ordered, ContinueOnFailure, Label("HTTP", "HTTP2
 				Log("[* TEST BEGIN]: " + testName)
 				vpp := s.Containers.Vpp.VppInstance
 				serverAddress := s.VppAddr()
-				Log(vpp.Vppctl("http static server uri tls://" + serverAddress + "/" + s.Ports.Port1 + " url-handlers debug 2 fifo-size 16k"))
-				Log(vpp.Vppctl("test-url-handler enable"))
+				path := "/test1"
+				if test.cliServer {
+					Log(vpp.Vppctl("http cli server fifo-size 16 uri https://" + serverAddress + ":" + s.Ports.Port1))
+					path = "/echo"
+				} else {
+					Log(vpp.Vppctl("http static server uri tls://" + serverAddress + "/" + s.Ports.Port1 + " url-handlers debug 2 fifo-size 16k"))
+					Log(vpp.Vppctl("test-url-handler enable"))
+				}
 				conf := &config.Config{
 					Host:         serverAddress,
 					Port:         s.Ports.Port1AsInt,
-					Path:         "/test1",
+					Path:         path,
 					Timeout:      time.Second * 5,
 					MaxHeaderLen: 4096,
 					TLS:          true,
@@ -537,19 +535,17 @@ var _ = Describe("H2SpecClientSuite", Ordered, Serial, Label("HTTP", "HTTP2", "H
 		{desc: "client/4.1/1", portOffset: 1},
 		{desc: "client/4.1/2", portOffset: 2},
 		{desc: "client/4.1/3", portOffset: 3},
-		// TODO: message framing without content length using END_STREAM flag
-		//{desc: "client/4.2/1", portOffset: 4},
-		//{desc: "client/4.2/2", portOffset: 5},
+		{desc: "client/4.2/1", portOffset: 4},
+		{desc: "client/4.2/2", portOffset: 5},
 		{desc: "client/4.2/3", portOffset: 6},
 		{desc: "client/4.3/1", portOffset: 7},
 		{desc: "client/5.1/1", portOffset: 8},
 		{desc: "client/5.1/2", portOffset: 9},
 		{desc: "client/5.1/3", portOffset: 10},
 		{desc: "client/5.1/4", portOffset: 11},
-		// TODO: message framing without content length using END_STREAM flag
-		//{desc: "client/5.1/5", portOffset: 12},
-		//{desc: "client/5.1/6", portOffset: 13},
-		//{desc: "client/5.1/7", portOffset: 14},
+		{desc: "client/5.1/5", portOffset: 12},
+		{desc: "client/5.1/6", portOffset: 13},
+		{desc: "client/5.1/7", portOffset: 14},
 		{desc: "client/5.1/8", portOffset: 15},
 		{desc: "client/5.1/9", portOffset: 16, clientExtraArgs: "repeat 2 "},
 		{desc: "client/5.1/10", portOffset: 17, clientExtraArgs: "repeat 2 "},
@@ -583,12 +579,10 @@ var _ = Describe("H2SpecClientSuite", Ordered, Serial, Label("HTTP", "HTTP2", "H
 		{desc: "client/6.7/4", portOffset: 44},
 		{desc: "client/6.8/1", portOffset: 45},
 		{desc: "client/6.9/1", portOffset: 46},
-		// TODO: message framing without content length using END_STREAM flag
-		//{desc: "client/6.9/2", portOffset: 47},
+		{desc: "client/6.9/2", portOffset: 47},
 		{desc: "client/6.9/3", portOffset: 48},
 		{desc: "client/6.9.1/1", portOffset: 49},
-		// TODO: message framing without content length using END_STREAM flag
-		//{desc: "client/6.9.1/2", portOffset: 50},
+		{desc: "client/6.9.1/2", portOffset: 50},
 		{desc: "client/6.10/1", portOffset: 51, clientExtraArgs: "repeat 2 "},
 		{desc: "client/6.10/2", portOffset: 52},
 		{desc: "client/6.10/3", portOffset: 53},

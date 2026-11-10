@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -68,7 +69,7 @@ func init() {
 		HttpFragmentedHeadersTest, HttpClientFragmentedHeadersTest, HttpClientPartialResponseFinTest,
 		HttpPartialRequestPeerResetTest, HttpPartialRequestPeerFinTest, HttpPartialRequestListenerRemovedTest,
 		HttpIncompleteHeadersFullFifoTest, HttpClientIncompleteHeadersFullFifoTest,
-		HttpIncompleteHeadersTimeoutTest)
+		HttpIncompleteHeadersTimeoutTest, Http1StreamingInteropTest, Http1ServerStreamingInteropTest)
 	var headerLimitConfig Stanza
 	headerLimitConfig.NewStanza("http").NewStanza("http1").Append("max-header-list-size 128").Close().Close()
 	RegisterHttp1TestsWithConfig(headerLimitConfig, HttpHeaderListSizeLimitTest)
@@ -82,6 +83,140 @@ func init() {
 
 const wwwRootPath = "/tmp/www_root"
 const defaultHttpTimeout = time.Second * 10
+
+// Use complete HTTP implementations as peers as well as the raw framing peers.
+// Both directions stream, and response trailers must not become application data.
+func httpStreamingInteropHandler(major int, body string, handled chan<- error) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data, err := io.ReadAll(r.Body)
+		if err == nil && (r.ProtoMajor != major || r.Header.Get("Content-Length") != "" ||
+			r.ContentLength > 0 || string(data) != body) {
+			err = fmt.Errorf("%s %s: content-length=%d, received %d of %d bytes", r.Method,
+				r.Proto, r.ContentLength, len(data), len(body))
+		}
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			handled <- err
+			return
+		}
+		checksum := fmt.Sprintf("%x", sha256.Sum256(data))
+		w.Header().Set("Content-Type", "text/plain")
+		w.Header().Set("Trailer", "X-Checksum")
+		_, err = io.WriteString(w, checksum[:16])
+		w.(http.Flusher).Flush()
+		if err == nil {
+			time.Sleep(10 * time.Millisecond)
+			_, err = io.WriteString(w, checksum[16:])
+		}
+		w.Header().Set("X-Checksum", "discarded-trailer")
+		handled <- err
+	})
+}
+
+// Exercise EOF timing and FIFO backpressure with POST, plus GET and PUT smoke cases.
+func httpStreamingTxCases(largeBody string) []struct{ method, body, options string } {
+	return []struct{ method, body, options string }{
+		{method: "POST"},
+		{method: "POST", options: "eof-after-drain tx-delay 0.001"},
+		{method: "POST", body: largeBody},
+		{method: "POST", body: largeBody, options: "eof-after-drain tx-delay 0.001"},
+		{method: "GET", body: "small-body"},
+		{method: "PUT", body: "small-body"},
+	}
+}
+
+// Each shutdown mode needs empty and backpressured bodies; method dispatch is shared.
+func httpStreamingServerTxCases(largeBody string) []struct{ method, path, body string } {
+	cases := []struct{ method, path, body string }{
+		{method: "GET", path: "/echo-stream", body: "small-body"},
+		{method: "PUT", path: "/echo-stream", body: "small-body"},
+	}
+	for _, path := range []string{"/echo-stream", "/echo-stream-drain", "/echo-stream-close"} {
+		for _, body := range []string{"", largeBody} {
+			cases = append(cases, struct{ method, path, body string }{"POST", path, body})
+		}
+	}
+	return cases
+}
+
+func httpStreamingInteropClients(vpp *VppInstance, major int, address, body string, handled <-chan error) {
+	file := "/tmp/http-interop-body"
+	AssertNil(vpp.Container.CreateFile(file, body))
+	version, scheme := "", "http"
+	if major > 1 {
+		version = fmt.Sprintf("http%d ", major)
+	}
+	if major == 3 {
+		scheme = "https"
+	}
+	uri := scheme + "://" + address + "/echo"
+	checksum := fmt.Sprintf("%x", sha256.Sum256([]byte(body)))
+	for _, method := range []string{"post", "generic-put"} {
+		By(fmt.Sprintf("HTTP/%d %s: %d bytes", major, method, len(body)))
+		var output string
+		if method == "generic-put" {
+			output = vpp.Vppctl("http client %sput verbose timeout 5 fifo-size 4k file %s uri %s", version, file, uri)
+			AssertContains(output, "200 OK")
+			AssertContains(output, checksum)
+		} else {
+			output = vpp.Vppctl("http cli client %sstream method %s fifo-size 4 file %s uri %s", version, method, file, uri)
+			AssertEqual(checksum, strings.TrimSpace(output))
+		}
+		AssertNotContains(output, "discarded-trailer")
+		select {
+		case err := <-handled:
+			AssertNil(err)
+		case <-time.After(5 * time.Second):
+			Fail("HTTP peer did not finish the streamed request")
+		}
+	}
+}
+
+func Http1StreamingInteropTest(s *Http1Suite) {
+	for _, body := range []string{"", strings.Repeat("interoperable-stream!", 12000)} {
+		func() {
+			listener, err := net.Listen("tcp", net.JoinHostPort(s.HostAddr(), "0"))
+			AssertNil(err)
+			handled := make(chan error, 1)
+			server := &http.Server{Handler: httpStreamingInteropHandler(1, body, handled), ReadTimeout: 5 * time.Second}
+			defer server.Close()
+			go server.Serve(listener)
+			httpStreamingInteropClients(s.Containers.Vpp.VppInstance, 1, listener.Addr().String(), body, handled)
+		}()
+	}
+}
+
+func httpServerStreamingInterop(client *http.Client, major int, uri string, bodies ...string) {
+	defer client.CloseIdleConnections()
+	if len(bodies) == 0 {
+		bodies = []string{"", strings.Repeat("streamed\x00body\r\n", 90000)}
+	}
+	for _, body := range bodies {
+		By(fmt.Sprintf("Go HTTP/%d POST: %d bytes with request trailers", major, len(body)))
+		// Hide the reader's size from net/http to require EOF framing.
+		request, err := http.NewRequest("POST", uri+"/echo-stream", io.NopCloser(strings.NewReader(body)))
+		AssertNil(err)
+		request.ContentLength = -1
+		request.Trailer = http.Header{"X-Checksum": {"discarded-request-trailer"}}
+		response, err := client.Do(request)
+		AssertNil(err)
+		AssertEqual(major, response.ProtoMajor)
+		AssertEqual(http.StatusOK, response.StatusCode)
+		AssertEqual("", response.Header.Get("Content-Length"))
+		data, err := io.ReadAll(response.Body)
+		AssertNil(err)
+		AssertNil(response.Body.Close())
+		AssertEqual(len(body), len(data))
+		AssertEqual(sha256.Sum256([]byte(body)), sha256.Sum256(data))
+	}
+}
+
+func Http1ServerStreamingInteropTest(s *Http1Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	AssertEmpty(s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address))
+	client := &http.Client{Transport: &http.Transport{}, Timeout: 8 * time.Second}
+	httpServerStreamingInterop(client, 1, "http://"+address)
+}
 
 // helper interface for ip4/6 HttpClientGet tests
 type httpClientGetInterface interface {
