@@ -1774,9 +1774,11 @@ class TemplateResponder(IkePeer):
                 head = ikev2.IKEv2_payload_Nonce(
                     load=self.sa.i_nonce, next_payload="SA"
                 )
+            # RFC 7296 section 1.3: a CREATE_CHILD_SA request has no AUTH payload.
+            # Left in, it sits where the chain announces the SA payload.
             plain = (
                 head
-                / plain
+                / plain[ikev2.IKEv2_payload_SA]
                 / ikev2.IKEv2_payload_Notify(
                     type="REKEY_SA",
                     proto="ESP",
