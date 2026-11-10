@@ -26,6 +26,44 @@ format_vnet_dev_rv (u8 *s, va_list *args)
   return format (s, "%s", strings[index]);
 }
 
+typedef struct
+{
+  u8 *s;
+  char *fmt;
+  va_list *va;
+} vnet_dev_format_in_process_args_t;
+
+static vnet_dev_rv_t
+vnet_dev_format_in_process_op (vlib_main_t *vm, vnet_dev_t *dev, void *p)
+{
+  vnet_dev_format_in_process_args_t *fa = p;
+  fa->s = va_format (fa->s, fa->fmt, fa->va);
+  return VNET_DEV_OK;
+}
+
+/* bus and driver format functions may access the hardware */
+u8 *
+vnet_dev_format_in_process (u8 *s, vnet_dev_t *dev, char *fmt, ...)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vnet_dev_format_in_process_args_t fa = { .s = s, .fmt = fmt };
+  vnet_dev_rv_t rv;
+  va_list va;
+
+  if (!vlib_in_process_context (vm))
+    return format (s, "not available outside of process context");
+
+  va_start (va, fmt);
+  fa.va = &va;
+  rv = vnet_dev_process_call_op_with_ptr (vm, dev, vnet_dev_format_in_process_op, &fa);
+  va_end (va);
+
+  if (rv != VNET_DEV_OK)
+    return format (fa.s, "not available: %U", format_vnet_dev_rv, rv);
+
+  return fa.s;
+}
+
 u8 *
 format_vnet_dev_addr (u8 *s, va_list *args)
 {
@@ -90,8 +128,10 @@ format_vnet_dev_info (u8 *s, va_list *args)
     s = format (s, ", description is '%v'", dev->description);
 
   if (bus->ops.format_device_info)
-    s = format (s, "\n%U%U", format_white_space, indent,
-		bus->ops.format_device_info, a, dev);
+    {
+      s = format (s, "\n%U", format_white_space, indent);
+      s = vnet_dev_format_in_process (s, dev, "%U", bus->ops.format_device_info, a, dev);
+    }
 
   s = format (s, "\n%UAssigned process node is '%U'", format_white_space,
 	      indent, format_vlib_node_name, vm, dev->process_node_index);
@@ -125,9 +165,11 @@ format_vnet_dev_info (u8 *s, va_list *args)
       table_free (&t);
     }
   if (dev->ops.format_info)
-    s =
-      format (s, "\n%UDevice Specific Info:\n%U%U", format_white_space, indent,
-	      format_white_space, indent + 2, dev->ops.format_info, a, dev);
+    {
+      s = format (s, "\n%UDevice Specific Info:\n%U", format_white_space, indent,
+		  format_white_space, indent + 2);
+      s = vnet_dev_format_in_process (s, dev, "%U", dev->ops.format_info, a, dev);
+    }
   return s;
 }
 
@@ -193,9 +235,11 @@ format_vnet_dev_port_info (u8 *s, va_list *args)
   s = format (s, "\n%UTX Offloads: %U", format_white_space, indent,
 	      format_vnet_dev_port_tx_offloads, &port->attr.tx_offloads);
   if (port->port_ops.format_status)
-    s = format (s, "\n%UDevice Specific Port Status:\n%U%U",
-		format_white_space, indent, format_white_space, indent + 2,
-		port->port_ops.format_status, a, port);
+    {
+      s = format (s, "\n%UDevice Specific Port Status:\n%U", format_white_space, indent,
+		  format_white_space, indent + 2);
+      s = vnet_dev_format_in_process (s, port->dev, "%U", port->port_ops.format_status, a, port);
+    }
   if (port->port_ops.get_module_eeprom)
     {
       vnet_interface_eeprom_t eeprom = {};
@@ -252,8 +296,11 @@ format_vnet_dev_rx_queue_info (u8 *s, va_list *args)
 	      rxq->enabled ? "en" : "dis", rxq->started ? "" : "not-",
 	      rxq->interrupt_mode ? "interrupt" : "polling");
   if (rxq->port->rx_queue_ops.format_info)
-    s = format (s, "\n%U%U", format_white_space, indent,
-		rxq->port->rx_queue_ops.format_info, a, rxq);
+    {
+      s = format (s, "\n%U", format_white_space, indent);
+      s = vnet_dev_format_in_process (s, rxq->port->dev, "%U", rxq->port->rx_queue_ops.format_info,
+				      a, rxq);
+    }
 
   return s;
 }
@@ -276,8 +323,11 @@ format_vnet_dev_tx_queue_info (u8 *s, va_list *args)
     s = format (s, "Used by thread%s %U", n > 1 ? "s" : "", format_bitmap_list,
 		txq->assigned_threads);
   if (txq->port->tx_queue_ops.format_info)
-    s = format (s, "\n%U%U", format_white_space, indent,
-		txq->port->tx_queue_ops.format_info, a, txq);
+    {
+      s = format (s, "\n%U", format_white_space, indent);
+      s = vnet_dev_format_in_process (s, txq->port->dev, "%U", txq->port->tx_queue_ops.format_info,
+				      a, txq);
+    }
 
   return s;
 }
@@ -605,8 +655,8 @@ format_vnet_dev_flow (u8 *s, va_list *args)
   vnet_dev_port_t *port = vnet_dev_get_port_from_dev_instance (dev_instance);
 
   if (port->port_ops.format_flow)
-    s = format (s, "%U", port->port_ops.format_flow, port, flow_index,
-		private_data);
+    s = vnet_dev_format_in_process (s, port->dev, "%U", port->port_ops.format_flow, port,
+				    flow_index, private_data);
 
   return s;
 }
