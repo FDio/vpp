@@ -153,4 +153,11 @@ vnet_dev_tx_queue_get_counter_by_index (vlib_main_t *vm __clib_unused, vnet_dev_
     for (typeof (*(cm)->counters) *(c) = (cm)->counters;                      \
 	 (c) < (cm)->counters + (cm)->n_counters; (c)++)
 
+static_always_inline void
+vnet_dev_crypto_queue_count (vnet_dev_crypto_queue_t *cq, vnet_dev_crypto_queue_counter_t ctr,
+			     u64 n)
+{
+  cq->counter_main->counter_data[ctr] += n;
+}
+
 #endif /* _VNET_DEV_COUNTERS_H_ */
