@@ -463,4 +463,49 @@ vnet_dev_set_hw_addr_eth_mac (vnet_dev_hw_addr_t *addr, const u8 *eth_mac_addr)
   *addr = ha;
 }
 
+static_always_inline void *
+vnet_dev_get_crypto_queue_data (vnet_dev_crypto_queue_t *cq)
+{
+  return cq->data;
+}
+
+static_always_inline vnet_dev_crypto_queue_t *
+vnet_dev_crypto_queue_from_data (void *p)
+{
+  return (void *) ((u8 *) p - STRUCT_OFFSET_OF (vnet_dev_crypto_queue_t, data));
+}
+
+/* queues of a crypto driver which the given thread is allowed to use, one per
+ * device */
+static_always_inline vnet_dev_crypto_queue_t **
+vnet_dev_crypto_get_thread_queues (vnet_dev_driver_index_t driver_index, clib_thread_index_t ti)
+{
+  vnet_dev_driver_t *drv = vec_elt_at_index (vnet_dev_main.drivers, driver_index);
+  return drv->crypto_thread_queues[ti];
+}
+
+static_always_inline void
+vnet_dev_crypto_queue_lock_if_needed (vnet_dev_crypto_queue_t *cq)
+{
+  u8 free = 0;
+
+  if (!cq->lock_needed)
+    return;
+
+  while (!__atomic_compare_exchange_n (&cq->lock, &free, 1, 0, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED))
+    {
+      while (__atomic_load_n (&cq->lock, __ATOMIC_RELAXED))
+	CLIB_PAUSE ();
+      free = 0;
+    }
+}
+
+static_always_inline void
+vnet_dev_crypto_queue_unlock_if_needed (vnet_dev_crypto_queue_t *cq)
+{
+  if (!cq->lock_needed)
+    return;
+  __atomic_store_n (&cq->lock, 0, __ATOMIC_RELEASE);
+}
+
 #endif /* _VNET_DEV_FUNCS_H_ */
