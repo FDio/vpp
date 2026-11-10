@@ -1225,6 +1225,20 @@ Set the default logging level of the syslog target.  Defaults to warning.
 
    default-syslog-log-level warning
 
+timestamp none | local | utc | delta | uptime
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Prefix log messages printed on stderr (interactive or ``nosyslog`` mode)
+and entries shown by ``show logging`` with a timestamp. ``local`` and ``utc`` print wall-clock time, ``delta`` the
+time since the previous message, and ``uptime`` the time
+since VPP main thread start. Defaults to ``uptime``; ``none`` disables it. Can be changed at runtime
+with ``set logging timestamp``; ``show logging time-format <fmt>``
+overrides it for a single invocation.
+
+.. code-block:: console
+
+   timestamp uptime
+
 mactime Section
 ---------------
 
