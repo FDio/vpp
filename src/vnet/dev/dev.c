@@ -260,11 +260,21 @@ vnet_dev_init (vlib_main_t *vm, vnet_dev_t *dev)
       goto failed;
     }
 
+  if ((rv = vnet_dev_crypto_init (vm, dev)) != VNET_DEV_OK)
+    {
+      if (dev->ops.deinit)
+	dev->ops.deinit (vm, dev);
+      vnet_dev_cleanup_bus_resources (vm, dev);
+      return rv;
+    }
+
   dev->initialized = 1;
   dev->not_first_init = 1;
   return VNET_DEV_OK;
 
 failed:
+  /* the driver may have added crypto queues before failing */
+  vnet_dev_crypto_deinit (vm, dev);
   if (dev->ops.deinit)
     dev->ops.deinit (vm, dev);
 
@@ -282,6 +292,8 @@ vnet_dev_deinit (vlib_main_t *vm, vnet_dev_t *dev)
 
   foreach_vnet_dev_port (p, dev)
     ASSERT (p->interfaces == 0);
+
+  vnet_dev_crypto_deinit (vm, dev);
 
   if (dev->ops.deinit)
     dev->ops.deinit (vm, dev);
@@ -313,6 +325,7 @@ vnet_dev_free (vlib_main_t *vm, vnet_dev_t *dev)
   hash_unset (dm->device_index_by_id, dev->device_id);
   clib_args_free (dev->args);
   vec_free (dev->dma_allocs);
+  vnet_dev_crypto_config_free (&dev->crypto_config);
   pool_put_index (dm->devices, dev->index);
 }
 
@@ -687,7 +700,9 @@ vnet_dev_main_init (vlib_main_t *vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (vnet_dev_main_init);
+VLIB_INIT_FUNCTION (vnet_dev_main_init) = {
+  .runs_after = VLIB_INITS ("vnet_crypto_init"),
+};
 
 static clib_error_t *
 vnet_dev_main_exit (vlib_main_t *vm)

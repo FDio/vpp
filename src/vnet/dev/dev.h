@@ -10,6 +10,7 @@
 #include <vppinfra/format.h>
 #include <vnet/vnet.h>
 #include <vnet/dev/types.h>
+#include <vnet/crypto/crypto.h>
 #include <vppinfra/args.h>
 
 #define VNET_DEV_DEVICE_ID_PREFIX_DELIMITER "/"
@@ -88,6 +89,7 @@ typedef struct vnet_dev vnet_dev_t;
 typedef struct vnet_dev_port vnet_dev_port_t;
 typedef struct vnet_dev_rx_queue vnet_dev_rx_queue_t;
 typedef struct vnet_dev_tx_queue vnet_dev_tx_queue_t;
+typedef struct vnet_dev_crypto_queue vnet_dev_crypto_queue_t;
 typedef struct vnet_dev_bus_registration vnet_dev_bus_registration_t;
 typedef struct vnet_dev_driver_registration vnet_dev_driver_registration_t;
 typedef struct vnet_dev_counter vnet_dev_counter_t;
@@ -245,6 +247,7 @@ typedef struct
 
 typedef struct
 {
+  char *name; /* crypto enqueue nodes, appended to the engine name */
   struct _vlib_node_fn_registration *registrations;
   format_function_t *format_trace;
   vlib_error_desc_t *error_counters;
@@ -287,6 +290,135 @@ typedef struct
   format_function_t *format_status;
   format_function_t *format_flow;
 } vnet_dev_port_ops_t;
+
+typedef vnet_dev_rv_t (vnet_dev_crypto_queue_op_t) (vlib_main_t *, vnet_dev_crypto_queue_t *);
+typedef void (vnet_dev_crypto_queue_op_no_rv_t) (vlib_main_t *, vnet_dev_crypto_queue_t *);
+
+typedef struct
+{
+  vnet_dev_crypto_queue_op_t *init;
+  vnet_dev_crypto_queue_op_no_rv_t *deinit;
+  vnet_dev_crypto_queue_op_t *start;
+  vnet_dev_crypto_queue_op_no_rv_t *stop;
+  format_function_t *format_queue_info;
+} vnet_dev_crypto_queue_ops_t;
+
+typedef void (vnet_dev_crypto_free_fn_t) (vlib_main_t *, void *);
+
+typedef struct
+{
+  vnet_dev_crypto_queue_t *queue;
+  u64 enq_req;
+} vnet_dev_crypto_queue_mark_t;
+
+typedef struct
+{
+  void *ptr;
+  vnet_dev_crypto_free_fn_t *free_fn;
+  vnet_dev_crypto_queue_mark_t *marks;
+} vnet_dev_crypto_deferred_free_t;
+
+#define foreach_vnet_dev_crypto_error                                                              \
+  _ (NO_QUEUE, "no-queue", "thread has no queue of the engine")                                    \
+  _ (QUEUE_FULL, "queue-full", "queue full")                                                       \
+  _ (BAD_HMAC, "bad-hmac", "authentication failed")                                                \
+  _ (ENGINE_ERROR, "engine-error", "engine error")
+
+typedef enum
+{
+#define _(f, n, d) VNET_DEV_CRYPTO_ERROR_##f,
+  foreach_vnet_dev_crypto_error
+#undef _
+    VNET_DEV_CRYPTO_N_ERROR,
+} vnet_dev_crypto_error_t;
+
+/* takes the frame, frees it with vnet_dev_crypto_frame_done once the frame is completed, called
+ * from the driver enqueue node through vnet_dev_crypto_enq_node_inline */
+typedef void (vnet_dev_crypto_enq_fn_t) (vlib_main_t *vm, vlib_node_runtime_t *node,
+					 vnet_dev_crypto_queue_t *cq, vlib_frame_t *frame);
+/* returns the number of completed buffers */
+typedef u32 (vnet_dev_crypto_deq_fn_t) (vlib_main_t *vm, vlib_node_runtime_t *node,
+					vnet_dev_crypto_queue_t *cq);
+
+typedef struct
+{
+  vnet_crypto_alg_t alg;
+  vnet_dev_node_t *enc_node;
+  vnet_dev_node_t *dec_node;
+} vnet_dev_crypto_alg_handlers_t;
+
+typedef struct
+{
+  char *name; /* <driver>-<queue group> */
+  vnet_crypto_engine_id_t id;
+  u8 index;
+  u32 driver_index;
+  u32 deq_node_index;
+  u8 multi_queue_per_thread : 1;
+  vnet_dev_crypto_alg_handlers_t *alg_handlers;
+  u32 enq_node_index[VNET_CRYPTO_N_ALGS][VNET_CRYPTO_OP_N_TYPES];
+  vnet_crypto_key_change_fn_t *key_change;
+  u16 key_data_sz;
+  clib_bitmap_t *algs;			    /* algorithms of the started queues */
+  vnet_dev_crypto_queue_t ***thread_queues; /* queues of each thread */
+  vnet_dev_crypto_deferred_free_t *deferred_frees;
+} vnet_dev_crypto_engine_t;
+
+/* requested crypto queue configuration, 0 means driver default */
+typedef struct
+{
+  u16 size;
+  clib_bitmap_t *threads;
+} vnet_dev_crypto_queue_config_t;
+
+typedef struct
+{
+  u16 num_queues;
+  u16 queue_size;
+  vnet_dev_crypto_queue_config_t *queues;
+} vnet_dev_crypto_config_t;
+
+/* crypto queues of a driver with the same capabilities and limits */
+typedef struct
+{
+  u8 *name;			  /* NUL terminated */
+  u8 engine_index;		  /* CLIB_U8_MAX until a device using the group is attached */
+  vnet_dev_queue_config_t config; /* data size and size limits of the queues */
+  clib_bitmap_t *algs;		  /* algorithms the queues can do */
+  vnet_dev_crypto_queue_ops_t ops;
+
+  /* for creating the crypto engine */
+  char *engine_desc;
+  int engine_priority;
+  vnet_dev_crypto_alg_handlers_t *alg_handlers;
+  vnet_dev_node_t *deq_node;
+  vnet_crypto_key_change_fn_t *key_change;
+  u16 key_data_sz;
+  u8 multi_queue_per_thread : 1;
+} vnet_dev_crypto_queue_group_t;
+
+typedef struct
+{
+  char *engine_desc;
+  int engine_priority;
+  vnet_dev_crypto_alg_handlers_t *alg_handlers; /* vector, the queues can do these algorithms */
+  vnet_dev_node_t *deq_node;
+  vnet_crypto_key_change_fn_t *key_change;
+  u16 key_data_sz;
+  /* a thread may use more than one queue of the group */
+  u8 multi_queue_per_thread : 1;
+
+  vnet_dev_queue_config_t config;
+  vnet_dev_crypto_queue_ops_t ops;
+} vnet_dev_crypto_queue_group_add_args_t;
+
+typedef struct
+{
+  char *group;	      /* name of the queue group of the driver */
+  void *initial_data; /* copied into the queue private data */
+  u16 max_size;	      /* 0 = queue group limit */
+  u16 default_size;   /* 0 = queue group default */
+} vnet_dev_crypto_queue_add_args_t;
 
 typedef union
 {
@@ -424,6 +556,41 @@ typedef struct vnet_dev_port
   u8 data[];
 } vnet_dev_port_t;
 
+#define foreach_vnet_dev_crypto_queue_counter                                                      \
+  _ (enq_req, "enqueued requests")                                                                 \
+  _ (enq_bytes, "enqueued bytes")                                                                  \
+  _ (enq_full, "queue full")                                                                       \
+  _ (enq_err, "enqueue errors")                                                                    \
+  _ (deq_req, "completed requests")                                                                \
+  _ (deq_err, "engine errors")                                                                     \
+  _ (deq_auth_fail, "auth failures")
+
+typedef struct vnet_dev_crypto_queue
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  vnet_dev_t *dev;
+  clib_bitmap_t *assigned_threads;
+  vnet_dev_crypto_queue_group_t *group;
+  u16 index;
+  u16 size;
+  u16 max_size;
+  u16 default_size;
+  /* counters stay monotonic as enq_req and deq_req track requests in flight */
+  struct
+  {
+#define _(f, d) u64 f;
+    foreach_vnet_dev_crypto_queue_counter
+#undef _
+  } counters_at_clear;
+  CLIB_CACHE_LINE_ALIGN_MARK (runtime0);
+  u8 initialized : 1;
+  u8 started : 1;
+  u64 enq_req, enq_bytes, enq_full, enq_err;
+  u64 deq_req, deq_err, deq_auth_fail;
+  CLIB_ALIGN_MARK (private_data, 16);
+  u8 data[];
+} vnet_dev_crypto_queue_t;
+
 typedef struct
 {
   void *va;
@@ -453,6 +620,8 @@ typedef struct vnet_dev
   u8 bus_data[32] __clib_aligned (16);
   vnet_dev_ops_t ops;
   vnet_dev_port_t **ports;
+  vnet_dev_crypto_queue_t **crypto_queues;
+  vnet_dev_crypto_config_t crypto_config;
   vnet_dev_periodic_op_t *periodic_ops;
   u8 *description;
   clib_args_handle_t args;
@@ -539,6 +708,7 @@ typedef struct vnet_dev_driver
   vnet_dev_bus_index_t bus_index;
   vnet_dev_ops_t ops;
   clib_args_handle_t args;
+  vnet_dev_crypto_queue_group_t **crypto_queue_groups;
   u8 initialized;
 } vnet_dev_driver_t;
 
@@ -562,6 +732,8 @@ typedef struct
   u32 *free_process_node_indices;
   u32 *free_rx_node_indices;
   uword *device_index_by_id;
+  vnet_dev_crypto_engine_t **crypto_engines;
+  u8 *crypto_engine_index_by_id;
 
   /* startup config */
   u8 *startup_config;
@@ -623,9 +795,25 @@ typedef struct
 /* config.c */
 void vnet_dev_wait_for_startup_config_complete (vlib_main_t *);
 
+/* crypto.c */
+vnet_dev_op_t vnet_dev_crypto_init;
+vnet_dev_op_no_rv_t vnet_dev_crypto_deinit;
+__clib_export vnet_dev_rv_t vnet_dev_crypto_queue_group_add (
+  vlib_main_t *, vnet_dev_driver_t *, vnet_dev_crypto_queue_group_add_args_t *, char *, ...);
+__clib_export void vnet_dev_crypto_defer_free (vlib_main_t *, vnet_crypto_engine_id_t, void *,
+					       vnet_dev_crypto_free_fn_t *);
+__clib_export vnet_dev_rv_t vnet_dev_crypto_queue_add (vlib_main_t *, vnet_dev_t *,
+						       vnet_dev_crypto_queue_add_args_t *);
+format_function_t format_vnet_dev_crypto_queue_info;
+format_function_t format_vnet_dev_crypto_queue_counters;
+void vnet_dev_crypto_queue_clear_counters (vnet_dev_crypto_queue_t *cq);
+format_function_t format_vnet_dev_crypto_queue_group_info;
+unformat_function_t unformat_vnet_dev_crypto_config;
+void vnet_dev_crypto_config_copy (vnet_dev_crypto_config_t *, vnet_dev_crypto_config_t *);
+void vnet_dev_crypto_config_free (vnet_dev_crypto_config_t *);
+
 /* dev.c */
-vnet_dev_t *vnet_dev_alloc (vlib_main_t *, vnet_dev_device_id_t,
-			    vnet_dev_driver_t *);
+vnet_dev_t *vnet_dev_alloc (vlib_main_t *, vnet_dev_device_id_t, vnet_dev_driver_t *);
 vnet_dev_op_no_rv_t vnet_dev_free;
 vnet_dev_op_no_rv_t vnet_dev_discard;
 vnet_dev_op_t vnet_dev_init;
@@ -903,5 +1091,6 @@ STATIC_ASSERT (sizeof (vnet_dev_tx_node_runtime_t) <=
   pool_foreach_pointer (q, p->tx_queues)
 
 #include <vnet/dev/dev_funcs.h>
+#include <vnet/dev/dev_crypto_funcs.h>
 
 #endif /* _VNET_DEV_H_ */

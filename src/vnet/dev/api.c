@@ -19,16 +19,7 @@ VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
 static int
 _vnet_dev_queue_size_validate (u32 size, vnet_dev_queue_config_t c)
 {
-  if (size < c.min_size)
-    return 0;
-  if (size > c.max_size)
-    return 0;
-  if (c.size_is_power_of_two && count_set_bits (size) != 1)
-    return 0;
-  if (c.multiplier && size % c.multiplier)
-    return 0;
-
-  return 1;
+  return vnet_dev_queue_size_is_valid (size, &c);
 }
 
 vnet_dev_rv_t
@@ -101,6 +92,7 @@ vnet_dev_api_attach (vlib_main_t *vm, vnet_dev_api_attach_args_t *args)
     }
   dev->description = dev_desc;
   dev->probe_handle = probe_handle;
+  vnet_dev_crypto_config_copy (&dev->crypto_config, &args->crypto);
 
   if (driver->registration->device.args)
     dev->args = clib_args_init (driver->registration->device.args);
