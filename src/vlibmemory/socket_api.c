@@ -286,12 +286,12 @@ vl_socket_read_ready (clib_file_t * uf)
 
   if (n <= 0)
     {
-      if (errno != EAGAIN)
+      if (n == 0 || (errno != EAGAIN && errno != EWOULDBLOCK))
 	{
-	  /* Severe error, close the file. */
+	  /* Peer closed the connection, or a severe read error occurred. */
 	  vl_socket_request_remove_reg_index (reg_index);
 	}
-      /* EAGAIN means we do not close the file, but no data to process anyway. */
+      /* EAGAIN/EWOULDBLOCK means no data to process yet. */
       return 0;
     }
 
