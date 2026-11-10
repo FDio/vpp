@@ -25,7 +25,18 @@ func init() {
 		Http2ClientMultiplexingTest, Http2ClientH2cTest, Http2ClientContinuationH2cTest, Http2ClientNoContentLengthTest, Http2ServerExtraDataTest,
 		Http2ClientMemLeakTest, Http2ClientClosedHeadersTest, Http2ServerDeferredCleanupTest,
 		Htttp2TlsNoAlpnTest, Http2TcpClientCloseDuringHandshakeTest,
-		Http2PseudoHeadersTest, Http2ResponsePseudoHeadersTest)
+		Http2PseudoHeadersTest, Http2ResponsePseudoHeadersTest,
+		Http2ClientStreamingBodyTest, Http2ClientStreamingAbortTest,
+		Http2ClientStreamingFinalResetTest, Http2ClientStreamingBodylessTest,
+		Http2ServerStreamingBodyTest, Http2ServerStreamingPaddingTest,
+		Http2ServerStreamingMultiplexingTest, Http2ServerStreamingLengthTest,
+		Http2ServerStreamingRejectedTest,
+		Http2ClientStreamingTxTest, Http2ClientStreamingTxWindowTest,
+		Http2ClientPutStreamingTest, Http2ServerStreamingTxTest,
+		Http2ServerStreamingTxWindowTest, Http2ClientStreamingTxReplyTest,
+		Http2ClientStreamingTxContinuationTest, Http2ServerStreamingTxResetTest,
+		Http2StreamingTxTlsTest, Http2ServerStreamingTxExchangeTest,
+		Http2ClientTrailersTest, Http2ServerTrailersTest, Http2TrailerErrorsTest)
 	RegisterH2MWTests(Http2MultiplexingMWTest, Http2ClientMultiplexingMWTest, Http2TsFifoMemPressureMWTest)
 	RegisterVethTests(Http2CliTlsTest, Http2ClientContinuationTest, Http2ClientPostFormTest, Http2ClientPostFormPtrTest)
 }
@@ -464,18 +475,983 @@ func Http2ClientContinuationH2cTest(s *Http2Suite) {
 
 func Http2ClientNoContentLengthTest(s *Http2Suite) {
 	vpp := s.Containers.Vpp.VppInstance
-	block := http2HeaderBlock(hpack.HeaderField{Name: ":status", Value: "200"})
+	block := http2HeaderBlock(hpack.HeaderField{Name: ":status", Value: "200"},
+		hpack.HeaderField{Name: "content-type", Value: "text/plain"})
 	l, serverAddress := http2RawServer(s, func(w *http2.Framer) {
 		w.WriteHeaders(http2.HeadersFrameParam{StreamID: 1, BlockFragment: block, EndHeaders: true})
 		w.WriteData(1, true, []byte("hello"))
 	})
 	defer l.Close()
 
-	Log(vpp.Vppctl("http client http2 verbose timeout 5 uri http://" + serverAddress + "/"))
-	// a body without content-length can't be framed yet, the client drops the connection
-	o := vpp.Vppctl("show http stats")
+	o := vpp.Vppctl("http client http2 verbose timeout 5 uri http://" + serverAddress + "/")
+	AssertContains(o, "hello")
+	o = vpp.Vppctl("show http stats")
 	Log(o)
-	AssertContains(o, "1 connections protocol error")
+	AssertNotContains(o, "connections protocol error")
+}
+
+// A wire peer honors both flow-control windows, so bodies larger than the VPP
+// application FIFO exercise read notifications rather than overflowing it.
+type http2RxPeer struct {
+	conn          net.Conn
+	framer        *http2.Framer
+	window        int64
+	initialWindow int64
+	streams       map[uint32]int64
+	maxFrame      int
+}
+
+func newHttp2RxPeer(conn net.Conn) *http2RxPeer {
+	f := http2.NewFramer(conn, conn)
+	f.ReadMetaHeaders = hpack.NewDecoder(4096, nil)
+	return &http2RxPeer{conn, f, 65535, 65535, make(map[uint32]int64), 16384}
+}
+
+func (p *http2RxPeer) control(frame http2.Frame) (bool, error) {
+	switch f := frame.(type) {
+	case *http2.SettingsFrame:
+		if !f.IsAck() {
+			err := f.ForeachSetting(func(s http2.Setting) error {
+				switch s.ID {
+				case http2.SettingInitialWindowSize:
+					for id := range p.streams {
+						p.streams[id] += int64(s.Val) - p.initialWindow
+					}
+					p.initialWindow = int64(s.Val)
+				case http2.SettingMaxFrameSize:
+					p.maxFrame = int(s.Val)
+				}
+				return nil
+			})
+			if err != nil {
+				return true, err
+			}
+			return true, p.framer.WriteSettingsAck()
+		}
+	case *http2.WindowUpdateFrame:
+		if f.StreamID == 0 {
+			p.window += int64(f.Increment)
+		} else {
+			if _, ok := p.streams[f.StreamID]; !ok {
+				p.streams[f.StreamID] = p.initialWindow
+			}
+			p.streams[f.StreamID] += int64(f.Increment)
+		}
+	case *http2.PingFrame:
+		if !f.IsAck() {
+			return true, p.framer.WritePing(true, f.Data)
+		}
+	case *http2.GoAwayFrame:
+		return true, fmt.Errorf("GOAWAY: %s", f.ErrCode)
+	case *http2.RSTStreamFrame:
+		return true, fmt.Errorf("RST_STREAM %d: %s", f.StreamID, f.ErrCode)
+	default:
+		return false, nil
+	}
+	return true, nil
+}
+
+func (p *http2RxPeer) headers(id uint32, fields []hpack.HeaderField, end, fragmented bool) error {
+	p.streams[id] = p.initialWindow
+	block := http2HeaderBlock(fields...)
+	if fragmented {
+		if err := p.framer.WriteHeaders(http2.HeadersFrameParam{StreamID: id,
+			BlockFragment: block[:1], EndStream: end}); err != nil {
+			return err
+		}
+		return p.framer.WriteContinuation(id, true, block[1:])
+	}
+	return p.framer.WriteHeaders(http2.HeadersFrameParam{StreamID: id,
+		BlockFragment: block, EndStream: end, EndHeaders: true})
+}
+
+func (p *http2RxPeer) data(id uint32, body []byte, end bool, padding int) error {
+	for len(body) > 0 || padding > 0 {
+		credit := min(p.window, p.streams[id], int64(p.maxFrame))
+		overhead := 0
+		if padding > 0 {
+			overhead = padding + 1
+		}
+		if credit < int64(overhead) || credit == 0 {
+			frame, err := p.framer.ReadFrame()
+			if err != nil {
+				return err
+			}
+			if _, err = p.control(frame); err != nil {
+				return err
+			}
+			continue
+		}
+		n := min(len(body), int(credit)-overhead)
+		var pad []byte
+		if padding > 0 {
+			pad = make([]byte, padding)
+		}
+		if err := p.framer.WriteDataPadded(id, end && n == len(body), body[:n], pad); err != nil {
+			return err
+		}
+		p.window -= int64(n + overhead)
+		p.streams[id] -= int64(n + overhead)
+		body = body[n:]
+		if len(body) == 0 {
+			return nil
+		}
+	}
+	return p.framer.WriteData(id, end, nil)
+}
+
+func (p *http2RxPeer) response(id uint32) ([]byte, string, error) {
+	var body []byte
+	status := ""
+	for {
+		frame, err := p.framer.ReadFrame()
+		if err != nil {
+			return body, status, err
+		}
+		if handled, err := p.control(frame); handled {
+			if err != nil {
+				return body, status, err
+			}
+			continue
+		}
+		switch f := frame.(type) {
+		case *http2.MetaHeadersFrame:
+			if f.StreamID != id {
+				return body, status, fmt.Errorf("unexpected headers on stream %d", f.StreamID)
+			}
+			for _, field := range f.Fields {
+				if field.Name == ":status" {
+					status = field.Value
+				}
+			}
+			if f.StreamEnded() {
+				return body, status, nil
+			}
+		case *http2.DataFrame:
+			if f.StreamID != id {
+				return body, status, fmt.Errorf("unexpected DATA on stream %d", f.StreamID)
+			}
+			body = append(body, f.Data()...)
+			if f.StreamEnded() {
+				return body, status, nil
+			}
+			if f.Length > 0 {
+				if err = p.framer.WriteWindowUpdate(0, f.Length); err != nil {
+					return body, status, err
+				}
+				if err = p.framer.WriteWindowUpdate(id, f.Length); err != nil {
+					return body, status, err
+				}
+			}
+		}
+	}
+}
+
+func http2RxConnect(address string, settings ...http2.Setting) *http2RxPeer {
+	conn, err := net.DialTimeout("tcp", address, 5*time.Second)
+	AssertNil(err)
+	return http2RxHandshake(conn, settings...)
+}
+
+func http2RxHandshake(conn net.Conn, settings ...http2.Setting) *http2RxPeer {
+	AssertNil(conn.SetDeadline(time.Now().Add(5 * time.Second)))
+	_, err := io.WriteString(conn, http2.ClientPreface)
+	AssertNil(err)
+	p := newHttp2RxPeer(conn)
+	settings = append(settings, http2.Setting{ID: http2.SettingMaxConcurrentStreams, Val: 100})
+	AssertNil(p.framer.WriteSettings(settings...))
+	for {
+		f, err := p.framer.ReadFrame()
+		AssertNil(err)
+		_, err = p.control(f)
+		AssertNil(err)
+		if s, ok := f.(*http2.SettingsFrame); ok && !s.IsAck() {
+			return p
+		}
+	}
+}
+
+func http2RxRequest(address, method string, length ...string) []hpack.HeaderField {
+	fields := []hpack.HeaderField{{Name: ":method", Value: method}, {Name: ":scheme", Value: "http"},
+		{Name: ":authority", Value: address}, {Name: ":path", Value: "/echo"}}
+	if len(length) > 0 {
+		fields = append(fields, hpack.HeaderField{Name: "content-length", Value: length[0]})
+	}
+	return fields
+}
+
+func http2RxServer(s *Http2Suite, send func(*http2RxPeer, uint32) error) (net.Listener, string, <-chan error) {
+	l, err := net.Listen("tcp", net.JoinHostPort(s.HostAddr(), s.Ports.Port1))
+	AssertNil(err)
+	done := make(chan error, 1)
+	go func() {
+		conn, err := l.Accept()
+		if err != nil {
+			done <- err
+			return
+		}
+		defer conn.Close()
+		conn.SetDeadline(time.Now().Add(5 * time.Second))
+		preface := make([]byte, len(http2.ClientPreface))
+		if _, err = io.ReadFull(conn, preface); err != nil {
+			done <- err
+			return
+		}
+		p := newHttp2RxPeer(conn)
+		if err = p.framer.WriteSettings(http2.Setting{ID: http2.SettingMaxConcurrentStreams, Val: 100}); err == nil {
+			for {
+				var f http2.Frame
+				f, err = p.framer.ReadFrame()
+				if err != nil {
+					break
+				}
+				if h, ok := f.(*http2.MetaHeadersFrame); ok {
+					p.streams[h.StreamID] = p.initialWindow
+					err = send(p, h.StreamID)
+					break
+				}
+				if _, err = p.control(f); err != nil {
+					break
+				}
+			}
+		}
+		done <- err
+	}()
+	return l, l.Addr().String(), done
+}
+
+func Http2ClientStreamingBodyTest(s *Http2Suite) {
+	for _, tc := range []struct {
+		body       string
+		emptyEnd   bool
+		fragmented bool
+		padding    int
+	}{
+		{"", true, false, 0}, {"hello", false, false, 0}, {"padded", false, true, 15},
+		{strings.Repeat("http2-stream!", 12000), true, true, 0},
+	} {
+		l, address, done := http2RxServer(s, func(p *http2RxPeer, id uint32) error {
+			if err := p.headers(id, []hpack.HeaderField{{Name: ":status", Value: "200"},
+				{Name: "content-type", Value: "text/plain"}}, false, tc.fragmented); err != nil {
+				return err
+			}
+			time.Sleep(20 * time.Millisecond)
+			if err := p.data(id, []byte(tc.body), !tc.emptyEnd, tc.padding); err != nil {
+				return err
+			}
+			if tc.emptyEnd {
+				time.Sleep(20 * time.Millisecond)
+				return p.data(id, nil, true, 0)
+			}
+			return nil
+		})
+		defer l.Close()
+		output := s.Containers.Vpp.VppInstance.Vppctl("http client http2 verbose fifo-size 4k timeout 5 uri http://" + address + "/")
+		AssertContains(output, "200 OK")
+		if tc.body != "" {
+			AssertContains(output, tc.body)
+		}
+		AssertNil(<-done)
+		AssertNil(l.Close())
+	}
+	AssertNotContains(s.Containers.Vpp.VppInstance.Vppctl("show http stats"), "connections protocol error")
+}
+
+func Http2ClientTrailersTest(s *Http2Suite) {
+	for _, client := range []string{"http cli client", "http client"} {
+		for _, body := range []string{"", "trailer-body", strings.Repeat("trailer-body!", 12000)} {
+			l, address, done := http2RxServer(s, func(p *http2RxPeer, id uint32) error {
+				fields := []hpack.HeaderField{{Name: ":status", Value: "200"}}
+				if body != "" {
+					fields = append(fields, hpack.HeaderField{Name: "content-type", Value: "text/plain"})
+				}
+				if err := p.headers(id, fields, false, false); err != nil {
+					return err
+				}
+				if err := p.data(id, []byte(body), false, 0); err != nil {
+					return err
+				}
+				block := http2HeaderBlock(hpack.HeaderField{Name: "x-checksum", Value: "discarded-trailer"})
+				if err := p.framer.WriteHeaders(http2.HeadersFrameParam{StreamID: id, EndStream: true,
+					BlockFragment: block[:1], PadLength: 7}); err != nil {
+					return err
+				}
+				time.Sleep(25 * time.Millisecond)
+				return p.framer.WriteContinuation(id, true, block[1:])
+			})
+			options := " fifo-size 4"
+			if client == "http client" {
+				options = " fifo-size 4k verbose timeout 5"
+			}
+			output := s.Containers.Vpp.VppInstance.Vppctl(client + " http2" + options + " uri http://" + address + "/")
+			if client == "http cli client" {
+				AssertEqual(body, strings.TrimSpace(output))
+			} else {
+				AssertContains(output, "200 OK")
+				if body != "" {
+					AssertContains(output, body)
+				}
+			}
+			AssertNotContains(output, "discarded-trailer")
+			AssertNil(<-done)
+			AssertNil(l.Close())
+		}
+	}
+}
+
+func Http2ServerTrailersTest(s *Http2Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	AssertEmpty(s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address))
+	p := http2RxConnect(address)
+	defer p.conn.Close()
+	var block bytes.Buffer
+	encoder := hpack.NewEncoder(&block)
+	writeHeaders := func(id uint32, fields []hpack.HeaderField, end bool) {
+		block.Reset()
+		for _, field := range fields {
+			AssertNil(encoder.WriteField(field))
+		}
+		AssertNil(p.framer.WriteHeaders(http2.HeadersFrameParam{StreamID: id, EndStream: end,
+			EndHeaders: true, BlockFragment: block.Bytes()}))
+	}
+	for i, body := range []string{"", "small-body", strings.Repeat("body-before-trailers!", 10000)} {
+		id := uint32(2*i + 1)
+		fields := append(http2RxRequest(address, "POST"), hpack.HeaderField{Name: "x-checksum", Value: "table-entry"})
+		writeHeaders(id, fields, false)
+		p.streams[id] = p.initialWindow
+		AssertNil(p.data(id, []byte(body), false, 0))
+		// Reuses dynamic entries from the initial headers and previous streams.
+		var trailers []hpack.HeaderField
+		if i != 0 {
+			trailers = []hpack.HeaderField{{Name: "x-checksum", Value: "table-entry"}}
+		}
+		writeHeaders(id, trailers, true)
+		reply, status, err := p.response(id)
+		AssertNil(err)
+		AssertEqual("200", status)
+		AssertEqual(body, string(reply))
+	}
+}
+
+func Http2TrailerErrorsTest(s *Http2Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	AssertEmpty(s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address))
+	for _, tc := range []struct {
+		name           string
+		end            bool
+		badCompression bool
+		length         string
+	}{
+		{"pseudo-header", true, false, ""}, {"missing END_STREAM", false, false, ""},
+		{"short body", true, false, "11"}, {"compression", true, true, ""},
+	} {
+		By(tc.name)
+		p := http2RxConnect(address)
+		fields := http2RxRequest(address, "POST")
+		if tc.length != "" {
+			fields = append(fields, hpack.HeaderField{Name: "content-length", Value: tc.length})
+		}
+		AssertNil(p.headers(1, fields, false, false))
+		AssertNil(p.data(1, []byte("unfinished"), false, 0))
+		// Literal with indexing inserts x-sync after the invalid pseudo-header.
+		block := []byte{0x88, 0x40, 6, 'x', '-', 's', 'y', 'n', 'c', 2, 'o', 'k'}
+		if !tc.end || tc.length != "" {
+			block = block[1:]
+		}
+		if tc.badCompression {
+			block = append(block, 0x80)
+		}
+		AssertNil(p.framer.WriteHeaders(http2.HeadersFrameParam{StreamID: 1, EndStream: tc.end,
+			EndHeaders: false, BlockFragment: block[:1]}))
+		AssertNil(p.framer.WriteContinuation(1, true, block[1:]))
+		for {
+			frame, err := p.framer.ReadFrame()
+			AssertNil(err)
+			if tc.badCompression {
+				if f, ok := frame.(*http2.GoAwayFrame); ok {
+					AssertEqual(http2.ErrCodeCompression, f.ErrCode)
+					break
+				}
+			} else if f, ok := frame.(*http2.RSTStreamFrame); ok {
+				AssertEqual(uint32(1), f.StreamID)
+				AssertEqual(http2.ErrCodeProtocol, f.ErrCode)
+				break
+			}
+			_, err = p.control(frame)
+			AssertNil(err)
+		}
+		if !tc.badCompression {
+			// Static-only request fields followed by the dynamic trailer entry.
+			block = []byte{0x83, 0x86, 0x04, 5, '/', 'e', 'c', 'h', 'o',
+				0x01, 9, 'l', 'o', 'c', 'a', 'l', 'h', 'o', 's', 't', 0xbe}
+			AssertNil(p.framer.WriteHeaders(http2.HeadersFrameParam{StreamID: 3, EndStream: true,
+				EndHeaders: true, BlockFragment: block}))
+			_, status, err := p.response(3)
+			AssertNil(err)
+			AssertEqual("200", status)
+		}
+		AssertNil(p.conn.Close())
+	}
+}
+
+func Http2ClientStreamingAbortTest(s *Http2Suite) {
+	for _, reset := range []bool{false, true} {
+		l, address, done := http2RxServer(s, func(p *http2RxPeer, id uint32) error {
+			if err := p.headers(id, []hpack.HeaderField{{Name: ":status", Value: "200"}}, false, false); err != nil {
+				return err
+			}
+			if err := p.data(id, []byte("incomplete-body"), false, 0); err != nil {
+				return err
+			}
+			time.Sleep(20 * time.Millisecond)
+			if reset {
+				return p.framer.WriteRSTStream(id, http2.ErrCodeCancel)
+			}
+			return nil // TCP EOF is not message EOF.
+		})
+		defer l.Close()
+		output := s.Containers.Vpp.VppInstance.Vppctl("http client http2 verbose timeout 5 uri http://" + address + "/")
+		AssertContains(output, "transport closed")
+		AssertNil(<-done)
+		AssertNil(l.Close())
+	}
+}
+
+func Http2ClientStreamingFinalResetTest(s *Http2Suite) {
+	l, address, done := http2RxServer(s, func(p *http2RxPeer, id uint32) error {
+		if err := p.headers(id, []hpack.HeaderField{{Name: ":status", Value: "200"},
+			{Name: "content-type", Value: "text/plain"}}, false, false); err != nil {
+			return err
+		}
+		var batch bytes.Buffer
+		f := http2.NewFramer(&batch, nil)
+		if err := f.WriteData(id, true, []byte("complete-before-reset")); err != nil {
+			return err
+		}
+		if err := f.WriteRSTStream(id, http2.ErrCodeNo); err != nil {
+			return err
+		}
+		_, err := p.conn.Write(batch.Bytes())
+		return err
+	})
+	defer l.Close()
+	output := s.Containers.Vpp.VppInstance.Vppctl("http client http2 verbose timeout 5 uri http://" + address + "/")
+	AssertContains(output, "complete-before-reset")
+	AssertNil(<-done)
+}
+
+func Http2ClientStreamingBodylessTest(s *Http2Suite) {
+	for _, tc := range []struct {
+		status  string
+		length  string
+		interim bool
+	}{{"204", "", false}, {"304", "123", false}, {"200", "0", false}, {"200", "", true}} {
+		l, address, done := http2RxServer(s, func(p *http2RxPeer, id uint32) error {
+			if tc.interim {
+				if err := p.headers(id, []hpack.HeaderField{{Name: ":status", Value: "100"}}, false, false); err != nil {
+					return err
+				}
+			}
+			fields := []hpack.HeaderField{{Name: ":status", Value: tc.status}, {Name: "content-type", Value: "text/plain"}}
+			if tc.length != "" {
+				fields = append(fields, hpack.HeaderField{Name: "content-length", Value: tc.length})
+			}
+			if err := p.headers(id, fields, !tc.interim, true); err != nil {
+				return err
+			}
+			if tc.interim {
+				return p.data(id, []byte("final-response-body"), true, 0)
+			}
+			return nil
+		})
+		defer l.Close()
+		output := s.Containers.Vpp.VppInstance.Vppctl("http client http2 verbose timeout 5 uri http://" + address + "/")
+		AssertContains(output, tc.status)
+		AssertNotContains(output, "transport closed")
+		if tc.interim {
+			AssertContains(output, "final-response-body")
+		}
+		AssertNil(<-done)
+		AssertNil(l.Close())
+	}
+}
+
+func Http2ServerStreamingBodyTest(s *Http2Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	AssertEmpty(s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address))
+	for _, method := range []string{"GET", "POST", "PUT"} {
+		for _, body := range []string{"", "small-body", strings.Repeat("streamed-request!", 10000)} {
+			p := http2RxConnect(address)
+			AssertNil(p.headers(1, http2RxRequest(address, method), false, true))
+			endWithData := body == "small-body"
+			AssertNil(p.data(1, []byte(body), endWithData, 0))
+			if !endWithData {
+				AssertNil(p.data(1, nil, true, 0))
+			}
+			reply, status, err := p.response(1)
+			AssertNil(err)
+			AssertEqual("200", status)
+			AssertEqual(body, string(reply))
+			AssertNil(p.conn.Close())
+		}
+	}
+}
+
+func Http2ServerStreamingPaddingTest(s *Http2Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	AssertEmpty(s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address))
+	p := http2RxConnect(address)
+	defer p.conn.Close()
+	AssertNil(p.headers(1, http2RxRequest(address, "POST"), false, false))
+	// Consume several complete stream windows without delivering any body bytes.
+	for range 40 {
+		AssertNil(p.data(1, nil, false, 255))
+	}
+	AssertNil(p.data(1, []byte("body-without-padding"), true, 31))
+	body, status, err := p.response(1)
+	AssertNil(err)
+	AssertEqual("200", status)
+	AssertEqual("body-without-padding", string(body))
+}
+
+func Http2ServerStreamingMultiplexingTest(s *Http2Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	AssertEmpty(s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address))
+	p := http2RxConnect(address)
+	defer p.conn.Close()
+	AssertNil(p.headers(1, http2RxRequest(address, "POST"), false, false))
+	AssertNil(p.data(1, []byte("waiting-for-end"), false, 0))
+	AssertNil(p.headers(3, http2RxRequest(address, "GET"), true, true))
+	body, status, err := p.response(3)
+	AssertNil(err)
+	AssertEqual("200", status)
+	AssertEmpty(body)
+	AssertNil(p.data(1, nil, true, 0))
+	body, status, err = p.response(1)
+	AssertNil(err)
+	AssertEqual("200", status)
+	AssertEqual("waiting-for-end", string(body))
+	AssertNil(p.headers(5, http2RxRequest(address, "POST"), false, false))
+	AssertNil(p.data(5, []byte("cancelled-request"), false, 0))
+	AssertNil(p.framer.WriteRSTStream(5, http2.ErrCodeCancel))
+	AssertNil(p.headers(7, http2RxRequest(address, "GET"), true, false))
+	body, status, err = p.response(7)
+	AssertNil(err)
+	AssertEqual("200", status)
+	AssertEmpty(body)
+}
+
+func Http2ServerStreamingLengthTest(s *Http2Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	AssertEmpty(s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address))
+	for _, tc := range []struct {
+		length  string
+		body    string
+		endHead bool
+	}{{"0", "x", false}, {"5", "", true}, {"5", "abcd", false}} {
+		p := http2RxConnect(address)
+		// Batch frames so an early application response cannot mask a length error.
+		var batch bytes.Buffer
+		f := http2.NewFramer(&batch, nil)
+		AssertNil(f.WriteHeaders(http2.HeadersFrameParam{StreamID: 1, EndHeaders: true, EndStream: tc.endHead,
+			BlockFragment: http2HeaderBlock(http2RxRequest(address, "POST", tc.length)...)}))
+		if !tc.endHead {
+			AssertNil(f.WriteData(1, false, []byte(tc.body)))
+			AssertNil(f.WriteData(1, true, nil))
+		}
+		_, err := p.conn.Write(batch.Bytes())
+		AssertNil(err)
+		for {
+			frame, err := p.framer.ReadFrame()
+			AssertNil(err)
+			if rst, ok := frame.(*http2.RSTStreamFrame); ok {
+				AssertEqual(uint32(1), rst.StreamID)
+				AssertEqual(http2.ErrCodeProtocol, rst.ErrCode)
+				break
+			}
+			_, err = p.control(frame)
+			AssertNil(err)
+		}
+		AssertNil(p.conn.Close())
+	}
+}
+
+func Http2ServerStreamingRejectedTest(s *Http2Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	AssertEmpty(s.Containers.Vpp.VppInstance.Vppctl("http static server uri http://" + address + " url-handlers"))
+	p := http2RxConnect(address)
+	defer p.conn.Close()
+	AssertNil(p.headers(1, http2RxRequest(address, "POST"), false, false))
+	_, status, err := p.response(1)
+	AssertNil(err)
+	AssertEqual("411", status)
+	for {
+		frame, err := p.framer.ReadFrame()
+		AssertNil(err)
+		if rst, ok := frame.(*http2.RSTStreamFrame); ok {
+			AssertEqual(uint32(1), rst.StreamID)
+			AssertEqual(http2.ErrCodeNo, rst.ErrCode)
+			break
+		}
+		_, err = p.control(frame)
+		AssertNil(err)
+	}
+	AssertNil(p.headers(3, http2RxRequest(address, "GET"), true, false))
+	_, status, err = p.response(3)
+	AssertNil(err)
+	AssertEqual("404", status)
+}
+
+func http2TxHeaders(h *http2.MetaHeadersFrame) error {
+	if h.StreamEnded() {
+		return fmt.Errorf("streaming HEADERS ended stream %d", h.StreamID)
+	}
+	for _, field := range h.Fields {
+		if field.Name == "content-length" || field.Name == "transfer-encoding" {
+			return fmt.Errorf("streaming HEADERS contain %s", field.Name)
+		}
+	}
+	return nil
+}
+
+func http2TxReadBody(p *http2RxPeer, id uint32, window uint32, replenish bool) ([]byte, bool, error) {
+	var body []byte
+	streamCredit, connectionCredit := int64(window), int64(65535)
+	for {
+		frame, err := p.framer.ReadFrame()
+		if err != nil {
+			return body, false, err
+		}
+		if handled, err := p.control(frame); handled {
+			if err != nil {
+				return body, false, err
+			}
+			continue
+		}
+		f, ok := frame.(*http2.DataFrame)
+		if !ok || f.StreamID != id {
+			return body, false, fmt.Errorf("expected DATA on stream %d, got %v", id, frame)
+		}
+		streamCredit -= int64(f.Length)
+		connectionCredit -= int64(f.Length)
+		if streamCredit < 0 || connectionCredit < 0 {
+			return body, false, fmt.Errorf("DATA exceeded peer flow-control credit")
+		}
+		body = append(body, f.Data()...)
+		if f.StreamEnded() {
+			return body, f.Length == 0, nil
+		}
+		if replenish && f.Length > 0 {
+			if err = p.framer.WriteWindowUpdate(0, f.Length); err == nil {
+				err = p.framer.WriteWindowUpdate(id, f.Length)
+			}
+			if err != nil {
+				return body, false, err
+			}
+			streamCredit += int64(f.Length)
+			connectionCredit += int64(f.Length)
+		}
+	}
+}
+
+func http2StreamingTxClient(s *Http2Suite, method, body, options, client string, window uint32, replenish bool) {
+	vpp := s.Containers.Vpp.VppInstance
+	file := "/tmp/http2-stream-tx.txt"
+	AssertNil(vpp.Container.CreateFile(file, body))
+	listener, err := net.Listen("tcp", net.JoinHostPort(s.HostAddr(), s.Ports.Port1))
+	AssertNil(err)
+	defer listener.Close()
+	scheme := "http"
+	if client == "tls" {
+		certificate, err := tls.LoadX509KeyPair("resources/cert/localhost.crt", "resources/cert/localhost.key")
+		AssertNil(err)
+		listener = tls.NewListener(listener, &tls.Config{Certificates: []tls.Certificate{certificate}, NextProtos: []string{"h2"}})
+		scheme = "https"
+	}
+	done := make(chan error, 1)
+	go func() {
+		run := func() error {
+			conn, err := listener.Accept()
+			if err != nil {
+				return err
+			}
+			defer conn.Close()
+			conn.SetDeadline(time.Now().Add(5 * time.Second))
+			preface := make([]byte, len(http2.ClientPreface))
+			if _, err = io.ReadFull(conn, preface); err != nil {
+				return err
+			}
+			p := newHttp2RxPeer(conn)
+			if err = p.framer.WriteSettings(http2.Setting{ID: http2.SettingInitialWindowSize, Val: window}); err != nil {
+				return err
+			}
+			for {
+				frame, err := p.framer.ReadFrame()
+				if err != nil {
+					return err
+				}
+				if h, ok := frame.(*http2.MetaHeadersFrame); ok {
+					if err = http2TxHeaders(h); err != nil {
+						return err
+					}
+					if strings.Contains(options, "x-long:") && h.HeadersEnded() {
+						return fmt.Errorf("expected fragmented streaming HEADERS")
+					}
+					for _, field := range h.Fields {
+						if field.Name == ":method" && field.Value != method {
+							return fmt.Errorf("method %s, expected %s", field.Value, method)
+						}
+					}
+					data, emptyEnd, err := http2TxReadBody(p, h.StreamID, window, replenish)
+					if err != nil {
+						return err
+					}
+					if string(data) != body {
+						return fmt.Errorf("body mismatch: got %d bytes, expected %d", len(data), len(body))
+					}
+					if (len(body) == 0 || strings.Contains(options, "eof-after-drain")) && !emptyEnd {
+						return fmt.Errorf("expected empty DATA with END_STREAM after draining")
+					}
+					if strings.Contains(options, "close-after-tx") {
+						return nil
+					}
+					// Late credit after END_STREAM must not restart the sender.
+					if err = p.framer.WriteWindowUpdate(h.StreamID, 1); err != nil {
+						return err
+					}
+					if err = p.headers(h.StreamID, []hpack.HeaderField{{Name: ":status", Value: "200"},
+						{Name: "content-length", Value: "16"}, {Name: "content-type", Value: "text/plain"}}, false, false); err != nil {
+						return err
+					}
+					return p.data(h.StreamID, []byte("request-complete"), true, 0)
+				}
+				if _, err = p.control(frame); err != nil {
+					return err
+				}
+			}
+		}
+		done <- run()
+	}()
+	var output string
+	if client == "http client" {
+		output = vpp.Vppctl("http client http2 put verbose fifo-size 4k file %s uri http://%s/echo", file, listener.Addr())
+	} else {
+		output = vpp.Vppctl("http cli client http2 stream method %s fifo-size 4 file %s %s uri %s://%s/echo",
+			strings.ToLower(method), file, options, scheme, listener.Addr())
+	}
+	AssertNil(<-done)
+	if !strings.Contains(options, "close-after-tx") {
+		AssertContains(output, "request-complete")
+	}
+}
+
+func Http2ClientStreamingTxTest(s *Http2Suite) {
+	for _, method := range []string{"GET", "POST", "PUT"} {
+		for _, body := range []string{"", "small-body", strings.Repeat("streaming-tx!", 12000)} {
+			for _, options := range []string{"", "eof-after-drain tx-delay 0.001"} {
+				http2StreamingTxClient(s, method, body, options, "http cli client", 1024, true)
+			}
+		}
+	}
+}
+
+func Http2ClientStreamingTxWindowTest(s *Http2Suite) {
+	// An empty terminator needs no stream or connection flow-control credit.
+	http2StreamingTxClient(s, "POST", "", "", "http cli client", 0, false)
+	http2StreamingTxClient(s, "PUT", strings.Repeat("x", 65535), "eof-after-drain", "http cli client", 65535, false)
+	for _, body := range []string{"", "closed-body"} {
+		http2StreamingTxClient(s, "POST", body, "close-after-tx", "http cli client", 1024, true)
+	}
+}
+
+func Http2ClientPutStreamingTest(s *Http2Suite) {
+	http2StreamingTxClient(s, "PUT", strings.Repeat("http-client-put!", 10000), "", "http client", 1024, true)
+}
+
+func Http2ClientStreamingTxContinuationTest(s *Http2Suite) {
+	// Fragmented HEADERS must leave the streaming DATA direction open too.
+	http2StreamingTxClient(s, "POST", "fragmented-headers", "fifo-size 32 header x-long:"+strings.Repeat("h", 24000),
+		"http cli client", 1024, true)
+}
+
+func Http2ClientStreamingTxReplyTest(s *Http2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	body := strings.Repeat("early-reply!", 20000)
+	file := "/tmp/http2-stream-reply.txt"
+	AssertNil(vpp.Container.CreateFile(file, body))
+	for _, status := range []string{"100", "413"} {
+		listener, address, done := http2RxServer(s, func(p *http2RxPeer, id uint32) error {
+			if err := p.headers(id, []hpack.HeaderField{{Name: ":status", Value: status}}, status == "413", false); err != nil {
+				return err
+			}
+			if status == "413" {
+				return nil
+			}
+			data, _, err := http2TxReadBody(p, id, 65535, true)
+			if err != nil {
+				return err
+			}
+			if string(data) != body {
+				return fmt.Errorf("informational response interrupted request body")
+			}
+			return p.headers(id, []hpack.HeaderField{{Name: ":status", Value: "200"}}, true, false)
+		})
+		output := vpp.Vppctl("http cli client http2 stream method post fifo-size 4 file %s tx-delay 0.001 uri http://%s/echo", file, address)
+		AssertNil(<-done)
+		listener.Close()
+		if status == "413" {
+			AssertContains(output, "response code: 413")
+		} else {
+			AssertNotContains(output, "failed")
+		}
+	}
+}
+
+func http2StreamingTxResponse(p *http2RxPeer, id uint32, window uint32, replenish bool) ([]byte, bool) {
+	for {
+		frame, err := p.framer.ReadFrame()
+		AssertNil(err)
+		if h, ok := frame.(*http2.MetaHeadersFrame); ok {
+			AssertEqual(id, h.StreamID)
+			AssertNil(http2TxHeaders(h))
+			body, emptyEnd, err := http2TxReadBody(p, id, window, replenish)
+			AssertNil(err)
+			return body, emptyEnd
+		}
+		_, err = p.control(frame)
+		AssertNil(err)
+	}
+}
+
+func Http2ServerStreamingTxTest(s *Http2Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	AssertEmpty(s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address))
+	p := http2RxConnect(address, http2.Setting{ID: http2.SettingInitialWindowSize, Val: 1024})
+	defer p.conn.Close()
+	id := uint32(1)
+	for _, path := range []string{"/echo-stream", "/echo-stream-drain", "/echo-stream-close"} {
+		for _, method := range []string{"GET", "POST", "PUT"} {
+			for _, body := range []string{"", "small-body", strings.Repeat("stream-response!", 10000)} {
+				AssertNil(p.conn.SetDeadline(time.Now().Add(5 * time.Second)))
+				fields := http2RxRequest(address, method, strconv.Itoa(len(body)))
+				fields[3].Value = path
+				AssertNil(p.headers(id, fields, len(body) == 0, false))
+				if len(body) > 0 {
+					AssertNil(p.data(id, []byte(body), true, 0))
+				}
+				data, emptyEnd := http2StreamingTxResponse(p, id, 1024, true)
+				AssertEqual(body, string(data))
+				if len(body) == 0 || path == "/echo-stream-drain" {
+					AssertEqual(true, emptyEnd)
+				}
+				id += 2
+			}
+		}
+	}
+}
+
+func Http2ServerStreamingTxWindowTest(s *Http2Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	AssertEmpty(s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address))
+	for _, body := range []string{"", strings.Repeat("x", 65535)} {
+		window := uint32(len(body))
+		p := http2RxConnect(address, http2.Setting{ID: http2.SettingInitialWindowSize, Val: window})
+		fields := http2RxRequest(address, "POST", strconv.Itoa(len(body)))
+		fields[3].Value = "/echo-stream-drain"
+		AssertNil(p.headers(1, fields, len(body) == 0, false))
+		if len(body) > 0 {
+			AssertNil(p.data(1, []byte(body), true, 0))
+		}
+		data, emptyEnd := http2StreamingTxResponse(p, 1, window, false)
+		AssertEqual(body, string(data))
+		AssertEqual(true, emptyEnd)
+		p.conn.Close()
+	}
+}
+
+func Http2ServerStreamingTxResetTest(s *Http2Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	AssertEmpty(s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address))
+	p := http2RxConnect(address, http2.Setting{ID: http2.SettingInitialWindowSize, Val: 1024})
+	defer p.conn.Close()
+	body := strings.Repeat("reset-stream!", 10000)
+	fields := http2RxRequest(address, "POST", strconv.Itoa(len(body)))
+	fields[3].Value = "/echo-stream"
+	AssertNil(p.headers(1, fields, false, false))
+	AssertNil(p.data(1, []byte(body), true, 0))
+	for {
+		frame, err := p.framer.ReadFrame()
+		AssertNil(err)
+		if data, ok := frame.(*http2.DataFrame); ok {
+			AssertEqual(uint32(1), data.StreamID)
+			AssertNil(p.framer.WriteWindowUpdate(0, data.Length))
+			break
+		}
+		if h, ok := frame.(*http2.MetaHeadersFrame); ok {
+			AssertNil(http2TxHeaders(h))
+		} else {
+			_, err = p.control(frame)
+			AssertNil(err)
+		}
+	}
+	AssertNil(p.framer.WriteRSTStream(1, http2.ErrCodeCancel))
+	// Resetting a blocked streaming sender must preserve the shared connection.
+	fields = http2RxRequest(address, "GET")
+	fields[3].Value = "/echo-stream"
+	AssertNil(p.headers(3, fields, true, false))
+	data, emptyEnd := http2StreamingTxResponse(p, 3, 1024, true)
+	AssertEmpty(data)
+	AssertEqual(true, emptyEnd)
+}
+
+func Http2StreamingTxTlsTest(s *Http2Suite) {
+	body := strings.Repeat("tls-streaming!", 10000)
+	http2StreamingTxClient(s, "PUT", body, "eof-after-drain", "tls", 1024, true)
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	AssertEmpty(s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri https://" + address))
+	conn, err := tls.Dial("tcp", address, &tls.Config{InsecureSkipVerify: true, NextProtos: []string{"h2"}})
+	AssertNil(err)
+	defer conn.Close()
+	AssertEqual("h2", conn.ConnectionState().NegotiatedProtocol)
+	// Read SETTINGS before uploading into the deliberately small receive FIFO.
+	p := http2RxHandshake(conn, http2.Setting{ID: http2.SettingInitialWindowSize, Val: 1024})
+	fields := http2RxRequest(address, "PUT", strconv.Itoa(len(body)))
+	fields[1].Value = "https"
+	fields[3].Value = "/echo-stream"
+	AssertNil(p.headers(1, fields, false, false))
+	AssertNil(p.data(1, []byte(body), true, 0))
+	data, _ := http2StreamingTxResponse(p, 1, 1024, true)
+	AssertEqual(body, string(data))
+}
+
+func Http2ServerStreamingTxExchangeTest(s *Http2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	AssertEmpty(vpp.Vppctl("http cli server fifo-size 4 uri http://" + address))
+	p := http2RxConnect(address)
+	defer p.conn.Close()
+	id := uint32(1)
+	for _, path := range []string{"/echo-stream", "/echo-stream-drain", "/echo-stream-close"} {
+		for _, body := range []string{"", strings.Repeat("both-directions!", 10000)} {
+			AssertNil(p.conn.SetDeadline(time.Now().Add(5 * time.Second)))
+			fields := http2RxRequest(address, "POST")
+			fields[3].Value = path
+			AssertNil(p.headers(id, fields, false, false))
+			AssertNil(p.data(id, []byte(body), true, 0))
+			data, _ := http2StreamingTxResponse(p, id, 65535, true)
+			AssertEqual(body, string(data))
+			id += 2
+		}
+	}
+	var output string
+	for range 100 {
+		output = vpp.Vppctl("show session verbose")
+		if !strings.Contains(output, " closed ") {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	AssertNotContains(output, " closed ")
 }
 
 func Http2ServerExtraDataTest(s *Http2Suite) {

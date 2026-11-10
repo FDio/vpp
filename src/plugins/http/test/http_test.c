@@ -968,6 +968,120 @@ http_test_literal_field (u8 *dst, const char *name, const char *value, u8 qpack)
 }
 
 static int
+http_test_trailers (vlib_main_t *vm)
+{
+  http2_error_t (*parse_h2) (u8 *, u32, u8 *, u32, hpack_dynamic_table_t *);
+  http3_error_t (*parse_h3) (u8 *, u32, u8 *, u32, qpack_decoder_ctx_t *);
+  void (*table_init) (hpack_dynamic_table_t *, u32);
+  void (*table_free) (hpack_dynamic_table_t *);
+  parse_h2 = vlib_get_plugin_symbol ("http_plugin.so", "hpack_parse_trailers");
+  parse_h3 = vlib_get_plugin_symbol ("http_plugin.so", "qpack_parse_trailers");
+  table_init = vlib_get_plugin_symbol ("http_plugin.so", "hpack_dynamic_table_init");
+  table_free = vlib_get_plugin_symbol ("http_plugin.so", "hpack_dynamic_table_free");
+  HTTP_TEST (parse_h2 && parse_h3 && table_init && table_free, "trailer parser symbols");
+  const struct
+  {
+    const char *name, *value;
+    u8 valid;
+  } cases[] = {
+    { "x-checksum", "abc123", 1 },
+    { "server-timing", "total;dur=12", 1 },
+    { "x-empty", "", 1 },
+    { ":status", "200", 0 },
+    { ":method", "GET", 0 },
+    { "X-Upper", "value", 0 },
+    { "bad name", "value", 0 },
+    { "", "value", 0 },
+    { "x-test", "bad\r\nvalue", 0 },
+    { "x-test", " leading", 0 },
+    { "content-length", "0", 0 },
+    { "transfer-encoding", "chunked", 0 },
+    { "connection", "close", 0 },
+    { "upgrade", "h2c", 0 },
+  };
+  u8 buf[256], *input = 0;
+  for (u32 qpack = 0; qpack < 2; qpack++)
+    for (u32 i = 0; i < ARRAY_LEN (cases); i++)
+      {
+	hpack_dynamic_table_t table;
+	qpack_decoder_ctx_t decoder = {};
+	table_init (&table, 4096);
+	vec_reset_length (input);
+	if (qpack)
+	  {
+	    vec_add1 (input, 0);
+	    vec_add1 (input, 0);
+	  }
+	input = http_test_literal_field (input, cases[i].name, cases[i].value, qpack);
+	u32 rv = qpack ? parse_h3 (input, vec_len (input), buf, sizeof (buf), &decoder) :
+			 parse_h2 (input, vec_len (input), buf, sizeof (buf), &table);
+	u32 expected = cases[i].valid ?
+			 (qpack ? HTTP3_ERROR_NO_ERROR : HTTP2_ERROR_NO_ERROR) :
+			 (qpack ? HTTP3_ERROR_MESSAGE_ERROR : HTTP2_ERROR_PROTOCOL_ERROR);
+	table_free (&table);
+	HTTP_TEST (rv == expected, "%s trailer %s: %u expected %u", qpack ? "QPACK" : "HPACK",
+		   cases[i].name, rv, expected);
+	// Decoded size, rather than compressed size, bounds field sections.
+	if (cases[i].valid)
+	  {
+	    table_init (&table, 4096);
+	    rv = qpack ? parse_h3 (input, vec_len (input), buf, 1, &decoder) :
+			 parse_h2 (input, vec_len (input), buf, 1, &table);
+	    table_free (&table);
+	    HTTP_TEST (rv == (qpack ? HTTP3_ERROR_INTERNAL_ERROR : HTTP2_ERROR_INTERNAL_ERROR),
+		       "%s decoded trailer size limit", qpack ? "QPACK" : "HPACK");
+	  }
+      }
+  vec_free (input);
+
+  hpack_dynamic_table_t table;
+  qpack_decoder_ctx_t decoder = {};
+  table_init (&table, 4096);
+  HTTP_TEST (parse_h2 (buf, 0, buf, sizeof (buf), &table) == HTTP2_ERROR_NO_ERROR,
+	     "empty HPACK trailers");
+  u8 empty_qpack[] = { 0, 0 };
+  HTTP_TEST (parse_h3 (empty_qpack, sizeof (empty_qpack), buf, sizeof (buf), &decoder) ==
+	       HTTP3_ERROR_NO_ERROR,
+	     "empty QPACK trailers");
+  // Insert a field after an invalid pseudo-header, then reference it in another block.
+  u8 indexed[] = { 0x88, 0x40, 6, 'x', '-', 's', 'y', 'n', 'c', 2, 'o', 'k' };
+  HTTP_TEST (parse_h2 (indexed, sizeof (indexed), buf, sizeof (buf), &table) ==
+	       HTTP2_ERROR_PROTOCOL_ERROR,
+	     "invalid trailer still decodes following fields");
+  u8 reference[] = { 0xbe };
+  HTTP_TEST (parse_h2 (reference, sizeof (reference), buf, sizeof (buf), &table) ==
+		 HTTP2_ERROR_NO_ERROR &&
+	       !memcmp (buf, "x-syncok", 8),
+	     "trailer HPACK dynamic table remains synchronized");
+  u8 size_only[] = { 0x20 };
+  HTTP_TEST (parse_h2 (size_only, sizeof (size_only), buf, sizeof (buf), &table) ==
+		 HTTP2_ERROR_NO_ERROR &&
+	       table.used == 0 && table.size == 0,
+	     "empty trailer with table size update evicts entries");
+  HTTP_TEST (parse_h2 (reference, sizeof (reference), buf, sizeof (buf), &table) ==
+	       HTTP2_ERROR_COMPRESSION_ERROR,
+	     "evicted trailer index is invalid");
+  u8 mid_update[] = { 0x90, 0x20 };
+  HTTP_TEST (parse_h2 (mid_update, sizeof (mid_update), buf, sizeof (buf), &table) ==
+	       HTTP2_ERROR_COMPRESSION_ERROR,
+	     "table size update after field is invalid");
+  u8 bad_hpack[] = { 0x88, 0x80 };
+  HTTP_TEST (parse_h2 (bad_hpack, sizeof (bad_hpack), buf, sizeof (buf), &table) ==
+	       HTTP2_ERROR_COMPRESSION_ERROR,
+	     "HPACK compression error after semantic error");
+  table_free (&table);
+  const u8 bad_qpack[][4] = { { 1, 0, 0, 0 }, { 0, 0x80, 0, 0 }, { 0, 0, 0xd9, 0xff } };
+  for (u32 i = 0; i < ARRAY_LEN (bad_qpack); i++)
+    HTTP_TEST (parse_h3 ((u8 *) bad_qpack[i], sizeof (bad_qpack[i]), buf, sizeof (buf), &decoder) ==
+		 HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED,
+	       "invalid QPACK trailer %u", i);
+  HTTP_TEST (parse_h3 (empty_qpack, 1, buf, sizeof (buf), &decoder) ==
+	       HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED,
+	     "truncated QPACK prefix");
+  return 0;
+}
+
+static int
 http_test_validation (vlib_main_t *vm)
 {
   const char token_chars[] =
@@ -2932,6 +3046,137 @@ done:
 }
 
 static int
+http_test_streaming_lifecycle (vlib_main_t *vm)
+{
+  session_enable_disable_args_t session_args = {
+    .is_en = 1,
+    .rt_engine_type = RT_BACKEND_ENGINE_RULE_TABLE,
+  };
+  fifo_segment_main_t fsm = {};
+  fifo_segment_create_args_t args = {
+    .segment_type = SSVM_SEGMENT_PRIVATE,
+    .segment_size = 1 << 20,
+    .segment_name = "http-streaming-lifecycle",
+  };
+  void (*init_tx_buffer) (http_ctx_t *, const http_msg_t *);
+  clib_error_t *error;
+  fifo_segment_t *fs = 0;
+  svm_fifo_t *fifo = 0;
+  session_t *as = 0;
+  http_ctx_t req = {};
+  http_msg_t msg = {}, original;
+  u8 body[] = "body";
+  uword body_ptr = pointer_to_uword (body);
+  http_req_flags_t flags;
+  int result = 1;
+
+#define STREAM_TEST(_cond, _comment)                                                               \
+  do                                                                                               \
+    {                                                                                              \
+      if (!HTTP_TEST_I ((_cond), _comment))                                                        \
+	goto done;                                                                                 \
+    }                                                                                              \
+  while (0)
+
+  init_tx_buffer = vlib_get_plugin_symbol ("http_plugin.so", "http_req_tx_buffer_init");
+  STREAM_TEST (init_tx_buffer != 0, "TX buffer initializer resolved");
+  error = vnet_session_enable_disable (vm, &session_args);
+  if (error)
+    {
+      clib_error_report (error);
+      return 1;
+    }
+  fifo_segment_main_init (&fsm, 0, 5);
+  STREAM_TEST (!fifo_segment_create (&fsm, &args), "streaming test segment allocated");
+  fs = fifo_segment_get_segment (&fsm, args.new_segment_indices[0]);
+  fifo = fifo_segment_alloc_fifo_w_slice (fs, 0, 4096, FIFO_SEGMENT_TX_FIFO);
+  STREAM_TEST (fifo != 0, "streaming test FIFO allocated");
+  as = session_alloc (vm->thread_index);
+  as->tx_fifo = fifo;
+  req.c_s_index = as->session_index;
+  req.c_thread_index = as->thread_index;
+
+  msg.data.type = HTTP_MSG_DATA_STREAMING;
+  original = msg;
+  init_tx_buffer (&req, &msg);
+  STREAM_TEST (!memcmp (&msg, &original, sizeof (msg)), "streaming preserves app metadata");
+  STREAM_TEST (req.tx_buf.type == HTTP_BUFFER_FIFO &&
+		 http_buffer_bytes_left (&req.tx_buf) == CLIB_U64_MAX,
+	       "streaming uses a FIFO buffer with an internal unlimited length");
+  STREAM_TEST (!http_req_tx_is_last_data (&req, 0), "empty FIFO before EOF waits for app data");
+  STREAM_TEST (svm_fifo_enqueue (fifo, 4, body) == 4, "body bytes enqueued");
+  STREAM_TEST (!http_req_tx_is_last_data (&req, 4),
+	       "draining queued bytes before EOF is not final");
+  http_buffer_drain (&req.tx_buf, 4);
+  STREAM_TEST (!http_req_tx_is_last_data (&req, 0), "drained FIFO still waits for EOF");
+  STREAM_TEST (svm_fifo_enqueue (fifo, 4, body) == 4, "later body bytes enqueued");
+  http_req_app_close (&req, 1 /* is_shutdown */);
+  STREAM_TEST ((req.req_flags & HTTP_REQ_F_TX_EOF) && !(req.req_flags & HTTP_REQ_F_APP_CLOSED),
+	       "TX shutdown records EOF without full application close");
+  STREAM_TEST (!http_req_tx_is_last_data (&req, 2) && http_req_tx_is_last_data (&req, 4),
+	       "EOF waits for all queued bytes before sending the terminator");
+  http_buffer_drain (&req.tx_buf, 4);
+  STREAM_TEST (http_req_tx_is_last_data (&req, 0),
+	       "EOF after draining permits an empty terminator");
+  http_buffer_free (&req.tx_buf);
+
+  /* EOF may be queued before the transport processes even an empty message. */
+  init_tx_buffer (&req, &msg);
+  STREAM_TEST (http_req_tx_is_last_data (&req, 0), "buffer initialization preserves pending EOF");
+  http_buffer_free (&req.tx_buf);
+
+  req.req_flags |= HTTP_REQ_F_RX_STREAMING | HTTP_REQ_F_PEER_CLOSED;
+  STREAM_TEST (!(req.req_flags & HTTP_REQ_F_RX_EOF), "peer close does not imply delivered RX EOF");
+  STREAM_TEST (http_req_rx_mark_eof (&req), "validated and delivered RX completes once");
+  STREAM_TEST (!http_req_rx_mark_eof (&req), "repeated RX completion does not notify again");
+  STREAM_TEST (!(req.req_flags & HTTP_REQ_F_APP_CLOSED), "RX completion leaves the response open");
+  http_req_app_close (&req, 0 /* is_shutdown */);
+  STREAM_TEST (req.req_flags & HTTP_REQ_F_APP_CLOSED, "full close remains possible after shutdown");
+  flags = req.req_flags;
+  http_req_app_close (&req, 1 /* is_shutdown */);
+  STREAM_TEST (req.req_flags == flags, "late shutdown does not undo full close");
+
+  req.req_flags = 0;
+  msg.data.type = HTTP_MSG_DATA_INLINE;
+  msg.data.body_len = 4;
+  init_tx_buffer (&req, &msg);
+  STREAM_TEST (!http_req_tx_is_last_data (&req, 0) && !http_req_tx_is_last_data (&req, 2) &&
+		 http_req_tx_is_last_data (&req, 4),
+	       "known-length inline body completes by length without shutdown");
+  http_buffer_free (&req.tx_buf);
+
+  msg.data.body_len = 0;
+  init_tx_buffer (&req, &msg);
+  STREAM_TEST (http_req_tx_is_last_data (&req, 0), "known empty body completes without shutdown");
+  http_buffer_free (&req.tx_buf);
+
+  msg.data.type = HTTP_MSG_DATA_PTR;
+  msg.data.body_len = 4;
+  STREAM_TEST (svm_fifo_enqueue (fifo, sizeof (body_ptr), (u8 *) &body_ptr) == sizeof (body_ptr),
+	       "body pointer enqueued");
+  init_tx_buffer (&req, &msg);
+  STREAM_TEST (req.tx_buf.type == HTTP_BUFFER_PTR && http_req_tx_is_last_data (&req, 4),
+	       "known-length pointer body completes by payload length");
+  http_buffer_drain (&req.tx_buf, 4);
+  STREAM_TEST (svm_fifo_max_dequeue_cons (fifo) == 0,
+	       "completed pointer body releases its pointer");
+  result = 0;
+
+done:
+  http_buffer_free (&req.tx_buf);
+  if (as)
+    session_free (as);
+  if (fifo)
+    fifo_segment_free_fifo (fs, fifo);
+  if (fs)
+    fifo_segment_delete (&fsm, fs);
+  vec_free (args.new_segment_indices);
+  pool_free (fsm.segments);
+  return result;
+#undef STREAM_TEST
+}
+
+static int
 http_test_encode_u64_decimal (vlib_main_t *vm)
 {
   static const struct
@@ -3675,6 +3920,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_h2_window_update_scheduling (vm);
       else if (unformat (input, "qpack"))
 	res = http_test_qpack (vm);
+      else if (unformat (input, "trailers"))
+	res = http_test_trailers (vm);
       else if (unformat (input, "h3-frame"))
 	res = http_test_h3_frame (vm);
       else if (unformat (input, "lookup-header-name"))
@@ -3689,11 +3936,15 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_encode_u64_decimal (vm);
       else if (unformat (input, "rx-publication"))
 	res = http_test_rx_publication (vm);
+      else if (unformat (input, "streaming-lifecycle"))
+	res = http_test_streaming_lifecycle (vm);
       else if (unformat (input, "decode-varint"))
 	res = http_test_decode_varint (vm);
       else if (unformat (input, "all"))
 	{
 	  if ((res = http_test_rx_publication (vm)))
+	    goto done;
+	  if ((res = http_test_streaming_lifecycle (vm)))
 	    goto done;
 	  if ((res = http_test_decode_varint (vm)))
 	    goto done;
@@ -3714,6 +3965,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  if ((res = http_test_h2_window_update_scheduling (vm)))
 	    goto done;
 	  if ((res = http_test_qpack (vm)))
+	    goto done;
+	  if ((res = http_test_trailers (vm)))
 	    goto done;
 	  if ((res = http_test_h3_frame (vm)))
 	    goto done;

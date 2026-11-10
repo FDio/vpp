@@ -80,6 +80,7 @@ typedef struct
   u32 ckpair_index;
   u8 need_crypto;
   u8 use_http3;
+  u8 use_http2;
 } hcc_main_t;
 
 typedef enum
@@ -571,6 +572,8 @@ hcc_connect ()
 
   /* set http (response) timeout to 10 seconds */
   transport_endpt_cfg_http_t http_cfg = { 10, 0 };
+  if (hcm->use_http2)
+    http_cfg.flags |= HTTP_ENDPT_CFG_F_HTTP2_PRIOR_KNOWLEDGE;
   ext_cfg = session_endpoint_add_ext_cfg (
     &a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
   clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
@@ -583,6 +586,8 @@ hcc_connect ()
       ext_cfg->crypto.ckpair_index = hcm->ckpair_index;
       if (hcm->use_http3)
 	ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_3;
+      else if (hcm->use_http2)
+	ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_2;
     }
 
   /* allocate http session on main thread */
@@ -738,6 +743,7 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hcm->private_segment_size = 0;
   hcm->fifo_size = 0;
   hcm->use_http3 = 0;
+  hcm->use_http2 = 0;
   hcm->method = HTTP_REQ_GET;
   hcm->use_ptr = 0;
   hcm->no_headers = 0;
@@ -796,6 +802,8 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (unformat (line_input, "http3"))
 	hcm->use_http3 = 1;
+      else if (unformat (line_input, "http2"))
+	hcm->use_http2 = 1;
       else
 	{
 	  err = clib_error_return (0, "unknown input `%U'",
@@ -807,10 +815,10 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hcm->appns_id = appns_id;
   hcm->cli_node_index = vlib_get_current_process (vm)->node_runtime.node_index;
 
-  if ((hcm->stream && (hcm->use_ptr || hcm->use_http3)) || hcm->tx_delay < 0 ||
+  if ((hcm->use_http2 && hcm->use_http3) || (hcm->stream && hcm->use_ptr) || hcm->tx_delay < 0 ||
       ((hcm->close_after_tx || hcm->eof_after_drain || hcm->tx_delay) && !hcm->stream))
     {
-      err = clib_error_return (0, "stream requires inline HTTP/1 data; TX controls require stream");
+      err = clib_error_return (0, "stream requires inline data; TX controls require stream");
       goto done;
     }
 
@@ -888,7 +896,7 @@ VLIB_CLI_COMMAND (hcc_command, static) = {
   .short_help = "[appns <app-ns> secret <appns-secret>] uri http[s]://<ip-addr>/<target> "
 		"[method get|post|put] [data <payload> | file <path>] [use-ptr] "
 		"[stream [close-after-tx] [eof-after-drain] [tx-delay <seconds>]] "
-		"[header <Name:Value>] [no-headers] [fifo-size <KiB>] [no-output] [http3]",
+		"[header <Name:Value>] [no-headers] [fifo-size <KiB>] [no-output] [http2|http3]",
   .function = hcc_command_fn,
   .is_mp_safe = 1,
 };
