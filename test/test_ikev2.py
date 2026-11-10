@@ -2725,6 +2725,11 @@ class TestInitiatorPeerRekey(TestInitiatorPsk):
             0
         ].starting_address_v4 = "10.1.0.0"
         rejected = [(bad_ts, 38)]  # TS_UNACCEPTABLE
+        unknown_spi = os.urandom(4)
+        if not self.additional_child:
+            unknown_child = plain.copy()
+            unknown_child[ikev2.IKEv2_payload_Notify].SPI = unknown_spi
+            rejected.append((unknown_child, 44))  # CHILD_SA_NOT_FOUND
         if self.pfs_group:
             bad_ke = plain.copy()
             bad_ke[ikev2.IKEv2_payload_KE].load = self.sa.my_dh_pub_key[:-1]
@@ -2751,6 +2756,9 @@ class TestInitiatorPeerRekey(TestInitiatorPsk):
             self.assertEqual(notify.type, expected)
             if expected == 17:
                 self.assertEqual(int.from_bytes(notify.load, "big"), self.pfs_group)
+            if expected == 44:
+                self.assertEqual(notify.proto, 3)  # ESP
+                self.assertEqual(notify.SPI, unknown_spi)
             self.assertEqual(len(self.vapi.ipsec_sa_dump()), 2)
             header.id = self.sa.new_msg_id()
         unsupported = proposal.copy()
