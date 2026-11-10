@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f690d981_9de101eb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-11-10T19:41:29Z",
+      "side": 1,
+      "message": "restoring +2 after rebase",
+      "revId": "a2b15e68aa9f5f3276246d55df7b386a9cb27d54",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
