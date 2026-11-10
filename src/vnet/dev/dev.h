@@ -700,6 +700,7 @@ vnet_dev_op_no_rv_t vnet_dev_deinit;
 
 vnet_dev_op_t vnet_dev_crypto_init;
 vnet_dev_op_no_rv_t vnet_dev_crypto_deinit;
+format_function_t format_vnet_dev_crypto_queue_info;
 vnet_dev_op_t vnet_dev_reset;
 vnet_dev_op_no_rv_t vnet_dev_detach;
 __clib_export vnet_dev_rv_t vnet_dev_port_add (vlib_main_t *, vnet_dev_t *, vnet_dev_port_id_t,

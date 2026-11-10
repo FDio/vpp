@@ -177,3 +177,21 @@ vnet_dev_crypto_deinit (vlib_main_t *vm, vnet_dev_t *dev)
   vnet_dev_crypto_queues_remove (vm, dev);
   vlib_worker_thread_barrier_release (vm);
 }
+
+u8 *
+format_vnet_dev_crypto_queue_info (u8 *s, va_list *args)
+{
+  vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
+  vnet_dev_crypto_queue_t *cq = va_arg (*args, vnet_dev_crypto_queue_t *);
+  vnet_dev_driver_t *drv = vec_elt_at_index (vnet_dev_main.drivers, cq->dev->driver_index);
+  vnet_dev_crypto_ops_t *ops = &drv->registration->crypto.ops;
+  u32 indent = format_get_indent (s);
+
+  s = format (s, "size %u, %s%s", cq->size, cq->started ? "started" : "stopped",
+	      cq->lock_needed ? ", shared between threads" : "");
+  s = format (s, "\n%Uthreads: %U", format_white_space, indent, format_bitmap_list,
+	      cq->assigned_threads);
+  if (ops->format_queue_info)
+    s = format (s, "\n%U%U", format_white_space, indent, ops->format_queue_info, a, cq);
+  return s;
+}
