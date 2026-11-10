@@ -34,14 +34,20 @@ device_attach_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 	;
       else if (!a.args && unformat (input, "args %v", &a.args))
 	;
+      else if (unformat_user (input, unformat_vnet_dev_crypto_config, &a.crypto))
+	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  vec_free (a.args);
+	  vnet_dev_crypto_config_free (&a.crypto);
+	  return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
+	}
     }
 
   rv = vnet_dev_api_attach (vm, &a);
 
   vec_free (a.args);
+  vnet_dev_crypto_config_free (&a.crypto);
 
   if (rv != VNET_DEV_OK)
     return clib_error_return (0, "unable to attach '%s': %U", a.device_id,
@@ -52,8 +58,9 @@ device_attach_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (device_attach_cmd, static) = {
   .path = "device attach",
-  .short_help = "device attach <device-id> [driver <name>] "
-		"[args <dev-args>]",
+  .short_help = "device attach <device-id> [driver <name>] [args <dev-args>] "
+		"[num-crypto-queues <n>] [crypto-queue-size <n>] "
+		"[crypto-queue <i> size <n>]",
   .function = device_attach_cmd_fn,
 };
 
@@ -369,6 +376,12 @@ show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 	      vlib_cli_output (vm, "      %U", format_vnet_dev_tx_queue_info, a, q);
 	    }
 	}
+
+      vec_foreach_pointer (cq, dev->crypto_queues)
+	{
+	  vlib_cli_output (vm, "  Crypto queue %u:", cq->index);
+	  vlib_cli_output (vm, "    %U", format_vnet_dev_crypto_queue_info, a, cq);
+	}
     }
   return 0;
 }
@@ -429,6 +442,14 @@ show_device_counters_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 	    }
 	  if (fa.clear)
 	    vnet_dev_process_call_port_op_no_rv (vm, p, vnet_dev_port_clear_counters);
+	}
+
+      vec_foreach_pointer (cq, dev->crypto_queues)
+	{
+	  vlib_cli_output (vm, "  Crypto queue %u:", cq->index);
+	  vlib_cli_output (vm, "    %U", format_vnet_dev_crypto_queue_counters, &fa, cq);
+	  if (fa.clear)
+	    vnet_dev_crypto_queue_clear_counters (cq);
 	}
     }
 
