@@ -483,6 +483,11 @@ I:	ice
 M:	Damjan Marion <dmarion@0xa5.net>
 F:	src/drivers/net/ice/
 
+Intel QuickAssist (qat) crypto device driver
+I:	qat
+M:	Damjan Marion <dmarion@0xa5.net>
+F:	src/drivers/crypto/qat/
+
 Plugin - Dispatch Trace PCAP
 I:	dispatch-trace
 M:	Dave Barach <vpp@barachs.net>
