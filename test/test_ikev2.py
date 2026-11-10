@@ -3122,6 +3122,34 @@ class TestResponderInvalidEcp256(TestResponderShortEcp256):
     invalid_ke_length = None
 
 
+class TestResponderMalformedProposal(TestResponderPsk):
+    """A Proposal length that disagrees with its content must be rejected."""
+
+    def verify_counters(self):
+        # The rejected requests also count as received IKE_SA_INIT requests.
+        pass
+
+    def test_responder(self):
+        # (more proposals follow, proposal length) around the 8-octet Proposal
+        for more, length in ((2, 0), (0, 0), (2, 7), (0, 7), (2, 9), (0, 9)):
+            proposal = bytes([more, 0]) + length.to_bytes(2, "big") + b"\x01\x01\0\0"
+            payload = bytes([0, 0]) + (4 + len(proposal)).to_bytes(2, "big") + proposal
+            header = ikev2.IKEv2(
+                init_SPI=os.urandom(8),
+                flags="Initiator",
+                exch_type="IKE_SA_INIT",
+                next_payload="SA",
+                length=28 + len(payload),
+            )
+            self.pg0.add_stream(
+                self.create_packet(self.pg0, raw(header) + payload, 500, 500)
+            )
+            self.pg0.enable_capture()
+            self.pg_start()
+            self.assertEqual(len(self.vapi.ikev2_sa_dump()), 0)
+        super().test_responder()
+
+
 class TestInitiatorLongEcp384(TestInitiatorShortEcp384):
     """An ECP-384 response with a trailing byte must be rejected."""
 
