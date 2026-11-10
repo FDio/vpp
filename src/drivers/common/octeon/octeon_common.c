@@ -14,42 +14,6 @@ VLIB_REGISTER_LOG_CLASS (oct_log, static) = {
   .subclass_name = "common",
 };
 
-static struct
-{
-  u16 device_id;
-  oct_device_type_t type;
-  char *description;
-} oct_dev_types[] = {
-
-#define _(id, device_type, desc)                                                                   \
-  { .device_id = (id), .type = OCT_DEVICE_TYPE_##device_type, .description = (desc) }
-
-  _ (0xa063, RVU_PF, "Marvell Octeon Resource Virtualization Unit PF"),
-  _ (0xa064, RVU_VF, "Marvell Octeon Resource Virtualization Unit VF"),
-  _ (0xa0f8, LBK_VF, "Marvell Octeon Loopback Unit VF"),
-  _ (0xa0f7, SDP_VF, "Marvell Octeon System DPI Packet Interface Unit VF"),
-  _ (0xa0f3, O10K_CPT_VF, "Marvell Octeon-10 Cryptographic Accelerator Unit VF"),
-  _ (0xa0fe, O9K_CPT_VF, "Marvell Octeon-9 Cryptographic Accelerator Unit VF"),
-#undef _
-};
-
-u8 *
-oct_dev_probe (vnet_dev_probe_args_t *args, int cpt)
-{
-  vnet_dev_bus_pci_device_info_t *di = args->device_info;
-
-  if (di->vendor_id != 0x177d) /* Cavium */
-    return 0;
-
-  FOREACH_ARRAY_ELT (dt, oct_dev_types)
-    {
-      if (dt->device_id == di->device_id && OCT_DEVTYPE_IS_CPT (dt->type) == cpt)
-	return format (0, "%s", dt->description);
-    }
-
-  return 0;
-}
-
 vnet_dev_rv_t
 cnx_return_roc_err (vnet_dev_t *dev, int rrv, char *fmt, ...)
 {
@@ -105,7 +69,7 @@ oct_dev_pci_map_region (vlib_main_t *vm, vnet_dev_t *dev, u32 bar, void **addr)
 }
 
 vnet_dev_rv_t
-oct_dev_pci_init (vlib_main_t *vm, vnet_dev_t *dev, int cpt)
+oct_dev_pci_init (vlib_main_t *vm, vnet_dev_t *dev, int is_vf)
 {
   oct_dev_common_t *cd = vnet_dev_get_data (dev);
   vlib_pci_config_hdr_t pci_hdr;
@@ -114,18 +78,6 @@ oct_dev_pci_init (vlib_main_t *vm, vnet_dev_t *dev, int cpt)
   rv = vnet_dev_pci_read_config_header (vm, dev, &pci_hdr);
   if (rv != VNET_DEV_OK)
     return rv;
-
-  if (pci_hdr.vendor_id != 0x177d)
-    return VNET_DEV_ERR_UNSUPPORTED_DEVICE;
-
-  FOREACH_ARRAY_ELT (dt, oct_dev_types)
-    {
-      if (dt->device_id == pci_hdr.device_id)
-	cd->type = dt->type;
-    }
-
-  if (cd->type == OCT_DEVICE_TYPE_UNKNOWN || OCT_DEVTYPE_IS_CPT (cd->type) != cpt)
-    return VNET_DEV_ERR_UNSUPPORTED_DEVICE;
 
   cd->plt_pci_dev = (struct plt_pci_device) {
     .id.vendor_id = pci_hdr.vendor_id,
@@ -139,7 +91,7 @@ oct_dev_pci_init (vlib_main_t *vm, vnet_dev_t *dev, int cpt)
   if (rv != VNET_DEV_OK)
     return rv;
 
-  if (!(roc_model_is_cn10k () && OCT_DEVTYPE_IS_VF (cd->type)))
+  if (!(roc_model_is_cn10k () && is_vf))
     {
       rv = oct_dev_pci_map_region (vm, dev, 4, &cd->plt_pci_dev.mem_resource[4].addr);
       if (rv != VNET_DEV_OK)

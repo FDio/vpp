@@ -5,6 +5,7 @@
 #include <vnet/vnet.h>
 #include <vnet/dev/dev.h>
 #include <vnet/dev/counters.h>
+#include <vnet/dev/bus/pci.h>
 #include <vnet/ethernet/ethernet.h>
 #include <octeon.h>
 
@@ -190,10 +191,31 @@ static const u32 oct_mac_modes[CGX_MODE_MAX + 1] = {
   [ETH_MODE_10G_QXGMII_BIT] = VNET_HW_IF_SPEED_10G,
 };
 
+static struct
+{
+  u16 device_id;
+  u8 is_vf;
+  char *description;
+} oct_dev_ids[] = {
+  { 0xa063, 0, "Marvell Octeon Resource Virtualization Unit PF" },
+  { 0xa064, 1, "Marvell Octeon Resource Virtualization Unit VF" },
+  { 0xa0f8, 1, "Marvell Octeon Loopback Unit VF" },
+  { 0xa0f7, 1, "Marvell Octeon System DPI Packet Interface Unit VF" },
+};
+
 static u8 *
 oct_probe (vlib_main_t *vm, vnet_dev_probe_args_t *args)
 {
-  return oct_dev_probe (args, 0);
+  vnet_dev_bus_pci_device_info_t *di = args->device_info;
+
+  if (di->vendor_id != 0x177d)
+    return 0;
+
+  FOREACH_ARRAY_ELT (d, oct_dev_ids)
+    if (d->device_id == di->device_id)
+      return format (0, "%s", d->description);
+
+  return 0;
 }
 
 static vnet_dev_rv_t
@@ -396,7 +418,9 @@ oct_init (vlib_main_t *vm, vnet_dev_t *dev)
   struct npa_aura_s aura = {};
   oct_device_t *cd = vnet_dev_get_data (dev);
   oct_per_thread_data_t *ptd;
+  vlib_pci_config_hdr_t pci_hdr;
   vnet_dev_rv_t rv;
+  int is_vf = 0;
 
   /*
    * Drivers config arguments should be initialized by this time
@@ -405,7 +429,15 @@ oct_init (vlib_main_t *vm, vnet_dev_t *dev)
   if (!oct_main.is_config_done)
     oct_main.is_config_done = 1;
 
-  rv = oct_dev_pci_init (vm, dev, 0);
+  rv = vnet_dev_pci_read_config_header (vm, dev, &pci_hdr);
+  if (rv != VNET_DEV_OK)
+    return rv;
+
+  FOREACH_ARRAY_ELT (d, oct_dev_ids)
+    if (d->device_id == pci_hdr.device_id)
+      is_vf = d->is_vf;
+
+  rv = oct_dev_pci_init (vm, dev, is_vf);
   if (rv != VNET_DEV_OK)
     return rv;
 
