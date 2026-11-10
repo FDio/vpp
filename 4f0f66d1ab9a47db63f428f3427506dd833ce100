@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "310fcc3a_b54e66df",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-11-10T20:54:05Z",
+      "side": 1,
+      "message": "Dear committers, please +1/-1 if you agree/disagree to merge this patch or propose change...",
+      "revId": "4f0f66d1ab9a47db63f428f3427506dd833ce100",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
