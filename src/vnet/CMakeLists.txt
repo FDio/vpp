@@ -31,6 +31,7 @@ list(APPEND VNET_SOURCES
   dev/cli.c
   dev/config.c
   dev/counters.c
+  dev/crypto.c
   dev/dev.c
   dev/dev_api.c
   dev/error.c

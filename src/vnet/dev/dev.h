@@ -10,6 +10,7 @@
 #include <vppinfra/format.h>
 #include <vnet/vnet.h>
 #include <vnet/dev/types.h>
+#include <vnet/crypto/crypto.h>
 #include <vppinfra/args.h>
 
 #define VNET_DEV_DEVICE_ID_PREFIX_DELIMITER "/"
@@ -88,6 +89,7 @@ typedef struct vnet_dev vnet_dev_t;
 typedef struct vnet_dev_port vnet_dev_port_t;
 typedef struct vnet_dev_rx_queue vnet_dev_rx_queue_t;
 typedef struct vnet_dev_tx_queue vnet_dev_tx_queue_t;
+typedef struct vnet_dev_crypto_queue vnet_dev_crypto_queue_t;
 typedef struct vnet_dev_bus_registration vnet_dev_bus_registration_t;
 typedef struct vnet_dev_driver_registration vnet_dev_driver_registration_t;
 typedef struct vnet_dev_counter vnet_dev_counter_t;
@@ -288,6 +290,27 @@ typedef struct
   format_function_t *format_flow;
 } vnet_dev_port_ops_t;
 
+typedef vnet_dev_rv_t (vnet_dev_crypto_queue_op_t) (vlib_main_t *, vnet_dev_crypto_queue_t *);
+typedef void (vnet_dev_crypto_queue_op_no_rv_t) (vlib_main_t *, vnet_dev_crypto_queue_t *);
+
+typedef struct
+{
+  /* hardware resources of one queue: init after the framework allocated it,
+   * deinit before the framework frees it */
+  vnet_dev_crypto_queue_op_t *init;
+  vnet_dev_crypto_queue_op_no_rv_t *deinit;
+  /* start: begin accepting work, stop: quiesce and release inflight work */
+  vnet_dev_crypto_queue_op_t *start;
+  vnet_dev_crypto_queue_op_no_rv_t *stop;
+  /* returns the async enqueue handler for the algorithm and operation type,
+   * or 0 when the device cannot do it */
+  vnet_crypto_frame_enq_fn_t *(*get_enqueue_handler) (vnet_crypto_alg_t, vnet_crypto_op_type_t);
+  vnet_crypto_frame_dequeue_t *dequeue;
+  vnet_crypto_key_change_fn_t *key_change;
+  u16 key_data_sz;
+  format_function_t *format_queue_info;
+} vnet_dev_crypto_ops_t;
+
 typedef union
 {
   struct
@@ -424,6 +447,22 @@ typedef struct vnet_dev_port
   u8 data[];
 } vnet_dev_port_t;
 
+typedef struct vnet_dev_crypto_queue
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  vnet_dev_t *dev;
+  clib_bitmap_t *assigned_threads;
+  u16 index;
+  u16 size;
+  CLIB_CACHE_LINE_ALIGN_MARK (runtime0);
+  u8 initialized : 1;
+  u8 started : 1;
+  u8 lock_needed : 1;
+  u8 lock;
+  CLIB_ALIGN_MARK (private_data, 16);
+  u8 data[];
+} vnet_dev_crypto_queue_t;
+
 typedef struct
 {
   void *va;
@@ -453,6 +492,9 @@ typedef struct vnet_dev
   u8 bus_data[32] __clib_aligned (16);
   vnet_dev_ops_t ops;
   vnet_dev_port_t **ports;
+  vnet_dev_crypto_queue_t **crypto_queues;
+  u16 max_crypto_queues;
+  u16 crypto_queue_size;
   vnet_dev_periodic_op_t *periodic_ops;
   u8 *description;
   clib_args_handle_t args;
@@ -512,6 +554,15 @@ struct vnet_dev_driver_registration
     u16 data_sz;
     u8 dma_address_space_bits;
   } device;
+  /* set engine_name to make the driver a crypto accelerator driver */
+  struct
+  {
+    char *engine_name;
+    char *engine_desc;
+    int priority;
+    u16 queue_data_sz;
+    vnet_dev_crypto_ops_t ops;
+  } crypto;
   struct
   {
     struct
@@ -541,6 +592,10 @@ typedef struct vnet_dev_driver
   vnet_dev_ops_t ops;
   clib_args_handle_t args;
   u8 initialized;
+  /* crypto accelerator drivers only */
+  vnet_crypto_engine_id_t crypto_engine;
+  u8 crypto_engine_registered;
+  vnet_dev_crypto_queue_t ***crypto_thread_queues;
 } vnet_dev_driver_t;
 
 typedef struct
@@ -630,6 +685,10 @@ vnet_dev_t *vnet_dev_alloc (vlib_main_t *, vnet_dev_device_id_t,
 vnet_dev_op_no_rv_t vnet_dev_free;
 vnet_dev_op_t vnet_dev_init;
 vnet_dev_op_no_rv_t vnet_dev_deinit;
+
+/* crypto accelerator support, see crypto.c */
+vnet_dev_op_t vnet_dev_crypto_init;
+vnet_dev_op_no_rv_t vnet_dev_crypto_deinit;
 vnet_dev_op_t vnet_dev_reset;
 vnet_dev_op_no_rv_t vnet_dev_detach;
 __clib_export vnet_dev_rv_t vnet_dev_port_add (vlib_main_t *, vnet_dev_t *, vnet_dev_port_id_t,
