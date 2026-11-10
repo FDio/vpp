@@ -3310,8 +3310,16 @@ ikev2_generate_message (vlib_main_t *vm, vlib_buffer_t *b, ikev2_sa_t *sa, ike_h
     }
   else if (ike->exchange == IKEV2_EXCHANGE_INFORMATIONAL)
     {
+      /* RFC 7296 section 2.25: the Delete request could not be completed
+	 right now; the records of its Child SAs are kept so that the peer
+	 can repeat it. Checked first: the flag belongs to this response. */
+      if (sa->delete_failed)
+	{
+	  ikev2_payload_add_notify (chain, IKEV2_NOTIFY_MSG_TEMPORARY_FAILURE, 0);
+	  sa->delete_failed = 0;
+	}
       /* if pending delete */
-      if (sa->del)
+      else if (sa->del)
 	{
 	  if (sa->del[0].protocol_id == IKEV2_PROTOCOL_IKE)
 	    {
@@ -4141,8 +4149,11 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 		    {
 		      ikev2_delete_t *d, *tmp, *resp = 0;
 		      /* Keep all Child metadata until the whole batch succeeds, so
-			 a retransmission can still answer with every paired SPI.
-			 No response leaves the Message ID uncommitted. */
+			 a later request can still be answered with every paired
+			 SPI. RFC 7296 section 1.4 requires a response to every
+			 INFORMATIONAL request, so a batch that cannot be closed is
+			 refused with TEMPORARY_FAILURE (section 2.25) instead of
+			 silence. Child SAs released before the failure stay released. */
 		      vec_foreach (d, sa0->del)
 			{
 			  ikev2_child_sa_t *ch_sa =
@@ -4150,6 +4161,11 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 			  if (ch_sa && ikev2_delete_tunnel_interface (vnet_get_main (), sa0, ch_sa))
 			    {
 			      vec_free (sa0->del);
+			      if (ike_hdr_is_request (ike0))
+				{
+				  sa0->delete_failed = 1;
+				  break;
+				}
 			      vlib_node_increment_counter (vm, node->node_index,
 							   IKEV2_ERROR_IKE_REQ_IGNORE, 1);
 			      slen = ~0;

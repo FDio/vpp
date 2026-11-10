@@ -4336,7 +4336,12 @@ class TestResponderChildAfterTsUnacceptable(TestResponderPsk):
     "gre" in config.excluded_plugins, "Exclude tests depending on GRE plugin"
 )
 class TestResponderChildDeleteFailure(TestResponderPsk):
-    """A failed Child SA batch Delete keeps Children for a retransmission."""
+    """A failed Child SA batch Delete is refused and can be repeated.
+
+    RFC 7296 section 1.4 requires a response to every INFORMATIONAL request;
+    section 2.25 gives TEMPORARY_FAILURE for a request that cannot be
+    completed right now.
+    """
 
     use_transport_mode = True
     gre_tunnel = True
@@ -4381,32 +4386,41 @@ class TestResponderChildDeleteFailure(TestResponderPsk):
 
         # Removing the survivor's outbound SA makes the second Delete fail.
         self.vapi.ipsec_sad_entry_del(id=survivor_id)
-        header = ikev2.IKEv2(
-            init_SPI=self.sa.ispi,
-            resp_SPI=self.sa.rspi,
-            id=self.sa.new_msg_id(),
-            flags="Initiator",
-            exch_type="INFORMATIONAL",
-        )
-        delete = ikev2.IKEv2_payload_Delete(
-            proto="ESP",
-            SPIsize=4,
-            SPInum=2,
-            SPIs=second_child.ispi + third_child.ispi,
-        )
-        request = self.create_packet(
-            self.pg0,
-            self.encrypt_ike_msg(header, delete, "Delete"),
-            self.sa.sport,
-            self.sa.dport,
-            self.sa.natt,
-            self.ip6,
-        )
+
+        def delete_request():
+            header = ikev2.IKEv2(
+                init_SPI=self.sa.ispi,
+                resp_SPI=self.sa.rspi,
+                id=self.sa.new_msg_id(),
+                flags="Initiator",
+                exch_type="INFORMATIONAL",
+            )
+            delete = ikev2.IKEv2_payload_Delete(
+                proto="ESP",
+                SPIsize=4,
+                SPInum=2,
+                SPIs=second_child.ispi + third_child.ispi,
+            )
+            return self.create_packet(
+                self.pg0,
+                self.encrypt_ike_msg(header, delete, "Delete"),
+                self.sa.sport,
+                self.sa.dport,
+                self.sa.natt,
+                self.ip6,
+            )
+
+        # The second pass is a retransmission and gets the same refusal.
+        request = delete_request()
         for _ in range(2):
             self.pg0.add_stream(request)
             self.pg0.enable_capture()
             self.pg_start()
-            self.pg0.assert_nothing_captured(remark="failed Child Delete replied")
+            reply = self.get_ike_header(self.pg0.get_capture(1)[0])
+            self.assertEqual(reply.exch_type, 37)
+            self.assertEqual(reply.id, self.sa.msg_id)
+            notify = ikev2.IKEv2_payload_Notify(self.sa.hmac_and_decrypt(reply))
+            self.assertEqual(notify.type, 43)  # TEMPORARY_FAILURE
             self.assertEqual(self.protected_sa_out(), current_id)
             # Only the second Child is released; the third keeps its two SAs.
             self.assertEqual(len(self.vapi.ipsec_sa_dump()), 3)
@@ -4423,7 +4437,8 @@ class TestResponderChildDeleteFailure(TestResponderPsk):
             survivor.protocol,
         ).add_vpp_config()
 
-        self.pg0.add_stream(request)
+        # The retry is a new request.
+        self.pg0.add_stream(delete_request())
         self.pg0.enable_capture()
         self.pg_start()
         reply = self.get_ike_header(self.pg0.get_capture(1)[0])
