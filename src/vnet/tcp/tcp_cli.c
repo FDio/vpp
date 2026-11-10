@@ -316,13 +316,16 @@ format_tcp_sacks (u8 * s, va_list * args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
 
-  sack_block_t *blk;
+  sack_block_t *kept = tcp_snd_kept_sacks (tc);
+  u32 i;
 
   /* As acks report them, newest first */
-  s = format (s, " newest [%u, %u)", tc->snd_sack_newest.start - tc->irs,
-	      tc->snd_sack_newest.end - tc->irs);
-  vec_foreach_backwards (blk, tc->snd_sack_hist)
-    s = format (s, " [%u, %u)", blk->start - tc->irs, blk->end - tc->irs);
+  for (i = 0; i < tc->n_snd_sacks; i++)
+    s = format (s, "%s[%u, %u)", i ? " " : " newest ", kept[i].start - tc->irs,
+		kept[i].end - tc->irs);
+  if (tcp_dsack_is_pending (tc))
+    s = format (s, " dsack [%u, %u)", tcp_snd_dsack (tc)->start - tc->irs,
+		tcp_snd_dsack (tc)->end - tc->irs);
   return s;
 }
 

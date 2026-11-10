@@ -824,8 +824,8 @@ if (_av > 0) 								\
 	  .format_args = "i4i4",                                                                   \
 	};                                                                                         \
 	TCP_DECLARE_ETD (_tc, _e, 2);                                                              \
-	ed->data[0] = _tc->snd_sack_newest.start - _tc->irs;                                       \
-	ed->data[1] = _tc->snd_sack_newest.end - _tc->irs;                                         \
+	ed->data[0] = tcp_snd_kept_sacks (_tc)->start - _tc->irs;                                  \
+	ed->data[1] = tcp_snd_kept_sacks (_tc)->end - _tc->irs;                                    \
       }                                                                                            \
   }
 #define TCP_EVT_CC_INPUT_HANDLER(_tc, _len, _written, ...)		\

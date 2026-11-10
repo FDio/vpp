@@ -251,9 +251,10 @@ tcp_make_established_options (tcp_connection_t *tc, tcp_options_t *opts, u8 is_a
 	}
       else if (tcp_sack_has_blocks (tc))
 	{
+	  /* Options are written before the blocks change, so no copy */
 	  opts->flags |= TCP_OPTS_FLAG_SACK;
-	  opts->sacks = wrk->ack_sacks;
-	  opts->n_sack_blocks = tcp_make_sacks (tc, wrk->ack_sacks);
+	  opts->sacks = tcp_snd_kept_sacks (tc);
+	  opts->n_sack_blocks = tc->n_snd_sacks;
 	  len += 2 + TCP_OPTION_LEN_SACK_BLOCK * opts->n_sack_blocks;
 	  /* Acks, unlike burst options, are always sent, so the peer sees all kept blocks */
 	  if (is_ack)
@@ -998,6 +999,21 @@ tcp_send_sack_flush (tcp_connection_t *tc)
 
   /* Only acks with pending dupacks report dsacks */
   tc->pending_dupacks = 0;
+  tcp_send_ack (tc);
+  tc->pending_dupacks = pending_dupacks;
+  tc->dupacks_out += 1;
+}
+
+/**
+ * Ack the pending dsack before a duplicate that does not touch it takes its place. Only acks
+ * with pending dupacks report dsacks, and each report programs one
+ */
+void
+tcp_send_dsack_flush (tcp_connection_t *tc)
+{
+  u8 pending_dupacks = tc->pending_dupacks;
+
+  tc->pending_dupacks = clib_max (pending_dupacks, 1);
   tcp_send_ack (tc);
   tc->pending_dupacks = pending_dupacks;
   tc->dupacks_out += 1;
@@ -2053,10 +2069,10 @@ tcp_send_acks (tcp_connection_t * tc, u32 max_burst_size)
     }
 
   /* If we're supposed to send dupacks but have no ooo data send only one
-   * ack, or one per duplicate to report */
+   * ack. It reports the pending dsack, if any */
   if (!tcp_sack_has_blocks (tc))
     {
-      n_acks = clib_min (clib_max (vec_len (tc->snd_dsacks), 1), max_burst_size);
+      n_acks = clib_min (1, max_burst_size);
       for (j = 0; j < n_acks; j++)
 	tcp_send_ack (tc);
 
@@ -2071,15 +2087,13 @@ tcp_send_acks (tcp_connection_t * tc, u32 max_burst_size)
   /* Dupacks report the current blocks, so more than 3, the number that signals congestion,
    * would only repeat them. No more than the packets received */
   n_acks = clib_min (tc->pending_dupacks, 3);
-  /* Each ack reports at most one duplicate */
-  n_acks = clib_max (n_acks, vec_len (tc->snd_dsacks));
   for (j = 0; j < clib_min (n_acks, max_burst_size); j++)
     tcp_send_ack (tc);
 
   if (n_acks < max_burst_size)
     {
-      /* Acks with dsacks hold two other blocks. Once all dsacks are out, report the changed
-       * blocks they left out */
+      /* An ack with a dsack holds two other blocks. Once it is out, report the changed blocks
+       * it left out */
       if (tc->snd_sack_changes && !tcp_dsack_is_pending (tc))
 	{
 	  tcp_send_ack (tc);
@@ -2087,7 +2101,7 @@ tcp_send_acks (tcp_connection_t * tc, u32 max_burst_size)
 	}
       tc->pending_dupacks = 0;
       tc->dupacks_out += n_acks;
-      /* Dsacks whose ack found no buffer */
+      /* A dsack whose ack found no buffer */
       if (tcp_dsack_is_pending (tc))
 	tcp_program_dupack (tc);
       return n_acks;
