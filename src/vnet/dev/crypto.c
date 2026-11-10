@@ -4,11 +4,18 @@
 
 #include <vnet/vnet.h>
 #include <vnet/dev/dev.h>
+#include <vnet/dev/counters.h>
 #include <vnet/dev/log.h>
 
 VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
   .class_name = "dev",
   .subclass_name = "crypto",
+};
+
+static vnet_dev_counter_t crypto_queue_counters[] = {
+#define _(n, s, u) VNET_DEV_CTR_VENDOR (0, NA, u, s),
+  foreach_vnet_dev_crypto_queue_counter
+#undef _
 };
 
 static void
@@ -56,6 +63,8 @@ vnet_dev_crypto_queue_free (vlib_main_t *vm, vnet_dev_crypto_queue_t *cq)
     ops->deinit (vm, cq);
   cq->initialized = 0;
 
+  if (cq->counter_main)
+    vnet_dev_counters_free (vm, cq->counter_main);
   clib_bitmap_free (cq->assigned_threads);
   clib_mem_free (cq);
 }
@@ -122,6 +131,9 @@ vnet_dev_crypto_init (vlib_main_t *vm, vnet_dev_t *dev)
       cq->index = i;
       cq->size = dev->crypto_queue_size;
       cq->lock_needed = n_queues < n_threads;
+      cq->counter_main =
+	vnet_dev_counters_alloc (vm, crypto_queue_counters, ARRAY_LEN (crypto_queue_counters),
+				 "%s crypto queue %u counters", dev->device_id, i);
       vec_add1 (dev->crypto_queues, cq);
 
       if (ops->init && (rv = ops->init (vm, cq)) != VNET_DEV_OK)

@@ -447,11 +447,28 @@ typedef struct vnet_dev_port
   u8 data[];
 } vnet_dev_port_t;
 
+#define foreach_vnet_dev_crypto_queue_counter                                                      \
+  _ (ENQ_FRAMES, "enqueued frames", PACKETS)                                                       \
+  _ (ENQ_ELTS, "enqueued ops", PACKETS)                                                            \
+  _ (DEQ_FRAMES, "dequeued frames", PACKETS)                                                       \
+  _ (DEQ_ELTS, "dequeued ops", PACKETS)                                                            \
+  _ (RING_FULL, "ring full", PACKETS)                                                              \
+  _ (ENGINE_ERRORS, "engine errors", PACKETS)
+
+typedef enum
+{
+#define _(n, s, u) VNET_DEV_CRYPTO_Q_CTR_##n,
+  foreach_vnet_dev_crypto_queue_counter
+#undef _
+    VNET_DEV_CRYPTO_Q_N_CTRS
+} vnet_dev_crypto_queue_counter_t;
+
 typedef struct vnet_dev_crypto_queue
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   vnet_dev_t *dev;
   clib_bitmap_t *assigned_threads;
+  vnet_dev_counter_main_t *counter_main;
   u16 index;
   u16 size;
   CLIB_CACHE_LINE_ALIGN_MARK (runtime0);
