@@ -795,6 +795,7 @@ typedef struct
 __clib_export format_function_t format_vnet_dev_addr;
 format_function_t format_vnet_dev_flags;
 __clib_export format_function_t format_vnet_dev_hw_addr;
+__clib_export u8 *vnet_dev_format_in_process (u8 *, vnet_dev_t *, char *, ...);
 format_function_t format_vnet_dev_info;
 format_function_t format_vnet_dev_interface_info;
 format_function_t format_vnet_dev_interface_name;
