@@ -469,4 +469,16 @@ vnet_dev_set_hw_addr_eth_mac (vnet_dev_hw_addr_t *addr, const u8 *eth_mac_addr)
   *addr = ha;
 }
 
+static_always_inline int
+vnet_dev_queue_size_is_valid (u32 size, vnet_dev_queue_config_t *c)
+{
+  if (size < c->min_size || size > c->max_size)
+    return 0;
+  if (c->size_is_power_of_two && count_set_bits (size) != 1)
+    return 0;
+  if (c->multiplier && size % c->multiplier)
+    return 0;
+  return 1;
+}
+
 #endif /* _VNET_DEV_FUNCS_H_ */
