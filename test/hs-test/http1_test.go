@@ -2444,7 +2444,7 @@ func HttpInvalidClientRequestMemLeakTest(s *Http1Suite) {
 	vpp.Vppctl("http cli server uri http://" + serverAddress)
 
 	/* warmup request (FIB) */
-	_, err := TcpSendReceive(serverAddress, "GET / HTTP/1.1\r\n")
+	_, err := TcpSendReceive(serverAddress, "\rGET / HTTP/1.1\r\n\r\n")
 	AssertNil(err, fmt.Sprint(err))
 
 	/* let's give it some time to clean up sessions, so local port can be reused and we have less noise */
@@ -2454,7 +2454,7 @@ func HttpInvalidClientRequestMemLeakTest(s *Http1Suite) {
 	traces1, err := vpp.GetMemoryTrace()
 	AssertNil(err, fmt.Sprint(err))
 
-	_, err = TcpSendReceive(serverAddress, "GET / HTTP/1.1\r\n")
+	_, err = TcpSendReceive(serverAddress, "\rGET / HTTP/1.1\r\n\r\n")
 	AssertNil(err, fmt.Sprint(err))
 
 	/* let's give it some time to clean up sessions */
