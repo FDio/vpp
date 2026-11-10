@@ -41,6 +41,19 @@ oct_hw_ctx_cache_enable (void)
 	 roc_model_is_cn10kb_a0 ();
 }
 
+void
+oct_crypto_dev_release (oct_crypto_dev_t *ocd)
+{
+  oct_crypto_main_t *ocm = &oct_crypto_main;
+
+  for (u32 i = 0; i < OCT_MAX_N_CPT_DEV; i++)
+    if (ocm->crypto_dev[i] == ocd)
+      ocm->crypto_dev[i] = 0;
+  ocm->n_cpt--;
+  ocm->started = 0;
+  oct_plt_init_param.oct_plt_free (ocd);
+}
+
 /* One queue per thread, so there is no sharing and no locking. */
 static_always_inline vnet_dev_crypto_queue_t *
 oct_crypto_get_queue (void)
@@ -62,7 +75,7 @@ oct_crypto_session_create (oct_crypto_key_t *ckey, vnet_crypto_ctx_t *ctx __clib
   oct_crypto_dev_t *ocd;
 
   ocd = ocm->crypto_dev[op_type];
-  if (ocd == NULL)
+  if (ocd == NULL || ocd->removed)
     return -1;
 
   session = oct_plt_init_param.oct_plt_zmalloc (sizeof (oct_crypto_sess_t), CLIB_CACHE_LINE_BYTES);
@@ -72,6 +85,7 @@ oct_crypto_session_create (oct_crypto_key_t *ckey, vnet_crypto_ctx_t *ctx __clib
       return -1;
     }
   session->crypto_dev = ocd;
+  ocd->n_sess++;
   ckey->sess[op_type] = session;
   return 0;
 }
@@ -111,12 +125,16 @@ oct_crypto_key_change_handler (vnet_crypto_ctx_t *ctx, vnet_crypto_key_change_ar
       if (!ckey->sess[type])
 	continue;
 
-      if (ctx_cache_enabled)
-	roc_cpt_lf_ctx_flush (&ckey->sess[type]->crypto_dev->lf, &ckey->sess[type]->cpt_ctx.se_ctx,
-			      true);
+      oct_crypto_dev_t *sess_dev = ckey->sess[type]->crypto_dev;
+
+      if (ctx_cache_enabled && sess_dev->removed == 0)
+	roc_cpt_lf_ctx_flush (&sess_dev->lf, &ckey->sess[type]->cpt_ctx.se_ctx, true);
 
       oct_plt_init_param.oct_plt_free (ckey->sess[type]);
       ckey->sess[type] = NULL;
+
+      if (--sess_dev->n_sess == 0 && sess_dev->removed)
+	oct_crypto_dev_release (sess_dev);
     }
 }
 

@@ -154,6 +154,25 @@ oct_crypto_init (vlib_main_t *vm, vnet_dev_t *dev)
   return oct_init_cpt (vm, dev);
 }
 
+static void
+oct_crypto_deinit (vlib_main_t *vm, vnet_dev_t *dev)
+{
+  oct_crypto_main_t *ocm = &oct_crypto_main;
+  oct_crypto_dev_t *ocd = ocm->crypto_dev[0];
+
+  if (ocd == 0 || ocd->dev != dev)
+    return;
+
+  roc_cpt_iq_disable (&ocd->lf);
+  roc_cpt_lf_fini (&ocd->lf);
+  roc_cpt_dev_fini (ocd->roc_cpt);
+  oct_plt_init_param.oct_plt_free (ocd->roc_cpt);
+  ocd->removed = 1;
+  /* sessions still refer to it, the last one releases it */
+  if (ocd->n_sess == 0)
+    oct_crypto_dev_release (ocd);
+}
+
 static vnet_dev_rv_t
 oct_crypto_driver_init (vlib_main_t *vm, vnet_dev_driver_t *drv __clib_unused)
 {
@@ -168,6 +187,7 @@ VNET_DEV_REGISTER_DRIVER (octeon_crypto) = {
     .data_sz = sizeof (oct_crypto_device_t),
     .ops = {
       .init = oct_crypto_init,
+      .deinit = oct_crypto_deinit,
       .probe = oct_crypto_probe,
     },
     .args = oct_crypto_dev_args,

@@ -39,6 +39,9 @@ typedef struct
   struct roc_cpt_lf lf;
   vnet_dev_t *dev;
   u32 n_desc;
+  /* sessions refer to the device, so it outlives the hardware */
+  u32 n_sess;
+  u8 removed;
 } oct_crypto_dev_t;
 
 typedef struct
@@ -115,6 +118,7 @@ vnet_crypto_async_frame_t *oct_crypto_frame_dequeue (vlib_main_t *vm, u32 *nb_el
 						     clib_thread_index_t *enqueue_thread_idx);
 vnet_crypto_frame_enq_fn_t *oct_crypto_get_async_enqueue_handler (vnet_crypto_alg_t alg_id,
 								  vnet_crypto_op_type_t type);
+void oct_crypto_dev_release (oct_crypto_dev_t *ocd);
 vnet_dev_rv_t oct_crypto_queue_init (vlib_main_t *vm, vnet_dev_crypto_queue_t *cq);
 void oct_crypto_queue_deinit (vlib_main_t *vm, vnet_dev_crypto_queue_t *cq);
 void oct_crypto_queue_stop (vlib_main_t *vm, vnet_dev_crypto_queue_t *cq);
