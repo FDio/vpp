@@ -1111,6 +1111,7 @@ list(APPEND VNET_HEADERS
   adj/adj.h
   adj/adj_types.h
   adj/adj_glean.h
+  adj/adj_delegate.h
   adj/adj_nsh.h
   adj/adj_nbr.h
   adj/adj_midchain.h
