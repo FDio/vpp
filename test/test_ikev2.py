@@ -2517,6 +2517,63 @@ class TestResponderPsk(TemplateResponder, Ikev2Params):
         self.config_params()
 
 
+class TestResponderMalformedProposal(TestResponderPsk):
+    """test ikev2 responder - SA proposal with zero proposal length"""
+
+    def test_responder(self):
+        # RFC 7296 3.3.1: the Proposal Length must span the proposal header
+        # and all of its transforms.  A Proposal Length of 0 with the "more
+        # proposals" flag set used to leave proposal_ptr unchanged, so
+        # ikev2_parse_sa_payload() looped forever and grew the proposal
+        # vector until the heap was exhausted and the process aborted.  The
+        # responder must reject the proposal, answer IKE_SA_INIT and stay up.
+        malformed_prop = Raw(
+            b"\x02"  # Last Substruc = 2 (more proposals follow)
+            b"\x00"  # RESERVED
+            b"\x00\x00"  # Proposal Length = 0 (malformed)
+            b"\x01"  # Proposal Num = 1
+            b"\x01"  # Protocol ID = IKE
+            b"\x00"  # SPI Size = 0
+            b"\x00"  # Num Transforms = 0
+        )
+        sa_init = (
+            ikev2.IKEv2(
+                init_SPI=self.sa.ispi, flags="Initiator", exch_type="IKE_SA_INIT"
+            )
+            / ikev2.IKEv2_payload_SA(next_payload="KE", prop=malformed_prop)
+            / ikev2.IKEv2_payload_KE(
+                next_payload="Nonce",
+                group=self.sa.ike_dh,
+                load=self.sa.my_dh_pub_key,
+            )
+            / ikev2.IKEv2_payload_Nonce(load=self.sa.i_nonce)
+        )
+        ike_msg = self.create_packet(
+            self.pg0,
+            sa_init,
+            self.sa.sport,
+            self.sa.dport,
+            self.sa.natt,
+            self.ip6,
+        )
+        self.pg0.add_stream(ike_msg)
+        self.pg0.enable_capture()
+        self.pg_start()
+        # the responder answers IKE_SA_INIT instead of looping or aborting
+        capture = self.pg0.get_capture(1)
+        ih = self.get_ike_header(capture[0])
+        self.assertEqual(ih.exch_type, 34)  # IKE_SA_INIT
+        self.assertIn("Response", ih.flags)
+        # a rejected IKE proposal installs no Child/IPsec SA
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
+
+    def tearDown(self):
+        # no SA is established, so skip the base IKE SA deletion
+        super(IkePeer, self).tearDown()
+        self.p.remove_vpp_config()
+        self.assertIsNone(self.p.query_vpp_config())
+
+
 class TestResponderTunItfDeleted(TestResponderPsk):
     """test ikev2 responder - delete the profile tunnel interface"""
 
