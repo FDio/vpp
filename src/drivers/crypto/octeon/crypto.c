@@ -107,12 +107,6 @@ oct_crypto_key_change_handler (vnet_crypto_ctx_t *ctx, vnet_crypto_key_change_ar
     }
 }
 
-static_always_inline void
-oct_crypto_session_free (vlib_main_t *vm __clib_unused, oct_crypto_sess_t *sess)
-{
-  oct_plt_init_param.oct_plt_free (sess);
-}
-
 #ifdef PLATFORM_OCTEON9
 static inline void
 oct_cpt_inst_submit (struct cpt_inst_s *inst, uint64_t lmtline, uint64_t io_addr)
@@ -1142,10 +1136,7 @@ oct_crypto_session_init (vlib_main_t *vm, oct_crypto_sess_t *session, vnet_crypt
     rv = oct_crypto_aead_session_update (vm, session, ctx, alg_id, op_type);
 
   if (rv)
-    {
-      oct_crypto_session_free (vm, session);
-      return -1;
-    }
+    return -1;
 
   session->crypto_dev = ocd;
 
