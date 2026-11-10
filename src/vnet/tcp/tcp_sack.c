@@ -1010,35 +1010,30 @@ tcp_ack_handle_full_feedback (tcp_connection_t *tc, u32 packet_ack, u32 ack, tcp
     tcp_scoreboard_apply_ack (tc, ack, high_sacked, ac);
 }
 
-/* Queue [start, end), received again, and blk, the block that held it if it was out of order.
- * A duplicate that touches the last one extends it, others are reported in separate acks.
- * Callers check that reporting is enabled and that the range is not empty */
+/* Report [start, end), received again, and blk, the block that held it if it was out of order.
+ * A duplicate that touches the pending one extends it. Others take its place once an ack reports
+ * it. Callers check that reporting is enabled and that the range is not empty */
 static void
 tcp_dsack_add (tcp_connection_t *tc, u32 start, u32 end, sack_block_t blk)
 {
-  tcp_dsack_t *last;
+  sack_block_t *dsack = tcp_snd_dsack (tc);
 
   if (tcp_dsack_is_pending (tc))
     {
-      last = vec_end (tc->snd_dsacks) - 1;
-      if (seq_leq (start, last->dup.end) && seq_leq (last->dup.start, end))
+      if (seq_leq (start, dsack->end) && seq_leq (dsack->start, end))
 	{
-	  last->dup.start = seq_min (last->dup.start, start);
-	  last->dup.end = seq_max (last->dup.end, end);
+	  dsack->start = seq_min (dsack->start, start);
+	  dsack->end = seq_max (dsack->end, end);
 	  if (blk.start != blk.end)
-	    last->blk = blk;
+	    *tcp_snd_dsack_blk (tc) = blk;
 	  return;
 	}
+      tcp_send_dsack_flush (tc);
     }
 
-  /* Keep the most recent ones */
-  if (vec_len (tc->snd_dsacks) >= TCP_MAX_DSACK_BLOCKS)
-    vec_delete (tc->snd_dsacks, 1, 0);
-
-  vec_add2 (tc->snd_dsacks, last, 1);
-  last->dup.start = start;
-  last->dup.end = end;
-  last->blk = blk;
+  dsack->start = start;
+  dsack->end = end;
+  *tcp_snd_dsack_blk (tc) = blk;
 }
 
 void
@@ -1060,56 +1055,40 @@ tcp_dsack_report_ooo (tcp_connection_t *tc, u32 start, u32 end, sack_block_t blk
 void
 tcp_sack_add_slow (tcp_connection_t *tc, sack_block_t blk)
 {
-  sack_block_t *hist = tc->snd_sack_hist;
-  u32 i, n = 0;
+  sack_block_t *kept = tcp_snd_kept_sacks (tc), next[TCP_OPTS_MAX_SACK_BLOCKS];
+  u32 i, n = 1;
 
   /* The newest becomes an older block, unless blk grew from it */
-  if (tcp_sack_has_blocks (tc) && !tcp_sack_block_contains (blk, tc->snd_sack_newest))
-    {
-      vec_add1 (hist, tc->snd_sack_newest);
-      tc->snd_sack_changes += tc->snd_sack_changes < CLIB_U8_MAX;
-    }
+  if (tc->n_snd_sacks && !tcp_sack_block_contains (blk, kept[0]))
+    tc->snd_sack_changes += tc->snd_sack_changes < CLIB_U8_MAX;
   else
     tc->snd_sack_changes = clib_max (tc->snd_sack_changes, 1);
 
-  /* Drop the blocks blk joined */
-  for (i = 0; i < vec_len (hist); i++)
-    if (!tcp_sack_block_contains (blk, hist[i]))
-      hist[n++] = hist[i];
-  if (hist)
-    vec_set_len (hist, n);
+  /* blk, then the most recent blocks it did not join, as many as fit in an ack */
+  next[0] = blk;
+  for (i = 0; i < tc->n_snd_sacks && n < TCP_OPTS_MAX_SACK_BLOCKS; i++)
+    if (!tcp_sack_block_contains (blk, kept[i]))
+      next[n++] = kept[i];
 
-  /* Keep the most recent, as many as fit in an ack with the newest */
-  if (n >= TCP_OPTS_MAX_SACK_BLOCKS)
-    vec_delete (hist, n - (TCP_OPTS_MAX_SACK_BLOCKS - 1), 0);
-
-  tc->snd_sack_hist = hist;
-  tc->snd_sack_newest = blk;
+  clib_memcpy_fast (kept, next, n * sizeof (sack_block_t));
+  tc->n_snd_sacks = n;
 }
 
 void
 tcp_sack_delivered (tcp_connection_t *tc)
 {
-  sack_block_t *hist = tc->snd_sack_hist;
+  sack_block_t *kept = tcp_snd_kept_sacks (tc);
   u32 i, n = 0;
 
-  /* The fifo delivers whole segments, so delivered blocks start at or below rcv_nxt */
-  for (i = 0; i < vec_len (hist); i++)
-    if (seq_gt (hist[i].start, tc->rcv_nxt))
-      hist[n++] = hist[i];
-  if (hist)
-    vec_set_len (hist, n);
+  /* The fifo delivers whole segments, so delivered blocks start at or below rcv_nxt. The most
+   * recent left is the newest. Blocks pushed out earlier that the fifo still has are reported
+   * again once a segment lands in them */
+  for (i = 0; i < tc->n_snd_sacks; i++)
+    if (seq_gt (kept[i].start, tc->rcv_nxt))
+      kept[n++] = kept[i];
 
-  if (seq_gt (tc->snd_sack_newest.start, tc->rcv_nxt))
-    return;
-
-  /* The most recent left is the newest. Blocks pushed out earlier that the fifo still has are
-   * reported again once a segment lands in them */
   if (n)
-    {
-      tc->snd_sack_newest = hist[n - 1];
-      vec_set_len (hist, n - 1);
-    }
+    tc->n_snd_sacks = n;
   else
     tcp_sack_clear_blocks (tc);
 }
@@ -1117,41 +1096,38 @@ tcp_sack_delivered (tcp_connection_t *tc)
 u32
 tcp_dsack_make_sacks (tcp_connection_t *tc, sack_block_t *blks)
 {
-  sack_block_t cur[TCP_OPTS_MAX_SACK_BLOCKS];
-  u32 i, n = 0, n_cur = 0, contains = ~0, changed, sent = 0;
-  tcp_dsack_t d;
+  sack_block_t *kept = tcp_snd_kept_sacks (tc), *dsack = tcp_snd_dsack (tc);
+  sack_block_t *dsack_blk = tcp_snd_dsack_blk (tc);
+  u32 i, n = 0, n_kept = tc->n_snd_sacks, contains = ~0, changed, sent = 0;
 
   ASSERT (tcp_dsack_is_pending (tc));
-  d = tc->snd_dsacks[0];
-  vec_delete (tc->snd_dsacks, 1, 0);
-  blks[n++] = d.dup;
-
-  if (tcp_sack_has_blocks (tc))
-    n_cur = tcp_make_sacks (tc, cur);
+  blks[n++] = *dsack;
+  dsack->end = dsack->start;
 
   /* Out-of-order duplicates are followed by the block that holds them: a kept one, else the
    * one recorded when they arrived, which the fifo holds until rcv_nxt passes it */
-  for (i = 0; i < n_cur; i++)
-    if (tcp_sack_block_contains (cur[i], d.dup))
+  for (i = 0; i < n_kept; i++)
+    if (tcp_sack_block_contains (kept[i], blks[0]))
       {
-	blks[n++] = cur[i];
+	blks[n++] = kept[i];
 	contains = i;
 	sent |= 1 << i;
 	break;
       }
-  if (contains == ~0 && d.blk.start != d.blk.end && seq_gt (d.blk.start, tc->rcv_nxt))
-    blks[n++] = d.blk;
+  if (contains == ~0 && dsack_blk->start != dsack_blk->end &&
+      seq_gt (dsack_blk->start, tc->rcv_nxt))
+    blks[n++] = *dsack_blk;
 
-  for (i = 0; i < n_cur && n < TCP_OPTS_MAX_SACK_BLOCKS; i++)
+  for (i = 0; i < n_kept && n < TCP_OPTS_MAX_SACK_BLOCKS; i++)
     if (i != contains)
       {
-	blks[n++] = cur[i];
+	blks[n++] = kept[i];
 	sent |= 1 << i;
       }
 
   /* The changed blocks are the most recent ones. If the ack does not hold them all,
    * tcp_send_acks follows with one that does */
-  changed = (1 << clib_min (tc->snd_sack_changes, n_cur)) - 1;
+  changed = (1 << clib_min (tc->snd_sack_changes, n_kept)) - 1;
   if ((sent & changed) == changed)
     tc->snd_sack_changes = 0;
 
