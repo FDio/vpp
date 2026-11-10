@@ -501,7 +501,10 @@ vapi_sock_recv_internal (vapi_ctx_t ctx, u8 **vec_msg, u32 timeout)
 	  if (n < 0)
 	    {
 	      if (errno == EAGAIN && clib_time_now (&ctx->time) >= deadline)
-		return VAPI_EAGAIN;
+		{
+		  vec_set_len (sock->rx_buffer, current_rx_index);
+		  return VAPI_EAGAIN;
+		}
 
 	      if (errno == EAGAIN)
 		continue;
@@ -517,18 +520,24 @@ vapi_sock_recv_internal (vapi_ctx_t ctx, u8 **vec_msg, u32 timeout)
       mbp = (msgbuf_t *) (sock->rx_buffer);
       data_len = ntohl (mbp->data_len);
       current_rx_index = vec_len (sock->rx_buffer);
-      vec_validate (sock->rx_buffer, current_rx_index + data_len);
-      mbp = (msgbuf_t *) (sock->rx_buffer);
       msg_size = data_len + sizeof (*mbp);
+      vec_validate (sock->rx_buffer, msg_size - 1);
+      mbp = (msgbuf_t *) (sock->rx_buffer);
 
       while (current_rx_index < msg_size)
 	{
 	  n = recv (sock->fd, sock->rx_buffer + current_rx_index,
 		    msg_size - current_rx_index, MSG_DONTWAIT);
+	  if (n == 0)
+	    return VAPI_ECONNRESET;
+
 	  if (n < 0)
 	    {
 	      if (errno == EAGAIN && clib_time_now (&ctx->time) >= deadline)
-		return VAPI_EAGAIN;
+		{
+		  vec_set_len (sock->rx_buffer, current_rx_index);
+		  return VAPI_EAGAIN;
+		}
 
 	      if (errno == EAGAIN)
 		continue;

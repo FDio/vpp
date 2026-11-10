@@ -412,8 +412,10 @@ vl_socket_write_ready (clib_file_t * uf)
 	  vl_socket_request_remove_reg_index (reg_index);
 	  return 0;
 	}
-      remaining_bytes -= bytes_to_send;
-      p += bytes_to_send;
+      if (n == 0)
+	break;
+      remaining_bytes -= n;
+      p += n;
     }
 
   vec_delete (rp->output_vector, total_bytes - remaining_bytes, 0);
