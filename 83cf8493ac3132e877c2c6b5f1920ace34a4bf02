@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "61134f6f_42bcc46a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-10T17:58:19Z",
+      "side": 1,
+      "message": "Re-run failed jobs via GitHub UI",
+      "revId": "83cf8493ac3132e877c2c6b5f1920ace34a4bf02",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
