@@ -1736,7 +1736,7 @@ tcp_test_sack_tx (vlib_main_t *vm, unformat_input_t *input)
 {
   sack_block_t blks[TCP_OPTS_MAX_SACK_BLOCKS];
   tcp_connection_t _tc, *tc = &_tc;
-  int i, verbose = 0;
+  int verbose = 0;
   u32 n;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -1756,29 +1756,23 @@ tcp_test_sack_tx (vlib_main_t *vm, unformat_input_t *input)
   clib_memset (tc, 0, sizeof (*tc));
   tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED;
   tc->rcv_nxt = 1000;
+  vec_validate (tc->snd_sacks, TCP_SND_SACKS_LEN - 1);
 
   tcp_dsack_report (tc, 800, 900);
   n = tcp_dsack_make_sacks (tc, blks);
   TCP_TEST ((n == 1 && blks[0].start == 800 && blks[0].end == 900 && !tcp_dsack_is_pending (tc)),
 	    "old duplicate is reported once, as the only block");
 
+  /* Duplicates that do not touch are each acked, see sack_tx_e2e */
   tcp_dsack_report (tc, 100, 200);
   tcp_dsack_report (tc, 200, 300);
   tcp_dsack_report (tc, 150, 250);
-  tcp_dsack_report (tc, 500, 600);
-  TCP_TEST ((vec_len (tc->snd_dsacks) == 2 && tc->snd_dsacks[0].dup.start == 100 &&
-	     tc->snd_dsacks[0].dup.end == 300 && tc->snd_dsacks[1].dup.start == 500),
-	    "touching duplicates merge, others are reported separately");
+  TCP_TEST ((tcp_dsack_is_pending (tc) && tcp_snd_dsack (tc)->start == 100 &&
+	     tcp_snd_dsack (tc)->end == 300),
+	    "touching duplicates merge");
   n = tcp_dsack_make_sacks (tc, blks);
-  TCP_TEST ((n == 1 && blks[0].start == 100 && vec_len (tc->snd_dsacks) == 1),
-	    "oldest duplicate is reported first, one per ack");
-  vec_free (tc->snd_dsacks);
-  for (i = 0; i < TCP_MAX_DSACK_BLOCKS + 2; i++)
-    tcp_dsack_report (tc, 100 * i, 100 * i + 50);
-  TCP_TEST (
-    (vec_len (tc->snd_dsacks) == TCP_MAX_DSACK_BLOCKS && tc->snd_dsacks[0].dup.start == 200),
-    "pending duplicates are capped, keeping the most recent");
-  vec_free (tc->snd_dsacks);
+  TCP_TEST ((n == 1 && blks[0].start == 100 && blks[0].end == 300 && !tcp_dsack_is_pending (tc)),
+	    "merged duplicate is reported once");
 
   tc->sack_sb.flags |= TCP_DSACK_UNDO_DISABLED;
   tcp_dsack_report (tc, 800, 900);
@@ -1787,7 +1781,7 @@ tcp_test_sack_tx (vlib_main_t *vm, unformat_input_t *input)
   tc->rcv_opts.flags = 0;
   tcp_dsack_report (tc, 800, 900);
   TCP_TEST ((!tcp_dsack_is_pending (tc)), "no reports without sack");
-  vec_free (tc->snd_dsacks);
+  vec_free (tc->snd_sacks);
 
   return tcp_test_sack_tx_e2e (vm, verbose);
 }
@@ -6108,9 +6102,8 @@ tcp_test_dsack_ack_rpc (void *arg)
 {
   tcp_test_dsack_ack_rpc_args_t *a = arg;
 
-  tcp_dsack_t d = { .dup = a->dsack };
-
-  vec_add1 (a->tc->snd_dsacks, d);
+  *tcp_snd_dsack (a->tc) = a->dsack;
+  *tcp_snd_dsack_blk (a->tc) = (sack_block_t){};
   a->ack_matches_before = a->ack_rule->n_matched;
   /* Keep ACKs suppressed until the D-SACK is ready on the receiver's owner. */
   a->ack_rule->n_drop = 0;
@@ -7516,7 +7509,7 @@ tcp_test_sack_tx_steps (void *arg)
   SACK_INJECT (900, 1000);
   n = tcp_make_sacks (tc, blks);
   SACK_CHECK ("newest block, then the most recent", n, { 900, 1000 }, { 700, 800 }, { 500, 600 });
-  if (!TCP_TEST_I (vec_len (tc->snd_sack_hist) == TCP_OPTS_MAX_SACK_BLOCKS - 1,
+  if (!TCP_TEST_I (tc->n_snd_sacks == TCP_OPTS_MAX_SACK_BLOCKS,
 		   "sack_tx: only the blocks that fit in an ack are kept"))
     goto cleanup;
 
@@ -7556,18 +7549,25 @@ tcp_test_sack_tx_steps (void *arg)
   SACK_DUPACK ();
   SACK_CHECK ("in-order duplicate has no block", n, { 300, 400 }, { 1650, 1800 }, { 1500, 1600 });
 
+  /* A duplicate that does not touch the pending one is reported once an ack reports that */
   SACK_INJECT (450, 850);
   SACK_INJECT (850, 1250);
   SACK_INJECT (1250, 1650);
-  if (!TCP_TEST_I (
-	vec_len (tc->snd_dsacks) == 3 && tc->snd_dsacks[0].dup.start == base + 500 &&
-	  tc->snd_dsacks[0].dup.end == base + 800 && tc->snd_dsacks[1].dup.start == base + 900 &&
-	  tc->snd_dsacks[1].dup.end == base + 1000 && tc->snd_dsacks[2].dup.start == base + 1300 &&
-	  tc->snd_dsacks[2].dup.end == base + 1400,
-	"sack_tx: in-order data reports the first block it repeats"))
+  ok = tcp_dsack_is_pending (tc) && tcp_snd_dsack (tc)->start == base + 1300 &&
+       tcp_snd_dsack (tc)->end == base + 1400;
+  vec_reset_length (sent);
+  tcp_test_sack_tx_acks (vm, tc, &sent);
+  for (i = 0; ok && i < 3; i++)
+    {
+      static const u32 dup[3][2] = { { 500, 800 }, { 900, 1000 }, { 1300, 1400 } };
+      u32 k, found = 0;
+      for (k = 0; k < vec_len (sent); k++)
+	found |= sent[k].start == base + dup[i][0] && sent[k].end == base + dup[i][1];
+      ok = found;
+    }
+  if (!TCP_TEST_I (ok, "sack_tx: in-order data reports the first block it repeats, each in an ack"))
     goto cleanup;
-  if (!TCP_TEST_I (!tcp_sack_has_blocks (tc) && !vec_len (tc->snd_sack_hist) &&
-		     tc->rcv_nxt == base + 1800,
+  if (!TCP_TEST_I (!tcp_sack_has_blocks (tc) && tc->rcv_nxt == base + 1800,
 		   "sack_tx: no blocks once all is delivered"))
     goto cleanup;
 
@@ -7579,22 +7579,21 @@ tcp_test_sack_tx_steps (void *arg)
   SACK_INJECT (300, 400);
   SACK_INJECT (500, 600);
   SACK_INJECT (0, 650);
-  vec_reset_length (tc->snd_dsacks);
+  tcp_dsack_clear (tc);
   if (!TCP_TEST_I (!tcp_sack_has_blocks (tc) && tc->rcv_nxt == base + 650,
 		   "sack_tx: kept blocks delivered, the one pushed out is left"))
     goto cleanup;
   SACK_INJECT (650, 950);
-  if (!TCP_TEST_I (vec_len (tc->snd_dsacks) == 1 && tc->snd_dsacks[0].dup.start == base + 900 &&
-		     tc->snd_dsacks[0].dup.end == base + 950 && tc->rcv_nxt == base + 1000,
-		   "sack_tx: in-order data repeating a pushed out block reports it (%u dsacks)",
-		   vec_len (tc->snd_dsacks)))
+  if (!TCP_TEST_I (tcp_dsack_is_pending (tc) && tcp_snd_dsack (tc)->start == base + 900 &&
+		     tcp_snd_dsack (tc)->end == base + 950 && tc->rcv_nxt == base + 1000,
+		   "sack_tx: in-order data repeating a pushed out block reports it"))
     goto cleanup;
   /* The app reads nothing, keep the window open for what follows */
   svm_fifo_dequeue_drop_all (ctx->client_s->rx_fifo);
 
   /* With more changed blocks than an ack holds, the kept ones are acked before a changed one is
    * pushed out, so the acks report them all. The burst adds the dupacks that signal congestion */
-  vec_reset_length (tc->snd_dsacks);
+  tcp_dsack_clear (tc);
   tcp_test_sack_tx_acks (vm, tc, 0);
   base = tc->rcv_nxt;
   for (i = 0; i < 8; i++)
@@ -7624,7 +7623,7 @@ tcp_test_sack_tx_steps (void *arg)
     }
   while (n == ARRAY_LEN (bis));
   n = tcp_test_sack_tx_acks (vm, tc, 0);
-  ok = TCP_TEST_I (n == 0 && vec_len (tc->snd_dsacks) == 1,
+  ok = TCP_TEST_I (n == 0 && tcp_dsack_is_pending (tc),
 		   "sack_tx: no buffer, no ack and the dsack is kept");
   vlib_buffer_free (vm, hoard, vec_len (hoard));
   vec_reset_length (hoard);
@@ -7644,7 +7643,7 @@ tcp_test_sack_tx_steps (void *arg)
   n = tcp_make_sacks (tc, blks);
   SACK_CHECK ("100 new blocks, the 3 most recent", n, { 1898, 1899 }, { 1896, 1897 },
 	      { 1894, 1895 });
-  if (!TCP_TEST_I (vec_len (tc->snd_sack_hist) == TCP_OPTS_MAX_SACK_BLOCKS - 1,
+  if (!TCP_TEST_I (tc->n_snd_sacks == TCP_OPTS_MAX_SACK_BLOCKS,
 		   "sack_tx: kept blocks stay bounded"))
     goto cleanup;
 
@@ -7703,9 +7702,9 @@ tcp_test_sack_tx_steps (void *arg)
   ok = 0;
   for (i = 0; i < vec_len (sent); i++)
     ok |= sent[i].start == base + 2100 && sent[i].end == base + 2200;
-  if (!TCP_TEST_I (ok && n == 4 && !tcp_dsack_is_pending (tc) && !tc->snd_sack_changes,
-		   "sack_tx: 3 dsacks in the newest of 3 changed blocks, then an ack with the "
-		   "oldest (%u acks)",
+  if (!TCP_TEST_I (ok && n == 5 && !tcp_dsack_is_pending (tc) && !tc->snd_sack_changes,
+		   "sack_tx: 3 dsacks in the newest of 3 changed blocks, each in an ack, then "
+		   "acks with the oldest (%u acks)",
 		   n))
     goto cleanup;
 
@@ -7794,24 +7793,25 @@ tcp_test_dsack_rx_steps (void *arg)
 	  rv = 1;
 	  goto cleanup;
 	}
-      if (!TCP_TEST_I (vec_len (tc->snd_dsacks) == (cases[i].dup_end != 0),
+      if (!TCP_TEST_I (tcp_dsack_is_pending (tc) == (cases[i].dup_end != 0),
 		       "dsack_rx: %s reports only duplicate data", cases[i].name))
 	{
 	  rv = 1;
 	  goto cleanup;
 	}
       if (cases[i].dup_end &&
-	  !TCP_TEST_I (tc->snd_dsacks[0].dup.start == base + cases[i].dup_start &&
-			 tc->snd_dsacks[0].dup.end == base + cases[i].dup_end,
+	  !TCP_TEST_I (tcp_snd_dsack (tc)->start == base + cases[i].dup_start &&
+			 tcp_snd_dsack (tc)->end == base + cases[i].dup_end,
 		       "dsack_rx: %s reports the original segment's overlap", cases[i].name))
 	{
 	  rv = 1;
 	  goto cleanup;
 	}
-      if (!TCP_TEST_I (tcp_sack_has_blocks (tc) &&
-			 seq_leq (tc->snd_sack_newest.start, base + cases[i].start) &&
-			 seq_geq (tc->snd_sack_newest.end, base + cases[i].start + cases[i].len),
-		       "dsack_rx: %s first sack block covers the segment", cases[i].name))
+      if (!TCP_TEST_I (
+	    tcp_sack_has_blocks (tc) &&
+	      seq_leq (tcp_snd_kept_sacks (tc)->start, base + cases[i].start) &&
+	      seq_geq (tcp_snd_kept_sacks (tc)->end, base + cases[i].start + cases[i].len),
+	    "dsack_rx: %s first sack block covers the segment", cases[i].name))
 	{
 	  rv = 1;
 	  goto cleanup;
@@ -7824,7 +7824,7 @@ tcp_test_dsack_rx_steps (void *arg)
 	  goto cleanup;
 	}
       session_test_drain_rx_fifo (ctx->client_s);
-      vec_free (tc->snd_dsacks);
+      tcp_dsack_clear (tc);
     }
 
   /* A chain that overflows the fifo is not enqueued, so neither its
@@ -7839,8 +7839,8 @@ tcp_test_dsack_rx_steps (void *arg)
     }
   if (!TCP_TEST_I (!tcp_dsack_is_pending (tc) &&
 		     svm_fifo_n_ooo_segments (ctx->client_s->rx_fifo) == 1 &&
-		     tc->snd_sack_newest.start == base + cap - 600 &&
-		     tc->snd_sack_newest.end == base + cap - 200,
+		     tcp_snd_kept_sacks (tc)->start == base + cap - 600 &&
+		     tcp_snd_kept_sacks (tc)->end == base + cap - 200,
 		   "dsack_rx: chain that overflows the fifo reports only queued data"))
     {
       rv = 1;
