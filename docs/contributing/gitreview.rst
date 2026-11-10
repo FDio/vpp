@@ -14,6 +14,8 @@ Reviewers have limited time to review patches. In order to help them, please con
  - add the relevant maintainers as reviewer in gerrit. You can look at the `MAINTAINERS <https://git.fd.io/vpp/tree/MAINTAINERS>`_ file.
  - make sure to answer any question or comment from the reviewers in a timely manner.
 
+Committers merging changes should follow the :ref:`committer_etiquette` guidelines.
+
 If your patch is not reviewed within a reasonable time, consider reaching out to the `VPP mailing list <https://lists.fd.io/g/vpp-dev>`_ asking for a review.
 
 There is an auto-abandon policy for patches that have not seen any activity for 6 months.

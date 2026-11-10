@@ -167,6 +167,7 @@ Cn
 cnat
 Cnat
 CNat
+codebase
 Codenomicon
 Colour
 combinatorial
@@ -1424,6 +1425,7 @@ whitelist
 whitelisting
 whitelists
 whitespace
+Whitespace
 wi
 wiki
 Wiki
