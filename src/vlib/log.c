@@ -17,6 +17,7 @@ vlib_log_main_t log_main = {
   .unthrottle_time = 3,
   .size = 512,
   .add_to_elog = 0,
+  .timestamp_format = VLIB_LOG_TIMESTAMP_UPTIME,
   .default_rate_limit = 50,
 };
 
@@ -87,6 +88,76 @@ format_indent (u8 * s, va_list * args)
 	  vec_add1 (s, (u8) ' ');
     }
   return s;
+}
+
+u8 *
+format_vlib_log_timestamp (u8 *s, va_list *args)
+{
+  vlib_log_timestamp_format_t fmt = va_arg (*args, vlib_log_timestamp_format_t);
+  f64 t = va_arg (*args, f64);
+  f64 prev = va_arg (*args, f64);
+  vlib_log_main_t *lm = &log_main;
+  f64 wall;
+  time_t sec;
+  struct tm tm;
+  char buf[32];
+
+  switch (fmt)
+    {
+    case VLIB_LOG_TIMESTAMP_LOCAL:
+    case VLIB_LOG_TIMESTAMP_UTC:
+      wall =
+	lm->time_zero_timeval.tv_sec + lm->time_zero_timeval.tv_usec * 1e-6 + (t - lm->time_zero);
+      sec = wall;
+      if (fmt == VLIB_LOG_TIMESTAMP_LOCAL)
+	localtime_r (&sec, &tm);
+      else
+	gmtime_r (&sec, &tm);
+      strftime (buf, sizeof (buf), "%Y-%m-%d %H:%M:%S", &tm);
+      return format (s, "%s.%06u%s", buf, (u32) ((wall - sec) * 1e6),
+		     fmt == VLIB_LOG_TIMESTAMP_UTC ? "Z" : "");
+    case VLIB_LOG_TIMESTAMP_DELTA:
+      snprintf (buf, sizeof (buf), "%13.6f", t - prev);
+      return format (s, "%s", buf);
+    case VLIB_LOG_TIMESTAMP_UPTIME:
+      snprintf (buf, sizeof (buf), "%13.6f", t - lm->time_zero);
+      return format (s, "%s", buf);
+    default:
+      return s;
+    }
+}
+
+uword
+unformat_vlib_log_timestamp_format (unformat_input_t *input, va_list *args)
+{
+  vlib_log_timestamp_format_t *f = va_arg (*args, vlib_log_timestamp_format_t *);
+
+#define _(uc, lc)                                                                                  \
+  if (unformat (input, #lc))                                                                       \
+    {                                                                                              \
+      *f = VLIB_LOG_TIMESTAMP_##uc;                                                                \
+      return 1;                                                                                    \
+    }
+  foreach_vlib_log_timestamp_format
+#undef _
+
+    return 0;
+}
+
+u8 *
+format_vlib_log_timestamp_format (u8 *s, va_list *args)
+{
+  vlib_log_timestamp_format_t f = va_arg (*args, vlib_log_timestamp_format_t);
+
+  switch (f)
+    {
+#define _(uc, lc)                                                                                  \
+  case VLIB_LOG_TIMESTAMP_##uc:                                                                    \
+    return format (s, #lc);
+      foreach_vlib_log_timestamp_format
+#undef _
+    }
+  return format (s, "unknown");
 }
 
 static int
@@ -162,10 +233,18 @@ vlib_log_va (vlib_log_level_t level, vlib_log_class_t class, char *fmt,
       int indent = 0;
       int with_colors = (unix_main.flags & UNIX_FLAG_NOCOLOR) == 0;
       u8 *fmt;
+      if (lm->timestamp_format != VLIB_LOG_TIMESTAMP_NONE)
+	{
+	  l = format (l, "%U ", format_vlib_log_timestamp, lm->timestamp_format, t,
+		      lm->last_stderr_time);
+	  lm->last_stderr_time = t;
+	}
       if (with_colors)
 	{
+	  u32 len = vec_len (l);
+
 	  l = format (l, "\x1b[%um", 90 + colors[level]);
-	  indent = vec_len (l);
+	  indent = vec_len (l) - len;
 	}
       fmt = format (0, "%%-%uU [%%-6U]: ", lm->max_class_name_length);
       vec_terminate_c_string (fmt);
@@ -380,6 +459,7 @@ vlib_log_init (vlib_main_t *vm)
 
   gettimeofday (&lm->time_zero_timeval, 0);
   lm->time_zero = vlib_time_now (vm);
+  lm->last_stderr_time = lm->time_zero;
 
   log_size_validate (lm);
 
@@ -418,10 +498,25 @@ show_log (vlib_main_t * vm,
   vlib_log_entry_t *e, *entries;
   int i = last_log_entry ();
   int count;
-  f64 time_offset;
+  f64 prev = lm->time_zero;
+  vlib_log_timestamp_format_t tf = lm->timestamp_format;
+  unformat_input_t _line_input, *line_input = &_line_input;
 
-  time_offset = (f64) lm->time_zero_timeval.tv_sec
-    + (((f64) lm->time_zero_timeval.tv_usec) * 1e-6) - lm->time_zero;
+  if (unformat_user (input, unformat_line_input, line_input))
+    {
+      while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+	{
+	  if (unformat (line_input, "time-format %U", unformat_vlib_log_timestamp_format, &tf))
+	    ;
+	  else
+	    {
+	      error = unformat_parse_error (line_input);
+	      unformat_free (line_input);
+	      return error;
+	    }
+	}
+      unformat_free (line_input);
+    }
 
   CLIB_SPINLOCK_LOCK (lm->lock);
   count = lm->count;
@@ -431,9 +526,12 @@ show_log (vlib_main_t * vm,
   while (count--)
     {
       e = vec_elt_at_index (entries, i);
-      vlib_cli_output (vm, "%U %-10U %-14U %v", format_time_float, NULL,
-		       e->timestamp + time_offset, format_vlib_log_level,
+      u8 *ts = format (0, "%U", format_vlib_log_timestamp, tf, e->timestamp, prev);
+
+      vlib_cli_output (vm, "%v%s%-10U %-14U %v", ts, vec_len (ts) ? " " : "", format_vlib_log_level,
 		       e->level, format_vlib_log_class, e->class, e->string);
+      vec_free (ts);
+      prev = e->timestamp;
       i = (i + 1) % lm->size;
     }
 
@@ -442,9 +540,32 @@ show_log (vlib_main_t * vm,
   return error;
 }
 
+static clib_error_t *
+set_log_timestamp (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  vlib_log_main_t *lm = &log_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *err = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "expected timestamp format");
+
+  if (!unformat (line_input, "%U", unformat_vlib_log_timestamp_format, &lm->timestamp_format))
+    err = clib_error_return (0, "unknown timestamp format '%U'", format_unformat_error, line_input);
+
+  unformat_free (line_input);
+  return err;
+}
+
+VLIB_CLI_COMMAND (cli_set_log_timestamp, static) = {
+  .path = "set logging timestamp",
+  .short_help = "set logging timestamp none|local|utc|delta|uptime",
+  .function = set_log_timestamp,
+};
+
 VLIB_CLI_COMMAND (cli_show_log, static) = {
   .path = "show logging",
-  .short_help = "show logging",
+  .short_help = "show logging [time-format none|local|utc|delta|uptime]",
   .function = show_log,
 };
 
@@ -465,8 +586,9 @@ show_log_config (vlib_main_t * vm,
 		   format_vlib_log_level, lm->default_syslog_log_level);
   vlib_cli_output (vm, "%-20s %U", "  Kmsg Log Level:", format_vlib_log_level,
 		   lm->default_kmsg_log_level);
-  vlib_cli_output (vm, "%-20s %u msgs/sec", "  Rate Limit:",
-		   lm->default_rate_limit);
+  vlib_cli_output (vm, "%-20s %U", "  Timestamp:", format_vlib_log_timestamp_format,
+		   lm->timestamp_format);
+  vlib_cli_output (vm, "%-20s %u msgs/sec", "  Rate Limit:", lm->default_rate_limit);
   vlib_cli_output (vm, "\n");
   vlib_cli_output (vm, "%-22s %-14s %-14s %-14s %s", "Class/Subclass", "Level", "Syslog Level",
 		   "Kmsg Log Level", "Rate Limit");
@@ -878,6 +1000,9 @@ log_config (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "default-kmsg-log-level %U", unformat_vlib_log_level,
 			 &lm->default_kmsg_log_level))
+	;
+      else if (unformat (input, "timestamp %U", unformat_vlib_log_timestamp_format,
+			 &lm->timestamp_format))
 	;
       else if (unformat (input, "add-to-elog"))
 	lm->add_to_elog = 1;

@@ -84,6 +84,20 @@ typedef struct vlib_log_registration
   struct vlib_log_registration *next;
 } vlib_log_class_registration_t;
 
+#define foreach_vlib_log_timestamp_format                                                          \
+  _ (NONE, none)                                                                                   \
+  _ (LOCAL, local)                                                                                 \
+  _ (UTC, utc)                                                                                     \
+  _ (DELTA, delta)                                                                                 \
+  _ (UPTIME, uptime)
+
+typedef enum
+{
+#define _(uc, lc) VLIB_LOG_TIMESTAMP_##uc,
+  foreach_vlib_log_timestamp_format
+#undef _
+} vlib_log_timestamp_format_t;
+
 typedef struct
 {
   vlib_log_entry_t *entries;
@@ -109,6 +123,10 @@ typedef struct
   uword *config_index_by_name;
   int add_to_elog;
 
+  /* timestamp prefix for messages printed on stderr */
+  vlib_log_timestamp_format_t timestamp_format;
+  f64 last_stderr_time;
+
   /* registrations */
   vlib_log_class_registration_t *registrations;
 } vlib_log_main_t;
@@ -127,6 +145,9 @@ void vlib_log_va (vlib_log_level_t level, vlib_log_class_t class, char *fmt,
 int last_log_entry ();
 u8 *format_vlib_log_class (u8 * s, va_list * args);
 u8 *format_vlib_log_level (u8 * s, va_list * args);
+u8 *format_vlib_log_timestamp (u8 *s, va_list *args);
+u8 *format_vlib_log_timestamp_format (u8 *s, va_list *args);
+uword unformat_vlib_log_timestamp_format (unformat_input_t *input, va_list *args);
 
 #define vlib_log_emerg(...) vlib_log(VLIB_LOG_LEVEL_EMERG, __VA_ARGS__)
 #define vlib_log_alert(...) vlib_log(VLIB_LOG_LEVEL_ALERT, __VA_ARGS__)
