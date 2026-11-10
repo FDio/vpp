@@ -365,6 +365,12 @@ show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 	      vlib_cli_output (vm, "      %U", format_vnet_dev_tx_queue_info, a, q);
 	    }
 	}
+
+      vec_foreach_pointer (cq, dev->crypto_queues)
+	{
+	  vlib_cli_output (vm, "  Crypto queue %u:", cq->index);
+	  vlib_cli_output (vm, "    %U", format_vnet_dev_crypto_queue_info, a, cq);
+	}
     }
   return 0;
 }
@@ -425,6 +431,14 @@ show_device_counters_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 	    }
 	  if (fa.clear)
 	    vnet_dev_process_call_port_op_no_rv (vm, p, vnet_dev_port_clear_counters);
+	}
+
+      vec_foreach_pointer (cq, dev->crypto_queues)
+	{
+	  vlib_cli_output (vm, "  Crypto queue %u:", cq->index);
+	  vlib_cli_output (vm, "    %U", format_vnet_dev_counters, &fa, cq->counter_main);
+	  if (fa.clear)
+	    vnet_dev_counters_clear (vm, cq->counter_main);
 	}
     }
 
