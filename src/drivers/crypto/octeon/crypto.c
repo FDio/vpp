@@ -6,12 +6,12 @@
  */
 
 #include <vnet/dev/dev.h>
+#include <vnet/dev/counters.h>
 #include <vnet/devices/devices.h>
 #include <octeon_common.h>
 #include <crypto.h>
 
 oct_crypto_main_t oct_crypto_main;
-oct_crypto_dev_t oct_crypto_dev;
 
 VLIB_REGISTER_LOG_CLASS (oct_log, static) = {
   .class_name = "octeon",
@@ -41,6 +41,19 @@ oct_hw_ctx_cache_enable (void)
 	 roc_model_is_cn10kb_a0 ();
 }
 
+/* The queue of the calling thread. The framework creates one queue per thread
+ * for this driver, so there is no sharing and no locking. */
+static_always_inline vnet_dev_crypto_queue_t *
+oct_crypto_get_queue (void)
+{
+  vnet_dev_crypto_queue_t **q =
+    vnet_dev_crypto_get_thread_queues (oct_crypto_main.driver_index, vlib_get_thread_index ());
+
+  if (PREDICT_FALSE (vec_len (q) == 0))
+    return 0;
+  return q[0];
+}
+
 static_always_inline i32
 oct_crypto_session_create (oct_crypto_key_t *ckey, vnet_crypto_ctx_t *ctx __clib_unused,
 			   int op_type)
@@ -50,6 +63,8 @@ oct_crypto_session_create (oct_crypto_key_t *ckey, vnet_crypto_ctx_t *ctx __clib
   oct_crypto_dev_t *ocd;
 
   ocd = ocm->crypto_dev[op_type];
+  if (ocd == NULL)
+    return -1;
 
   session = oct_plt_init_param.oct_plt_zmalloc (sizeof (oct_crypto_sess_t), CLIB_CACHE_LINE_BYTES);
   if (session == NULL)
@@ -67,7 +82,6 @@ oct_crypto_key_change_handler (vnet_crypto_ctx_t *ctx, vnet_crypto_key_change_ar
 {
   oct_crypto_key_t *ckey;
   oct_crypto_main_t *ocm = &oct_crypto_main;
-  oct_crypto_dev_t *ocd = &oct_crypto_dev;
   bool ctx_cache_enabled;
   u32 type;
 
@@ -80,7 +94,7 @@ oct_crypto_key_change_handler (vnet_crypto_ctx_t *ctx, vnet_crypto_key_change_ar
 	{
 	  if (ckey->sess[type] == NULL && oct_crypto_session_create (ckey, ctx, type))
 	    {
-	      log_err (ocd->dev, "Unable to create crypto session");
+	      /* no device, the enqueue handler fails the operations */
 	      return;
 	    }
 	}
@@ -1001,7 +1015,7 @@ oct_cpt_inst_w7_get (oct_crypto_sess_t *sess, struct roc_cpt *roc_cpt)
   return inst_w7.u64;
 }
 
-static_always_inline vnet_crypto_frame_enq_fn_t *
+vnet_crypto_frame_enq_fn_t *
 oct_crypto_get_async_enqueue_handler (vnet_crypto_alg_t alg_id, vnet_crypto_op_type_t type)
 {
   const oct_crypto_alg_data_t *alg = oct_crypto_algs + alg_id;
@@ -1185,9 +1199,9 @@ oct_crypto_enq (vlib_main_t *vm, vnet_crypto_async_frame_t *frame, const u8 is_a
   u8 aad_inline_len;
   u16 adj_len;
   u32 crypto_start_offset, integ_start_offset;
-  oct_crypto_main_t *ocm = &oct_crypto_main;
   oct_crypto_dev_t *crypto_dev = NULL;
   oct_crypto_inflight_req_t *infl_req;
+  vnet_dev_crypto_queue_t *cq;
   oct_crypto_pending_queue_t *pend_q;
   oct_crypto_sess_t *sess;
   u32 crypto_total_length;
@@ -1201,11 +1215,18 @@ oct_crypto_enq (vlib_main_t *vm, vnet_crypto_async_frame_t *frame, const u8 is_a
   int ret = 0;
 
   type = is_enc ? VNET_CRYPTO_OP_TYPE_ENCRYPT : VNET_CRYPTO_OP_TYPE_DECRYPT;
-  pend_q = &ocm->pend_q[vlib_get_thread_index ()];
+  cq = oct_crypto_get_queue ();
+  if (PREDICT_FALSE (cq == 0))
+    {
+      oct_crypto_update_frame_error_status (frame, 0, VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
+      return -1;
+    }
+  pend_q = vnet_dev_get_crypto_queue_data (cq);
 
   nb_infl_allowed = pend_q->n_desc - pend_q->n_crypto_inflight;
   if (PREDICT_FALSE (nb_infl_allowed < frame->n_elts))
     {
+      vnet_dev_crypto_queue_count (cq, VNET_DEV_CRYPTO_Q_CTR_RING_FULL, 1);
       oct_crypto_update_frame_error_status (frame, 0, VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
       return -1;
     }
@@ -1318,6 +1339,8 @@ oct_crypto_enq (vlib_main_t *vm, vnet_crypto_async_frame_t *frame, const u8 is_a
 
   pend_q->n_crypto_inflight += frame->n_elts;
   pend_q->n_crypto_frame++;
+  vnet_dev_crypto_queue_count (cq, VNET_DEV_CRYPTO_Q_CTR_ENQ_FRAMES, 1);
+  vnet_dev_crypto_queue_count (cq, VNET_DEV_CRYPTO_Q_CTR_ENQ_ELTS, frame->n_elts);
 
   return 0;
 }
@@ -1374,15 +1397,18 @@ vnet_crypto_async_frame_t *
 oct_crypto_frame_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
 			  clib_thread_index_t *enqueue_thread_idx)
 {
-  oct_crypto_main_t *ocm = &oct_crypto_main;
   u32 deq_head;
   oct_crypto_inflight_req_t *infl_req;
+  vnet_dev_crypto_queue_t *cq;
   oct_crypto_pending_queue_t *pend_q;
   vnet_crypto_async_frame_t *frame;
   volatile union cpt_res_s *res;
   bool last_elts_processed;
 
-  pend_q = &ocm->pend_q[vlib_get_thread_index ()];
+  cq = oct_crypto_get_queue ();
+  if (PREDICT_FALSE (cq == 0))
+    return NULL;
+  pend_q = vnet_dev_get_crypto_queue_data (cq);
 
   if (!pend_q->n_crypto_frame)
     return NULL;
@@ -1404,6 +1430,7 @@ oct_crypto_frame_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
 	    vlib_crypto_async_frame_set_hmac_fail (infl_req->frame, infl_req->index);
 	  else
 	    vlib_crypto_async_frame_set_engine_error (infl_req->frame, infl_req->index);
+	  vnet_dev_crypto_queue_count (cq, VNET_DEV_CRYPTO_Q_CTR_ENGINE_ERRORS, 1);
 	}
 
       infl_req->res = (union cpt_res_s){};
@@ -1417,6 +1444,8 @@ oct_crypto_frame_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
   pend_q->n_crypto_inflight -= frame->n_elts;
 
   frame->state = VNET_CRYPTO_FRAME_STATE_COMPLETED;
+  vnet_dev_crypto_queue_count (cq, VNET_DEV_CRYPTO_Q_CTR_DEQ_FRAMES, 1);
+  vnet_dev_crypto_queue_count (cq, VNET_DEV_CRYPTO_Q_CTR_DEQ_ELTS, frame->n_elts);
 
   *nb_elts_processed = frame->n_elts;
   *enqueue_thread_idx = frame->enqueue_thread_index;
@@ -1424,90 +1453,77 @@ oct_crypto_frame_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
   return frame;
 }
 
-int
-oct_init_crypto_engine_handlers (vlib_main_t *vm, vnet_dev_t *dev __clib_unused)
+/*
+ * One pending queue per thread. Each gets its share of the CPT descriptors,
+ * the descriptor count is shared across the inflight entries.
+ */
+vnet_dev_rv_t
+oct_crypto_queue_init (vlib_main_t *vm, vnet_dev_crypto_queue_t *cq)
 {
-  vnet_crypto_frame_enq_fn_t *fn;
-  u32 engine_index;
+  oct_crypto_pending_queue_t *pend_q = vnet_dev_get_crypto_queue_data (cq);
+  vnet_dev_t *dev = cq->dev;
 
-  engine_index = vnet_crypto_register_engine (vm, "octeon_cpt", 100, "Octeon CPT Engine");
+  pend_q->n_desc = cq->size;
 
-  vnet_crypto_register_dequeue_handler (vm, engine_index, oct_crypto_frame_dequeue);
-
-  for (u32 i = 1; i < VNET_CRYPTO_N_ALGS; i++)
+  pend_q->req_queue = oct_plt_init_param.oct_plt_zmalloc (
+    pend_q->n_desc * sizeof (oct_crypto_inflight_req_t), CLIB_CACHE_LINE_BYTES);
+  if (pend_q->req_queue == NULL)
     {
-      for (u32 type = 0; type < VNET_CRYPTO_OP_N_TYPES; type++)
-	{
-	  fn = oct_crypto_get_async_enqueue_handler (i, type);
-	  if (fn)
-	    vnet_crypto_register_enqueue_handler_by_alg (vm, engine_index, i, type, fn);
-	}
+      log_err (dev, "Failed to allocate memory for crypto inflight request");
+      return VNET_DEV_ERR_DMA_MEM_ALLOC_FAIL;
     }
 
-  if (vnet_crypto_register_key_change_handler (vm, engine_index, oct_crypto_key_change_handler,
-					       sizeof (oct_crypto_key_t)))
-    return -1;
+  pend_q->sg_data = oct_plt_init_param.oct_plt_zmalloc (
+    OCT_SCATTER_GATHER_BUFFER_SIZE * pend_q->n_desc, CLIB_CACHE_LINE_BYTES);
+  if (pend_q->sg_data == NULL)
+    {
+      log_err (dev, "Failed to allocate crypto scatter gather memory");
+      oct_plt_init_param.oct_plt_free (pend_q->req_queue);
+      pend_q->req_queue = NULL;
+      return VNET_DEV_ERR_DMA_MEM_ALLOC_FAIL;
+    }
 
-  return 0;
+  return VNET_DEV_OK;
 }
 
-int
-oct_conf_sw_queue (vlib_main_t *vm, vnet_dev_t *dev, oct_crypto_dev_t *ocd)
+void
+oct_crypto_queue_deinit (vlib_main_t *vm, vnet_dev_crypto_queue_t *cq)
 {
-  oct_crypto_main_t *ocm = &oct_crypto_main;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  u32 n_inflight_req;
-  int i;
+  oct_crypto_pending_queue_t *pend_q = vnet_dev_get_crypto_queue_data (cq);
 
-  ocm->pend_q = oct_plt_init_param.oct_plt_zmalloc (
-    tm->n_vlib_mains * sizeof (oct_crypto_pending_queue_t), CLIB_CACHE_LINE_BYTES);
-  if (ocm->pend_q == NULL)
+  oct_plt_init_param.oct_plt_free (pend_q->sg_data);
+  oct_plt_init_param.oct_plt_free (pend_q->req_queue);
+  pend_q->sg_data = NULL;
+  pend_q->req_queue = NULL;
+}
+
+/* Wait for the hardware to finish what was already submitted, the results are
+ * written into the request queue which is about to be freed. */
+void
+oct_crypto_queue_stop (vlib_main_t *vm, vnet_dev_crypto_queue_t *cq)
+{
+  oct_crypto_pending_queue_t *pend_q = vnet_dev_get_crypto_queue_data (cq);
+  f64 timeout = vlib_time_now (vm) + 1.0;
+
+  while (pend_q->n_crypto_frame)
     {
-      log_err (dev, "Failed to allocate memory for crypto pending queue");
-      return -1;
-    }
+      oct_crypto_inflight_req_t *infl_req = &pend_q->req_queue[pend_q->deq_head];
 
-  /*
-   * Each pending queue will get number of cpt desc / number of cores.
-   * And that desc count is shared across inflight entries.
-   */
-  n_inflight_req = (ocd->n_desc / tm->n_vlib_mains);
-
-  for (i = 0; i < tm->n_vlib_mains; ++i)
-    {
-      ocm->pend_q[i].n_desc = n_inflight_req;
-
-      ocm->pend_q[i].req_queue = oct_plt_init_param.oct_plt_zmalloc (
-	ocm->pend_q[i].n_desc * sizeof (oct_crypto_inflight_req_t), CLIB_CACHE_LINE_BYTES);
-      if (ocm->pend_q[i].req_queue == NULL)
+      if (infl_req->res.cn10k.compcode != CPT_COMP_NOT_DONE)
 	{
-	  log_err (dev, "Failed to allocate memory for crypto inflight request");
-	  goto free;
+	  OCT_MOD_INC (pend_q->deq_head, pend_q->n_desc);
+	  if (infl_req->last_elts)
+	    pend_q->n_crypto_frame--;
+	  continue;
 	}
 
-      ocm->pend_q[i].sg_data = oct_plt_init_param.oct_plt_zmalloc (
-	OCT_SCATTER_GATHER_BUFFER_SIZE * ocm->pend_q[i].n_desc, CLIB_CACHE_LINE_BYTES);
-      if (ocm->pend_q[i].sg_data == NULL)
+      if (vlib_time_now (vm) > timeout)
 	{
-	  log_err (dev, "Failed to allocate crypto scatter gather memory");
-	  goto free;
+	  log_err (cq->dev, "timeout waiting for %u crypto frames", pend_q->n_crypto_frame);
+	  break;
 	}
+      CLIB_PAUSE ();
     }
-
-  return 0;
-
-free:
-  for (; i >= 0; i--)
-    {
-      if (ocm->pend_q[i].req_queue == NULL)
-	continue;
-
-      oct_plt_init_param.oct_plt_free (ocm->pend_q[i].sg_data);
-      oct_plt_init_param.oct_plt_free (ocm->pend_q[i].req_queue);
-    }
-  oct_plt_init_param.oct_plt_free (ocm->pend_q);
-
-  return -1;
 }
 
 static const oct_crypto_alg_data_t oct_crypto_algs[VNET_CRYPTO_N_ALGS] = {

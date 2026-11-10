@@ -103,7 +103,7 @@ typedef struct
 typedef struct
 {
   oct_crypto_dev_t *crypto_dev[OCT_MAX_N_CPT_DEV];
-  oct_crypto_pending_queue_t *pend_q;
+  vnet_dev_driver_index_t driver_index;
   int n_cpt;
   u8 started;
 } oct_crypto_main_t;
@@ -111,10 +111,11 @@ typedef struct
 extern oct_crypto_main_t oct_crypto_main;
 
 void oct_crypto_key_change_handler (vnet_crypto_ctx_t *ctx, vnet_crypto_key_change_args_t *args);
-vnet_crypto_async_frame_t *
-oct_crypto_frame_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
-			  clib_thread_index_t *enqueue_thread_idx);
-int oct_init_crypto_engine_handlers (vlib_main_t *vm, vnet_dev_t *dev);
-int oct_conf_sw_queue (vlib_main_t *vm, vnet_dev_t *dev,
-		       oct_crypto_dev_t *ocd);
+vnet_crypto_async_frame_t *oct_crypto_frame_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
+						     clib_thread_index_t *enqueue_thread_idx);
+vnet_crypto_frame_enq_fn_t *oct_crypto_get_async_enqueue_handler (vnet_crypto_alg_t alg_id,
+								  vnet_crypto_op_type_t type);
+vnet_dev_rv_t oct_crypto_queue_init (vlib_main_t *vm, vnet_dev_crypto_queue_t *cq);
+void oct_crypto_queue_deinit (vlib_main_t *vm, vnet_dev_crypto_queue_t *cq);
+void oct_crypto_queue_stop (vlib_main_t *vm, vnet_dev_crypto_queue_t *cq);
 #endif /* _CRYPTO_H_ */
