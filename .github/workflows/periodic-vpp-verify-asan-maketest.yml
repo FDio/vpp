@@ -64,6 +64,7 @@ jobs:
       MAKE_PARALLEL_JOBS: 16
       MAKE_TEST_OS: 'ubuntu-24.04'
       TEST_JOBS: 4
+      SHM_SIZE: 2048M
       TUI_LINE: "*******************************************************************"
 
     steps:
@@ -127,6 +128,15 @@ jobs:
           MAKE_PARALLEL_JOBS: ${{ env.MAKE_PARALLEL_JOBS }}
           BUILD_TYPE: ${{ matrix['build_type'] }}
           ENABLE_ASAN: 'true'
+          TUI_LINE: ${{ env.TUI_LINE }}
+
+      - name: Setup Docker VPP Runtime Environment for 'make test'
+        # yamllint disable-line rule:line-length
+        uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@777792ecef2d5c93ce15fa5b7fdca999f5412c9d
+        with:
+          LOG_DIR: ${{ env.LOG_DIR }}
+          WORKSPACE: ${{ env.WORKSPACE }}
+          SHM_SIZE: ${{ env.SHM_SIZE }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: Start Docker Daemon
