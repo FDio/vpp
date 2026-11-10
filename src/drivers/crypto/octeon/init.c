@@ -123,19 +123,13 @@ oct_init_cpt (vlib_main_t *vm, vnet_dev_t *dev)
     return rrv;
 
   if (!ocm->n_cpt)
-    {
-      /*
-       * Initialize s/w queues, which are common across multiple
-       * crypto devices
-       */
-      oct_conf_sw_queue (vm, dev, ocd);
-
-      ocm->crypto_dev[0] = ocd;
-    }
+    ocm->crypto_dev[0] = ocd;
 
   ocm->crypto_dev[1] = ocd;
+  ocm->driver_index = dev->driver_index;
 
-  oct_init_crypto_engine_handlers (vm, dev);
+  dev->max_crypto_queues = vlib_get_n_threads ();
+  dev->crypto_queue_size = ocd->n_desc / dev->max_crypto_queues;
 
   ocm->n_cpt++;
 
@@ -180,5 +174,20 @@ VNET_DEV_REGISTER_DRIVER (octeon_crypto) = {
   },
   .driver = {
     .ops.init = oct_crypto_driver_init,
+  },
+  .crypto = {
+    .engine_name = "octeon_cpt",
+    .engine_desc = "Octeon CPT Engine",
+    .priority = 100,
+    .queue_data_sz = sizeof (oct_crypto_pending_queue_t),
+    .ops = {
+      .init = oct_crypto_queue_init,
+      .deinit = oct_crypto_queue_deinit,
+      .stop = oct_crypto_queue_stop,
+      .get_enqueue_handler = oct_crypto_get_async_enqueue_handler,
+      .dequeue = oct_crypto_frame_dequeue,
+      .key_change = oct_crypto_key_change_handler,
+      .key_data_sz = sizeof (oct_crypto_key_t),
+    },
   },
 };
