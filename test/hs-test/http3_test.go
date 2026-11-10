@@ -32,9 +32,12 @@ func init() {
 		Http3MissingPseudoHeaderTest, Http3MissingSchemePseudoHeaderTest, Http3MissingPathPseudoHeaderTest,
 		Http3MissingAuthorityPseudoHeaderTest, Http3ConnectWithSchemePathPseudoHeadersTest,
 		Http3PseudoHeaderAfterRegularTest, Http3ReservedFrameTest, Http3DataFrameOnCtrlStreamTest,
-		Http3GoawayOnReqStreamTest, Http3UnknownFrameOnReqStreamTest, Http3GoawayInvalidLengthTest, Http3SecondSettingsFrameTest,
+		Http3GoawayOnReqStreamTest, Http3UnknownFrameOnReqStreamTest, Http3GoawayInvalidLengthTest, Http3GoawayEmptyTest,
+		Http3GoawayTruncatedIdTest, Http3GoawayExtraBytesTest, Http3SecondSettingsFrameTest,
+		Http3PushControlFrameErrorsTest, Http3MaxPushIdTest, Http3ClientPushControlFramesTest,
 		Http3ReservedSettingsTest, Http3MissingSettingsTest, Http3SecondCtrlStreamTest,
 		Http3SecondQpackDecoderStreamTest, Http3SecondQpackEncoderStreamTest, Http3CtrlStreamClosedTest,
+		Http3FragmentedStreamTypeTest, Http3IncompleteStreamTypeCloseTest,
 		Http3QpackDecompressionFailedTest, Http3ClientOpenPushStreamTest, Http3DataBeforeHeadersTest,
 		Http3LongerDataThanContentLengthTest, Http3HalfClosedBeforeAllDataTest, Http3StaticGetTest,
 		Http3MaxHeaderListSizeTest, Http3ServerHeadersFrameTooLargeTest, Http3ClientHeadersFrameTooLargeTest,
@@ -1735,6 +1738,174 @@ func Http3GoawayInvalidLengthTest(s *Http3Suite) {
 		http3.ErrCodeFrameError)
 }
 
+func Http3GoawayEmptyTest(s *Http3Suite) {
+	http3SendCtrlExpectConnError(s, []byte{0x04, 0x00, 0x07, 0x00}, http3.ErrCodeFrameError)
+}
+
+func Http3GoawayTruncatedIdTest(s *Http3Suite) {
+	http3SendCtrlExpectConnError(s, []byte{0x04, 0x00, 0x07, 0x01, 0x40}, http3.ErrCodeFrameError)
+}
+
+func Http3GoawayExtraBytesTest(s *Http3Suite) {
+	http3SendCtrlExpectConnError(s, []byte{0x04, 0x00, 0x07, 0x02, 0x00, 0x00}, http3.ErrCodeFrameError)
+}
+
+func Http3PushControlFrameErrorsTest(s *Http3Suite) {
+	address := s.VppAddr() + ":" + s.Ports.Port1
+	Log(s.Containers.Vpp.VppInstance.Vppctl("http tps no-zc h3 uri https://" + address))
+	type testCase struct {
+		name    string
+		frames  []byte
+		code    http3.ErrCode
+		request bool
+	}
+	var cases []testCase
+	for _, frameType := range []uint64{0x03, 0x0d} {
+		for _, payload := range [][]byte{nil, {0x40}, {0x80, 0x00, 0x00}, {0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, {0x00, 0x00}, make([]byte, 9)} {
+			cases = append(cases, testCase{
+				name:   fmt.Sprintf("malformed frame 0x%x payload %x", frameType, payload),
+				frames: http3FinFrame(frameType, payload), code: http3.ErrCodeFrameError,
+			})
+		}
+		cases = append(cases, testCase{
+			name:   fmt.Sprintf("frame 0x%x on request stream", frameType),
+			frames: http3FinFrame(frameType, []byte{0}), code: http3.ErrCodeFrameUnexpected, request: true,
+		})
+	}
+	for _, id := range []uint64{0, 63, 64, 16384, 1 << 32, 1<<62 - 1} {
+		cases = append(cases, testCase{
+			name:   fmt.Sprintf("cancel unpromised push %d", id),
+			frames: http3FinFrame(0x03, quicvarint.Append(nil, id)), code: http3.ErrCodeIDError,
+		})
+	}
+	for _, limit := range []uint64{1, 1 << 32, 1<<62 - 1} {
+		cases = append(cases, testCase{
+			name: fmt.Sprintf("decreasing MAX_PUSH_ID from %d", limit),
+			frames: append(http3FinFrame(0x0d, quicvarint.Append(nil, limit)),
+				http3FinFrame(0x0d, quicvarint.Append(nil, limit-1))...), code: http3.ErrCodeIDError,
+		})
+	}
+	cases = append(cases, testCase{
+		name:   "cancel unpromised push after MAX_PUSH_ID",
+		frames: append(http3FinFrame(0x0d, []byte{0}), http3FinFrame(0x03, []byte{0})...), code: http3.ErrCodeIDError,
+	})
+	for _, tc := range cases {
+		By(tc.name)
+		conn := H3ClientConnect(address)
+		defer conn.CloseWithError(0, "")
+		control, err := conn.OpenUniStream()
+		AssertNil(err)
+		if tc.request {
+			_, err = control.Write([]byte{0x00, 0x04, 0x00})
+			AssertNil(err)
+			stream, err := conn.OpenStream()
+			AssertNil(err)
+			_, err = stream.Write(tc.frames)
+			AssertNil(err)
+		} else {
+			_, err = control.Write(append([]byte{0x00, 0x04, 0x00}, tc.frames...))
+			AssertNil(err)
+		}
+		select {
+		case <-conn.Context().Done():
+			expected := quic.ApplicationError{ErrorCode: quic.ApplicationErrorCode(tc.code), Remote: true}
+			AssertMatchError(context.Cause(conn.Context()), &expected)
+		case <-time.After(3 * time.Second):
+			Fail("push control frame did not produce the expected connection error")
+		}
+		AssertNil(conn.CloseWithError(0, ""))
+	}
+	http3TestSessionCleanupServer(s)
+}
+
+func Http3MaxPushIdTest(s *Http3Suite) {
+	address := s.VppAddr() + ":" + s.Ports.Port1
+	Log(s.Containers.Vpp.VppInstance.Vppctl("http tps no-zc h3 uri https://" + address))
+	// A new connection starts without a push limit, independently of previous connections.
+	for range 2 {
+		conn := H3ClientConnect(address)
+		defer conn.CloseWithError(0, "")
+		control, err := conn.OpenUniStream()
+		AssertNil(err)
+		_, err = control.Write([]byte{0x00, 0x04, 0x00})
+		AssertNil(err)
+		for _, id := range []uint64{0, 0, 63, 64, 16383, 16384, 1 << 30, 1 << 32, 1<<62 - 1} {
+			for _, length := range []int{1, 2, 4, 8} {
+				if length < quicvarint.Len(id) {
+					continue
+				}
+				By(fmt.Sprintf("MAX_PUSH_ID %d encoded in %d bytes", id, length))
+				_, err = control.Write(http3FinFrame(0x0d, quicvarint.AppendWithLen(nil, id, length)))
+				AssertNil(err)
+				http3StreamTypeCheckRequest(conn)
+			}
+		}
+		AssertNil(conn.CloseWithError(0, ""))
+	}
+	http3TestSessionCleanupServer(s)
+}
+
+func Http3ClientPushControlFramesTest(s *Http3Suite) {
+	cert, err := tls.LoadX509KeyPair("resources/cert/localhost.crt", "resources/cert/localhost.key")
+	AssertNil(err)
+	address := s.HostAddr() + ":" + s.Ports.Port1
+	listener, err := quic.ListenAddr(address,
+		&tls.Config{Certificates: []tls.Certificate{cert}, NextProtos: []string{"h3"}}, nil)
+	AssertNil(err)
+	defer listener.Close()
+	for _, tc := range []struct {
+		name  string
+		frame []byte
+		code  http3.ErrCode
+	}{
+		{"MAX_PUSH_ID", http3FinFrame(0x0d, []byte{0}), http3.ErrCodeFrameUnexpected},
+		{"empty MAX_PUSH_ID", http3FinFrame(0x0d, nil), http3.ErrCodeFrameUnexpected},
+		{"ungranted CANCEL_PUSH", http3FinFrame(0x03, []byte{0}), http3.ErrCodeIDError},
+		{"empty CANCEL_PUSH", http3FinFrame(0x03, nil), http3.ErrCodeFrameError},
+		{"truncated CANCEL_PUSH", http3FinFrame(0x03, []byte{0x40}), http3.ErrCodeFrameError},
+		{"CANCEL_PUSH with extra bytes", http3FinFrame(0x03, []byte{0, 0}), http3.ErrCodeFrameError},
+	} {
+		By(tc.name)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		done := make(chan struct{})
+		go func() {
+			defer GinkgoRecover()
+			defer close(done)
+			conn, err := listener.Accept(ctx)
+			AssertNil(err)
+			defer conn.CloseWithError(0, "")
+			stream, err := conn.AcceptStream(ctx)
+			AssertNil(err)
+			deadline, _ := ctx.Deadline()
+			AssertNil(stream.SetReadDeadline(deadline))
+			reader := quicvarint.NewReader(stream)
+			frameType, err := quicvarint.Read(reader)
+			AssertNil(err)
+			AssertEqual(uint64(0x01), frameType)
+			length, err := quicvarint.Read(reader)
+			AssertNil(err)
+			_, err = io.CopyN(io.Discard, stream, int64(length))
+			AssertNil(err)
+			control, err := conn.OpenUniStream()
+			AssertNil(err)
+			_, err = control.Write(append([]byte{0x00, 0x04, 0x00}, tc.frame...))
+			AssertNil(err)
+			select {
+			case <-conn.Context().Done():
+				expected := quic.ApplicationError{ErrorCode: quic.ApplicationErrorCode(tc.code), Remote: true}
+				AssertMatchError(context.Cause(conn.Context()), &expected)
+			case <-ctx.Done():
+				Fail("client did not reject push control frame")
+			}
+		}()
+		o := s.Containers.Vpp.VppInstance.Vppctl("http client http3 timeout 5 uri https://" + address + "/")
+		Log(o)
+		<-done
+		AssertContains(o, "transport closed")
+	}
+}
+
 func Http3SecondSettingsFrameTest(s *Http3Suite) {
 	http3SendCtrlExpectConnError(s, []byte{0x04, 0x00, 0x04, 0x00}, http3.ErrCodeFrameUnexpected)
 }
@@ -1791,6 +1962,89 @@ func Http3SecondQpackDecoderStreamTest(s *Http3Suite) {
 
 func Http3SecondQpackEncoderStreamTest(s *Http3Suite) {
 	http3SecondUniStreamExpectConnError(s, 0x02)
+}
+
+func http3StreamTypeCheckRequest(conn *quic.Conn) {
+	stream, err := conn.OpenStream()
+	AssertNil(err)
+	AssertNil(stream.SetDeadline(time.Now().Add(3 * time.Second)))
+	_, err = stream.Write(http3FinHeaders(http.MethodGet, "/test_file_64", ""))
+	AssertNil(err)
+	AssertNil(stream.Close())
+	http3FinReadResponse(stream, 64)
+}
+
+func Http3FragmentedStreamTypeTest(s *Http3Suite) {
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	Log(s.Containers.Vpp.VppInstance.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
+	for _, streamType := range []uint64{0x00, 0x02, 0x03, 0x1234} {
+		for _, length := range []int{2, 4, 8} {
+			By(fmt.Sprintf("stream type 0x%x encoded in %d bytes", streamType, length))
+			conn := H3ClientConnect(serverAddress)
+			defer conn.CloseWithError(0, "")
+			stream, err := conn.OpenUniStream()
+			AssertNil(err)
+			encoded := quicvarint.AppendWithLen(nil, streamType, length)
+			for i := range encoded {
+				_, err = stream.Write(encoded[i : i+1])
+				AssertNil(err)
+				if i == len(encoded)-1 && streamType == 0x00 {
+					_, err = stream.Write([]byte{0x04, 0x00})
+					AssertNil(err)
+				}
+				// Complete a request before sending the next byte, so each
+				// incomplete prefix reaches VPP separately.
+				http3StreamTypeCheckRequest(conn)
+			}
+			if streamType != 0x1234 {
+				duplicate, err := conn.OpenUniStream()
+				AssertNil(err)
+				_, err = duplicate.Write(quicvarint.Append(nil, streamType))
+				AssertNil(err)
+				select {
+				case <-conn.Context().Done():
+					expected := quic.ApplicationError{ErrorCode: quic.ApplicationErrorCode(http3.ErrCodeStreamCreationError), Remote: true}
+					AssertMatchError(context.Cause(conn.Context()), &expected)
+				case <-time.After(3 * time.Second):
+					Fail("completed stream type was not registered")
+				}
+			}
+			AssertNil(conn.CloseWithError(0, ""))
+		}
+	}
+	http3TestSessionCleanupServer(s)
+}
+
+func Http3IncompleteStreamTypeCloseTest(s *Http3Suite) {
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	Log(s.Containers.Vpp.VppInstance.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
+	for _, prefix := range [][]byte{nil, {0x40}, {0x80, 0x00, 0x00}, {0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, {0x21}} {
+		for _, reset := range []bool{false, true} {
+			By(fmt.Sprintf("closing stream type prefix %x, reset=%t", prefix, reset))
+			conn := H3ClientConnect(serverAddress)
+			defer conn.CloseWithError(0, "")
+			control, err := conn.OpenUniStream()
+			AssertNil(err)
+			_, err = control.Write([]byte{0x00, 0x04, 0x00})
+			AssertNil(err)
+			stream, err := conn.OpenUniStream()
+			AssertNil(err)
+			if len(prefix) != 0 {
+				_, err = stream.Write(prefix)
+				AssertNil(err)
+				http3StreamTypeCheckRequest(conn)
+			}
+			if reset {
+				stream.CancelWrite(quic.StreamErrorCode(http3.ErrCodeRequestCanceled))
+			} else {
+				AssertNil(stream.Close())
+			}
+			http3StreamTypeCheckRequest(conn)
+			AssertNil(context.Cause(conn.Context()), "closing a noncritical stream must not close the connection")
+			AssertNil(conn.CloseWithError(0, ""))
+		}
+	}
+	http3TestSessionCleanupServer(s)
 }
 
 func http3SecondUniStreamExpectConnError(s *Http3Suite, streamType byte) {
