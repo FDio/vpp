@@ -157,6 +157,8 @@ vnet_dev_config_one_device (vlib_main_t *vm, unformat_input_t *input,
       else if (unformat (input, "args %U", unformat_single_quoted_string,
 			 &args.args))
 	;
+      else if (unformat_user (input, unformat_vnet_dev_crypto_config, &args.crypto))
+	;
       else if (unformat (input, "port %u %U", &n, unformat_vlib_cli_sub_input,
 			 &sub_input))
 	{
@@ -182,6 +184,7 @@ vnet_dev_config_one_device (vlib_main_t *vm, unformat_input_t *input,
       clib_memcpy (args.device_id, device_id, sizeof (args.device_id));
       rv = vnet_dev_api_attach (vm, &args);
       vec_free (args.args);
+      vnet_dev_crypto_config_free (&args.crypto);
 
       if (rv == VNET_DEV_OK)
 	{

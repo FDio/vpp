@@ -31,6 +31,7 @@ list(APPEND VNET_SOURCES
   dev/cli.c
   dev/config.c
   dev/counters.c
+  dev/crypto.c
   dev/dev.c
   dev/dev_api.c
   dev/error.c
@@ -77,6 +78,7 @@ list(APPEND VNET_HEADERS
   dev/api.h
   dev/bus/pci.h
   dev/counters.h
+  dev/dev_crypto_funcs.h
   dev/dev_funcs.h
   dev/dev.h
   dev/errors.h
