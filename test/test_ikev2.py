@@ -4221,6 +4221,61 @@ class TestInitiatorRekeyInstallFailure(TestInitiatorPsk):
         self.assertEqual(len(self.vapi.ipsec_sa_dump()), 3)
 
 
+class TestInitiatorAuthInstallFailure(TestInitiatorPsk):
+    """RFC 7296 2.21.2: a failed first Child SA install keeps the IKE SA.
+
+    The peer accepts the Child SA in IKE_AUTH and installs its side. Installing
+    it in VPP fails (forced with colliding SA ids), so VPP closes the half the
+    peer holds with a Delete (section 1.4.1) and keeps the IKE SA.
+    """
+
+    def test_initiator(self):
+        # Outbound and inbound ids of the first Child of the first IKE SA.
+        for sa_id in (0x80000000, 0xC0000000):
+            VppIpsecSA(
+                self,
+                sa_id,
+                0x5555 + (sa_id >> 30),
+                VppEnum.vl_api_ipsec_integ_alg_t.IPSEC_API_INTEG_ALG_SHA1_96,
+                b"C91KUR9GYMm5GfkEvNjX",
+                VppEnum.vl_api_ipsec_crypto_alg_t.IPSEC_API_CRYPTO_ALG_AES_CBC_128,
+                b"JPjyOWBciTmuwbBr",
+                VppEnum.vl_api_ipsec_proto_t.IPSEC_API_PROTO_ESP,
+            ).add_vpp_config()
+        self.initiate_sa_init()
+        self.sa.auth_init()
+        self.sa.calc_child_keys()
+        self.pg0.enable_capture()
+        self.send_auth_response()
+        request = self.get_ike_header(self.pg0.get_capture(1)[0])
+        self.assertEqual(request.exch_type, 37)  # INFORMATIONAL
+        self.assertIn("Initiator", request.flags)
+        self.assertNotIn("Response", request.flags)
+        delete = ikev2.IKEv2_payload_Delete(self.sa.hmac_and_decrypt(request))
+        self.assertEqual(delete.proto, 3)  # ESP
+        self.assertEqual(delete.SPIs, self.sa.child_sas[0].ispi)
+        # Only the two colliding SAs exist; the IKE SA stays without a Child.
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 2)
+        sas = self.vapi.ikev2_sa_dump()
+        self.assertEqual(len(sas), 1)
+        self.assertEqual(
+            len(self.vapi.ikev2_child_sa_dump(sa_index=sas[0].sa.sa_index)), 0
+        )
+        # A duplicate of the IKE_AUTH response is ignored.
+        self.sa.msg_id -= 1
+        self.send_auth_response()
+        self.pg0.assert_nothing_captured(remark="duplicate IKE_AUTH processed")
+        self.assert_counter(1, "ike_req_ignore", "ip4")
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 2)
+        self.assertEqual(
+            len(self.vapi.ikev2_child_sa_dump(sa_index=sas[0].sa.sa_index)), 0
+        )
+
+    def tearDown(self):
+        super(IkePeer, self).tearDown()
+        self.p.remove_vpp_config()
+
+
 class TestInitiatorKeepaliveMsg(TestInitiatorPsk):
     """
     Test for keep alive messages
