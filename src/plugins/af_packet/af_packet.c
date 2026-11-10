@@ -824,6 +824,13 @@ error:
 static int
 af_packet_rx_queue_free (af_packet_if_t *apif, af_packet_queue_t *rx_queue)
 {
+  af_packet_main_t *apm = &af_packet_main;
+
+  if (rx_queue->mode == VNET_HW_IF_RX_MODE_POLLING)
+    {
+      ASSERT (apm->polling_count > 0);
+      apm->polling_count--;
+    }
   clib_file_del_by_index (&file_main, rx_queue->clib_file_index);
   rx_queue->fd = -1;
   rx_queue->rx_ring = NULL;

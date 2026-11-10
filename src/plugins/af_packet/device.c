@@ -797,15 +797,19 @@ af_packet_interface_rx_mode_change (vnet_main_t *vnm, u32 hw_if_index, u32 qid,
 
   af_packet_queue_t *rx_queue = vec_elt_at_index (apif->rx_queues, qid);
 
-  if (rx_queue->mode != mode)
-    {
-      rx_queue->mode = mode;
+  if (rx_queue->mode == mode)
+    return 0;
 
-      if (mode == VNET_HW_IF_RX_MODE_POLLING)
-	apm->polling_count++;
-      else if (mode == VNET_HW_IF_RX_MODE_INTERRUPT && apm->polling_count > 0)
-	apm->polling_count--;
+  /* Count from the queue's own previous mode: a new queue is UNKNOWN here, so
+   * its first switch to INTERRUPT must not release a polling slot. */
+  if (rx_queue->mode == VNET_HW_IF_RX_MODE_POLLING)
+    {
+      ASSERT (apm->polling_count > 0);
+      apm->polling_count--;
     }
+  if (mode == VNET_HW_IF_RX_MODE_POLLING)
+    apm->polling_count++;
+  rx_queue->mode = mode;
 
   return 0;
 }
