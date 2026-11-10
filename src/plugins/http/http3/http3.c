@@ -315,6 +315,7 @@ http3_conn_init (u32 parent_index, clib_thread_index_t thread_index, http_ctx_t 
   /* pool grow, regrab connection */
   hc = http_ctx_get_w_thread (hc_index, thread_index);
   hc->our_ctrl_stream_index = ctrl_stream->hc_hc_index;
+  hc->peer_max_push_id = HTTP_INVALID_VARINT;
   hc->settings = hm->h3_settings;
   /* adjust settings according to app rx_fifo size */
   hc->settings.max_field_section_size =
@@ -1697,7 +1698,7 @@ http3_stream_read_goaway (http_ctx_t *req, http_ctx_t *stream, u32 *to_deq,
   u8 *rx_buf;
   u64 stream_or_push_id;
 
-  if (PREDICT_FALSE (fh->length > HTTP_VARINT_MAX_LEN))
+  if (PREDICT_FALSE (fh->length == 0 || fh->length > HTTP_VARINT_MAX_LEN))
     {
       HTTP_DBG (1, "invalid goaway length");
       http3_stream_error_terminate_conn (stream, req, HTTP3_ERROR_FRAME_ERROR);
@@ -1711,7 +1712,7 @@ http3_stream_read_goaway (http_ctx_t *req, http_ctx_t *stream, u32 *to_deq,
   if (err != HTTP3_ERROR_NO_ERROR)
     {
       HTTP_DBG (1, "invalid stream id/push id in goaway frame");
-      http3_stream_error_terminate_conn (stream, req, HTTP3_ERROR_ID_ERROR);
+      http3_stream_error_terminate_conn (stream, req, err);
       return -1;
     }
   hc = http_ctx_get_w_thread (stream->hc_http_conn_index, stream->c_thread_index);
@@ -1724,6 +1725,47 @@ http3_stream_read_goaway (http_ctx_t *req, http_ctx_t *stream, u32 *to_deq,
     }
   return 0;
 }
+
+static_always_inline int
+http3_stream_read_push_id (http_ctx_t *req, http_ctx_t *stream, u32 *to_deq,
+			   http3_frame_header_t *fh)
+{
+  http3_error_t err = HTTP3_ERROR_FRAME_ERROR;
+  u8 buf[HTTP_VARINT_MAX_LEN], *p = buf;
+  http_ctx_t *hc;
+  u64 push_id;
+
+  if (fh->type == HTTP3_FRAME_TYPE_MAX_PUSH_ID && !(stream->flags & HTTP_CONN_F_IS_SERVER))
+    {
+      err = HTTP3_ERROR_FRAME_UNEXPECTED;
+      goto error;
+    }
+  if (fh->length == 0 || fh->length > HTTP_VARINT_MAX_LEN)
+    goto error;
+
+  http_io_ts_read (stream, buf, fh->length, 0);
+  *to_deq -= fh->length;
+  push_id = http_decode_varint (&p, buf + fh->length);
+  if (push_id == HTTP_INVALID_VARINT || p != buf + fh->length)
+    goto error;
+
+  hc = http_ctx_get_w_thread (stream->hc_http_conn_index, stream->c_thread_index);
+  /* we never promise pushes as server or grant push IDs as client */
+  if (fh->type == HTTP3_FRAME_TYPE_CANCEL_PUSH ||
+      (hc->peer_max_push_id != HTTP_INVALID_VARINT && push_id < hc->peer_max_push_id))
+    {
+      err = HTTP3_ERROR_ID_ERROR;
+      goto error;
+    }
+  hc->peer_max_push_id = push_id;
+  return 0;
+
+error:
+  HTTP_DBG (1, "push ID frame error: %U", format_http3_error, err);
+  http3_stream_error_terminate_conn (stream, req, err);
+  return -1;
+}
+
 static u32
 http3_stream_transport_rx_ctrl (http_ctx_t *req, http_ctx_t *stream)
 {
@@ -1753,6 +1795,12 @@ http3_stream_transport_rx_ctrl (http_ctx_t *req, http_ctx_t *stream)
 	case HTTP3_FRAME_TYPE_GOAWAY:
 	  HTTP_DBG (1, "goaway received");
 	  if (PREDICT_FALSE (http3_stream_read_goaway (req, stream, &to_deq, &fh)))
+	    goto done;
+	  break;
+	case HTTP3_FRAME_TYPE_CANCEL_PUSH:
+	case HTTP3_FRAME_TYPE_MAX_PUSH_ID:
+	  /* not supported but we need to do validation anyway */
+	  if (PREDICT_FALSE (http3_stream_read_push_id (req, stream, &to_deq, &fh)))
 	    goto done;
 	  break;
 	default:
@@ -1786,7 +1834,7 @@ http3_stream_transport_rx_unknown_type (http_ctx_t *req, http_ctx_t *stream)
   stream_type = http_decode_varint (&p, p + to_deq);
   if (stream_type == HTTP_INVALID_VARINT)
     {
-      http3_stream_error_terminate_conn (stream, req, HTTP3_ERROR_GENERAL_PROTOCOL_ERROR);
+      HTTP_DBG (1, "stream type incomplete");
       return 0;
     }
   n_deq = p - rx_buf;
@@ -2615,9 +2663,13 @@ http3_transport_stream_reset_callback (http_ctx_t *stream)
   req = http_ctx_get_w_thread (stream->http_req_index, stream->c_thread_index);
   if (stream->flags & HTTP_CONN_F_UNIDIRECTIONAL_STREAM)
     {
-      /* this should not happen since we don't support server push */
       HTTP_DBG (1, "%U closed", format_http3_stream_type, req->stream_type);
-      http3_stream_error_terminate_conn (stream, req, HTTP3_ERROR_CLOSED_CRITICAL_STREAM);
+      if (req->stream_type == HTTP3_STREAM_TYPE_CONTROL ||
+	  req->stream_type == HTTP3_STREAM_TYPE_DECODER ||
+	  req->stream_type == HTTP3_STREAM_TYPE_ENCODER)
+	http3_stream_error_terminate_conn (stream, req, HTTP3_ERROR_CLOSED_CRITICAL_STREAM);
+      else
+	http_stats_ctrl_streams_closed_inc (stream->c_thread_index);
     }
   else
     {

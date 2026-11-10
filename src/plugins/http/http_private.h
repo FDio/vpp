@@ -392,6 +392,7 @@ typedef struct http_ctx_
 	  u32 peer_encoder_stream_index;
 	  u32 http_req_index;
 	  qpack_decoder_ctx_t qpack_decoder_ctx;
+	  u64 peer_max_push_id; /* HTTP_INVALID_VARINT until MAX_PUSH_ID is received */
 	};
       };
     };
