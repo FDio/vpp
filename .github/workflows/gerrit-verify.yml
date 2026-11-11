@@ -1,4 +1,5 @@
 name: gerrit-verify
+run-name: "gerrit-verify ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER }}"
 
 on:
   workflow_dispatch:
