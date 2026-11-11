@@ -383,6 +383,91 @@ hsi_handle_local_msgs (vlib_main_t *vm, hsi_worker_t *wrk)
   return vec_len (wrk->local_msgs) ? 0 : HSI_TIMER_NONE;
 }
 
+/* Expired timer handles carry the timer in the top bit */
+#define HSI_WHEEL_HANDLE_TIMER_SHIFT 31
+#define HSI_WHEEL_HANDLE_INDEX_MASK  0x7fffffff
+
+STATIC_ASSERT (HSI_WHEEL_N_TIMERS <= 2, "wheel supports two timers");
+
+typedef void (*hsi_wheel_expired_fn) (clib_thread_index_t thread_index, u32 *indices, f64 now);
+
+/* Called with the indices of all their timers that expired */
+static const hsi_wheel_expired_fn hsi_wheel_expired_fns[HSI_WHEEL_N_TIMERS] = {
+  [HSI_WHEEL_TIMER_UDP_IDLE] = hsi_udp_idle_expired,
+};
+
+/*
+ * Arms a timer that fires in at least interval seconds, rounded up to wheel
+ * ticks, or after one wheel turn if longer. Users rearm with the time left.
+ * Returns the handle needed to disarm it.
+ */
+u32
+hsi_wheel_arm (clib_thread_index_t thread_index, hsi_wheel_timer_t timer, u32 index, f64 interval,
+	       f64 now)
+{
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+  tw_timer_wheel_2t_1w_2048sl_t *tw = &wrk->wheel;
+  u64 ticks;
+
+  ASSERT (timer < HSI_WHEEL_N_TIMERS && index <= HSI_WHEEL_HANDLE_INDEX_MASK);
+
+  if (PREDICT_FALSE (!tw->timers))
+    tw_timer_wheel_init_2t_1w_2048sl (tw, 0 /* no callback */, HSI_WHEEL_TICK, ~0);
+  else if (!wrk->wheel_n_armed && now - tw->last_run_time > 2 * HSI_WHEEL_TICK)
+    /* Wheel is not advanced while empty, resync it on next expire instead
+     * of catching up on all the ticks missed */
+    tw->last_run_time = 0;
+
+  ticks = interval > 0 ? (u64) (interval / HSI_WHEEL_TICK) + 1 : 1;
+  ticks = clib_min (ticks, HSI_WHEEL_MAX_TICKS);
+  wrk->wheel_n_armed += 1;
+  hsi_timer_schedule (thread_index, now + HSI_WHEEL_TICK);
+
+  return tw_timer_start_2t_1w_2048sl (tw, index, timer, ticks);
+}
+
+void
+hsi_wheel_disarm (clib_thread_index_t thread_index, u32 *handle)
+{
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+
+  if (*handle == HSI_WHEEL_HANDLE_INVALID)
+    return;
+
+  tw_timer_stop_2t_1w_2048sl (&wrk->wheel, *handle);
+  *handle = HSI_WHEEL_HANDLE_INVALID;
+  ASSERT (wrk->wheel_n_armed > 0);
+  wrk->wheel_n_armed -= 1;
+}
+
+/* Hands expired timers to their users, returns when the wheel has to run again */
+static f64
+hsi_wheel_run (clib_thread_index_t thread_index, f64 now)
+{
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+  u32 *handles, *handle, timer;
+
+  if (!wrk->wheel_n_armed)
+    return HSI_TIMER_NONE;
+
+  handles = tw_timer_expire_timers_2t_1w_2048sl (&wrk->wheel, now);
+  ASSERT (wrk->wheel_n_armed >= vec_len (handles));
+  wrk->wheel_n_armed -= vec_len (handles);
+
+  /* Copied, users rearm and the wheel reuses its vector */
+  for (timer = 0; timer < HSI_WHEEL_N_TIMERS; timer++)
+    vec_reset_length (wrk->wheel_expired[timer]);
+  vec_foreach (handle, handles)
+    vec_add1 (wrk->wheel_expired[*handle >> HSI_WHEEL_HANDLE_TIMER_SHIFT],
+	      *handle & HSI_WHEEL_HANDLE_INDEX_MASK);
+
+  for (timer = 0; timer < HSI_WHEEL_N_TIMERS; timer++)
+    if (vec_len (wrk->wheel_expired[timer]))
+      hsi_wheel_expired_fns[timer](thread_index, wrk->wheel_expired[timer], now);
+
+  return wrk->wheel_n_armed ? wrk->wheel.next_run_time : HSI_TIMER_NONE;
+}
+
 static void hsi_timer_update_time (f64 now, u8 thread_index);
 
 /* Out of line, so the per loop deadline check stays cheap */
@@ -400,7 +485,7 @@ hsi_timer_run (f64 now, clib_thread_index_t thread_index)
   next = clib_min (next, hsi_tcp_drain_timer (thread_index, now));
   next = clib_min (next, hsi_tcp_fin_wait_timer (thread_index, now));
   next = clib_min (next, hsi_udp_drain_timer (thread_index, now));
-  next = clib_min (next, hsi_udp_idle_timer (thread_index, now));
+  next = clib_min (next, hsi_wheel_run (thread_index, now));
   next = clib_min (next, wrk->timer_next);
 
   if (next != HSI_TIMER_NONE)

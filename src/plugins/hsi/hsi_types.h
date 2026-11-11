@@ -8,14 +8,14 @@
 
 #include <vnet/ip/ip46_address.h>
 #include <vnet/session/session.h>
+#include <vppinfra/tw_timer_2t_1w_2048sl.h>
 
 #define HSI_TCP_DRAIN_CACHE_DEFAULT_PACKETS	  16
 #define HSI_TCP_DRAIN_NO_PROGRESS_DEFAULT_TIMEOUT 10.0
 /* Drains complete on events, timeouts are checked at this interval */
 #define HSI_TCP_DRAIN_SCAN_INTERVAL		  0.1
 /* Udp has no acks, so drains are also checked at this interval */
-#define HSI_UDP_DRAIN_SCAN_INTERVAL    1e-3
-#define HSI_UDP_IDLE_SCAN_MAX_INTERVAL 1.0
+#define HSI_UDP_DRAIN_SCAN_INTERVAL 1e-3
 /* Timer handlers return this when they have nothing pending */
 #define HSI_TIMER_NONE				  1e30
 #define HSI_UDP_DRAIN_CACHE_DEFAULT_PACKETS	  3
@@ -24,6 +24,19 @@
 #define HSI_TCP_FIN_WAIT_DEFAULT_TIMEOUT	  2.0
 #define HSI_POSTPONED_CLEANUP_TIME		  0.1
 #define HSI_MQ_DEFAULT_LENGTH			  4096
+
+/* Timer wheel tick, idle flows are detected at most this late */
+#define HSI_WHEEL_TICK 1.0
+/* Longest a wheel timer can be armed for, one wheel turn */
+#define HSI_WHEEL_MAX_TICKS	 2047
+#define HSI_WHEEL_HANDLE_INVALID ((u32) ~0)
+
+/* Wheel timers, the wheel supports two */
+typedef enum hsi_wheel_timer_
+{
+  HSI_WHEEL_TIMER_UDP_IDLE,
+  HSI_WHEEL_N_TIMERS,
+} hsi_wheel_timer_t;
 
 typedef struct hsi_tcp_track_snapshot_
 {
@@ -141,6 +154,18 @@ typedef struct hsi_tcp_fin_wait_elt_
   f64 start;
 } hsi_tcp_fin_wait_elt_t;
 
+typedef struct hsi_udp_idle_elt_
+{
+  /** Flow key, see hsi_udp_session_conn_key_from_connection */
+  uword key;
+  /** Last activity seen, flow can't be idle before this plus the timeout */
+  f64 last_active;
+  /** Idle timer, HSI_WHEEL_HANDLE_INVALID if not armed */
+  u32 timer_handle;
+  /** See hsi_udp_idle_state_t */
+  u8 state;
+} hsi_udp_idle_elt_t;
+
 typedef struct hsi_worker_
 {
   /** Messages from other workers, see hsi_mq_send. Other workers write
@@ -165,9 +190,9 @@ typedef struct hsi_worker_
   uword *udp_drain_by_session_conn;
   session_handle_t *udp_drain_update_handles;
   f64 udp_drain_next_scan;
+  /** Udp idle entry index by flow key */
   uword *udp_idle_by_session_conn;
-  uword *udp_idle_update_keys;
-  f64 udp_idle_next_scan;
+  hsi_udp_idle_elt_t *udp_idle_elts;
   hsi_cleanup_req_t *pending_cleanups;
   /** Messages this worker sent itself, see hsi_mq_send */
   hsi_msg_t *local_msgs;
@@ -176,6 +201,11 @@ typedef struct hsi_worker_
   /** Next time hsi timers have to run, see hsi_timer_schedule */
   f64 timer_next;
   u8 timer_registered;
+  u32 wheel_n_armed;
+  /** Indices of expired timers, by timer */
+  u32 *wheel_expired[HSI_WHEEL_N_TIMERS];
+  /** Long timers, e.g., for idle flows, see hsi_wheel_arm. Last, it's big */
+  tw_timer_wheel_2t_1w_2048sl_t wheel;
 } hsi_worker_t;
 
 #define hsi_worker_counter_inc(_wrk, _counter)                                                     \

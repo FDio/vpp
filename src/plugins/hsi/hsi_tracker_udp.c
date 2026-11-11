@@ -65,22 +65,26 @@ hsi_udp_session_cleanup_peer_handle (session_t *s)
   return hsi_udp_connection_peer_handle (hsi_udp_connection_at_session (s));
 }
 
-static_always_inline f64
-hsi_udp_idle_scan_interval (void)
-{
-  return clib_min (HSI_UDP_IDLE_SCAN_MAX_INTERVAL, hsi_main.udp_idle_timeout / 4);
-}
+static void hsi_udp_idle_elt_arm (clib_thread_index_t thread_index, hsi_udp_idle_elt_t *elt,
+				  f64 time_now);
 
 static void
 hsi_udp_idle_timeout_update_rpc (void *arg)
 {
   clib_thread_index_t thread_index = vlib_get_thread_index ();
   hsi_worker_t *wrk = hsi_worker_get (thread_index);
+  hsi_udp_idle_elt_t *elt;
+  f64 now;
 
-  /* Scan again with the new timeout */
-  wrk->udp_idle_next_scan = 0;
-  if (hsi_main.udp_idle_timeout > 0 && hash_elts (wrk->udp_idle_by_session_conn))
-    hsi_timer_schedule (thread_index, 0 /* asap */);
+  /* Timers were armed for the old timeout */
+  now = vlib_time_now (vlib_get_main_by_index (thread_index));
+  pool_foreach (elt, wrk->udp_idle_elts)
+    {
+      if (elt->state != HSI_UDP_IDLE_STATE_ACTIVE)
+	continue;
+      hsi_wheel_disarm (thread_index, &elt->timer_handle);
+      hsi_udp_idle_elt_arm (thread_index, elt, now);
+    }
 }
 
 void
@@ -131,25 +135,75 @@ hsi_udp_idle_touch (udp_connection_t *uc, f64 time_now)
   uc->start_ts = time_now;
 }
 
-static_always_inline void
+static_always_inline hsi_udp_idle_elt_t *
+hsi_udp_idle_elt_get (hsi_worker_t *wrk, uword key)
+{
+  uword *p = hash_get (wrk->udp_idle_by_session_conn, key);
+  return p ? pool_elt_at_index (wrk->udp_idle_elts, p[0]) : 0;
+}
+
+/*
+ * Arms the entry's timer for when its flow can first be idle, i.e., last
+ * activity seen plus the timeout. Flows active since then are found when the
+ * timer fires, so the data path never touches timers.
+ */
+static void
+hsi_udp_idle_elt_arm (clib_thread_index_t thread_index, hsi_udp_idle_elt_t *elt, f64 time_now)
+{
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+
+  ASSERT (elt->timer_handle == HSI_WHEEL_HANDLE_INVALID);
+  if (hsi_main.udp_idle_timeout <= 0)
+    return;
+
+  elt->timer_handle =
+    hsi_wheel_arm (thread_index, HSI_WHEEL_TIMER_UDP_IDLE, elt - wrk->udp_idle_elts,
+		   elt->last_active + hsi_main.udp_idle_timeout - time_now, time_now);
+}
+
+static void
+hsi_udp_idle_elt_free (clib_thread_index_t thread_index, hsi_udp_idle_elt_t *elt)
+{
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+
+  hsi_wheel_disarm (thread_index, &elt->timer_handle);
+  hash_unset (wrk->udp_idle_by_session_conn, elt->key);
+  pool_put (wrk->udp_idle_elts, elt);
+}
+
+static void
 hsi_udp_idle_add (udp_connection_t *uc, f64 time_now)
 {
   hsi_worker_t *wrk = hsi_worker_get (uc->c_thread_index);
+  hsi_udp_idle_elt_t *elt;
+  uword key;
 
   ASSERT (uc->cfg_flags & UDP_CFG_F_TRACKED);
   hsi_udp_idle_touch (uc, time_now);
-  hash_set (wrk->udp_idle_by_session_conn, hsi_udp_session_conn_key_from_connection (uc),
-	    HSI_UDP_IDLE_STATE_ACTIVE);
-  if (hsi_main.udp_idle_timeout > 0)
-    hsi_timer_schedule (uc->c_thread_index, time_now + hsi_udp_idle_scan_interval ());
+
+  key = hsi_udp_session_conn_key_from_connection (uc);
+  elt = hsi_udp_idle_elt_get (wrk, key);
+  if (elt)
+    hsi_udp_idle_elt_free (uc->c_thread_index, elt);
+
+  pool_get (wrk->udp_idle_elts, elt);
+  elt->key = key;
+  elt->state = HSI_UDP_IDLE_STATE_ACTIVE;
+  elt->last_active = time_now;
+  elt->timer_handle = HSI_WHEEL_HANDLE_INVALID;
+  hash_set (wrk->udp_idle_by_session_conn, key, elt - wrk->udp_idle_elts);
+  hsi_udp_idle_elt_arm (uc->c_thread_index, elt, time_now);
 }
 
-static_always_inline void
+static void
 hsi_udp_idle_del (udp_connection_t *uc)
 {
   hsi_worker_t *wrk = hsi_worker_get (uc->c_thread_index);
+  hsi_udp_idle_elt_t *elt;
 
-  hash_unset (wrk->udp_idle_by_session_conn, hsi_udp_session_conn_key_from_connection (uc));
+  elt = hsi_udp_idle_elt_get (wrk, hsi_udp_session_conn_key_from_connection (uc));
+  if (elt)
+    hsi_udp_idle_elt_free (uc->c_thread_index, elt);
 }
 
 static_always_inline void
@@ -402,18 +456,25 @@ hsi_udp_drain_transport_closed (session_t *s, hsi_udp_drain_t *drain)
   return 1;
 }
 
+/* Not checked anymore, freed with the flow */
+static_always_inline void
+hsi_udp_idle_elt_set_cleanup_pending (clib_thread_index_t thread_index, hsi_udp_idle_elt_t *elt)
+{
+  elt->state = HSI_UDP_IDLE_STATE_CLEANUP_PENDING;
+  hsi_wheel_disarm (thread_index, &elt->timer_handle);
+}
+
 static_always_inline u8
 hsi_udp_idle_cleanup_try_lock (session_t *s)
 {
   hsi_worker_t *wrk = hsi_worker_get (s->thread_index);
-  uword key, *p;
+  hsi_udp_idle_elt_t *elt;
 
-  key = hsi_session_conn_key_from_session (s);
-  p = hash_get (wrk->udp_idle_by_session_conn, key);
-  if (!p || p[0] == HSI_UDP_IDLE_STATE_CLEANUP_PENDING)
+  elt = hsi_udp_idle_elt_get (wrk, hsi_session_conn_key_from_session (s));
+  if (!elt || elt->state == HSI_UDP_IDLE_STATE_CLEANUP_PENDING)
     return 0;
 
-  hash_set (wrk->udp_idle_by_session_conn, key, HSI_UDP_IDLE_STATE_CLEANUP_PENDING);
+  hsi_udp_idle_elt_set_cleanup_pending (s->thread_index, elt);
   return 1;
 }
 
@@ -421,11 +482,11 @@ static_always_inline void
 hsi_udp_idle_cleanup_mark_pending (session_t *s)
 {
   hsi_worker_t *wrk = hsi_worker_get (s->thread_index);
-  uword key;
+  hsi_udp_idle_elt_t *elt;
 
-  key = hsi_session_conn_key_from_session (s);
-  if (hash_get (wrk->udp_idle_by_session_conn, key))
-    hash_set (wrk->udp_idle_by_session_conn, key, HSI_UDP_IDLE_STATE_CLEANUP_PENDING);
+  elt = hsi_udp_idle_elt_get (wrk, hsi_session_conn_key_from_session (s));
+  if (elt)
+    hsi_udp_idle_elt_set_cleanup_pending (s->thread_index, elt);
 }
 
 static_always_inline void
@@ -445,93 +506,101 @@ hsi_udp_idle_schedule_cleanup_pair (session_t *s, session_t *peer_s)
   hsi_session_send_cleanup_pair (session_handle (s));
 }
 
-/* Scans flows for idle ones periodically, returns when to scan again */
-f64
-hsi_udp_idle_timer (clib_thread_index_t thread_index, f64 time_now)
+/*
+ * Checks a flow whose entry saw no activity for a timeout and cleans it up if
+ * idle. Returns 0 if the entry is stale, otherwise 1 and the flow's last
+ * activity.
+ */
+static int
+hsi_udp_idle_check (clib_thread_index_t thread_index, uword key, f64 time_now, f64 *last_active)
 {
-  hsi_worker_t *wrk = hsi_worker_get (thread_index);
-  hash_pair_t *hp;
-  uword *keyp, *keys;
+  session_handle_tu_t sh = {
+    .handle = session_make_handle (hsi_session_conn_key_session_index (key), thread_index),
+  };
+  session_handle_t peer_handle;
+  udp_connection_t *uc, *peer_uc;
+  session_t *s, *peer_s = 0;
 
-  if (hsi_main.udp_idle_timeout <= 0 || !hash_elts (wrk->udp_idle_by_session_conn))
-    return HSI_TIMER_NONE;
+  s = session_get_from_handle_if_valid (sh);
+  if (!s || s->connection_index != hsi_session_conn_key_conn_index (key))
+    return 0;
 
-  if (time_now < wrk->udp_idle_next_scan)
-    return wrk->udp_idle_next_scan;
-  wrk->udp_idle_next_scan = time_now + hsi_udp_idle_scan_interval ();
+  uc = hsi_udp_connection_at_session (s);
+  if (!(uc->cfg_flags & UDP_CFG_F_TRACKED) || (uc->flags & UDP_CONN_F_MIGRATED))
+    return 0;
 
-  keys = wrk->udp_idle_update_keys;
-  vec_reset_length (keys);
-  hash_foreach_pair (hp, wrk->udp_idle_by_session_conn, ({ vec_add1 (keys, hp->key); }));
-  wrk->udp_idle_update_keys = keys;
-
-  vec_foreach (keyp, keys)
+  *last_active = uc->start_ts;
+  peer_handle = hsi_udp_connection_peer_handle (uc);
+  if (peer_handle != SESSION_INVALID_HANDLE)
     {
-      session_handle_tu_t sh = {
-	.handle = session_make_handle (hsi_session_conn_key_session_index (*keyp), thread_index),
-      };
-      session_handle_t local_handle, peer_handle;
-      udp_connection_t *uc, *peer_uc = 0;
-      session_t *s, *peer_s = 0;
-      f64 last_activity;
-      uword *state;
+      session_handle_tu_t peer_sh = { .handle = peer_handle };
 
-      state = hash_get (wrk->udp_idle_by_session_conn, *keyp);
-      if (!state || state[0] == HSI_UDP_IDLE_STATE_CLEANUP_PENDING)
-	continue;
-
-      s = session_get_from_handle_if_valid (sh);
-      if (!s || s->connection_index != hsi_session_conn_key_conn_index (*keyp))
+      /* Peer checks the pair */
+      if (peer_handle < session_handle (s))
 	{
-	  hash_unset (wrk->udp_idle_by_session_conn, *keyp);
-	  continue;
+	  *last_active = time_now;
+	  return 1;
 	}
 
-      uc = hsi_udp_connection_at_session (s);
-      if (!(uc->cfg_flags & UDP_CFG_F_TRACKED))
+      peer_s = hsi_session_peer_get_if_valid (peer_sh);
+      if (peer_s && session_get_transport_proto (peer_s) == TRANSPORT_PROTO_UDP)
 	{
-	  hash_unset (wrk->udp_idle_by_session_conn, *keyp);
-	  continue;
+	  peer_uc = hsi_udp_connection_at_session (peer_s);
+	  if (peer_uc->cfg_flags & UDP_CFG_F_TRACKED)
+	    *last_active = clib_max (*last_active, peer_uc->start_ts);
+	  else
+	    peer_s = 0;
 	}
-      if (uc->flags & UDP_CONN_F_MIGRATED)
-	{
-	  hash_unset (wrk->udp_idle_by_session_conn, *keyp);
-	  continue;
-	}
-
-      peer_handle = hsi_udp_connection_peer_handle (uc);
-      local_handle = session_handle (s);
-      if (peer_handle != SESSION_INVALID_HANDLE)
-	{
-	  session_handle_tu_t peer_sh = { .handle = peer_handle };
-
-	  if (peer_handle < local_handle)
-	    continue;
-
-	  peer_s = hsi_session_peer_get_if_valid (peer_sh);
-	  if (peer_s && session_get_transport_proto (peer_s) == TRANSPORT_PROTO_UDP)
-	    {
-	      peer_uc = hsi_udp_connection_at_session (peer_s);
-	      if (!(peer_uc->cfg_flags & UDP_CFG_F_TRACKED))
-		{
-		  peer_s = 0;
-		  peer_uc = 0;
-		}
-	    }
-	}
-
-      last_activity = uc->start_ts;
-      if (peer_uc)
-	last_activity = clib_max (last_activity, peer_uc->start_ts);
-
-      if (time_now - last_activity < hsi_main.udp_idle_timeout)
-	continue;
-
-      hsi_udp_idle_schedule_cleanup_pair (s, peer_s);
     }
 
-  return hash_elts (wrk->udp_idle_by_session_conn) ? wrk->udp_idle_next_scan : HSI_TIMER_NONE;
+  if (time_now - *last_active >= hsi_main.udp_idle_timeout)
+    hsi_udp_idle_schedule_cleanup_pair (s, peer_s);
+
+  return 1;
 }
+
+/* Flows whose idle timers expired, see hsi_wheel_run */
+void
+hsi_udp_idle_expired (clib_thread_index_t thread_index, u32 *indices, f64 time_now)
+{
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+  hsi_udp_idle_elt_t *elt;
+  f64 last_active;
+  u32 *index;
+  int is_valid;
+
+  /* Wheel freed these timers. Clear all handles first, checking a flow might
+   * disarm its peer's timer */
+  vec_foreach (index, indices)
+    pool_elt_at_index (wrk->udp_idle_elts, *index)->timer_handle = HSI_WHEEL_HANDLE_INVALID;
+
+  vec_foreach (index, indices)
+    {
+      elt = pool_elt_at_index (wrk->udp_idle_elts, *index);
+      /* Peer of a flow checked before */
+      if (elt->state == HSI_UDP_IDLE_STATE_CLEANUP_PENDING)
+	continue;
+
+      /* Flows can't be idle before the activity last seen plus the timeout,
+       * only look at them once that passed */
+      if (time_now - elt->last_active >= hsi_main.udp_idle_timeout)
+	{
+	  is_valid = hsi_udp_idle_check (thread_index, elt->key, time_now, &last_active);
+	  elt = pool_elt_at_index (wrk->udp_idle_elts, *index);
+	  if (!is_valid)
+	    {
+	      hsi_udp_idle_elt_free (thread_index, elt);
+	      continue;
+	    }
+	  if (elt->state == HSI_UDP_IDLE_STATE_CLEANUP_PENDING)
+	    continue;
+	  elt->last_active = last_active;
+	}
+
+      hsi_udp_idle_elt_arm (thread_index, elt, time_now);
+    }
+}
+
 static void
 hsi_udp_track_snapshot (session_t *s, udp_connection_t *uc, hsi_udp_track_snapshot_t *snap)
 {
@@ -1299,6 +1368,7 @@ hsi_tracker_show_udp (vlib_main_t *vm, u32 i, hsi_worker_t *wrk, f64 now)
       session_handle_tu_t sh = {
 	.handle = session_make_handle (hsi_session_conn_key_session_index (hp->key), i),
       };
+      hsi_udp_idle_elt_t *elt = pool_elt_at_index (wrk->udp_idle_elts, hp->value[0]);
       udp_connection_t *uc;
       session_t *s;
 
@@ -1312,7 +1382,7 @@ hsi_tracker_show_udp (vlib_main_t *vm, u32 i, hsi_worker_t *wrk, f64 now)
 			     "thread %u udp-tracked session 0x%lx peer 0x%lx state %s "
 			     "idle %.3f",
 			     i, session_handle (s), hsi_udp_connection_peer_handle (uc),
-			     hsi_udp_idle_state_name ((hsi_udp_idle_state_t) hp->value[0]),
+			     hsi_udp_idle_state_name ((hsi_udp_idle_state_t) elt->state),
 			     now - uc->start_ts);
 	}
     }));
