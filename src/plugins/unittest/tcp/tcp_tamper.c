@@ -149,6 +149,11 @@ tcp_tamper_should_drop (u32 thread_index, u32 conn_index, u32 seq, u32 data_len,
 	      r->drop_snd_una = tc->snd_una;
 	      r->drop_snd_congestion = tc->snd_congestion;
 	    }
+	  if (r->pin_seq)
+	    {
+	      r->seq_is_min = 0;
+	      r->seq = seq;
+	    }
 	  r->n_drop -= 1;
 	  r->n_dropped += 1;
 	  return 1;
@@ -289,6 +294,15 @@ tcp_tamper_drop_from_seq (tcp_connection_t *tc, u32 min_seq, u32 n_drop)
   r->seq_is_min = 1;
   r->min_seq = min_seq;
   r->n_drop = n_drop;
+  return r;
+}
+
+tcp_tamper_rule_t *
+tcp_tamper_drop_first_from_seq (tcp_connection_t *tc, u32 min_seq)
+{
+  tcp_tamper_rule_t *r = tcp_tamper_drop_from_seq (tc, min_seq, 1);
+  r->data_only = 1;
+  r->pin_seq = 1;
   return r;
 }
 
