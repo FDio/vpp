@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5d1d7ffa_a199d121",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1439,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-11-11T23:14:23Z",
+      "side": 1,
+      "message": "The semantics of `lcp_router_route_mk_mprefix()` were modified in another recent change so that it returns a boolean now if the address length was too long. The return value should be checked and we should return without doing anything if it returns false. It would probably be better to do this early in the function. E.g. change the `if (!lcp_router_route_mk_prefix(rr, \u0026pfx))` at line 1393 to\n```\n  if (!lcp_router_route_mk_prefix(rr, \u0026pfx) || (rtype \u003d\u003d RTN_MULTICAST \u0026\u0026 !lcp_router_route_mk_mprefix(rr, \u0026mpfx)))\n  ```",
+      "revId": "ec9dd1f8e8816372a431c67a58460995d3a2eb13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5d81d9a7_4171b8ea",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1441,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-11-11T23:14:23Z",
+      "side": 1,
+      "message": "We already know that `(0 !\u003d vec_len (np.paths))` is true because that was evaluated at line 1432 above and nothing has altered np.paths since then.",
+      "revId": "ec9dd1f8e8816372a431c67a58460995d3a2eb13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f9607125_9132023a",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1447,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-11-11T23:14:23Z",
+      "side": 1,
+      "message": "Why is this necessary? If there are no paths left for this entry/source, won\u0027t it get removed automatically by one of the functions in the call chain invoked by `mfib_table_entry_paths_remove()`?",
+      "revId": "ec9dd1f8e8816372a431c67a58460995d3a2eb13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
