@@ -9,6 +9,7 @@
 #include <vnet/dev/dev.h>
 #include <vnet/dev/counters.h>
 #include <vnet/dev/api.h>
+#include <vlib/unix/unix.h>
 #include <vppinfra/format_table.h>
 
 static clib_error_t *
@@ -326,6 +327,9 @@ show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
   vnet_dev_format_args_t fa = {}, *a = &fa;
   vnet_dev_t **devs = 0;
   u32 v;
+
+  if ((unix_main.flags & UNIX_FLAG_NOCOLOR) || !vlib_unix_cli_ansi_capable ())
+    fa.plain_text = 1;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {

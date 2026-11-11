@@ -110,6 +110,9 @@ void vlib_unix_cli_set_prompt (char *prompt);
 
 u8 vlib_unix_cli_enable_disable_pager (u8 enable);
 
+/* Returns 1 when the current CLI session accepts ANSI escape sequences. */
+u8 vlib_unix_cli_ansi_capable (void);
+
 static inline unix_main_t *
 vlib_unix_get_main (void)
 {
