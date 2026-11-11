@@ -24,6 +24,7 @@ vnet_in_out_acl_feature_enable (in_out_acl_main_t *am, u32 sw_if_index,
   switch (tid)
     {
     case IN_OUT_ACL_N_TABLES:
+    default:
       return VNET_API_ERROR_NO_SUCH_TABLE;
     case IN_OUT_ACL_TABLE_L2:
       if (is_output)
