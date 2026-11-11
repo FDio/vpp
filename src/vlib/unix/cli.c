@@ -3273,6 +3273,15 @@ vlib_unix_cli_enable_disable_pager (u8 enable)
   return old;
 }
 
+u8
+vlib_unix_cli_ansi_capable (void)
+{
+  unix_cli_main_t *cm = &unix_cli_main;
+  unix_cli_file_t *cf = unix_cli_file_if_interactive (cm);
+
+  return cf && cf->ansi_capable;
+}
+
 /** CLI command to quit the terminal session.
  * @note If this is a stdin session then this will
  *       shutdown VPP also.
