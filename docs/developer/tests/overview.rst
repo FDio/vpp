@@ -96,6 +96,23 @@ To enable parallel test run, specify the number of parallel processes:
    make test TEST_JOBS=auto    # chosen based on the number of cores
                                # and the size of shared memory
 
+Network-helper lock
+###################
+
+Namespace and host-interface helpers use a shared file lock. Test runners that
+operate on the same host network resources must use the same lock file. The
+default path is ``/tmp/vpp-qemu-net-helper.lock``; override it with
+``NET_HELPER_LOCK_PATH`` or the runner's ``--net-helper-lock-path`` option.
+
+Lock acquisition defaults to half the configured ``TIMEOUT``. Override it with
+``NET_HELPER_LOCK_TIMEOUT`` or ``--net-helper-lock-timeout``. The value must be
+positive and less than the test timeout; invalid combinations fail at startup.
+
+.. code-block:: shell
+
+   make test TIMEOUT=100 NET_HELPER_LOCK_TIMEOUT=40
+   make test NET_HELPER_LOCK_PATH=/tmp/shared-vpp-test.lock
+
 Test temporary directory and VPP life cycle
 ###########################################
 
