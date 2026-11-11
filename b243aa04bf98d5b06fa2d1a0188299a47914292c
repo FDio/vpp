@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5b20accb_8a5d71f1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-11-11T03:10:31Z",
+      "side": 1,
+      "message": "quick comments",
+      "revId": "b243aa04bf98d5b06fa2d1a0188299a47914292c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "52cce61e_1fb7be58",
+        "filename": "src/vnet/ip6-nd/ip6_nd.api",
+        "patchSetId": 6
+      },
+      "lineNbr": 251,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-11-11T03:10:31Z",
+      "side": 1,
+      "message": "Do we bump version for these?",
+      "revId": "b243aa04bf98d5b06fa2d1a0188299a47914292c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "aa3ad609_99368a4d",
+        "filename": "src/vnet/ip6-nd/ip6_nd.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-11-11T03:10:31Z",
+      "side": 1,
+      "message": "flags_by_sw_if_indices?",
+      "revId": "b243aa04bf98d5b06fa2d1a0188299a47914292c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5b79c309_8023712e",
+        "filename": "src/vnet/ip6-nd/ip6_nd_mirror_proxy.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-11-11T03:10:31Z",
+      "side": 1,
+      "message": "Let\u0027s remember if previously enabled, which would then should only update flags.",
+      "revId": "b243aa04bf98d5b06fa2d1a0188299a47914292c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e0850339_da234396",
+        "filename": "src/vnet/ip6-nd/ip6_nd_mirror_proxy.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-11-11T03:10:31Z",
+      "side": 1,
+      "message": "doing just \"all-dst\" disables. Either we assume it\u0027s enable \u003d 1, or refuse if enable/disable is not set.",
+      "revId": "b243aa04bf98d5b06fa2d1a0188299a47914292c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "529bea48_0d5bfcff",
+        "filename": "src/vnet/ip6-nd/ip6_nd_mirror_proxy.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-11-11T03:10:31Z",
+      "side": 1,
+      "message": "Should everything be shifted left?",
+      "revId": "b243aa04bf98d5b06fa2d1a0188299a47914292c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
