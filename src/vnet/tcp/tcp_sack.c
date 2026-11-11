@@ -3,6 +3,7 @@
  * Copyright (c) 2020 Cisco and/or its affiliates.
  */
 
+#include <vnet/tcp/tcp.h>
 #include <vnet/tcp/tcp_sack.h>
 #include <vnet/tcp/tcp_bt.h>
 #include <vnet/tcp/tcp_tlp.h>
@@ -1011,9 +1012,9 @@ tcp_ack_handle_full_feedback (tcp_connection_t *tc, u32 packet_ack, u32 ack, tcp
 }
 
 /* Report [start, end), received again, and blk, the block that held it if it was out of order.
- * A duplicate that touches the pending one extends it. Others replace it after it is acked, or
- * lost if that ack finds no buffer. Callers check that reporting is enabled and that the range is
- * not empty */
+ * A duplicate that touches the pending one extends it. Others replace it once its ack is
+ * postponed or, without room, sent, see tcp_postpone_ack. Callers check that reporting is enabled
+ * and that the range is not empty */
 static void
 tcp_dsack_add (tcp_connection_t *tc, u32 start, u32 end, sack_block_t blk)
 {
@@ -1032,7 +1033,7 @@ tcp_dsack_add (tcp_connection_t *tc, u32 start, u32 end, sack_block_t blk)
 	    *tcp_snd_dsack_blk (tc) = blk;
 	  return;
 	}
-      tcp_send_dsack_flush (tc);
+      tcp_postpone_ack (tc, 1 /* is_dsack */);
     }
 
   dsack->start = start;
