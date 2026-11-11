@@ -306,6 +306,7 @@ struct hsi_msg_
 };
 
 void hsi_mq_send (clib_thread_index_t thread_index, hsi_msg_t *msg);
+void hsi_timer_schedule (clib_thread_index_t thread_index, f64 when);
 
 static_always_inline void
 hsi_mq_send_handle (clib_thread_index_t thread_index, hsi_msg_type_t type,

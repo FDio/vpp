@@ -160,8 +160,8 @@ hsi_session_cleanup (session_t *s)
   hsi_session_transport_cleanup (s);
 }
 
-static void
-hsi_handle_cleanups (f64 time_now, u8 thread_index)
+static f64
+hsi_handle_cleanups (clib_thread_index_t thread_index, f64 now)
 {
   hsi_worker_t *wrk;
   session_t *s;
@@ -171,19 +171,15 @@ hsi_handle_cleanups (f64 time_now, u8 thread_index)
   while (clib_fifo_elts (wrk->pending_cleanups))
     {
       req = clib_fifo_head (wrk->pending_cleanups);
-      if (req->free_time > time_now)
-	break;
+      if (req->free_time > now)
+	return req->free_time;
       clib_fifo_sub2 (wrk->pending_cleanups, req);
       s = session_get_from_handle_if_valid (req->sh);
       if (s)
 	hsi_session_cleanup (s);
     }
 
-  if (!clib_fifo_elts (wrk->pending_cleanups))
-    {
-      session_register_update_time_fn_w_thread (hsi_handle_cleanups, 0, thread_index);
-      wrk->pending_cleanups_registered = 0;
-    }
+  return HSI_TIMER_NONE;
 }
 
 void
@@ -195,15 +191,11 @@ hsi_session_program_cleanup (session_t *s)
   f64 now;
 
   wrk = hsi_worker_get (thread_index);
-  now = vlib_time_now (vlib_get_main ());
+  now = vlib_time_now (vlib_get_main_by_index (thread_index));
   clib_fifo_add2 (wrk->pending_cleanups, req);
   req->sh = session_handle (s);
   req->free_time = now + hsi_main.postponed_cleanup_time;
-  if (!wrk->pending_cleanups_registered)
-    {
-      session_register_update_time_fn_w_thread (hsi_handle_cleanups, 1, thread_index);
-      wrk->pending_cleanups_registered = 1;
-    }
+  hsi_timer_schedule (thread_index, req->free_time);
 }
 
 static void
@@ -325,6 +317,17 @@ hsi_mq_send (clib_thread_index_t thread_index, hsi_msg_t *msg)
   hsi_msg_t *slot;
   u8 was_empty;
 
+  /* Callers might still use what the message refers to, so it's handled with
+   * hsi timers in a later main loop, see hsi_handle_local_msgs */
+  if (thread_index == cur_thread)
+    {
+      vec_add1 (wrk->local_msgs, *msg);
+      wrk->local_msgs_loop = vlib_get_main_by_index (thread_index)->main_loop_count;
+      hsi_worker_counter_inc (wrk, local_msgs);
+      hsi_timer_schedule (thread_index, 0 /* asap */);
+      return;
+    }
+
   clib_spinlock_lock (&wrk->mq_lock);
 
   was_empty = !clib_ring_n_enq (wrk->mq);
@@ -348,8 +351,105 @@ hsi_mq_send (clib_thread_index_t thread_index, hsi_msg_t *msg)
   if (was_empty)
     {
       hsi_worker_counter_inc (src_wrk, mq_doorbells);
-      hsi_rpc_count (src_wrk, thread_index == cur_thread);
+      hsi_rpc_count (src_wrk, 0 /* is_self */);
     }
+}
+
+/*
+ * Messages are handled only in a main loop after the one they were added in,
+ * when frames that might refer to their sessions were processed. Messages
+ * handlers add are handled in the next run.
+ */
+static f64
+hsi_handle_local_msgs (vlib_main_t *vm, hsi_worker_t *wrk)
+{
+  u32 i, n_msgs = vec_len (wrk->local_msgs);
+  hsi_msg_t msg;
+
+  if (!n_msgs)
+    return HSI_TIMER_NONE;
+
+  if (wrk->local_msgs_loop == vm->main_loop_count)
+    return 0;
+
+  for (i = 0; i < n_msgs; i++)
+    {
+      /* Handlers might add messages */
+      msg = wrk->local_msgs[i];
+      hsi_handle_msg (&msg);
+    }
+  vec_delete (wrk->local_msgs, n_msgs, 0);
+
+  return vec_len (wrk->local_msgs) ? 0 : HSI_TIMER_NONE;
+}
+
+static void hsi_timer_update_time (f64 now, u8 thread_index);
+
+/* Out of line, so the per loop deadline check stays cheap */
+static __clib_noinline void
+hsi_timer_run (f64 now, clib_thread_index_t thread_index)
+{
+  vlib_main_t *vm = vlib_get_main_by_index (thread_index);
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+  f64 next;
+
+  /* Handlers schedule new work, which can only move the deadline earlier */
+  wrk->timer_next = HSI_TIMER_NONE;
+  next = hsi_handle_local_msgs (vm, wrk);
+  next = clib_min (next, hsi_handle_cleanups (thread_index, now));
+  next = clib_min (next, hsi_tcp_drain_timer (thread_index, now));
+  next = clib_min (next, hsi_tcp_fin_wait_timer (thread_index, now));
+  next = clib_min (next, hsi_udp_drain_timer (thread_index, now));
+  next = clib_min (next, hsi_udp_idle_timer (thread_index, now));
+  next = clib_min (next, wrk->timer_next);
+
+  if (next != HSI_TIMER_NONE)
+    {
+      wrk->timer_next = next;
+      return;
+    }
+
+  /* Nothing pending. Safe while subscribers are being called, see
+   * hsi_timer_schedule */
+  session_register_update_time_fn_w_thread (hsi_timer_update_time, 0, thread_index);
+  wrk->timer_registered = 0;
+}
+
+/*
+ * Only session time subscriber of hsi. Registered only while the worker has
+ * hsi timers pending, it checks a single deadline, so it's cheap when nothing
+ * is due.
+ */
+static void
+hsi_timer_update_time (f64 now, u8 thread_index)
+{
+  if (PREDICT_TRUE (now < hsi_worker_get (thread_index)->timer_next))
+    return;
+  hsi_timer_run (now, thread_index);
+}
+
+/*
+ * Make sure hsi timers run on the worker at when, or earlier. Only the worker's
+ * own thread schedules them, also from session time subscribers, which is safe
+ * because the session layer walks subscribers by index.
+ */
+void
+hsi_timer_schedule (clib_thread_index_t thread_index, f64 when)
+{
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
+
+  ASSERT (thread_index == vlib_get_thread_index ());
+
+  if (!wrk->timer_registered)
+    {
+      session_register_update_time_fn_w_thread (hsi_timer_update_time, 1, thread_index);
+      wrk->timer_registered = 1;
+      wrk->timer_next = when;
+      return;
+    }
+
+  if (when < wrk->timer_next)
+    wrk->timer_next = when;
 }
 
 /* Allocate or resize mq, only before workers can use it */

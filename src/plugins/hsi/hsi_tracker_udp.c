@@ -65,130 +65,22 @@ hsi_udp_session_cleanup_peer_handle (session_t *s)
   return hsi_udp_connection_peer_handle (hsi_udp_connection_at_session (s));
 }
 
-static void
-hsi_udp_drain_unregister_time_update_rpc (void *arg)
+static_always_inline f64
+hsi_udp_idle_scan_interval (void)
 {
-  clib_thread_index_t thread_index = vlib_get_thread_index ();
-  hsi_worker_t *wrk = hsi_worker_get (thread_index);
-
-  wrk->udp_drain_time_unregister_pending = 0;
-  if (!wrk->udp_drain_time_registered || pool_elts (wrk->udp_drains))
-    return;
-
-  session_register_update_time_fn_w_thread (hsi_udp_drain_update_time, 0, thread_index);
-  wrk->udp_drain_time_registered = 0;
-  vec_reset_length (wrk->udp_drain_update_handles);
-}
-
-static void
-hsi_udp_drain_register_time_update_rpc (void *arg)
-{
-  clib_thread_index_t thread_index = vlib_get_thread_index ();
-  hsi_worker_t *wrk = hsi_worker_get (thread_index);
-
-  if (wrk->udp_drain_time_registered || !pool_elts (wrk->udp_drains))
-    return;
-
-  session_register_update_time_fn_w_thread (hsi_udp_drain_update_time, 1, thread_index);
-  wrk->udp_drain_time_registered = 1;
-}
-
-static void
-hsi_udp_idle_unregister_time_update_rpc (void *arg)
-{
-  clib_thread_index_t thread_index = vlib_get_thread_index ();
-  hsi_worker_t *wrk = hsi_worker_get (thread_index);
-
-  wrk->udp_idle_time_unregister_pending = 0;
-  if (!wrk->udp_idle_time_registered || hsi_main.udp_idle_timeout > 0 ||
-      hash_elts (wrk->udp_idle_by_session_conn))
-    return;
-
-  session_register_update_time_fn_w_thread (hsi_udp_idle_update_time, 0, thread_index);
-  wrk->udp_idle_time_registered = 0;
-  vec_reset_length (wrk->udp_idle_update_keys);
-}
-
-static void
-hsi_udp_idle_register_time_update_rpc (void *arg)
-{
-  clib_thread_index_t thread_index = vlib_get_thread_index ();
-  hsi_worker_t *wrk = hsi_worker_get (thread_index);
-
-  if (wrk->udp_idle_time_registered || hsi_main.udp_idle_timeout <= 0 ||
-      !hash_elts (wrk->udp_idle_by_session_conn))
-    return;
-
-  session_register_update_time_fn_w_thread (hsi_udp_idle_update_time, 1, thread_index);
-  wrk->udp_idle_time_registered = 1;
-}
-
-static_always_inline void
-hsi_udp_drain_maybe_register_time_update (clib_thread_index_t thread_index)
-{
-  hsi_worker_t *wrk = hsi_worker_get (thread_index);
-
-  wrk->udp_drain_time_unregister_pending = 0;
-  if (wrk->udp_drain_time_registered)
-    return;
-
-  hsi_send_rpc_force (thread_index, hsi_udp_drain_register_time_update_rpc, 0);
-}
-
-static_always_inline void
-hsi_udp_drain_maybe_unregister_time_update (clib_thread_index_t thread_index)
-{
-  hsi_worker_t *wrk = hsi_worker_get (thread_index);
-
-  if (!wrk->udp_drain_time_registered || wrk->udp_drain_time_unregister_pending ||
-      pool_elts (wrk->udp_drains))
-    return;
-
-  /* Defer unregister so the session update-time vector is not mutated while
-   * session code is iterating it. */
-  wrk->udp_drain_time_unregister_pending = 1;
-  hsi_send_rpc_force (thread_index, hsi_udp_drain_unregister_time_update_rpc, 0);
-}
-
-static_always_inline void
-hsi_udp_idle_maybe_register_time_update (clib_thread_index_t thread_index)
-{
-  hsi_worker_t *wrk = hsi_worker_get (thread_index);
-
-  if (hsi_main.udp_idle_timeout <= 0)
-    return;
-
-  wrk->udp_idle_time_unregister_pending = 0;
-  if (wrk->udp_idle_time_registered)
-    return;
-
-  hsi_send_rpc_force (thread_index, hsi_udp_idle_register_time_update_rpc, 0);
-}
-
-static_always_inline void
-hsi_udp_idle_maybe_unregister_time_update (clib_thread_index_t thread_index)
-{
-  hsi_worker_t *wrk = hsi_worker_get (thread_index);
-
-  if (!wrk->udp_idle_time_registered || wrk->udp_idle_time_unregister_pending ||
-      hsi_main.udp_idle_timeout > 0 || hash_elts (wrk->udp_idle_by_session_conn))
-    return;
-
-  wrk->udp_idle_time_unregister_pending = 1;
-  hsi_send_rpc_force (thread_index, hsi_udp_idle_unregister_time_update_rpc, 0);
+  return clib_min (HSI_UDP_IDLE_SCAN_MAX_INTERVAL, hsi_main.udp_idle_timeout / 4);
 }
 
 static void
 hsi_udp_idle_timeout_update_rpc (void *arg)
 {
-  hsi_worker_t *wrk;
   clib_thread_index_t thread_index = vlib_get_thread_index ();
+  hsi_worker_t *wrk = hsi_worker_get (thread_index);
 
-  wrk = hsi_worker_get (thread_index);
+  /* Scan again with the new timeout */
+  wrk->udp_idle_next_scan = 0;
   if (hsi_main.udp_idle_timeout > 0 && hash_elts (wrk->udp_idle_by_session_conn))
-    hsi_udp_idle_maybe_register_time_update (thread_index);
-  else
-    hsi_udp_idle_maybe_unregister_time_update (thread_index);
+    hsi_timer_schedule (thread_index, 0 /* asap */);
 }
 
 void
@@ -200,7 +92,7 @@ hsi_udp_idle_timeout_update (void)
   vec_foreach_index (i, hsi_main.wrk)
     {
       wrk = vec_elt_at_index (hsi_main.wrk, i);
-      if (hash_elts (wrk->udp_idle_by_session_conn) || wrk->udp_idle_time_registered)
+      if (hash_elts (wrk->udp_idle_by_session_conn))
 	hsi_send_rpc_force (i, hsi_udp_idle_timeout_update_rpc, 0);
     }
 }
@@ -224,7 +116,6 @@ hsi_udp_drain_stop_key (clib_thread_index_t thread_index, uword key)
 
   hash_unset (wrk->udp_drain_by_session_conn, key);
   hsi_udp_drain_pool_put_index (wrk, drain_index);
-  hsi_udp_drain_maybe_unregister_time_update (thread_index);
 }
 
 static void
@@ -249,7 +140,8 @@ hsi_udp_idle_add (udp_connection_t *uc, f64 time_now)
   hsi_udp_idle_touch (uc, time_now);
   hash_set (wrk->udp_idle_by_session_conn, hsi_udp_session_conn_key_from_connection (uc),
 	    HSI_UDP_IDLE_STATE_ACTIVE);
-  hsi_udp_idle_maybe_register_time_update (uc->c_thread_index);
+  if (hsi_main.udp_idle_timeout > 0)
+    hsi_timer_schedule (uc->c_thread_index, time_now + hsi_udp_idle_scan_interval ());
 }
 
 static_always_inline void
@@ -258,7 +150,6 @@ hsi_udp_idle_del (udp_connection_t *uc)
   hsi_worker_t *wrk = hsi_worker_get (uc->c_thread_index);
 
   hash_unset (wrk->udp_idle_by_session_conn, hsi_udp_session_conn_key_from_connection (uc));
-  hsi_udp_idle_maybe_unregister_time_update (uc->c_thread_index);
 }
 
 static_always_inline void
@@ -554,18 +445,20 @@ hsi_udp_idle_schedule_cleanup_pair (session_t *s, session_t *peer_s)
   hsi_session_send_cleanup_pair (session_handle (s));
 }
 
-void
-hsi_udp_idle_update_time (f64 time_now, u8 thread_index)
+/* Scans flows for idle ones periodically, returns when to scan again */
+f64
+hsi_udp_idle_timer (clib_thread_index_t thread_index, f64 time_now)
 {
   hsi_worker_t *wrk = hsi_worker_get (thread_index);
   hash_pair_t *hp;
   uword *keyp, *keys;
 
   if (hsi_main.udp_idle_timeout <= 0 || !hash_elts (wrk->udp_idle_by_session_conn))
-    {
-      hsi_udp_idle_maybe_unregister_time_update (thread_index);
-      return;
-    }
+    return HSI_TIMER_NONE;
+
+  if (time_now < wrk->udp_idle_next_scan)
+    return wrk->udp_idle_next_scan;
+  wrk->udp_idle_next_scan = time_now + hsi_udp_idle_scan_interval ();
 
   keys = wrk->udp_idle_update_keys;
   vec_reset_length (keys);
@@ -637,7 +530,7 @@ hsi_udp_idle_update_time (f64 time_now, u8 thread_index)
       hsi_udp_idle_schedule_cleanup_pair (s, peer_s);
     }
 
-  hsi_udp_idle_maybe_unregister_time_update (thread_index);
+  return hash_elts (wrk->udp_idle_by_session_conn) ? wrk->udp_idle_next_scan : HSI_TIMER_NONE;
 }
 static void
 hsi_udp_track_snapshot (session_t *s, udp_connection_t *uc, hsi_udp_track_snapshot_t *snap)
@@ -937,7 +830,7 @@ hsi_udp_drain_start (session_t *s, session_t *peer_s, udp_connection_t *uc,
   drain->state = HSI_UDP_DRAIN_STATE_DRAINING;
   uc->cfg_flags |= UDP_CFG_F_TRACKED;
   hsi_worker_counter_inc (wrk, udp_drain_started);
-  hsi_udp_drain_maybe_register_time_update (thread_index);
+  hsi_timer_schedule (thread_index, now + HSI_UDP_DRAIN_SCAN_INTERVAL);
   hsi_drain_program_tx (s);
   hsi_drain_program_peer_tx (s, drain->peer_session_handle);
 
@@ -1245,8 +1138,12 @@ hsi_udp_try_complete_drain (vlib_main_t *vm, udp_connection_t *uc)
   return hsi_udp_drain_try_complete (s, uc, drain, vlib_time_now (vm)) == 1;
 }
 
-void
-hsi_udp_drain_update_time (f64 time_now, u8 thread_index)
+/*
+ * Udp has no acks, so drains that get no datagrams are also checked
+ * periodically. Returns when to check again.
+ */
+f64
+hsi_udp_drain_timer (clib_thread_index_t thread_index, f64 time_now)
 {
   hsi_udp_drain_t *drain;
   session_handle_t *handles, *handle;
@@ -1254,10 +1151,11 @@ hsi_udp_drain_update_time (f64 time_now, u8 thread_index)
 
   wrk = hsi_worker_get (thread_index);
   if (!pool_elts (wrk->udp_drains))
-    {
-      hsi_udp_drain_maybe_unregister_time_update (thread_index);
-      return;
-    }
+    return HSI_TIMER_NONE;
+
+  if (time_now < wrk->udp_drain_next_scan)
+    return wrk->udp_drain_next_scan;
+  wrk->udp_drain_next_scan = time_now + HSI_UDP_DRAIN_SCAN_INTERVAL;
 
   handles = wrk->udp_drain_update_handles;
   vec_reset_length (handles);
@@ -1288,7 +1186,7 @@ hsi_udp_drain_update_time (f64 time_now, u8 thread_index)
       hsi_udp_drain_try_complete (s, uc, drain, time_now);
     }
 
-  hsi_udp_drain_maybe_unregister_time_update (thread_index);
+  return pool_elts (wrk->udp_drains) ? wrk->udp_drain_next_scan : HSI_TIMER_NONE;
 }
 
 int

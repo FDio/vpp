@@ -826,7 +826,7 @@ hsi_workers_init (void)
   hsi_main_t *hm = &hsi_main;
   hsi_worker_t *wrk;
 
-  vec_validate (hm->wrk, vlib_get_n_threads () - 1);
+  vec_validate_aligned (hm->wrk, vlib_get_n_threads () - 1, CLIB_CACHE_LINE_BYTES);
   vec_foreach (wrk, hm->wrk)
     hsi_mq_init (wrk);
 }
