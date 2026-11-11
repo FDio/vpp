@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2b3f8c28_92834dfc",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2109,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-11T00:20:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f8f746ba_3ef159f0",
+      "revId": "98a2450a8a1c75aa7fbc9dc7323fa342710ca371",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "cfdd5bb9_296b6ec8",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-11-10T23:01:31Z",
       "side": 1,
       "message": "Isn\u0027t this caught by the epoll loop?",
+      "revId": "98a2450a8a1c75aa7fbc9dc7323fa342710ca371",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e65db4ea_dae34036",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2112,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-11T00:20:35Z",
+      "side": 1,
+      "message": "we need only clib_socket_rx_end_of_file, EOF is not handled as error in default_socket_read and only flag is set",
+      "parentUuid": "cfdd5bb9_296b6ec8",
       "revId": "98a2450a8a1c75aa7fbc9dc7323fa342710ca371",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
