@@ -108,8 +108,16 @@ tcp_initial_window_to_advertise (tcp_connection_t * tc)
   return tc->rcv_wnd;
 }
 
-static inline void
-tcp_update_rcv_wnd (tcp_connection_t * tc)
+/**
+ * Compute rcv window to advertise
+ *
+ * The window is not rounded and never moves the right edge rcv_las + rcv_wnd left. The header
+ * carries rcv_wnd >> rcv_wscale, so the advertised edge may fall short of it, and retract, by less
+ * than 1 << rcv_wscale, but never goes past it. Accepting segments up to rcv_las + rcv_wnd thus
+ * accepts any segment in window for an ack sent, as per RFC7323 sec. 2.4.
+ */
+static inline u32
+tcp_rcv_wnd_compute (tcp_connection_t *tc)
 {
   u32 available_space, wnd;
   i32 observed_wnd;
@@ -119,30 +127,44 @@ tcp_update_rcv_wnd (tcp_connection_t * tc)
    */
   available_space = transport_max_rx_enqueue (&tc->connection);
 
-  /*
-   * Use the above and what we know about what we've previously advertised
-   * to compute the new window
-   */
-  observed_wnd = (i32) tc->rcv_wnd - (tc->rcv_nxt - tc->rcv_las);
-
-  /* Check if we are about to retract the window. Do the comparison before
-   * rounding to avoid errors. Per RFC7323 sec. 2.4 we could remove this */
-  if (PREDICT_FALSE ((i32) available_space < observed_wnd))
-    {
-      wnd = round_down_pow2 (clib_max (observed_wnd, 0), 1 << tc->rcv_wscale);
-      TCP_EVT (TCP_EVT_RCV_WND_SHRUNK, tc, observed_wnd, available_space);
-    }
-  else
-    {
-      /* Make sure we have a multiple of 1 << rcv_wscale. We round down to
-       * avoid advertising a window larger than what can be buffered */
-      wnd = round_down_pow2 (available_space, 1 << tc->rcv_wscale);
-    }
-
-  if (PREDICT_FALSE (wnd < tc->rcv_opts.mss))
+  /* Receiver SWS avoidance: offer new space only if at least an mss of it can be advertised */
+  wnd = available_space;
+  if (PREDICT_FALSE (round_down_pow2 (wnd, 1 << tc->rcv_wscale) < tc->rcv_opts.mss))
     wnd = 0;
 
-  tc->rcv_wnd = clib_min (wnd, TCP_WND_MAX << tc->rcv_wscale);
+  /* Do not move the right edge left of what we already advertised, as per RFC9293 sec. 3.8.6. That
+   * space was available when advertised */
+  observed_wnd = (i32) tc->rcv_wnd - (tc->rcv_nxt - tc->rcv_las);
+  if (PREDICT_FALSE ((i32) wnd < observed_wnd))
+    {
+      if ((i32) available_space < observed_wnd)
+	TCP_EVT (TCP_EVT_RCV_WND_SHRUNK, tc, observed_wnd, available_space);
+      wnd = observed_wnd;
+    }
+
+  return clib_min (wnd, TCP_WND_MAX << tc->rcv_wscale);
+}
+
+/**
+ * Record rcv window about to be advertised
+ *
+ * Must be called only when sending the window, so rcv_las and rcv_wnd describe the last window
+ * advertised.
+ */
+static inline void
+tcp_rcv_wnd_commit (tcp_connection_t *tc, u32 wnd)
+{
+  tc->rcv_wnd = wnd;
+  tc->rcv_las = tc->rcv_nxt;
+
+  /* Peer may wait for a window update if the window is less than an mss */
+  if (PREDICT_FALSE (round_down_pow2 (wnd, 1 << tc->rcv_wscale) < tc->rcv_opts.mss))
+    {
+      transport_rx_fifo_req_deq_ntf (&tc->connection);
+      tcp_zero_rwnd_sent_on (tc);
+    }
+  else
+    tcp_zero_rwnd_sent_off (tc);
 }
 
 /**
@@ -154,7 +176,7 @@ tcp_window_to_advertise (tcp_connection_t * tc, tcp_state_t state)
   if (state < TCP_STATE_ESTABLISHED)
     return tcp_initial_window_to_advertise (tc);
 
-  tcp_update_rcv_wnd (tc);
+  tcp_rcv_wnd_commit (tc, tcp_rcv_wnd_compute (tc));
   return tc->rcv_wnd >> tc->rcv_wscale;
 }
 
@@ -298,7 +320,6 @@ tcp_make_options (tcp_connection_t * tc, tcp_options_t * opts,
  * - Updates snd_mss to reflect the effective segment size that we can send
  * by taking into account all TCP options, including SACKs.
  * - Cache 'on the wire' options for reuse
- * - Updates receive window which can be reused for a burst.
  *
  * This should *only* be called when doing bursts
  */
@@ -317,8 +338,6 @@ tcp_update_burst_snd_vars (tcp_connection_t * tc)
   ASSERT (tc->snd_mss > 0);
 
   tcp_options_write (wrk->cached_opts, &tc->snd_opts);
-
-  tcp_update_rcv_wnd (tc);
 
   if (tc->snd_una == tc->snd_nxt)
     {
@@ -373,14 +392,6 @@ tcp_make_ack_i (tcp_connection_t * tc, vlib_buffer_t * b, tcp_state_t state,
   th->checksum = tcp_compute_checksum (tc, b);
 
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
-
-  if (wnd == 0)
-    {
-      transport_rx_fifo_req_deq_ntf (&tc->connection);
-      tcp_zero_rwnd_sent_on (tc);
-    }
-  else
-    tcp_zero_rwnd_sent_off (tc);
 }
 
 /**
@@ -389,9 +400,10 @@ tcp_make_ack_i (tcp_connection_t * tc, vlib_buffer_t * b, tcp_state_t state,
 static inline void
 tcp_make_ack (tcp_connection_t * tc, vlib_buffer_t * b)
 {
+  u32 __clib_unused prev_las = tc->rcv_las;
+
   tcp_make_ack_i (tc, b, TCP_STATE_ESTABLISHED, TCP_FLAG_ACK);
-  TCP_EVT (TCP_EVT_ACK_SENT, tc);
-  tc->rcv_las = tc->rcv_nxt;
+  TCP_EVT (TCP_EVT_ACK_SENT, tc, prev_las);
 }
 
 /**
@@ -923,6 +935,9 @@ tcp_session_push_header (transport_connection_t *tconn, vlib_buffer_t **bs, u32 
   if (PREDICT_FALSE (tc->cfg_flags & TCP_CFG_F_TSO))
     push_hdr_flags |= TCP_PUSH_HDR_F_MAYBE_GSO;
 
+  /* All segments in the burst advertise the same window */
+  tcp_rcv_wnd_commit (tc, tcp_rcv_wnd_compute (tc));
+
   while (n_bufs >= 4)
     {
       vlib_prefetch_buffer_header (bs[2], STORE);
@@ -977,7 +992,6 @@ tcp_send_ack (tcp_connection_t *tc)
 
   if (PREDICT_FALSE (!vlib_buffer_alloc (vm, &bi, 1)))
     {
-      tcp_update_rcv_wnd (tc);
       tcp_worker_stats_inc (wrk, no_buffer, 1);
       return;
     }
@@ -1031,8 +1045,7 @@ tcp_send_window_update_ack (tcp_connection_t * tc)
 {
   if (tcp_zero_rwnd_sent (tc))
     {
-      tcp_update_rcv_wnd (tc);
-      if (tc->rcv_wnd >= tcp_cfg.rwnd_min_update_ack * tc->snd_mss)
+      if (tcp_rcv_wnd_compute (tc) >= tcp_cfg.rwnd_min_update_ack * tc->snd_mss)
 	{
 	  tcp_zero_rwnd_sent_off (tc);
 	  tcp_program_ack (tc);

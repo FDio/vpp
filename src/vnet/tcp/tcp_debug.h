@@ -582,20 +582,19 @@ if (_av > 0) 								\
 
 #if TCP_DEBUG_SM > 2 || TCP_DEBUG_ALWAYS
 
-#define TCP_EVT_ACK_SENT_HANDLER(_tc, ...)				\
-{									\
-  ELOG_TYPE_DECLARE (_e) =						\
-  {									\
-    .format = "ack-tx: acked %u rcv_nxt %u rcv_wnd %u snd_nxt %u snd_wnd %u",\
-    .format_args = "i4i4i4i4i4",					\
-  };									\
-  TCP_DECLARE_ETD(_tc, _e, 5);						\
-  ed->data[0] = _tc->rcv_nxt - _tc->rcv_las;				\
-  ed->data[1] = _tc->rcv_nxt - _tc->irs;				\
-  ed->data[2] = _tc->rcv_wnd;						\
-  ed->data[3] = _tc->snd_nxt - _tc->iss;				\
-  ed->data[4] = _tc->snd_wnd;						\
-}
+#define TCP_EVT_ACK_SENT_HANDLER(_tc, _prev_las, ...)                                              \
+  {                                                                                                \
+    ELOG_TYPE_DECLARE (_e) = {                                                                     \
+      .format = "ack-tx: acked %u rcv_nxt %u rcv_wnd %u snd_nxt %u snd_wnd %u",                    \
+      .format_args = "i4i4i4i4i4",                                                                 \
+    };                                                                                             \
+    TCP_DECLARE_ETD (_tc, _e, 5);                                                                  \
+    ed->data[0] = _tc->rcv_nxt - (_prev_las);                                                      \
+    ed->data[1] = _tc->rcv_nxt - _tc->irs;                                                         \
+    ed->data[2] = _tc->rcv_wnd;                                                                    \
+    ed->data[3] = _tc->snd_nxt - _tc->iss;                                                         \
+    ed->data[4] = _tc->snd_wnd;                                                                    \
+  }
 
 #define TCP_EVT_ACK_RCVD_HANDLER(_tc, _ac, ...)                                                    \
   {                                                                                                \

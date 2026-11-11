@@ -882,7 +882,10 @@ always_inline void
 transport_rx_fifo_req_deq_ntf (transport_connection_t *tc)
 {
   session_t *s = session_get (tc->s_index, tc->thread_index);
-  svm_fifo_add_want_deq_ntf (s->rx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+
+  /* Avoid an atomic write to the shared fifo header if already requested */
+  if (!(svm_fifo_get_want_deq_ntf (s->rx_fifo) & SVM_FIFO_WANT_DEQ_NOTIF))
+    svm_fifo_add_want_deq_ntf (s->rx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
 }
 
 always_inline clib_time_type_t
