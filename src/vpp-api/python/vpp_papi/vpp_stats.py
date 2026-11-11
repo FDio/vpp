@@ -575,6 +575,7 @@ class StatsRingBuffer:
         self.config = self._get_config()
         self.metadata_ptr = self._get_metadata_ptr()
         self.data_ptr = self._get_data_ptr()
+        self.metadata_stride = self._get_metadata_stride()
         # Track local tail and last sequence for each thread
         # Note: Since writer doesn't track reader state, we initialize local_tails to 0
         self.local_tails = [0] * self.config["n_threads"]
@@ -614,15 +615,69 @@ class StatsRingBuffer:
         data_offset = Struct("=I").unpack(data_offset_data)[0]
         return config_offset + data_offset
 
+    # Layout of the per-thread metadata array, from
+    # vlib_stats_add_ring_buffer() in src/vlib/stats/stats.c:
+    #
+    #   metadata_offset ... metadata_offset + n_threads * sizeof(metadata_t)
+    #   schema_offset = metadata_offset + n_threads * sizeof(metadata_t)
+    #
+    # sizeof(vlib_stats_ring_metadata_t) is NOT a constant: the struct is
+    # padded out to CLIB_CACHE_LINE_BYTES (see the _pad1 member in
+    # src/vlib/stats/stats.h), which is a build setting. src/cmake/cpu.cmake
+    # defaults it to 64; a platform (octeon9) or -DVPP_CACHE_LINE_SIZE can
+    # make it 128.
+    #
+    # This used to be hardcoded to 64, which silently read the wrong memory
+    # from a VPP built with a 128-byte cache line. Thread 0 landed correctly,
+    # thread 1 landed in thread 0's padding and always reported an empty
+    # ring, and thread 2 returned thread 1's data. Symptoms were a consumer
+    # that silently got half the entries, or none at all when they were all
+    # written by a worker.
+    MIN_METADATA_SIZE = 24  # head + schema_version + sequence + 2 x u32
+    DEFAULT_METADATA_STRIDE = 64
+
+    def _get_metadata_stride(self):
+        """Derive sizeof(vlib_stats_ring_metadata_t) from the ring's layout.
+
+        Thread 0's metadata sits at the start of the array, so it can be read
+        without knowing the stride; its schema_offset marks the end of the
+        array. That makes the stride exactly derivable for any ring carrying
+        a schema, on any cache line size, with no assumption about the
+        target architecture.
+
+        Rings created without a schema have no such anchor (schema_offset is
+        0), so they fall back to 64 - the historical assumption, still
+        correct for a default build.
+        """
+        n_threads = self.config["n_threads"]
+        if self.config["schema_size"] == 0 or n_threads == 0:
+            return self.DEFAULT_METADATA_STRIDE
+
+        config_offset = self.ring_buffer_ptr - self.stats.base
+        metadata_rel = self.metadata_ptr - config_offset
+
+        fmt = Struct("=IIQII")
+        raw = self.stats.statseg[self.metadata_ptr : self.metadata_ptr + fmt.size]
+        _, _, _, schema_offset, schema_size = fmt.unpack(raw)
+
+        if schema_size == 0 or schema_offset <= metadata_rel:
+            return self.DEFAULT_METADATA_STRIDE
+
+        stride, remainder = divmod(schema_offset - metadata_rel, n_threads)
+        # A stride that is not a whole number of threads, or too small to
+        # hold the struct, means the layout is not what this code expects.
+        # Fall back rather than index into arbitrary memory.
+        if remainder != 0 or stride < self.MIN_METADATA_SIZE:
+            return self.DEFAULT_METADATA_STRIDE
+        return stride
+
     def _get_thread_metadata(self, thread_index):
         """Get metadata for a specific thread, including sequence number and schema info"""
         if thread_index >= self.config["n_threads"]:
             raise IndexError(f"Thread index {thread_index} out of range")
 
         # Metadata struct: head, schema_version, sequence, schema_offset, schema_size, padding
-        metadata_offset = self.metadata_ptr + (
-            thread_index * 64  # CLIB_CACHE_LINE_BYTES, typically 64
-        )
+        metadata_offset = self.metadata_ptr + (thread_index * self.metadata_stride)
         metadatafmt_struct = Struct(
             "=IIQII"
         )  # head, schema_version, sequence, schema_offset, schema_size
