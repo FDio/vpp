@@ -17,6 +17,8 @@ from cryptography.hazmat.primitives.asymmetric.x448 import (
 )
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from cryptography.hazmat.primitives.serialization import NoEncryption, PrivateFormat
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.ciphers import (
     Cipher,
     algorithms,
@@ -3413,6 +3415,94 @@ class TestInitiatorInvalidModp(TestInitiatorPsk):
         key = self.sa.my_dh_pub_key + b"\x00" if self.append_ke_byte else bytes(length)
         response = self.create_init_response(dh_pub_key=key)
         self.send_and_assert_no_replies(self.pg0, response)
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
+
+
+class TestInitiatorUnusableSigningKey(TemplateInitiator, Ikev2Params):
+    """A local key that cannot sign must not cause an IKE_AUTH request."""
+
+    def config_tc(self):
+        self.config_params(
+            {
+                "is_initiator": False,  # seen from test case perspective
+                # thus vpp is initiator
+                "auth": "rsa-sig",
+                "server-key": "server-key.pem",
+                "client-key": "client-key.pem",
+                "client-cert": "client-cert.pem",
+                "server-cert": "server-cert.pem",
+                "ike-crypto": ("AES-GCM-16ICV", 32),
+                "ike-integ": "NULL",
+                "ike-dh": "3072MODPgr",
+                "ike_transforms": {
+                    "crypto_alg": 20,  # "aes-gcm-16"
+                    "crypto_key_size": 256,
+                    "dh_group": 15,  # "modp-3072"
+                },
+                "esp_transforms": {
+                    "crypto_alg": 12,  # "aes-cbc"
+                    "crypto_key_size": 256,
+                    # "hmac-sha2-256-128"
+                    "integ_alg": 12,
+                },
+                "responder_hostname": {
+                    "hostname": "vpp.responder.org",
+                    "sw_if_index": self.pg0.sw_if_index,
+                },
+            }
+        )
+
+    def tearDown(self):
+        super(IkePeer, self).tearDown()
+        self.p.remove_vpp_config()
+
+    def test_initiator(self):
+        # An Ed25519 key cannot produce the digest-then-sign signature of the
+        # RSA digital signature method, so signing the AUTH payload fails.
+        key_file = os.path.join(self.tempdir, "ed25519-key.pem")
+        with open(key_file, "wb") as f:
+            f.write(
+                Ed25519PrivateKey.generate().private_bytes(
+                    Encoding.PEM, PrivateFormat.PKCS8, NoEncryption()
+                )
+            )
+        self.vapi.ikev2_set_local_key(key_file=key_file)
+
+        self.pg0.enable_capture()
+        self.pg_start()
+        self.vapi.ikev2_initiate_sa_init(name=self.p.profile_name)
+        self.verify_sa_init_request(self.pg0.get_capture(1)[0])
+        self.send_and_assert_no_replies(self.pg0, self.create_init_response())
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
+
+
+class TestResponderUnusableSigningKey(TestResponderRsaSign):
+    """A local key that cannot sign makes the responder fail authentication."""
+
+    def tearDown(self):
+        super(IkePeer, self).tearDown()
+        self.p.remove_vpp_config()
+
+    def verify_sa_auth_resp(self, packet):
+        ih = self.get_ike_header(packet)
+        self.assertEqual(ih.exch_type, 35)  # IKE_AUTH
+        self.assertIn("Response", ih.flags)
+        notify = ikev2.IKEv2_payload_Notify(self.sa.hmac_and_decrypt(ih))
+        self.assertEqual(notify.type, 24)  # AUTHENTICATION_FAILED
+        self.assertFalse(notify.haslayer(ikev2.IKEv2_payload_AUTH))
+
+    def test_responder(self):
+        key_file = os.path.join(self.tempdir, "ed25519-key.pem")
+        with open(key_file, "wb") as f:
+            f.write(
+                Ed25519PrivateKey.generate().private_bytes(
+                    Encoding.PEM, PrivateFormat.PKCS8, NoEncryption()
+                )
+            )
+        self.vapi.ikev2_set_local_key(key_file=key_file)
+
+        self.send_sa_init_req()
+        self.send_sa_auth()
         self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
 
 
