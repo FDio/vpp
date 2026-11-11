@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9038174b_88d47f8d",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 371,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-11-11T16:30:32Z",
+      "side": 1,
+      "message": "Since the return value of `nl_socket_alloc()` is being checked to determine whether allocation failed, can the return value of `rtnl_link_vlan_alloc()` also be checked?",
+      "revId": "bf8c273ecd381d65acc9ce3fe3c6d07025d3c248",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6834de7e_ed54dab7",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 386,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-11-11T16:30:32Z",
+      "side": 1,
+      "message": "The `if (link)` is not necessary. `rtnl_link_put()` can be passed a null pointer. It\u0027s a wrapper around `nl_object_put()`, which checks whether the pointer is null before doing anything.",
+      "revId": "bf8c273ecd381d65acc9ce3fe3c6d07025d3c248",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e11790ad_4de547ba",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 411,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-11-11T16:30:32Z",
+      "side": 1,
+      "message": "Since the return value of `nl_socket_alloc()` is being checked to determine whether allocation failed, can the return value of `rtnl_link_alloc()` also be checked?",
+      "revId": "bf8c273ecd381d65acc9ce3fe3c6d07025d3c248",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ba1eee63_c7f5b150",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 418,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-11-11T16:30:32Z",
+      "side": 1,
+      "message": "The `if (link)` is not necessary. `rtnl_link_put()` can be passed a null pointer. It\u0027s a wrapper around `nl_object_put()`, which checks whether the pointer is null before doing anything.",
+      "revId": "bf8c273ecd381d65acc9ce3fe3c6d07025d3c248",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
