@@ -184,6 +184,7 @@ ige_init (vlib_main_t *vm, vnet_dev_t *dev)
           .change_max_rx_frame_size = 1,
           .interrupt_mode = interrupt_mode,
           .rss = 1,
+          .mac_filter = 1,
         },
         .rx_offloads = {
           .ip4_cksum = 1,

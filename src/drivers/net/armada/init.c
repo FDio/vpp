@@ -401,6 +401,7 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
             .max_supported_rx_frame_size = MVPP2_MAX_RX_FRAME_SIZE,
             .caps = {
               .change_max_rx_frame_size = 1,
+              .mac_filter = 1,
             },
             .tx_offloads = {
               .ip4_cksum = 1,
