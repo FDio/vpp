@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "158c603a_d40209cd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2938
+      },
+      "writtenOn": "2026-11-11T03:23:23Z",
+      "side": 1,
+      "message": "Thank you, the patch looks good.\nWe tried this patch on VPP 23.02 on our systems and it mitigates the problem.",
+      "revId": "90afab4826bff373b34e9dbf9c105200523dcd01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
