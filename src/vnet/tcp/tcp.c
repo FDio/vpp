@@ -275,6 +275,7 @@ tcp_connection_cleanup (tcp_connection_t * tc)
 
       tcp_cc_cleanup (tc);
       vec_free (tc->snd_sacks);
+      tcp_postponed_acks_free (tc);
       vec_free (tc->rcv_opts.sacks);
       pool_free (tc->sack_sb.holes);
 
@@ -1585,6 +1586,7 @@ tcp_main_enable (vlib_main_t * vm)
   tcp_worker_ctx_t *wrk;
   clib_error_t *error = 0;
   int thread;
+  u32 i;
 
   /* Already initialized */
   if (tm->wrk)
@@ -1631,6 +1633,13 @@ tcp_main_enable (vlib_main_t * vm)
       vec_reset_length (wrk->pending_resets);
       wrk->vm = vlib_get_main_by_index (thread);
       wrk->max_timers_per_loop = 10;
+
+      /* All postponed acks start in the free list */
+      vec_validate (wrk->postponed_acks, TCP_POSTPONED_ACKS_PER_WRK - 1);
+      for (i = 0; i < TCP_POSTPONED_ACKS_PER_WRK; i++)
+	wrk->postponed_acks[i].next = i + 1;
+      wrk->postponed_acks[TCP_POSTPONED_ACKS_PER_WRK - 1].next = TCP_INVALID_POSTPONED_ACK;
+      wrk->postponed_acks_free = 0;
 
       if (thread > 0)
 	{

@@ -120,6 +120,8 @@ __clib_export void tcp_dsack_report_ooo (tcp_connection_t *tc, u32 start, u32 en
 					 sack_block_t blk);
 /** Ack the pending dsack now, see tcp_dsack_report */
 void tcp_send_dsack_flush (tcp_connection_t *tc);
+/** Keep that ack's blocks for the connection's dupacks instead, 0 if there is no room */
+u8 tcp_postpone_ack (tcp_connection_t *tc, u8 is_dsack);
 /** Drop the blocks in-order data delivered */
 void tcp_sack_delivered (tcp_connection_t *tc);
 /** Fill blks with the pending dsack, the block that holds it, if any, and the other blocks. A

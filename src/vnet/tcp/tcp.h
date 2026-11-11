@@ -124,6 +124,15 @@ typedef struct tcp_worker_ctx_
   /** Sack blocks of the options being built */
   sack_block_t ack_sacks[TCP_OPTS_MAX_SACK_BLOCKS];
 
+  /** Blocks in ack_sacks while a postponed ack is built, else 0 */
+  u8 n_postponed_sacks;
+
+  /** First free postponed ack */
+  u16 postponed_acks_free;
+
+  /** Postponed acks of the worker's connections, see tcp_postpone_ack */
+  tcp_postponed_ack_t *postponed_acks;
+
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
 
   tcp_wrk_stats_t stats;
@@ -322,6 +331,7 @@ __clib_export void tcp_send_synack (tcp_connection_t *tc);
 void tcp_send_fin (tcp_connection_t * tc);
 __clib_export void tcp_send_ack (tcp_connection_t *tc);
 void tcp_send_sack_flush (tcp_connection_t *tc);
+__clib_export void tcp_postponed_acks_free (tcp_connection_t *tc);
 void tcp_send_window_update_ack (tcp_connection_t * tc);
 
 __clib_export void tcp_program_ack (tcp_connection_t *tc);
