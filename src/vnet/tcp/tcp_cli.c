@@ -1229,6 +1229,22 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	tcp_cfg.enable_dsack = 0;
       else if (unformat (input, "byte-tracker"))
 	tcp_cfg.enable_byte_tracker = 1;
+      else if (unformat (input, "postponed-acks-per-connection %u", &tmp))
+	{
+	  /* Counted by a u8, see tcp_connection_t */
+	  if (tmp > CLIB_U8_MAX)
+	    return clib_error_return (0, "postponed-acks-per-connection must not exceed %u",
+				      CLIB_U8_MAX);
+	  tcp_cfg.max_postponed_acks = tmp;
+	}
+      else if (unformat (input, "postponed-acks-per-worker %u", &tmp))
+	{
+	  /* Linked by u16 indices, see tcp_postponed_ack_t */
+	  if (tmp >= TCP_INVALID_POSTPONED_ACK)
+	    return clib_error_return (0, "postponed-acks-per-worker must be less than %u",
+				      TCP_INVALID_POSTPONED_ACK);
+	  tcp_cfg.postponed_acks_per_wrk = tmp;
+	}
       else if (unformat (input, "max-gso-size %u", &max_gso_size))
 	tcp_cfg.max_gso_size = clib_min (max_gso_size, TCP_MAX_GSO_SZ);
       else if (unformat (input, "cc-algo %U", unformat_tcp_cc_algo,

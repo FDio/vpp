@@ -7439,13 +7439,13 @@ tcp_test_sack_blocks (const char *what, sack_block_t *blks, u32 n, u32 base, con
   return ok;
 }
 
-/* Send the acks tcp has programmed, drop them before they reach the graph and
- * return how many were sent and, in blks, the sack blocks they carried */
+/* Send the acks tcp has programmed, with a transmit budget of max_burst, drop them before they
+ * reach the graph and return how many were sent and, in blks, the sack blocks they carried */
 static u32
-tcp_test_sack_tx_acks (vlib_main_t *vm, tcp_connection_t *tc, sack_block_t **blks)
+tcp_test_sack_tx_acks_n (vlib_main_t *vm, tcp_connection_t *tc, sack_block_t **blks, u32 max_burst)
 {
   session_worker_t *swrk = session_main_get_worker (vm->thread_index);
-  transport_send_params_t sp = { .max_burst_size = 256 };
+  transport_send_params_t sp = { .max_burst_size = max_burst };
   tcp_options_t opts = {};
   vlib_buffer_t *b;
   u32 i, n_acks;
@@ -7467,6 +7467,12 @@ tcp_test_sack_tx_acks (vlib_main_t *vm, tcp_connection_t *tc, sack_block_t **blk
   return n_acks;
 }
 
+static u32
+tcp_test_sack_tx_acks (vlib_main_t *vm, tcp_connection_t *tc, sack_block_t **blks)
+{
+  return tcp_test_sack_tx_acks_n (vm, tc, blks, 256);
+}
+
 typedef struct
 {
   tcp_e2e_ctx_t *ctx;
@@ -7480,6 +7486,10 @@ tcp_test_sack_tx_steps (void *arg)
   tcp_test_e2e_steps_args_t *a = arg;
   sack_block_t blks[TCP_OPTS_MAX_SACK_BLOCKS], *sent = 0;
   u32 base, n, i, bis[256], *hoard = 0;
+  session_worker_t *swrk = session_main_get_worker (vlib_get_thread_index ());
+  tcp_worker_ctx_t *wrk = tcp_get_worker (vlib_get_thread_index ());
+  u16 pa_free, pai = TCP_INVALID_POSTPONED_ACK;
+  u32 k;
   vlib_main_t *vm = vlib_get_main ();
   tcp_e2e_ctx_t *ctx = a->ctx;
   tcp_connection_t *tc;
@@ -7507,6 +7517,19 @@ tcp_test_sack_tx_steps (void *arg)
   do                                                                                               \
     {                                                                                              \
       n = tcp_dsack_is_pending (tc) ? tcp_dsack_make_sacks (tc, blks) : tcp_make_sacks (tc, blks); \
+    }                                                                                              \
+  while (0)
+/* Deliver all, empty the fifo so the acks open the window, drop the duplicates it repeats */
+#define SACK_RESET(_top)                                                                           \
+  do                                                                                               \
+    {                                                                                              \
+      u32 _o;                                                                                      \
+      for (_o = 0; _o < (_top); _o += 1000)                                                        \
+	SACK_INJECT (_o, clib_min (_o + 1000, (_top)));                                            \
+      svm_fifo_dequeue_drop_all (ctx->client_s->rx_fifo);                                          \
+      tcp_dsack_clear (tc);                                                                        \
+      tcp_test_sack_tx_acks (vm, tc, 0);                                                           \
+      base = tc->rcv_nxt;                                                                          \
     }                                                                                              \
   while (0)
 
@@ -7605,16 +7628,20 @@ tcp_test_sack_tx_steps (void *arg)
   /* The app reads nothing, keep the window open for what follows */
   svm_fifo_dequeue_drop_all (ctx->client_s->rx_fifo);
 
-  /* With more changed blocks than an ack holds, the kept ones are acked before a changed one is
-   * pushed out, so the acks report them all. The burst adds the dupacks that signal congestion */
+  /* The first 3 arrivals since rcv_nxt moved are acked at once, later ones by a held dupack. A
+   * new block acks as of now first, so the held one does not miss blocks. All are postponed
+   * until the connection is scheduled, oldest first */
   tcp_dsack_clear (tc);
   tcp_test_sack_tx_acks (vm, tc, 0);
   base = tc->rcv_nxt;
   for (i = 0; i < 8; i++)
     SACK_INJECT (200 * i + 100, 200 * i + 200);
+  if (!TCP_TEST_I (tc->n_postponed_acks == 7, "sack_tx: 8 arrivals postpone 7 acks (%u)",
+		   tc->n_postponed_acks))
+    goto cleanup;
   vec_reset_length (sent);
   n = tcp_test_sack_tx_acks (vm, tc, &sent);
-  ok = n == 5;
+  ok = n == 8 && !tc->n_postponed_acks;
   for (i = 0; ok && i < 8; i++)
     {
       u32 k, found = 0;
@@ -7623,9 +7650,20 @@ tcp_test_sack_tx_steps (void *arg)
       ok = found;
     }
   if (!TCP_TEST_I (ok,
-		   "sack_tx: 8 arrivals, 2 acks before blocks are pushed out and 3 dupacks "
-		   "report all blocks (%u sent)",
+		   "sack_tx: 8 arrivals, 7 postponed acks and the held dupack report all blocks "
+		   "(%u sent)",
 		   n))
+    goto cleanup;
+  /* Each ack reports the blocks as of an arrival, so a block is reported as the newest, then
+   * the second and the third: 3 times, but the last two so far */
+  for (ok = 1, i = 0; ok && i < 8; i++)
+    {
+      u32 n_rep = 0;
+      for (k = 0; k < vec_len (sent); k++)
+	n_rep += sent[k].start == base + 200 * i + 100 && sent[k].end == base + 200 * i + 200;
+      ok = n_rep == (i < 6 ? 3 : 8 - i);
+    }
+  if (!TCP_TEST_I (ok, "sack_tx: 8 new blocks, each reported by 3 acks, the last two so far"))
     goto cleanup;
 
   /* Dupacks that find no buffer consume no dsacks */
@@ -7711,14 +7749,15 @@ tcp_test_sack_tx_steps (void *arg)
   SACK_INJECT (2520, 2540);
   SACK_INJECT (2600, 2620);
   SACK_INJECT (2700, 2720);
+  ok = tc->n_postponed_acks == 4;
   vec_reset_length (sent);
   n = tcp_test_sack_tx_acks (vm, tc, &sent);
-  ok = 0;
-  for (i = 0; i < vec_len (sent); i++)
-    ok |= sent[i].start == base + 2100 && sent[i].end == base + 2200;
+  for (i = 0, k = 0; i < vec_len (sent); i++)
+    k |= sent[i].start == base + 2100 && sent[i].end == base + 2200;
+  ok &= k;
   if (!TCP_TEST_I (ok && n == 5 && !tcp_dsack_is_pending (tc) && !tc->snd_sack_changes,
-		   "sack_tx: 3 dsacks in the newest of 3 changed blocks, each in an ack, then "
-		   "acks with the oldest (%u acks)",
+		   "sack_tx: 3 new blocks and 3 dsacks in the newest, 4 postponed, then the held "
+		   "dupack (%u acks)",
 		   n))
     goto cleanup;
 
@@ -7729,12 +7768,270 @@ tcp_test_sack_tx_steps (void *arg)
 		   "sack_tx: a dsack in the only changed block needs one ack (%u acks)", n))
     goto cleanup;
 
+  /* Postponed acks leave out the blocks in-order data delivered meanwhile */
+  SACK_RESET (3000);
+  SACK_INJECT (100, 200);
+  SACK_INJECT (300, 400);
+  SACK_INJECT (500, 600);
+  SACK_INJECT (700, 800);
+  if (!TCP_TEST_I (tc->n_postponed_acks == 3,
+		   "sack_tx: 4 new blocks postpone the 3 acks sent at once (%u)",
+		   tc->n_postponed_acks))
+    goto cleanup;
+  SACK_INJECT (0, 100);
+  vec_reset_length (sent);
+  n = tcp_test_sack_tx_acks (vm, tc, &sent);
+  ok = !tc->n_postponed_acks && tc->rcv_nxt == base + 200;
+  for (i = 0; i < vec_len (sent); i++)
+    ok &= seq_gt (sent[i].start, tc->rcv_nxt);
+  for (i = 1; ok && i < 4; i++)
+    {
+      u32 k, found = 0;
+      for (k = 0; k < vec_len (sent); k++)
+	found |= sent[k].start == base + 200 * i + 100 && sent[k].end == base + 200 * i + 200;
+      ok = found;
+    }
+  if (!TCP_TEST_I (ok, "sack_tx: postponed ack leaves out the delivered block (%u acks)", n))
+    goto cleanup;
+
+  /* A connection postpones at most max_postponed_acks, then acks now. The first 3 arrivals and
+   * each one after the fourth ack as of then */
+  SACK_RESET (1000);
+  for (i = 0; i < tcp_cfg.max_postponed_acks + 2; i++)
+    SACK_INJECT (200 * i + 100, 200 * i + 200);
+  ok =
+    tc->n_postponed_acks == tcp_cfg.max_postponed_acks && vec_len (swrk->pending_tx_buffers) == 1;
+  vec_reset_length (sent);
+  n = tcp_test_sack_tx_acks (vm, tc, &sent);
+  for (i = 0; ok && i < tcp_cfg.max_postponed_acks + 2; i++)
+    {
+      u32 k, found = 0;
+      for (k = 0; k < vec_len (sent); k++)
+	found |= sent[k].start == base + 200 * i + 100 && sent[k].end == base + 200 * i + 200;
+      ok = found;
+    }
+  if (!TCP_TEST_I (ok && !tc->n_postponed_acks,
+		   "sack_tx: at the limit, acks now, and all blocks are reported (%u acks)", n))
+    goto cleanup;
+
+  /* Without free postponed acks in the worker, acks now */
+  SACK_RESET (3300);
+  pa_free = wrk->postponed_acks_free;
+  wrk->postponed_acks_free = TCP_INVALID_POSTPONED_ACK;
+  for (i = 0; i < 4; i++)
+    SACK_INJECT (200 * i + 100, 200 * i + 200);
+  ok = !tc->n_postponed_acks && vec_len (swrk->pending_tx_buffers) == 3;
+  wrk->postponed_acks_free = pa_free;
+  if (!TCP_TEST_I (ok, "sack_tx: no free postponed acks, acks now"))
+    goto cleanup;
+
+  /* Cleanup returns the postponed acks to the worker */
+  SACK_RESET (1000);
+  for (i = 0; i < 4; i++)
+    SACK_INJECT (200 * i + 100, 200 * i + 200);
+  /* The free list starts with the first postponed ack, which the last links to */
+  pai = wrk->postponed_acks[tc->postponed_acks_tail].next;
+  tcp_postponed_acks_free (tc);
+  if (!TCP_TEST_I (tc->postponed_acks_tail != TCP_INVALID_POSTPONED_ACK && !tc->n_postponed_acks &&
+		     wrk->postponed_acks_free == pai,
+		   "sack_tx: cleanup frees postponed acks"))
+    goto cleanup;
+
+  /* A constrained transmit budget splits the acks over calls, but sends the same ones */
+  SACK_RESET (1000);
+  for (i = 0; i < 8; i++)
+    SACK_INJECT (200 * i + 100, 200 * i + 200);
+  vec_reset_length (sent);
+  n = tcp_test_sack_tx_acks_n (vm, tc, &sent, 1);
+  n += tcp_test_sack_tx_acks_n (vm, tc, &sent, 1);
+  n += tcp_test_sack_tx_acks_n (vm, tc, &sent, 256);
+  ok = n == 8 && !tc->n_postponed_acks;
+  for (i = 0; ok && i < 8; i++)
+    {
+      for (k = 0; k < vec_len (sent); k++)
+	if (sent[k].start == base + 200 * i + 100 && sent[k].end == base + 200 * i + 200)
+	  break;
+      ok = k < vec_len (sent);
+    }
+  if (!TCP_TEST_I (ok, "sack_tx: budgets of 1, 1 and 256 send the same 8 acks (%u acks)", n))
+    goto cleanup;
+
+  /* Once 3 dupacks signaled the hole at rcv_nxt, later bursts for it send one, which reports the
+   * blocks. Once rcv_nxt moves, a new hole gets 3 again */
+  SACK_RESET (1000);
+  SACK_INJECT (100, 200);
+  SACK_INJECT (300, 400);
+  SACK_INJECT (500, 600);
+  n = tcp_test_sack_tx_acks (vm, tc, 0);
+  if (!TCP_TEST_I (n == 3, "sack_tx: the first burst for a hole sends 3 dupacks (%u acks)", n))
+    goto cleanup;
+
+  SACK_INJECT (600, 700);
+  SACK_INJECT (700, 800);
+  SACK_INJECT (800, 900);
+  n = tcp_test_sack_tx_acks (vm, tc, 0);
+  if (!TCP_TEST_I (n == 1, "sack_tx: later bursts for the hole send one dupack (%u acks)", n))
+    goto cleanup;
+
+  /* In order data moves rcv_nxt past the first block */
+  SACK_INJECT (0, 100);
+  tcp_test_sack_tx_acks (vm, tc, 0);
+  SACK_INJECT (1000, 1100);
+  SACK_INJECT (1200, 1300);
+  SACK_INJECT (1400, 1500);
+  n = tcp_test_sack_tx_acks (vm, tc, 0);
+  if (!TCP_TEST_I (n == 3, "sack_tx: a new hole gets 3 dupacks again (%u acks)", n))
+    goto cleanup;
+
+  /* A constrained budget sends the owed dupacks over several calls, not more */
+  SACK_RESET (2000);
+  SACK_INJECT (100, 200);
+  SACK_INJECT (300, 400);
+  SACK_INJECT (500, 600);
+  for (n = 0, i = 0; i < 6; i++)
+    n += tcp_test_sack_tx_acks_n (vm, tc, 0, 1);
+  if (!TCP_TEST_I (n == 3 && !tc->pending_dupacks,
+		   "sack_tx: budget-one calls send only the owed dupacks (%u acks)", n))
+    goto cleanup;
+
+  /* The acks sent at once count toward the 3, whichever path sends them: postponed acks of
+   * constrained calls, */
+  SACK_RESET (2000);
+  for (i = 0; i < 8; i++)
+    SACK_INJECT (200 * i + 100, 200 * i + 200);
+  n = tcp_test_sack_tx_acks_n (vm, tc, 0, 1);
+  n += tcp_test_sack_tx_acks_n (vm, tc, 0, 1);
+  n += tcp_test_sack_tx_acks_n (vm, tc, 0, 256);
+  SACK_INJECT (1600, 1700);
+  SACK_INJECT (1700, 1800);
+  SACK_INJECT (1800, 1900);
+  k = tcp_test_sack_tx_acks (vm, tc, 0);
+  if (!TCP_TEST_I (n == 8 && k == 1,
+		   "sack_tx: postponed acks of constrained calls count (%u then %u acks)", n, k))
+    goto cleanup;
+
+  /* and acks sent at once, without free postponed acks */
+  SACK_RESET (2000);
+  pa_free = wrk->postponed_acks_free;
+  wrk->postponed_acks_free = TCP_INVALID_POSTPONED_ACK;
+  for (i = 0; i < 4; i++)
+    SACK_INJECT (200 * i + 100, 200 * i + 200);
+  wrk->postponed_acks_free = pa_free;
+  n = tcp_test_sack_tx_acks (vm, tc, 0);
+  if (!TCP_TEST_I (n == 4, "sack_tx: acks sent at once count, then one is held (%u acks)", n))
+    goto cleanup;
+
+  /* An ack sent at once leaves no other to send once scheduled */
+  SACK_RESET (2000);
+  pa_free = wrk->postponed_acks_free;
+  wrk->postponed_acks_free = TCP_INVALID_POSTPONED_ACK;
+  for (ok = 1, i = 0; ok && i < 3; i++)
+    {
+      SACK_INJECT (200 * i + 100, 200 * i + 200);
+      n = tcp_test_sack_tx_acks (vm, tc, 0);
+      ok = n == 1;
+    }
+  wrk->postponed_acks_free = pa_free;
+  if (!TCP_TEST_I (ok, "sack_tx: an ack sent at once is the only one (%u acks at arrival %u)", n,
+		   i))
+    goto cleanup;
+
+  /* Blocks that merged after an ack was postponed are reported, once, as the kept block that
+   * holds them */
+  SACK_RESET (2000);
+  SACK_INJECT (100, 200);
+  SACK_INJECT (300, 400);
+  SACK_INJECT (500, 600);
+  SACK_INJECT (700, 800);
+  SACK_INJECT (200, 300);
+  SACK_INJECT (400, 500);
+  vec_reset_length (sent);
+  n = tcp_test_sack_tx_acks (vm, tc, &sent);
+  for (ok = n > 0, k = 0; ok && k < vec_len (sent); k++)
+    ok = (sent[k].start == base + 100 && sent[k].end == base + 600) ||
+	 (sent[k].start == base + 700 && sent[k].end == base + 800);
+  if (!TCP_TEST_I (ok, "sack_tx: postponed acks report merged blocks as the kept one (%u acks)", n))
+    goto cleanup;
+
+  /* A segment that repeats data below rcv_nxt and queued data reports only the first */
+  SACK_RESET (2000);
+  SACK_INJECT (100, 200);
+  SACK_INJECT (-20, 150);
+  vec_reset_length (sent);
+  n = tcp_test_sack_tx_acks (vm, tc, &sent);
+  for (ok = 0, k = 0; k < vec_len (sent); k++)
+    {
+      if (sent[k].start == base + 100 && sent[k].end == base + 150)
+	{
+	  ok = 0;
+	  break;
+	}
+      ok |= sent[k].start == base - 20 && sent[k].end == base;
+    }
+  if (!TCP_TEST_I (ok, "sack_tx: a segment reports only its first duplicate (%u acks)", n))
+    goto cleanup;
+
+  /* Blocks that merged and left the kept ones before the postponed ack is sent are reported as
+   * merged too */
+  SACK_RESET (2000);
+  SACK_INJECT (100, 200);
+  SACK_INJECT (300, 400);
+  SACK_INJECT (500, 600);
+  SACK_INJECT (700, 800);
+  SACK_INJECT (200, 300);
+  SACK_INJECT (400, 500);
+  SACK_INJECT (900, 1000);
+  SACK_INJECT (1100, 1200);
+  SACK_INJECT (1300, 1400);
+  vec_reset_length (sent);
+  n = tcp_test_sack_tx_acks (vm, tc, &sent);
+  for (ok = n > 0, k = 0; ok && k < vec_len (sent); k++)
+    ok = sent[k].end != base + 200 && sent[k].end != base + 400 && sent[k].start != base + 500;
+  if (!TCP_TEST_I (ok, "sack_tx: postponed acks report blocks merged then pushed out (%u acks)", n))
+    goto cleanup;
+
+  /* An ack with a dsack that takes the last of the budget leaves no changed block unreported */
+  SACK_RESET (2000);
+  SACK_INJECT (100, 200);
+  SACK_INJECT (300, 400);
+  SACK_INJECT (500, 600);
+  tcp_test_sack_tx_acks (vm, tc, 0);
+  SACK_INJECT (700, 800);
+  SACK_INJECT (900, 1000);
+  SACK_INJECT (1100, 1200);
+  SACK_INJECT (1120, 1140);
+  vec_reset_length (sent);
+  n = tcp_test_sack_tx_acks_n (vm, tc, &sent, 1);
+  n += tcp_test_sack_tx_acks (vm, tc, &sent);
+  for (ok = 0, k = 0; k < vec_len (sent); k++)
+    ok |= sent[k].start == base + 700 && sent[k].end == base + 800;
+  if (!TCP_TEST_I (ok, "sack_tx: a dsack ack at the budget leaves no change unreported (%u acks)",
+		   n))
+    goto cleanup;
+
+  /* The block that held a pending dsack is reported as merged, also once pushed out */
+  SACK_RESET (2000);
+  SACK_INJECT (100, 200);
+  SACK_INJECT (300, 400);
+  SACK_INJECT (120, 140);
+  SACK_INJECT (200, 300);
+  SACK_INJECT (500, 600);
+  SACK_INJECT (700, 800);
+  SACK_INJECT (900, 1000);
+  vec_reset_length (sent);
+  n = tcp_test_sack_tx_acks (vm, tc, &sent);
+  for (ok = 0, k = 0; k + 1 < vec_len (sent); k++)
+    if (sent[k].start == base + 120 && sent[k].end == base + 140)
+      ok = sent[k + 1].start == base + 100 && sent[k + 1].end == base + 400;
+  if (!TCP_TEST_I (ok, "sack_tx: a dsack reports the merged block that holds it (%u acks)", n))
+    goto cleanup;
   rv = 0;
 
 cleanup:
 #undef SACK_INJECT
 #undef SACK_CHECK
 #undef SACK_DUPACK
+#undef SACK_RESET
   vlib_buffer_free (vm, hoard, vec_len (hoard));
   vec_free (hoard);
   vec_free (sent);
@@ -7769,6 +8066,22 @@ tcp_test_sack_tx_e2e (vlib_main_t *vm, u8 verbose)
   return rv;
 }
 
+/* The dsack the connection reports next: the pending one, else the newest postponed ack's, see
+ * tcp_ack_sacks */
+static sack_block_t *
+tcp_test_reported_dsack (tcp_connection_t *tc)
+{
+  tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
+  tcp_postponed_ack_t *pa;
+
+  if (tcp_dsack_is_pending (tc))
+    return tcp_snd_dsack (tc);
+  if (!tc->n_postponed_acks)
+    return 0;
+  pa = &wrk->postponed_acks[tc->postponed_acks_tail];
+  return pa->is_dsack ? &pa->blks[0] : 0;
+}
+
 /* Runs on the connection's thread, see tcp_e2e_call_on_thread */
 static int
 tcp_test_dsack_rx_steps (void *arg)
@@ -7792,6 +8105,7 @@ tcp_test_dsack_rx_steps (void *arg)
   };
   vlib_main_t *vm = vlib_get_main ();
   tcp_e2e_ctx_t *ctx = a->ctx;
+  sack_block_t *dsack;
   tcp_connection_t *tc;
   u32 i, base, cap;
   int rv = 0;
@@ -7807,15 +8121,16 @@ tcp_test_dsack_rx_steps (void *arg)
 	  rv = 1;
 	  goto cleanup;
 	}
-      if (!TCP_TEST_I (tcp_dsack_is_pending (tc) == (cases[i].dup_end != 0),
+      dsack = tcp_test_reported_dsack (tc);
+      if (!TCP_TEST_I ((dsack != 0) == (cases[i].dup_end != 0),
 		       "dsack_rx: %s reports only duplicate data", cases[i].name))
 	{
 	  rv = 1;
 	  goto cleanup;
 	}
       if (cases[i].dup_end &&
-	  !TCP_TEST_I (tcp_snd_dsack (tc)->start == base + cases[i].dup_start &&
-			 tcp_snd_dsack (tc)->end == base + cases[i].dup_end,
+	  !TCP_TEST_I (dsack->start == base + cases[i].dup_start &&
+			 dsack->end == base + cases[i].dup_end,
 		       "dsack_rx: %s reports the original segment's overlap", cases[i].name))
 	{
 	  rv = 1;
@@ -7839,6 +8154,7 @@ tcp_test_dsack_rx_steps (void *arg)
 	}
       session_test_drain_rx_fifo (ctx->client_s);
       tcp_dsack_clear (tc);
+      tcp_postponed_acks_free (tc);
     }
 
   /* A chain that overflows the fifo is not enqueued, so neither its
@@ -7851,7 +8167,7 @@ tcp_test_dsack_rx_steps (void *arg)
       rv = 1;
       goto cleanup;
     }
-  if (!TCP_TEST_I (!tcp_dsack_is_pending (tc) &&
+  if (!TCP_TEST_I (!tcp_test_reported_dsack (tc) &&
 		     svm_fifo_n_ooo_segments (ctx->client_s->rx_fifo) == 1 &&
 		     tcp_snd_kept_sacks (tc)->start == base + cap - 600 &&
 		     tcp_snd_kept_sacks (tc)->end == base + cap - 200,
