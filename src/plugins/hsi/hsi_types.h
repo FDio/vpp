@@ -13,6 +13,11 @@
 #define HSI_TCP_DRAIN_NO_PROGRESS_DEFAULT_TIMEOUT 10.0
 /* Drains complete on events, timeouts are checked at this interval */
 #define HSI_TCP_DRAIN_SCAN_INTERVAL		  0.1
+/* Udp has no acks, so drains are also checked at this interval */
+#define HSI_UDP_DRAIN_SCAN_INTERVAL    1e-3
+#define HSI_UDP_IDLE_SCAN_MAX_INTERVAL 1.0
+/* Timer handlers return this when they have nothing pending */
+#define HSI_TIMER_NONE				  1e30
 #define HSI_UDP_DRAIN_CACHE_DEFAULT_PACKETS	  3
 #define HSI_UDP_DRAIN_NO_PROGRESS_DEFAULT_TIMEOUT 10.0
 #define HSI_UDP_IDLE_DEFAULT_TIMEOUT		  300.0
@@ -114,6 +119,7 @@ typedef struct hsi_msg_ hsi_msg_t;
   _ (rpc_self, u64, "rpc-self")                                                                    \
   _ (mq_msgs, u64, "mq-msgs")                                                                      \
   _ (mq_doorbells, u64, "mq-doorbells")                                                            \
+  _ (local_msgs, u64, "local-msgs")                                                                \
   _ (mq_full, u64, "mq-full")
 
 typedef struct hsi_worker_stats_
@@ -137,9 +143,13 @@ typedef struct hsi_tcp_fin_wait_elt_
 
 typedef struct hsi_worker_
 {
-  /** Messages from other workers, or this one, see hsi_mq_send */
+  /** Messages from other workers, see hsi_mq_send. Other workers write
+   * these, so they don't share a cache line with what the worker uses */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   clib_spinlock_t mq_lock;
   hsi_msg_t *mq;
+
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   /** Messages being handled, owned by this worker */
   hsi_msg_t *mq_msgs;
   hsi_tcp_drain_t *tcp_drains;
@@ -150,22 +160,22 @@ typedef struct hsi_worker_
   /** Fin-wait entries in the order they expire, deleted ones included */
   hsi_tcp_fin_wait_elt_t *tcp_fin_wait_fifo;
   hsi_worker_stats_t stats;
-  u8 tcp_drain_time_registered;
-  u8 tcp_drain_time_unregister_pending;
-  u8 tcp_fin_wait_time_registered;
-  u8 tcp_fin_wait_time_unregister_pending;
   uword *udp_track_peer_by_session_conn;
   hsi_udp_drain_t *udp_drains;
   uword *udp_drain_by_session_conn;
   session_handle_t *udp_drain_update_handles;
+  f64 udp_drain_next_scan;
   uword *udp_idle_by_session_conn;
   uword *udp_idle_update_keys;
-  u8 udp_drain_time_registered;
-  u8 udp_drain_time_unregister_pending;
-  u8 udp_idle_time_registered;
-  u8 udp_idle_time_unregister_pending;
+  f64 udp_idle_next_scan;
   hsi_cleanup_req_t *pending_cleanups;
-  u8 pending_cleanups_registered;
+  /** Messages this worker sent itself, see hsi_mq_send */
+  hsi_msg_t *local_msgs;
+  /** Main loop the last local message was added in */
+  u32 local_msgs_loop;
+  /** Next time hsi timers have to run, see hsi_timer_schedule */
+  f64 timer_next;
+  u8 timer_registered;
 } hsi_worker_t;
 
 #define hsi_worker_counter_inc(_wrk, _counter)                                                     \

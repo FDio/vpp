@@ -42,8 +42,8 @@ hsi_tcp_tracked_action_t hsi_tcp_drain_cache_buffer (vlib_main_t *vm, vlib_buffe
 						     tcp_header_t *tcp_hdr, u8 is_ip4,
 						     u8 send_rst_on_drain_fail,
 						     u8 *cleanup_session);
-void hsi_tcp_drain_update_time (f64 time_now, u8 thread_index);
-void hsi_tcp_fin_wait_update_time (f64 time_now, u8 thread_index);
+f64 hsi_tcp_drain_timer (clib_thread_index_t thread_index, f64 now);
+f64 hsi_tcp_fin_wait_timer (clib_thread_index_t thread_index, f64 now);
 void hsi_tracker_show (vlib_main_t *vm);
 
 /*
@@ -96,8 +96,8 @@ hsi_udp_tracked_action_t hsi_udp_drain_cache_buffer_remote (vlib_main_t *vm, vli
 							    session_t *s, udp_connection_t *uc,
 							    void *ip_hdr, udp_header_t *udp_hdr,
 							    u8 is_ip4);
-void hsi_udp_drain_update_time (f64 time_now, u8 thread_index);
-void hsi_udp_idle_update_time (f64 time_now, u8 thread_index);
+f64 hsi_udp_drain_timer (clib_thread_index_t thread_index, f64 now);
+f64 hsi_udp_idle_timer (clib_thread_index_t thread_index, f64 now);
 void hsi_udp_idle_timeout_update (void);
 
 static_always_inline hsi_udp_tracked_action_t

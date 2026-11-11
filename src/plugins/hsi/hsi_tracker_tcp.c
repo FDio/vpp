@@ -34,37 +34,6 @@ hsi_tcp_session_cleanup_peer_handle (session_t *s)
   return SESSION_INVALID_HANDLE;
 }
 
-static void
-hsi_tcp_fin_wait_unregister_time_update_rpc (void *arg)
-{
-  clib_thread_index_t thread_index = vlib_get_thread_index ();
-  hsi_worker_t *wrk = hsi_worker_get (thread_index);
-
-  wrk->tcp_fin_wait_time_unregister_pending = 0;
-  if (!wrk->tcp_fin_wait_time_registered || hash_elts (wrk->tcp_fin_wait_by_session_conn))
-    return;
-
-  session_register_update_time_fn_w_thread (hsi_tcp_fin_wait_update_time, 0, thread_index);
-  wrk->tcp_fin_wait_time_registered = 0;
-  /* All entries left were deleted */
-  clib_fifo_reset (wrk->tcp_fin_wait_fifo);
-}
-
-static_always_inline void
-hsi_tcp_fin_wait_maybe_unregister_time_update (clib_thread_index_t thread_index)
-{
-  hsi_worker_t *wrk = hsi_worker_get (thread_index);
-
-  if (!wrk->tcp_fin_wait_time_registered || wrk->tcp_fin_wait_time_unregister_pending ||
-      hash_elts (wrk->tcp_fin_wait_by_session_conn))
-    return;
-
-  /* Defer unregister so the session update-time vector is not mutated while
-   * session code is iterating it. */
-  wrk->tcp_fin_wait_time_unregister_pending = 1;
-  hsi_send_rpc_force (thread_index, hsi_tcp_fin_wait_unregister_time_update_rpc, 0);
-}
-
 static_always_inline void
 hsi_tcp_fin_wait_del_key (clib_thread_index_t thread_index, uword key)
 {
@@ -74,68 +43,12 @@ hsi_tcp_fin_wait_del_key (clib_thread_index_t thread_index, uword key)
     return;
 
   hash_unset (wrk->tcp_fin_wait_by_session_conn, key);
-  hsi_tcp_fin_wait_maybe_unregister_time_update (thread_index);
 }
 
 static_always_inline void
 hsi_tcp_fin_wait_del (tcp_connection_t *tc)
 {
   hsi_tcp_fin_wait_del_key (tc->c_thread_index, hsi_tcp_session_conn_key_from_connection (tc));
-}
-
-static void
-hsi_tcp_drain_unregister_time_update_rpc (void *arg)
-{
-  clib_thread_index_t thread_index = vlib_get_thread_index ();
-  hsi_worker_t *wrk = hsi_worker_get (thread_index);
-
-  wrk->tcp_drain_time_unregister_pending = 0;
-  if (!wrk->tcp_drain_time_registered || pool_elts (wrk->tcp_drains))
-    return;
-
-  session_register_update_time_fn_w_thread (hsi_tcp_drain_update_time, 0, thread_index);
-  wrk->tcp_drain_time_registered = 0;
-  vec_reset_length (wrk->tcp_drain_update_handles);
-}
-
-static_always_inline void
-hsi_tcp_drain_maybe_register_time_update (clib_thread_index_t thread_index)
-{
-  hsi_worker_t *wrk = hsi_worker_get (thread_index);
-
-  wrk->tcp_drain_time_unregister_pending = 0;
-  if (wrk->tcp_drain_time_registered)
-    return;
-
-  session_register_update_time_fn_w_thread (hsi_tcp_drain_update_time, 1, thread_index);
-  wrk->tcp_drain_time_registered = 1;
-}
-
-static_always_inline void
-hsi_tcp_drain_maybe_unregister_time_update (clib_thread_index_t thread_index)
-{
-  hsi_worker_t *wrk = hsi_worker_get (thread_index);
-
-  if (!wrk->tcp_drain_time_registered || wrk->tcp_drain_time_unregister_pending ||
-      pool_elts (wrk->tcp_drains))
-    return;
-
-  /* Defer unregister so the session update-time vector is not mutated while
-   * session code is iterating it. */
-  wrk->tcp_drain_time_unregister_pending = 1;
-  hsi_send_rpc_force (thread_index, hsi_tcp_drain_unregister_time_update_rpc, 0);
-}
-static_always_inline void
-hsi_tcp_fin_wait_maybe_register_time_update (clib_thread_index_t thread_index)
-{
-  hsi_worker_t *wrk = hsi_worker_get (thread_index);
-
-  wrk->tcp_fin_wait_time_unregister_pending = 0;
-  if (wrk->tcp_fin_wait_time_registered)
-    return;
-
-  session_register_update_time_fn_w_thread (hsi_tcp_fin_wait_update_time, 1, thread_index);
-  wrk->tcp_fin_wait_time_registered = 1;
 }
 
 static void
@@ -160,7 +73,6 @@ hsi_tcp_drain_stop (tcp_connection_t *tc)
 
   hash_unset (wrk->tcp_drain_by_session_conn, key);
   hsi_tcp_drain_pool_put_index (wrk, drain_index);
-  hsi_tcp_drain_maybe_unregister_time_update (tc->c_thread_index);
 }
 void
 hsi_tcp_session_cleanup_state (session_t *s)
@@ -563,7 +475,7 @@ hsi_tcp_drain_start (session_t *s, session_t *peer_s, tcp_connection_t *tc,
   hsi_tcp_send_zero_wnd_ack (s, tc);
   drain->flags |= HSI_TCP_DRAIN_F_WND_CLAMPED;
   hsi_worker_counter_inc (wrk, tcp_drain_started);
-  hsi_tcp_drain_maybe_register_time_update (thread_index);
+  hsi_timer_schedule (thread_index, now + HSI_TCP_DRAIN_SCAN_INTERVAL);
   hsi_drain_program_tx (s);
   hsi_drain_program_peer_tx (s, drain->peer_session_handle);
 
@@ -583,7 +495,7 @@ hsi_tcp_fin_wait_add (tcp_connection_t *tc, f64 start)
   /* All entries have the same timeout, so they expire in the order added */
   clib_fifo_add1 (wrk->tcp_fin_wait_fifo, elt);
 
-  hsi_tcp_fin_wait_maybe_register_time_update (tc->c_thread_index);
+  hsi_timer_schedule (tc->c_thread_index, start + hsi_main.tcp_fin_wait_timeout);
 }
 
 static_always_inline int
@@ -1294,8 +1206,12 @@ hsi_tcp_try_complete_drain (vlib_main_t *vm, tcp_connection_t *tc)
   return hsi_tcp_drain_try_complete (s, tc, drain, vlib_time_now (vm)) == 1;
 }
 
-void
-hsi_tcp_drain_update_time (f64 time_now, u8 thread_index)
+/*
+ * Acks and peer messages complete drains, so only check periodically for
+ * timeouts and transports tcp closed. Returns when to check again.
+ */
+f64
+hsi_tcp_drain_timer (clib_thread_index_t thread_index, f64 time_now)
 {
   hsi_tcp_drain_t *drain;
   session_handle_t *handles, *handle;
@@ -1303,15 +1219,10 @@ hsi_tcp_drain_update_time (f64 time_now, u8 thread_index)
 
   wrk = hsi_worker_get (thread_index);
   if (!pool_elts (wrk->tcp_drains))
-    {
-      hsi_tcp_drain_maybe_unregister_time_update (thread_index);
-      return;
-    }
+    return HSI_TIMER_NONE;
 
-  /* Acks and peer messages complete drains, so only check periodically for
-   * timeouts and transports tcp closed */
   if (time_now < wrk->tcp_drain_next_scan)
-    return;
+    return wrk->tcp_drain_next_scan;
   wrk->tcp_drain_next_scan = time_now + HSI_TCP_DRAIN_SCAN_INTERVAL;
 
   handles = wrk->tcp_drain_update_handles;
@@ -1342,7 +1253,7 @@ hsi_tcp_drain_update_time (f64 time_now, u8 thread_index)
 	hsi_tcp_drain_try_complete (s, tc, drain, time_now);
     }
 
-  hsi_tcp_drain_maybe_unregister_time_update (thread_index);
+  return pool_elts (wrk->tcp_drains) ? wrk->tcp_drain_next_scan : HSI_TIMER_NONE;
 }
 
 int
@@ -1554,8 +1465,9 @@ hsi_tcp_track_maybe_cleanup_pair (tcp_connection_t *tc, hsi_tcp_tracker_t *trk)
     hsi_tcp_track_arm_fin_wait (tc, trk);
 }
 
-void
-hsi_tcp_fin_wait_update_time (f64 time_now, u8 thread_index)
+/* Returns when the oldest fin-wait entry expires */
+f64
+hsi_tcp_fin_wait_timer (clib_thread_index_t thread_index, f64 time_now)
 {
   hsi_tcp_tracker_t *trk, *peer_trk;
   hsi_tcp_fin_wait_elt_t *elt, e;
@@ -1568,8 +1480,9 @@ hsi_tcp_fin_wait_update_time (f64 time_now, u8 thread_index)
   wrk = hsi_worker_get (thread_index);
   if (!hash_elts (wrk->tcp_fin_wait_by_session_conn))
     {
-      hsi_tcp_fin_wait_maybe_unregister_time_update (thread_index);
-      return;
+      /* All entries left were deleted */
+      clib_fifo_reset (wrk->tcp_fin_wait_fifo);
+      return HSI_TIMER_NONE;
     }
 
   while (clib_fifo_elts (wrk->tcp_fin_wait_fifo))
@@ -1643,7 +1556,10 @@ hsi_tcp_fin_wait_update_time (f64 time_now, u8 thread_index)
       hsi_tcp_track_schedule_cleanup_pair (tc, trk, HSI_TCP_CLEANUP_REASON_FIN);
     }
 
-  hsi_tcp_fin_wait_maybe_unregister_time_update (thread_index);
+  if (!clib_fifo_elts (wrk->tcp_fin_wait_fifo))
+    return HSI_TIMER_NONE;
+  elt = clib_fifo_head (wrk->tcp_fin_wait_fifo);
+  return elt->start + hsi_main.tcp_fin_wait_timeout;
 }
 
 static void
