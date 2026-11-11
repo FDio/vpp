@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 import os
 from vpp_qemu_utils import (
+    NetHelperInfraError,
     create_host_interface,
     delete_all_host_interfaces,
     create_namespace,
@@ -46,6 +47,8 @@ class TestHttpStaticVapi(VppAsfTestCase):
                 cls.if_history_name, cls.ns_name, "10.10.1.1/24"
             )
 
+        except NetHelperInfraError:
+            raise
         except Exception as e:
             cls.logger.warning(f"Unable to complete setup: {e}")
             raise unittest.SkipTest("Skipping tests due to setup failure.")
@@ -186,6 +189,8 @@ class TestHttpStaticCli(VppAsfTestCase):
                 cls.if_history_name, cls.ns_name, "10.10.1.1/24"
             )
 
+        except NetHelperInfraError:
+            raise
         except Exception as e:
             cls.logger.warning(f"Unable to complete setup: {e}")
             raise unittest.SkipTest("Skipping tests due to setup failure.")

@@ -2,16 +2,95 @@
 
 # Utility functions for QEMU tests ##
 
+import fcntl
 import subprocess
 import sys
 import os
+import threading
 import time
 import random
 import string
 import json
-from multiprocessing import Lock, Process
+from multiprocessing import Process
 
-lock = Lock()
+# Serialize namespace and host-interface operations across workers and
+# controllers that share the same host network environment.
+# All participants must lock the same underlying file; do not delete or
+# replace it while in use. Open the file separately on each acquisition.
+# Opening it once in the controller would give forked children shared flock
+# ownership, allowing them to enter the protected section simultaneously.
+# flock does not remain permanently acquired after its owner exits: the
+# kernel releases it when the last descriptor holding the ownership is closed.
+LOCK_PATH = "/tmp/vpp-qemu-net-helper.lock"
+
+# Bound acquisition below the default 600-second worker watchdog so a stuck
+# holder produces a specific lock-timeout error in waiting workers.
+LOCK_ACQUIRE_TIMEOUT = 300
+LOCK_POLL_INTERVAL = 0.05
+
+
+class NetHelperInfraError(Exception):
+    """Infrastructure failure in shared network helpers.
+
+    Callers must report this as a test error. It is not evidence that network
+    namespaces are unsupported, and must not be converted into a skip.
+    """
+
+
+class NetHelperLockTimeout(NetHelperInfraError):
+    """The shared network-helper lock was not acquired before its deadline."""
+
+
+class _NetHelperLock:
+    """Cross-process lock released by the kernel when the owner exits.
+
+    The file is opened independently on every acquisition so forked workers do
+    not share one open file description. Do not fork while holding this lock:
+    an inherited descriptor keeps the lock after this process closes its copy.
+    """
+
+    def __init__(self):
+        self._local = threading.local()
+
+    def __enter__(self):
+        fd = os.open(LOCK_PATH, os.O_CREAT | os.O_RDWR | os.O_CLOEXEC, 0o644)
+        deadline = time.monotonic() + LOCK_ACQUIRE_TIMEOUT
+        try:
+            while True:
+                try:
+                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except BlockingIOError:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise NetHelperLockTimeout(
+                            f"timed out after {LOCK_ACQUIRE_TIMEOUT}s waiting for "
+                            f"{LOCK_PATH} (pid {os.getpid()})"
+                        )
+                    time.sleep(min(LOCK_POLL_INTERVAL, remaining))
+        except Exception:
+            os.close(fd)
+            raise
+        fds = getattr(self._local, "fds", None)
+        if fds is None:
+            fds = []
+            self._local.fds = fds
+        fds.append(fd)
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        fds = getattr(self._local, "fds", None)
+        if not fds:
+            return False
+        fd = fds.pop()
+        try:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        finally:
+            os.close(fd)
+        return False
+
+
+lock = _NetHelperLock()
 
 
 def can_create_namespaces(namespace="vpp_chk_4212"):
