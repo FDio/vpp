@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "24cc8db0_8cfa7c61",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 371,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-11T17:18:07Z",
+      "side": 1,
+      "message": "Done in patch set 2: a NULL from rtnl_link_vlan_alloc() now returns an error through the common cleanup.",
+      "parentUuid": "9038174b_88d47f8d",
+      "revId": "bf8c273ecd381d65acc9ce3fe3c6d07025d3c248",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6834de7e_ed54dab7",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-11-11T16:30:32Z",
       "side": 1,
       "message": "The `if (link)` is not necessary. `rtnl_link_put()` can be passed a null pointer. It\u0027s a wrapper around `nl_object_put()`, which checks whether the pointer is null before doing anything.",
+      "revId": "bf8c273ecd381d65acc9ce3fe3c6d07025d3c248",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2287d924_62a4b341",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 386,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-11T17:18:07Z",
+      "side": 1,
+      "message": "Done in patch set 2: the check is removed, rtnl_link_put() is called unconditionally.",
+      "parentUuid": "6834de7e_ed54dab7",
       "revId": "bf8c273ecd381d65acc9ce3fe3c6d07025d3c248",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "084b2a96_1fc605c6",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 411,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-11T17:18:07Z",
+      "side": 1,
+      "message": "Done in patch set 2: a NULL from rtnl_link_alloc() now returns an error through the common cleanup.",
+      "parentUuid": "e11790ad_4de547ba",
+      "revId": "bf8c273ecd381d65acc9ce3fe3c6d07025d3c248",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ba1eee63_c7f5b150",
@@ -65,6 +119,24 @@
       "writtenOn": "2026-11-11T16:30:32Z",
       "side": 1,
       "message": "The `if (link)` is not necessary. `rtnl_link_put()` can be passed a null pointer. It\u0027s a wrapper around `nl_object_put()`, which checks whether the pointer is null before doing anything.",
+      "revId": "bf8c273ecd381d65acc9ce3fe3c6d07025d3c248",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "987716fd_3af04654",
+        "filename": "src/plugins/linux-cp/lcp_interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 418,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-11T17:18:07Z",
+      "side": 1,
+      "message": "Done in patch set 2: the check is removed, rtnl_link_put() is called unconditionally.",
+      "parentUuid": "ba1eee63_c7f5b150",
       "revId": "bf8c273ecd381d65acc9ce3fe3c6d07025d3c248",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
