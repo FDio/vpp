@@ -275,6 +275,7 @@ tcp_connection_cleanup (tcp_connection_t * tc)
 
       tcp_cc_cleanup (tc);
       vec_free (tc->snd_sacks);
+      tcp_postponed_acks_free (tc);
       vec_free (tc->rcv_opts.sacks);
       pool_free (tc->sack_sb.holes);
 
@@ -1432,7 +1433,11 @@ tcp_session_app_rx_evt (transport_connection_t *conn)
       return 0;
     }
 
-  tcp_send_ack (tc);
+  /* Postponed acks report older blocks, so they go first, see tcp_send_acks */
+  if (PREDICT_FALSE (tc->n_postponed_acks))
+    tcp_program_ack (tc);
+  else
+    tcp_send_ack (tc);
 
   return 0;
 }
@@ -1612,6 +1617,7 @@ tcp_main_enable (vlib_main_t * vm)
   tcp_worker_ctx_t *wrk;
   clib_error_t *error = 0;
   int thread;
+  u32 i;
 
   /* Already initialized */
   if (tm->wrk)
@@ -1658,6 +1664,17 @@ tcp_main_enable (vlib_main_t * vm)
       vec_reset_length (wrk->pending_resets);
       wrk->vm = vlib_get_main_by_index (thread);
       wrk->max_timers_per_loop = 10;
+
+      /* All postponed acks start in the free list */
+      wrk->postponed_acks_free = TCP_INVALID_POSTPONED_ACK;
+      if (tcp_cfg.postponed_acks_per_wrk)
+	{
+	  vec_validate (wrk->postponed_acks, tcp_cfg.postponed_acks_per_wrk - 1);
+	  for (i = 0; i < tcp_cfg.postponed_acks_per_wrk; i++)
+	    wrk->postponed_acks[i].next = i + 1;
+	  wrk->postponed_acks[tcp_cfg.postponed_acks_per_wrk - 1].next = TCP_INVALID_POSTPONED_ACK;
+	  wrk->postponed_acks_free = 0;
+	}
 
       if (thread > 0)
 	{
@@ -1746,6 +1763,8 @@ tcp_configuration_init (void)
   tcp_cfg.cc_algo = TCP_CC_CUBIC;
   tcp_cfg.rwnd_min_update_ack = 1;
   tcp_cfg.max_gso_size = TCP_MAX_GSO_SZ;
+  tcp_cfg.max_postponed_acks = TCP_MAX_POSTPONED_ACKS;
+  tcp_cfg.postponed_acks_per_wrk = TCP_POSTPONED_ACKS_PER_WRK;
 
   /* Time constants defined as timer tick (100us) multiples */
   tcp_cfg.closewait_time = 20000;	/* 2s */
