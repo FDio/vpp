@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cccfdb9a_ffb559c9",
+        "filename": "src/vnet/ip6-nd/ip6_nd_mirror_proxy.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 171,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-11-11T05:02:57Z",
+      "side": 1,
+      "message": "On the regular path we learn after icmp6-input checks hop_limit \u003d 255 and ip6-local checks the checksum, here we don\u0027t have those. Also, I think we check for NAs with unspecified source.",
+      "revId": "5464f154d00943deb08cd931beb1f52cbc24d30d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ce9f1580_8abc54de",
+        "filename": "src/vnet/ip6-nd/ip6_nd_mirror_proxy.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-11-11T05:02:57Z",
+      "side": 1,
+      "message": "Maybe use ip6_nd_addr_is_local from https://gerrit.fd.io/r/c/vpp/+/47102?",
+      "revId": "5464f154d00943deb08cd931beb1f52cbc24d30d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "bd2ce962_b28230c8",
+        "filename": "src/vnet/ip6-nd/ip6_nd_mirror_proxy.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-11-11T05:02:57Z",
+      "side": 1,
+      "message": "Trying to remember, do we want this?",
+      "revId": "5464f154d00943deb08cd931beb1f52cbc24d30d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
