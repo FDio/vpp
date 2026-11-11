@@ -89,6 +89,33 @@ cp_key (u8 *dst, u8 *copied_len, u8 max_size, const u8 *src)
   clib_memcpy (dst, src, *copied_len);
 }
 
+#define CP_KEY(dst_keys, name, src_sa)                                                             \
+  cp_key ((dst_keys)->name, &(dst_keys)->name##_len, sizeof ((dst_keys)->name), (src_sa)->name)
+
+static void
+cp_sa_keys (vl_api_ikev2_keys_t *k, const ikev2_sa_t *sa)
+{
+  CP_KEY (k, sk_d, sa);
+  CP_KEY (k, sk_ai, sa);
+  CP_KEY (k, sk_ar, sa);
+  CP_KEY (k, sk_ei, sa);
+  CP_KEY (k, sk_er, sa);
+  CP_KEY (k, sk_pi, sa);
+  CP_KEY (k, sk_pr, sa);
+}
+
+static void
+cp_child_sa_keys (vl_api_ikev2_keys_t *k, const ikev2_child_sa_t *child)
+{
+  CP_KEY (k, sk_ei, child);
+  CP_KEY (k, sk_er, child);
+  if (vec_len (child->sk_ai))
+    {
+      CP_KEY (k, sk_ai, child);
+      CP_KEY (k, sk_ar, child);
+    }
+}
+
 static void
 cp_auth (vl_api_ikev2_auth_t * vl_api_auth, ikev2_auth_t * auth)
 {
@@ -216,58 +243,105 @@ ikev2_state_encode (ikev2_state_t state)
   return UNKNOWN;
 }
 
+/*
+ * Shared across send_sa / send_sa_v2 / send_sa_v3: the four
+ * negotiated transforms, the derived keys and the per-SA stats
+ * live at identical offsets in vl_api_ikev2_sa / _v2 / _v3 (see
+ * ikev2_types.api). Pass pointers to the common fields.
+ */
 static void
-send_sa (ikev2_sa_t * sa, vl_api_ikev2_sa_dump_t * mp, u32 api_sa_index)
+cp_sa_proposals_keys_stats (ikev2_sa_t *sa, vl_api_ikev2_sa_transform_t *encr,
+			    vl_api_ikev2_sa_transform_t *prf, vl_api_ikev2_sa_transform_t *integ,
+			    vl_api_ikev2_sa_transform_t *dh, vl_api_ikev2_keys_t *keys,
+			    vl_api_ikev2_sa_stats_t *stats)
+{
+  ikev2_sa_transform_t *tr;
+
+  tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
+  if (tr)
+    cp_sa_transform (encr, tr);
+
+  tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_PRF);
+  if (tr)
+    cp_sa_transform (prf, tr);
+
+  tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_INTEG);
+  if (tr)
+    cp_sa_transform (integ, tr);
+
+  tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_DH);
+  if (tr)
+    cp_sa_transform (dh, tr);
+
+  cp_sa_keys (keys, sa);
+  ikev2_copy_stats (stats, &sa->stats);
+}
+
+/*
+ * Shared across send_sa / send_sa_v2 / send_sa_v3: the addresses and the
+ * two IKEv2 IDs. The SPIs stay at the call sites: they are integer members
+ * of packed API messages and must not be written through a pointer.
+ */
+static void
+cp_sa_endpoints (vl_api_address_t *iaddr, vl_api_address_t *raddr, vl_api_ikev2_id_t *i_id,
+		 vl_api_ikev2_id_t *r_id, ikev2_sa_t *sa)
+{
+  ip_address_encode2 (&sa->iaddr, iaddr);
+  ip_address_encode2 (&sa->raddr, raddr);
+  cp_id (i_id, &sa->i_id);
+  cp_id (r_id, &sa->r_id);
+}
+
+/* Shared across send_sa_v2 / send_sa_v3: bounded copy of the profile name */
+static void
+cp_sa_profile_name (u8 *dst, int dst_size, ikev2_profile_t *p)
+{
+  int size_data = dst_size - 1;
+  if (vec_len (p->name) < size_data)
+    size_data = vec_len (p->name);
+  clib_memcpy (dst, p->name, size_data);
+}
+
+/*
+ * Shared across send_child_sa / send_child_sa_v2: ENCR/INTEG/ESN
+ * transforms are copied from child->r_proposals.
+ */
+static void
+cp_child_sa_transforms (vl_api_ikev2_sa_transform_t *encr, vl_api_ikev2_sa_transform_t *integ,
+			vl_api_ikev2_sa_transform_t *esn, ikev2_child_sa_t *child)
+{
+  ikev2_sa_transform_t *tr;
+
+  tr = ikev2_sa_get_td_for_type (child->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
+  if (tr)
+    cp_sa_transform (encr, tr);
+
+  tr = ikev2_sa_get_td_for_type (child->r_proposals, IKEV2_TRANSFORM_TYPE_INTEG);
+  if (tr)
+    cp_sa_transform (integ, tr);
+
+  tr = ikev2_sa_get_td_for_type (child->r_proposals, IKEV2_TRANSFORM_TYPE_ESN);
+  if (tr)
+    cp_sa_transform (esn, tr);
+}
+
+static void
+send_sa (ikev2_sa_t *sa, vl_api_ikev2_sa_dump_t *mp, u32 api_sa_index)
 {
   vl_api_ikev2_sa_details_t *rmp = 0;
   int rv = 0;
-  ikev2_sa_transform_t *tr;
 
-  REPLY_MACRO2_ZERO (VL_API_IKEV2_SA_DETAILS,
-  {
+  REPLY_MACRO2_ZERO (VL_API_IKEV2_SA_DETAILS, {
     vl_api_ikev2_sa_t *rsa = &rmp->sa;
-    vl_api_ikev2_keys_t* k = &rsa->keys;
     rsa->profile_index = rsa->profile_index;
     rsa->sa_index = api_sa_index;
-    ip_address_encode2 (&sa->iaddr, &rsa->iaddr);
-    ip_address_encode2 (&sa->raddr, &rsa->raddr);
+
     rsa->ispi = sa->ispi;
     rsa->rspi = sa->rspi;
-    cp_id(&rsa->i_id, &sa->i_id);
-    cp_id(&rsa->r_id, &sa->r_id);
+    cp_sa_endpoints (&rsa->iaddr, &rsa->raddr, &rsa->i_id, &rsa->r_id, sa);
 
-    tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
-    if (tr)
-      cp_sa_transform (&rsa->encryption, tr);
-
-    tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_PRF);
-    if (tr)
-      cp_sa_transform (&rsa->prf, tr);
-
-    tr = ikev2_sa_get_td_for_type (sa->r_proposals,
-                                   IKEV2_TRANSFORM_TYPE_INTEG);
-    if (tr)
-      cp_sa_transform (&rsa->integrity, tr);
-
-    tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_DH);
-    if (tr)
-      cp_sa_transform (&rsa->dh, tr);
-
-    cp_key (k->sk_d, &k->sk_d_len, sizeof (k->sk_d), sa->sk_d);
-
-    cp_key (k->sk_ai, &k->sk_ai_len, sizeof (k->sk_ai), sa->sk_ai);
-
-    cp_key (k->sk_ar, &k->sk_ar_len, sizeof (k->sk_ar), sa->sk_ar);
-
-    cp_key (k->sk_ei, &k->sk_ei_len, sizeof (k->sk_ei), sa->sk_ei);
-
-    cp_key (k->sk_er, &k->sk_er_len, sizeof (k->sk_er), sa->sk_er);
-
-    cp_key (k->sk_pi, &k->sk_pi_len, sizeof (k->sk_pi), sa->sk_pi);
-
-    cp_key (k->sk_pr, &k->sk_pr_len, sizeof (k->sk_pr), sa->sk_pr);
-
-    ikev2_copy_stats (&rsa->stats, &sa->stats);
+    cp_sa_proposals_keys_stats (sa, &rsa->encryption, &rsa->prf, &rsa->integrity, &rsa->dh,
+				&rsa->keys, &rsa->stats);
 
     vl_api_ikev2_sa_t_endian (rsa, 1 /* to network */);
   });
@@ -292,61 +366,23 @@ send_sa_v2 (ikev2_sa_t *sa, vl_api_ikev2_sa_v2_dump_t *mp, u32 api_sa_index)
   ikev2_main_t *km = &ikev2_main;
   vl_api_ikev2_sa_v2_details_t *rmp = 0;
   int rv = 0;
-  ikev2_sa_transform_t *tr;
   ikev2_profile_t *p;
   p = pool_elt_at_index (km->profiles, sa->profile_index);
 
   REPLY_MACRO2_ZERO (VL_API_IKEV2_SA_V2_DETAILS, {
     vl_api_ikev2_sa_v2_t *rsa = &rmp->sa;
-    vl_api_ikev2_keys_t *k = &rsa->keys;
 
-    int size_data = sizeof (rsa->profile_name) - 1;
-    if (vec_len (p->name) < size_data)
-      size_data = vec_len (p->name);
-    clib_memcpy (rsa->profile_name, p->name, size_data);
-
+    cp_sa_profile_name (rsa->profile_name, sizeof (rsa->profile_name), p);
     rsa->state = ikev2_state_encode (sa->state);
 
     rsa->sa_index = api_sa_index;
-    ip_address_encode2 (&sa->iaddr, &rsa->iaddr);
-    ip_address_encode2 (&sa->raddr, &rsa->raddr);
+
     rsa->ispi = sa->ispi;
     rsa->rspi = sa->rspi;
-    cp_id (&rsa->i_id, &sa->i_id);
-    cp_id (&rsa->r_id, &sa->r_id);
+    cp_sa_endpoints (&rsa->iaddr, &rsa->raddr, &rsa->i_id, &rsa->r_id, sa);
 
-    tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
-    if (tr)
-      cp_sa_transform (&rsa->encryption, tr);
-
-    tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_PRF);
-    if (tr)
-      cp_sa_transform (&rsa->prf, tr);
-
-    tr =
-      ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_INTEG);
-    if (tr)
-      cp_sa_transform (&rsa->integrity, tr);
-
-    tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_DH);
-    if (tr)
-      cp_sa_transform (&rsa->dh, tr);
-
-    cp_key (k->sk_d, &k->sk_d_len, sizeof (k->sk_d), sa->sk_d);
-
-    cp_key (k->sk_ai, &k->sk_ai_len, sizeof (k->sk_ai), sa->sk_ai);
-
-    cp_key (k->sk_ar, &k->sk_ar_len, sizeof (k->sk_ar), sa->sk_ar);
-
-    cp_key (k->sk_ei, &k->sk_ei_len, sizeof (k->sk_ei), sa->sk_ei);
-
-    cp_key (k->sk_er, &k->sk_er_len, sizeof (k->sk_er), sa->sk_er);
-
-    cp_key (k->sk_pi, &k->sk_pi_len, sizeof (k->sk_pi), sa->sk_pi);
-
-    cp_key (k->sk_pr, &k->sk_pr_len, sizeof (k->sk_pr), sa->sk_pr);
-
-    ikev2_copy_stats (&rsa->stats, &sa->stats);
+    cp_sa_proposals_keys_stats (sa, &rsa->encryption, &rsa->prf, &rsa->integrity, &rsa->dh,
+				&rsa->keys, &rsa->stats);
 
     vl_api_ikev2_sa_v2_t_endian (rsa, 1 /* to network */);
   });
@@ -371,64 +407,26 @@ send_sa_v3 (ikev2_sa_t *sa, vl_api_ikev2_sa_v3_dump_t *mp, u32 api_sa_index)
   ikev2_main_t *km = &ikev2_main;
   vl_api_ikev2_sa_v3_details_t *rmp = 0;
   int rv = 0;
-  ikev2_sa_transform_t *tr;
   ikev2_profile_t *p;
   p = pool_elt_at_index (km->profiles, sa->profile_index);
   vlib_main_t *vm = vlib_get_main ();
 
   REPLY_MACRO2_ZERO (VL_API_IKEV2_SA_V3_DETAILS, {
     vl_api_ikev2_sa_v3_t *rsa = &rmp->sa;
-    vl_api_ikev2_keys_t *k = &rsa->keys;
 
-    int size_data = sizeof (rsa->profile_name) - 1;
-    if (vec_len (p->name) < size_data)
-      size_data = vec_len (p->name);
-    clib_memcpy (rsa->profile_name, p->name, size_data);
-
+    cp_sa_profile_name (rsa->profile_name, sizeof (rsa->profile_name), p);
     rsa->state = ikev2_state_encode (sa->state);
 
     rsa->uptime = vlib_time_now (vm) - sa->auth_timestamp;
 
     rsa->sa_index = api_sa_index;
-    ip_address_encode2 (&sa->iaddr, &rsa->iaddr);
-    ip_address_encode2 (&sa->raddr, &rsa->raddr);
+
     rsa->ispi = sa->ispi;
     rsa->rspi = sa->rspi;
-    cp_id (&rsa->i_id, &sa->i_id);
-    cp_id (&rsa->r_id, &sa->r_id);
+    cp_sa_endpoints (&rsa->iaddr, &rsa->raddr, &rsa->i_id, &rsa->r_id, sa);
 
-    tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
-    if (tr)
-      cp_sa_transform (&rsa->encryption, tr);
-
-    tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_PRF);
-    if (tr)
-      cp_sa_transform (&rsa->prf, tr);
-
-    tr =
-      ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_INTEG);
-    if (tr)
-      cp_sa_transform (&rsa->integrity, tr);
-
-    tr = ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_DH);
-    if (tr)
-      cp_sa_transform (&rsa->dh, tr);
-
-    cp_key (k->sk_d, &k->sk_d_len, sizeof (k->sk_d), sa->sk_d);
-
-    cp_key (k->sk_ai, &k->sk_ai_len, sizeof (k->sk_ai), sa->sk_ai);
-
-    cp_key (k->sk_ar, &k->sk_ar_len, sizeof (k->sk_ar), sa->sk_ar);
-
-    cp_key (k->sk_ei, &k->sk_ei_len, sizeof (k->sk_ei), sa->sk_ei);
-
-    cp_key (k->sk_er, &k->sk_er_len, sizeof (k->sk_er), sa->sk_er);
-
-    cp_key (k->sk_pi, &k->sk_pi_len, sizeof (k->sk_pi), sa->sk_pi);
-
-    cp_key (k->sk_pr, &k->sk_pr_len, sizeof (k->sk_pr), sa->sk_pr);
-
-    ikev2_copy_stats (&rsa->stats, &sa->stats);
+    cp_sa_proposals_keys_stats (sa, &rsa->encryption, &rsa->prf, &rsa->integrity, &rsa->dh,
+				&rsa->keys, &rsa->stats);
 
     vl_api_ikev2_sa_v3_t_endian (rsa, 1 /* to network */);
   });
@@ -454,7 +452,6 @@ send_child_sa (ikev2_child_sa_t * child,
 {
   vl_api_ikev2_child_sa_details_t *rmp = 0;
   int rv = 0;
-  ikev2_sa_transform_t *tr;
 
   REPLY_MACRO2_ZERO (VL_API_IKEV2_CHILD_SA_DETAILS,
   {
@@ -466,31 +463,10 @@ send_child_sa (ikev2_child_sa_t * child,
     rmp->child_sa.r_spi =
       child->r_proposals ? child->r_proposals[0].spi : 0;
 
-    tr = ikev2_sa_get_td_for_type (child->r_proposals,
-                                   IKEV2_TRANSFORM_TYPE_ENCR);
-    if (tr)
-      cp_sa_transform (&rmp->child_sa.encryption, tr);
+    cp_child_sa_transforms (&rmp->child_sa.encryption, &rmp->child_sa.integrity, &rmp->child_sa.esn,
+			    child);
 
-    tr = ikev2_sa_get_td_for_type (child->r_proposals,
-                                   IKEV2_TRANSFORM_TYPE_INTEG);
-    if (tr)
-      cp_sa_transform (&rmp->child_sa.integrity, tr);
-
-    tr = ikev2_sa_get_td_for_type (child->r_proposals,
-                                   IKEV2_TRANSFORM_TYPE_ESN);
-    if (tr)
-      cp_sa_transform (&rmp->child_sa.esn, tr);
-
-    cp_key (k->sk_ei, &k->sk_ei_len, sizeof (k->sk_ei), child->sk_ei);
-
-    cp_key (k->sk_er, &k->sk_er_len, sizeof (k->sk_er), child->sk_er);
-
-    if (vec_len (child->sk_ai))
-      {
-	cp_key (k->sk_ai, &k->sk_ai_len, sizeof (k->sk_ai), child->sk_ai);
-
-	cp_key (k->sk_ar, &k->sk_ar_len, sizeof (k->sk_ar), child->sk_ar);
-      }
+    cp_child_sa_keys (k, child);
 
     vl_api_ikev2_child_sa_t_endian (&rmp->child_sa, 1 /* to network */);
   });
@@ -522,7 +498,6 @@ send_child_sa_v2 (ikev2_child_sa_t *child, vl_api_ikev2_child_sa_v2_dump_t *mp,
 {
   vl_api_ikev2_child_sa_v2_details_t *rmp = 0;
   int rv = 0;
-  ikev2_sa_transform_t *tr;
   vlib_main_t *vm = vlib_get_main ();
 
   REPLY_MACRO2_ZERO (VL_API_IKEV2_CHILD_SA_V2_DETAILS, {
@@ -533,31 +508,10 @@ send_child_sa_v2 (ikev2_child_sa_t *child, vl_api_ikev2_child_sa_v2_dump_t *mp,
     rmp->child_sa.i_spi = child->i_proposals ? child->i_proposals[0].spi : 0;
     rmp->child_sa.r_spi = child->r_proposals ? child->r_proposals[0].spi : 0;
 
-    tr =
-      ikev2_sa_get_td_for_type (child->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
-    if (tr)
-      cp_sa_transform (&rmp->child_sa.encryption, tr);
+    cp_child_sa_transforms (&rmp->child_sa.encryption, &rmp->child_sa.integrity, &rmp->child_sa.esn,
+			    child);
 
-    tr = ikev2_sa_get_td_for_type (child->r_proposals,
-				   IKEV2_TRANSFORM_TYPE_INTEG);
-    if (tr)
-      cp_sa_transform (&rmp->child_sa.integrity, tr);
-
-    tr =
-      ikev2_sa_get_td_for_type (child->r_proposals, IKEV2_TRANSFORM_TYPE_ESN);
-    if (tr)
-      cp_sa_transform (&rmp->child_sa.esn, tr);
-
-    cp_key (k->sk_ei, &k->sk_ei_len, sizeof (k->sk_ei), child->sk_ei);
-
-    cp_key (k->sk_er, &k->sk_er_len, sizeof (k->sk_er), child->sk_er);
-
-    if (vec_len (child->sk_ai))
-      {
-	cp_key (k->sk_ai, &k->sk_ai_len, sizeof (k->sk_ai), child->sk_ai);
-
-	cp_key (k->sk_ar, &k->sk_ar_len, sizeof (k->sk_ar), child->sk_ar);
-      }
+    cp_child_sa_keys (k, child);
 
     vl_api_ikev2_child_sa_v2_t_endian (&rmp->child_sa, 1 /* to network */);
   });
