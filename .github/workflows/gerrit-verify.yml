@@ -61,8 +61,150 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  rate-limit-check:
+    name: Rate Limit Check
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      actions: read   # needed for gh run list
+      contents: read  # default, made explicit
+    steps:
+      - name: Enforce uploader rate limit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GERRIT_SSH_PRIVKEY: ${{ secrets.GERRIT_SSH_PRIVKEY }}
+          GERRIT_SSH_USER: ${{ vars.GERRIT_SSH_USER }}
+          GERRIT_HOST: ${{ vars.GERRIT_SERVER }}
+          GERRIT_SSH_PORT: "29418"
+          GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+          WORKFLOW: gerrit-verify.yml
+          RATE_LIMIT_5MIN_COUNT: "3"
+          RATE_LIMIT_5MIN_WINDOW: "300"
+          RATE_LIMIT_1H_COUNT: "6"
+          RATE_LIMIT_1H_WINDOW: "3600"
+          RATE_LIMIT_LOOKBACK_MINUTES: "70"
+          RATE_LIMIT_MAX_DELAY: "30"
+        run: |
+          set -euo pipefail
+
+          # Setup SSH key from secret (never echo it)
+          mkdir -p ~/.ssh
+          printf '%s\n' "$GERRIT_SSH_PRIVKEY" > ~/.ssh/gerrit_key
+          chmod 600 ~/.ssh/gerrit_key
+
+          # Query Gerrit with exponential backoff
+          # Result is returned only via stdout for capture; all status goes to stderr
+          gerrit_query() {
+            local change_number="$1"
+            local max_seconds=300
+            local delay=2
+            local elapsed=0
+            local attempt=1
+
+            while [ "$elapsed" -lt "$max_seconds" ]; do
+              echo "Gerrit query attempt $attempt for change $change_number (elapsed ${elapsed}s)..." >&2
+
+              local result
+              if result=$(ssh -i ~/.ssh/gerrit_key \
+                              -o StrictHostKeyChecking=no \
+                              -o UserKnownHostsFile=/dev/null \
+                              -o ConnectTimeout=10 \
+                              -p "$GERRIT_SSH_PORT" \
+                              "${GERRIT_SSH_USER}@${GERRIT_HOST}" \
+                              gerrit query --format=JSON --current-patch-set "$change_number" \
+                            2>/dev/null \
+                            | head -n 1 \
+                            | jq -r '.currentPatchSet.uploader.username // .owner.username // empty'); then
+                if [ -n "$result" ]; then
+                  echo "$result"
+                  return 0
+                fi
+              fi
+
+              # Exponential backoff, capped so we don't exceed remaining time
+              local sleep_for=$delay
+              local remaining=$((max_seconds - elapsed))
+              if [ "$sleep_for" -gt "$remaining" ]; then
+                sleep_for=$remaining
+              fi
+              if [ "$sleep_for" -le 0 ]; then
+                break
+              fi
+
+              echo "Query failed or empty, retrying in ${sleep_for}s..." >&2
+              sleep "$sleep_for"
+              elapsed=$((elapsed + sleep_for))
+              delay=$((delay * 2))
+              if [ "$delay" -gt "$RATE_LIMIT_MAX_DELAY" ]; then
+                delay=$RATE_LIMIT_MAX_DELAY
+              fi
+              attempt=$((attempt + 1))
+            done
+
+            echo "Gerrit query failed after ${elapsed}s" >&2
+            return 1
+          }
+
+          # Current uploader ? failure to resolve is a hard error
+          if ! UPLOADER=$(gerrit_query "$GERRIT_CHANGE_NUMBER"); then
+            echo "::error::Could not determine uploader for change $GERRIT_CHANGE_NUMBER after retries"
+            exit 1
+          fi
+
+          # Recent runs
+          RUNS=$(gh run list \
+            --workflow "$WORKFLOW" \
+            --limit 100 \
+            --json databaseId,createdAt,displayTitle \
+            --created ">$(date -u -d "${RATE_LIMIT_LOOKBACK_MINUTES} minutes ago" +%Y-%m-%dT%H:%M:%SZ)")
+
+          declare -A OWNER_CACHE
+          OWNER_CACHE["$GERRIT_CHANGE_NUMBER"]="$UPLOADER"
+
+          NOW=$(date -u +%s)
+          FIVE_MIN=$((NOW - RATE_LIMIT_5MIN_WINDOW))
+          ONE_HOUR=$((NOW - RATE_LIMIT_1H_WINDOW))
+          COUNT_5MIN=0
+          COUNT_1H=0
+
+          while IFS= read -r run; do
+            created=$(echo "$run" | jq -r '.createdAt')
+            created_epoch=$(date -u -d "$created" +%s 2>/dev/null || echo 0)
+            title=$(echo "$run" | jq -r '.displayTitle // ""')
+
+            # Extract change number from "gerrit-verify 12345/3"
+            run_change=$(echo "$title" | grep -oE '[0-9]+' | head -1 || true)
+            [ -z "$run_change" ] && continue
+
+            if [ -z "${OWNER_CACHE[$run_change]:-}" ]; then
+              if ! owner=$(gerrit_query "$run_change"); then
+                echo "::error::Could not determine uploader for change $run_change after retries"
+                exit 1
+              fi
+              OWNER_CACHE["$run_change"]="$owner"
+            fi
+
+            if [ "${OWNER_CACHE[$run_change]}" = "$UPLOADER" ]; then
+              if [ "$created_epoch" -ge "$ONE_HOUR" ]; then
+                COUNT_1H=$((COUNT_1H + 1))
+                if [ "$created_epoch" -ge "$FIVE_MIN" ]; then
+                  COUNT_5MIN=$((COUNT_5MIN + 1))
+                fi
+              fi
+            fi
+          done < <(echo "$RUNS" | jq -c '.[]')
+
+          echo "Runs by uploader ? 5min: $COUNT_5MIN (limit: ${RATE_LIMIT_5MIN_COUNT}) , 1h: $COUNT_1H (limit: ${RATE_LIMIT_1H_COUNT})"
+
+          if [ "$COUNT_5MIN" -ge "$RATE_LIMIT_5MIN_COUNT" ] || [ "$COUNT_1H" -ge "$RATE_LIMIT_1H_COUNT" ]; then
+            echo "::error::Rate limit exceeded for uploader (${COUNT_5MIN}/${RATE_LIMIT_5MIN_COUNT} in 5 min, ${COUNT_1H}/${RATE_LIMIT_1H_COUNT} in 1 h)"
+            exit 1
+          fi
+
   start-verify:
     name: Start Verify
+    needs:
+      - rate-limit-check
     runs-on: ubuntu-latest
     environment: production
     outputs:
@@ -126,6 +268,7 @@ jobs:
   verify-checkstyle:
     name: Checkstyle
     needs:
+      - rate-limit-check
       - start-verify
     uses: fdio/vpp/.github/workflows/vpp-verify-checkstyle.yml@25e2784d997d02529c84f308aadd62c98ed65ff0
     with:
@@ -147,6 +290,7 @@ jobs:
   verify-maketest:
     name: Maketest
     needs:
+      - rate-limit-check
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
@@ -167,6 +311,7 @@ jobs:
   verify-gcc:
     name: GCC
     needs:
+      - rate-limit-check
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
@@ -190,6 +335,7 @@ jobs:
   verify-csit-api:
     name: CSIT API
     needs:
+      - rate-limit-check
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
@@ -210,6 +356,7 @@ jobs:
   verify-arm-drivers:
     name: ARM Drivers
     needs:
+      - rate-limit-check
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
@@ -230,6 +377,7 @@ jobs:
   verify-hst:
     name: HST
     needs:
+      - rate-limit-check
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
@@ -250,6 +398,7 @@ jobs:
   detect-docs-changes:
     name: Detect Docs Changes
     needs:
+      - rate-limit-check
       - start-verify
       - verify-checkstyle
     runs-on:
@@ -312,6 +461,7 @@ jobs:
   verify-docs:
     name: Docs
     needs:
+      - rate-limit-check
       - start-verify
       - detect-docs-changes
       - verify-checkstyle
@@ -336,6 +486,7 @@ jobs:
     name: Vote
     if: ${{ always() }}
     needs:
+      - rate-limit-check
       - start-verify
       - detect-docs-changes
       - verify-checkstyle
