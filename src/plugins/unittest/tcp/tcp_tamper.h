@@ -32,6 +32,7 @@ typedef struct
   u8 seq_is_min;    /**< if set, match seq >= min_seq instead of seq == exact */
   u8 above_rp_in_recovery; /**< match only in recovery and seq >= snd_congestion */
   u8 data_only;		   /**< match only segments with nonzero TCP payload */
+  u8 pin_seq;		   /**< after the first drop, match only its seq */
   u32 seq;	    /**< exact host-order seq to match, or ~0 for any */
   u32 min_seq;	    /**< lower bound (host order) when seq_is_min is set */
   u32 conn_index;   /**< only match this connection (c_c_index), or ~0 for any */
@@ -70,6 +71,10 @@ tcp_tamper_rule_t *tcp_tamper_drop_seq (tcp_connection_t *tc, u32 seq, u32 n_dro
 
 /* Drop the first n_drop segments at or above min_seq (host order). */
 tcp_tamper_rule_t *tcp_tamper_drop_from_seq (tcp_connection_t *tc, u32 min_seq, u32 n_drop);
+
+/* Drop the first data segment at or above min_seq (host order), wherever segments start, and from
+ * then on match only its seq, e.g., retransmits. */
+tcp_tamper_rule_t *tcp_tamper_drop_first_from_seq (tcp_connection_t *tc, u32 min_seq);
 
 /* Drop the first n_drop segments sent during recovery at or above the current
  * recovery point. */
