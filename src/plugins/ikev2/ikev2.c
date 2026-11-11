@@ -2165,6 +2165,14 @@ ikev2_sa_auth (ikev2_sa_t *sa, vlib_main_t *vm)
 	      vec_free (sa->r_auth.data);
 	      sa->r_auth.data = ikev2_calc_sign (km->pkey, authmsg);
 	      sa->r_auth.method = IKEV2_AUTH_METHOD_RSA_SIG;
+	      if (!sa->r_auth.data)
+		{
+		  log_err ("signing the AUTH payload failed! ispi %lx", sa->ispi);
+		  sa->state = IKEV2_STATE_AUTH_FAILED;
+		  vec_free (authmsg);
+		  vec_free (key_pad);
+		  return;
+		}
 	    }
 	  vec_free (authmsg);
 
@@ -2227,6 +2235,11 @@ ikev2_sa_auth_init (ikev2_sa_t * sa)
       vec_free (sa->i_auth.data);
       sa->i_auth.data = ikev2_calc_sign (km->pkey, authmsg);
       sa->i_auth.method = IKEV2_AUTH_METHOD_RSA_SIG;
+      if (!sa->i_auth.data)
+	{
+	  log_err ("signing the AUTH payload failed! ispi %lx", sa->ispi);
+	  sa->state = IKEV2_STATE_AUTH_FAILED;
+	}
     }
   vec_free (authmsg);
 }
@@ -3610,20 +3623,24 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 		      if (clib_atomic_bool_cmp_and_swap (&sai->init_response_received, 0, 1))
 			{
 			  ikev2_complete_sa_data (sa0, sai);
-			  if (sa0->dh_group == IKEV2_TRANSFORM_DH_TYPE_NONE)
+			  if (sa0->dh_group != IKEV2_TRANSFORM_DH_TYPE_NONE)
+			    {
+			      ikev2_calc_keys (sa0);
+			      ikev2_sa_auth_init (sa0);
+			    }
+			  if (sa0->dh_group == IKEV2_TRANSFORM_DH_TYPE_NONE ||
+			      sa0->state == IKEV2_STATE_AUTH_FAILED)
 			    {
 			      /* ikev2_complete_dh() rejected the peer KE
-				 or marked the SA as unsupported — abort
-				 before deriving IKE keys from an invalid
-				 shared secret. */
+				 or marked the SA as unsupported, or our
+				 AUTH payload could not be computed — abort
+				 instead of sending an IKE_AUTH request. */
 			      ikev2_del_sa_init (sa0->ispi);
 			      ikev2_sa_free_all_vec (sa0);
 			      sa0->state = IKEV2_STATE_UNKNOWN;
 			      slen = ~0;
 			      goto dispatch0;
 			    }
-			  ikev2_calc_keys (sa0);
-			  ikev2_sa_auth_init (sa0);
 			  ike0->flags = IKEV2_HDR_FLAG_INITIATOR;
 			  ike0->msgid = clib_net_to_host_u32 (sai->last_init_msg_id);
 			  sa0->last_init_msg_id = sai->last_init_msg_id + 1;
