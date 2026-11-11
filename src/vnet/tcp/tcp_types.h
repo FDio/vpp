@@ -146,6 +146,9 @@ typedef enum tcp_connection_flag_
 #define TCP_SND_SACKS_KEPT	    1
 #define TCP_SND_SACKS_DSACK_BLK	    (TCP_SND_SACKS_KEPT + TCP_OPTS_MAX_SACK_BLOCKS)
 #define TCP_SND_SACKS_LEN	    (TCP_SND_SACKS_DSACK_BLK + 1)
+#define TCP_MAX_POSTPONED_ACKS	    4	 /**< Max postponed acks per connection */
+#define TCP_POSTPONED_ACKS_PER_WRK  1024 /**< Postponed acks per worker */
+#define TCP_INVALID_POSTPONED_ACK   ((u16) ~0)
 #define TCP_INVALID_SACK_HOLE_INDEX ((u32)~0)
 #define TCP_MAX_SACK_REORDER 300
 #define TCP_SEQ_HALF_SPACE	    (1ULL << 31) /**< Half the 32-bit TCP sequence space */
@@ -165,6 +168,17 @@ typedef struct tcp_rxt_range_
   u32 end;    /**< End sequence number */
   u8 is_lost; /**< Range is considered lost */
 } tcp_rxt_range_t;
+
+/** The sack blocks of an ack postponed until the session layer schedules the connection. If
+ * is_dsack, the first is a dsack. Each is in a connection's circular list or the worker's free
+ * list */
+typedef struct
+{
+  sack_block_t blks[TCP_OPTS_MAX_SACK_BLOCKS];
+  u16 next;
+  u8 n_blks;
+  u8 is_dsack;
+} tcp_postponed_ack_t;
 
 typedef struct _sack_scoreboard_hole
 {
@@ -436,8 +450,8 @@ typedef struct _tcp_connection
 
   /* Options */
   u8 snd_opts_len;		/**< Tx options len */
-  u8 snd_sack_changes;		/**< Kept blocks changed, i.e. with arrivals, since an ack reported
-				  them are among this many most recent ones */
+  u8 snd_sack_changes;		/**< Changed blocks, those with arrivals since an ack last reported
+				  them, are all among this many newest kept ones. 0 once reported */
   u8 rcv_wscale;		/**< Window scale to advertise to peer */
   u8 snd_wscale;		/**< Window scale to use when sending */
   u32 tsval_recent;		/**< Last timestamp received */
@@ -449,6 +463,8 @@ typedef struct _tcp_connection
 
   sack_block_t *snd_sacks;	/**< Pending dsack and kept sack blocks, see TCP_SND_SACKS_LEN */
   u8 n_snd_sacks;		/**< Kept sack blocks, see tcp_snd_kept_sacks */
+  u8 n_postponed_acks;		/**< Postponed acks, see tcp_postpone_ack */
+  u16 postponed_acks_tail;	/**< Last postponed ack, it links to the first */
   sack_scoreboard_t sack_sb;	/**< SACK "scoreboard" that tracks holes */
 
   u16 rcv_dupacks;	/**< Number of recent DUPACKs received */

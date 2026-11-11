@@ -1131,9 +1131,9 @@ tcp_session_enqueue_ooo (tcp_connection_t *tc, vlib_buffer_t *b, u16 data_len)
       sack_block_t blk = { .start = tc->rcv_nxt + args.seg_offset };
 
       blk.end = blk.start + args.seg_len;
-      /* If blk would push out a changed block, ack the kept blocks first. The ack leaves with
-       * the frame's others */
-      if (PREDICT_FALSE (tcp_sack_add_pushes_unreported (tc, blk)))
+      /* If blk would push out a changed block, postpone an ack with the kept blocks, or send it
+       * now if there is no room */
+      if (PREDICT_FALSE (tcp_sack_add_pushes_unreported (tc, blk)) && !tcp_postpone_ack (tc, 0))
 	tcp_send_sack_flush (tc);
       tcp_sack_add (tc, blk);
       if (PREDICT_FALSE (args.dup_len))
