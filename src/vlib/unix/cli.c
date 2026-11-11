@@ -907,6 +907,47 @@ unix_cli_pager_redraw (unix_cli_file_t * cf, clib_file_t * uf)
   unix_cli_pager_prompt (cf, uf);
 }
 
+/** @brief Length of the first line of a string, for the pager.
+ * A line ends after a newline, or when it has @c width columns. ANSI escape
+ * sequences take no columns and are never split, so coloured output wraps
+ * where it looks like it should.
+ *
+ * @param p     The string.
+ * @param len   Length of the string.
+ * @param width Terminal width.
+ * @return      Number of bytes of the line, including the newline if there is one.
+ */
+static word
+unix_cli_pager_line_length (u8 *p, word len, u32 width)
+{
+  word i = 0;
+  u32 col = 0;
+
+  while (i < len)
+    {
+      if (p[i] == '\n')
+	return i + 1;
+
+      if (p[i] == 0x1b && i + 1 < len && p[i + 1] == '[')
+	{
+	  /* parameters and intermediates, then the final byte */
+	  for (i += 2; i < len && (p[i] < 0x40 || p[i] > 0x7e); i++)
+	    ;
+	  if (i < len)
+	    i++;
+	  continue;
+	}
+
+      if (col == width)
+	break;
+
+      col++;
+      i++;
+    }
+
+  return i;
+}
+
 /** @brief Process and add a line to the pager index.
  * In normal operation this function will take the given character string
  * found in @c line and with length @c len_or_index and iterates the over the
@@ -961,11 +1002,7 @@ unix_cli_pager_add_line (unix_cli_file_t * cf, u8 * line, word len_or_index)
   while (i < len)
     {
       /* Find the next line, or run to terminal width, or run to EOL */
-      int l = len - i;
-      j = unix_vlib_findchr ((u8) '\n', p, l < width ? l : width);
-
-      if (j < l && p[j] == '\n')	/* incl \n */
-	j++;
+      j = unix_cli_pager_line_length (p, len - i, width);
 
       /* Add the line to the index */
       k = vec_len (cf->pager_index);
