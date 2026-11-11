@@ -1044,9 +1044,10 @@ tcp_rcv_fin (tcp_worker_ctx_t * wrk, tcp_connection_t * tc, vlib_buffer_t * b,
   *error = TCP_ERROR_FIN_RCVD;
 }
 
-/** Enqueue data for delivery to application */
+/** Enqueue data for delivery to application. If old_dup, the segment started below rcv_nxt,
+ * so its first duplicate was already reported */
 static int
-tcp_session_enqueue_data (tcp_connection_t *tc, vlib_buffer_t *b, u16 data_len)
+tcp_session_enqueue_data (tcp_connection_t *tc, vlib_buffer_t *b, u16 data_len, u8 old_dup)
 {
   int written, error = TCP_ERROR_ENQUEUED;
   svm_fifo_enq_args_t args = {};
@@ -1092,7 +1093,8 @@ tcp_session_enqueue_data (tcp_connection_t *tc, vlib_buffer_t *b, u16 data_len)
       if (tcp_sack_has_blocks (tc))
 	tcp_sack_delivered (tc);
 
-      if (args.dup_len)
+      /* Report only the first duplicate of the segment (RFC 2883) */
+      if (args.dup_len && !old_dup)
 	{
 	  /* The data started at rcv_nxt - written */
 	  u32 start = tc->rcv_nxt - written + args.dup_offset;
@@ -1136,10 +1138,18 @@ tcp_session_enqueue_ooo (tcp_connection_t *tc, vlib_buffer_t *b, u16 data_len)
       sack_block_t blk = { .start = tc->rcv_nxt + args.seg_offset };
 
       blk.end = blk.start + args.seg_len;
-      /* If blk would push out a changed block, ack the kept blocks first. The ack leaves with
-       * the frame's others */
-      if (PREDICT_FALSE (tcp_sack_add_pushes_unreported (tc, blk)))
+      /* If blk would push out a changed block, postpone an ack with the kept blocks, or send it
+       * now if there is no room */
+      if (PREDICT_FALSE (tcp_sack_add_pushes_unreported (tc, blk)) && !tcp_postpone_ack (tc, 0))
 	tcp_send_sack_flush (tc);
+
+      /* Reports kept from earlier arrivals still name the blocks of then */
+      if (PREDICT_FALSE (tc->n_postponed_acks))
+	tcp_postponed_acks_merge (tc, blk);
+
+      if (PREDICT_FALSE (tcp_dsack_is_pending (tc)))
+	tcp_dsack_merge (tc, blk);
+
       tcp_sack_add (tc, blk);
       if (PREDICT_FALSE (args.dup_len))
 	tcp_dsack_report_ooo (tc, tc->rcv_nxt + args.dup_offset,
@@ -1201,6 +1211,7 @@ tcp_segment_rcv (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 		 vlib_buffer_t * b)
 {
   u32 error, n_bytes_to_drop, n_data_bytes;
+  u8 old_dup = 0;
 
   vlib_buffer_advance (b, vnet_buffer (b)->tcp.data_offset);
   n_data_bytes = vnet_buffer (b)->tcp.data_len;
@@ -1232,6 +1243,7 @@ tcp_segment_rcv (tcp_worker_ctx_t * wrk, tcp_connection_t * tc,
 	  /* Report the duplicate prefix right away */
 	  if (tcp_dsack_report_old (tc, b))
 	    tcp_program_dupack (tc);
+	  old_dup = 1;
 
 	  /* Chop off the bytes in the past and see if what is left
 	   * can be enqueued in order */
@@ -1259,7 +1271,7 @@ in_order:
 
   /* In order data, enqueue. Fifo figures out by itself if any out-of-order
    * segments can be enqueued after fifo tail offset changes. */
-  error = tcp_session_enqueue_data (tc, b, n_data_bytes);
+  error = tcp_session_enqueue_data (tc, b, n_data_bytes, old_dup);
   tcp_program_ack (tc);
 
 done:

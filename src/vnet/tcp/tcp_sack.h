@@ -120,6 +120,10 @@ __clib_export void tcp_dsack_report_ooo (tcp_connection_t *tc, u32 start, u32 en
 					 sack_block_t blk);
 /** Ack the pending dsack now, see tcp_dsack_report */
 void tcp_send_dsack_flush (tcp_connection_t *tc);
+/** Keep that ack's blocks for the connection's dupacks instead, 0 if there is no room */
+u8 tcp_postpone_ack (tcp_connection_t *tc, u8 is_dsack);
+/** blk replaces the blocks it grew from or joined in the postponed acks */
+void tcp_postponed_acks_merge (tcp_connection_t *tc, sack_block_t blk);
 /** Drop the blocks in-order data delivered */
 void tcp_sack_delivered (tcp_connection_t *tc);
 /** Fill blks with the pending dsack, the block that holds it, if any, and the other blocks. A
@@ -216,6 +220,17 @@ static inline u8
 tcp_sack_block_contains (sack_block_t a, sack_block_t b)
 {
   return seq_leq (a.start, b.start) && seq_leq (b.end, a.end);
+}
+
+/** blk, the block of an out-of-order arrival, replaces the block that held the pending dsack if
+ * it grew from or joined it */
+static inline void
+tcp_dsack_merge (tcp_connection_t *tc, sack_block_t blk)
+{
+  sack_block_t *dsack_blk = tcp_snd_dsack_blk (tc);
+
+  if (dsack_blk->start != dsack_blk->end && tcp_sack_block_contains (blk, *dsack_blk))
+    *dsack_blk = blk;
 }
 
 void tcp_sack_add_slow (tcp_connection_t *tc, sack_block_t blk);
