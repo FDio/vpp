@@ -3,20 +3,29 @@
 # Utility functions for QEMU tests ##
 
 import subprocess
-import sys
 import os
 import time
 import random
 import string
 import json
-from multiprocessing import Lock, Process
+from filelock import BaseFileLock, FileLock
+from multiprocessing import Process
 
-lock = Lock()
+
+def net_helper_lock() -> BaseFileLock:
+    """Create an independent lock for each host network critical section."""
+    from config import config
+
+    return FileLock(
+        config.net_helper_lock_path,
+        timeout=config.net_helper_lock_timeout,
+        fallback_to_soft=False,
+    )
 
 
 def can_create_namespaces(namespace="vpp_chk_4212"):
     """Check if the environment allows creating the namespaces"""
-    with lock:
+    with net_helper_lock():
         try:
             result = subprocess.run(
                 ["ip", "netns", "add", namespace], capture_output=True
@@ -25,14 +34,14 @@ def can_create_namespaces(namespace="vpp_chk_4212"):
                 return False
             subprocess.run(["ip", "netns", "del", namespace], capture_output=True)
             return True
-        except Exception:
+        except FileNotFoundError:
             return False
 
 
 def create_namespace(history_file, ns=None, prefix="vpp_ns"):
     """Create one or more namespaces."""
 
-    with lock:
+    with net_helper_lock():
         namespaces = []
         retries = 5
 
@@ -92,7 +101,7 @@ def add_namespace_route(ns, prefix, gw_ip=None, dev=None, route_type=None, check
     dev -- Output Device
     route_type -- Route type (e.g. "blackhole", "unreachable", "prohibit")
     """
-    with lock:
+    with net_helper_lock():
         try:
             cmd = ["ip", "netns", "exec", ns, "ip", "route", "add"]
             if route_type is not None:
@@ -132,7 +141,7 @@ def add_namespace_multipath_route(ns, prefix, *next_hops):
     prefix -- NETWORK/MASK or "default"
     next_hops - a list of NextHop objects
     """
-    with lock:
+    with net_helper_lock():
         try:
             cmd = ["ip", "netns", "exec", ns, "ip", "route", "add", prefix]
             for next_hop in next_hops:
@@ -146,7 +155,7 @@ def add_namespace_multipath_route(ns, prefix, *next_hops):
 
 def del_namespace_route(ns, prefix, check=True):
     """Delete a route from a namespace."""
-    with lock:
+    with net_helper_lock():
         try:
             cmd = ["ip", "netns", "exec", ns, "ip", "route", "del", prefix]
             subprocess.run(cmd, capture_output=True, check=check)
@@ -158,7 +167,7 @@ def del_namespace_route(ns, prefix, check=True):
 
 def add_namespace_address(ns, ifname, prefix):
     """Add an IP address to an interface in a namespace."""
-    with lock:
+    with net_helper_lock():
         try:
             cmd = [
                 "ip",
@@ -182,7 +191,7 @@ def add_namespace_address(ns, ifname, prefix):
 
 def del_namespace_address(ns, ifname, prefix):
     """Delete an IP address from an interface in a namespace."""
-    with lock:
+    with net_helper_lock():
         try:
             cmd = [
                 "ip",
@@ -206,7 +215,7 @@ def del_namespace_address(ns, ifname, prefix):
 
 def add_namespace_neighbor(ns, ifname, ip_addr, mac_addr):
     """Add a static neighbor (ARP/NDP) entry in a namespace."""
-    with lock:
+    with net_helper_lock():
         try:
             cmd = [
                 "ip",
@@ -234,7 +243,7 @@ def add_namespace_neighbor(ns, ifname, ip_addr, mac_addr):
 
 def del_namespace_neighbor(ns, ifname, ip_addr):
     """Delete a neighbor (ARP/NDP) entry from a namespace."""
-    with lock:
+    with net_helper_lock():
         try:
             cmd = [
                 "ip",
@@ -259,7 +268,7 @@ def del_namespace_neighbor(ns, ifname, ip_addr):
 def delete_all_host_interfaces(history_file):
     """Delete all host interfaces whose names have been added to the history file."""
 
-    with lock:
+    with net_helper_lock():
         if os.path.exists(history_file):
             with open(history_file, "r") as if_file:
                 for line in if_file:
@@ -312,7 +321,7 @@ def create_host_interface(
     vpp_if_name -- name of the veth interface on the VPP side
     host_if_name -- name of the veth interface on the host side
     """
-    with lock:
+    with net_helper_lock():
         retries = 5
 
         for attempt in range(retries):
@@ -417,7 +426,7 @@ def set_interface_mtu(namespace, interface, mtu, logger):
     args = ["ip", "link", "set", "mtu", str(mtu), "dev", interface]
     if namespace:
         args = ["ip", "netns", "exec", namespace] + args
-    with lock:
+    with net_helper_lock():
         retries = 3
         for attempt in range(retries):
             result = subprocess.run(args, capture_output=True)
@@ -436,7 +445,7 @@ def set_interface_up(namespace, interface):
     args = ["ip", "link", "set", "up", "dev", interface]
     if namespace:
         args = ["ip", "netns", "exec", namespace] + args
-    with lock:
+    with net_helper_lock():
         result = subprocess.run(args, capture_output=True)
         if result.returncode != 0:
             raise Exception(f"Failed to set interface {interface} up state.")
@@ -447,7 +456,7 @@ def set_interface_down(namespace, interface):
     args = ["ip", "link", "set", "down", "dev", interface]
     if namespace:
         args = ["ip", "netns", "exec", namespace] + args
-    with lock:
+    with net_helper_lock():
         result = subprocess.run(args, capture_output=True)
         if result.returncode != 0:
             raise Exception(f"Failed to set interface {interface} down state.")
@@ -458,7 +467,7 @@ def enable_interface_gso(namespace, interface):
     args = ["ethtool", "-K", interface, "rx", "on", "tx", "on"]
     if namespace:
         args = ["ip", "netns", "exec", namespace] + args
-    with lock:
+    with net_helper_lock():
         result = subprocess.run(args, capture_output=True)
         if result.returncode != 0:
             raise Exception(
@@ -471,7 +480,7 @@ def disable_interface_gso(namespace, interface):
     args = ["ethtool", "-K", interface, "rx", "off", "tx", "off"]
     if namespace:
         args = ["ip", "netns", "exec", namespace] + args
-    with lock:
+    with net_helper_lock():
         result = subprocess.run(args, capture_output=True)
         if result.returncode != 0:
             raise Exception(
@@ -481,7 +490,7 @@ def disable_interface_gso(namespace, interface):
 
 def delete_all_namespaces(history_file):
     """Delete all namespaces whose names have been added to the history file."""
-    with lock:
+    with net_helper_lock():
         if os.path.exists(history_file):
             with open(history_file, "r") as ns_file:
                 for line in ns_file:
@@ -528,7 +537,7 @@ def _delete_namespace(ns):
 
 def list_namespace(ns):
     """List the IP address of a namespace."""
-    with lock:
+    with net_helper_lock():
         result = subprocess.run(
             ["ip", "netns", "exec", ns, "ip", "addr"], capture_output=True
         )
@@ -541,7 +550,7 @@ def list_namespace(ns):
 def interface_exists(ns, ifname):
     """Check if an interface exists in a namespace."""
     args = ["ip", "netns", "exec", ns, "ip", "link", "show", "dev", ifname]
-    with lock:
+    with net_helper_lock():
         result = subprocess.run(args, capture_output=True)
         return result.returncode == 0
 
@@ -549,7 +558,7 @@ def interface_exists(ns, ifname):
 def get_interface_info(ns, ifname):
     """Get interface link info as a dict from 'ip -j link show' output."""
     args = ["ip", "netns", "exec", ns, "ip", "-j", "link", "show", "dev", ifname]
-    with lock:
+    with net_helper_lock():
         result = subprocess.run(args, capture_output=True, text=True)
         if result.returncode != 0:
             raise Exception(
@@ -568,7 +577,7 @@ def get_interface_addresses(ns, ifname, family=None):
     family can be "inet" (IPv4) or "inet6" (IPv6) to filter, or None for all.
     """
     args = ["ip", "netns", "exec", ns, "ip", "-j", "addr", "show", "dev", ifname]
-    with lock:
+    with net_helper_lock():
         result = subprocess.run(args, capture_output=True, text=True)
         if result.returncode != 0:
             raise Exception(

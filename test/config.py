@@ -116,6 +116,22 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--net-helper-lock-path",
+    default="/tmp/vpp-qemu-net-helper.lock",
+    type=os.path.abspath,
+    help="lock file for namespace and host-interface operations; "
+    "test runners sharing host network resources must use the same file "
+    "(default: %(default)s)",
+)
+
+parser.add_argument(
+    "--net-helper-lock-timeout",
+    type=positive_float_or_default(None),
+    help="network-helper lock acquisition timeout in seconds "
+    "(default: half of --timeout); must be less than --timeout",
+)
+
+parser.add_argument(
     "--failed-dir",
     action="store",
     type=directory,
@@ -471,6 +487,11 @@ parser.add_argument(
 )
 
 config = parser.parse_args()
+
+if config.net_helper_lock_timeout is None:
+    config.net_helper_lock_timeout = config.timeout / 2
+if not 0 < config.net_helper_lock_timeout < config.timeout:
+    parser.error("--net-helper-lock-timeout must be positive and less than --timeout")
 
 ws = config.vpp_ws_dir
 br = f"{ws}/build-root"
