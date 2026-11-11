@@ -97,7 +97,7 @@ hsi_udp_tracked_action_t hsi_udp_drain_cache_buffer_remote (vlib_main_t *vm, vli
 							    void *ip_hdr, udp_header_t *udp_hdr,
 							    u8 is_ip4);
 f64 hsi_udp_drain_timer (clib_thread_index_t thread_index, f64 now);
-f64 hsi_udp_idle_timer (clib_thread_index_t thread_index, f64 now);
+void hsi_udp_idle_expired (clib_thread_index_t thread_index, u32 *indices, f64 now);
 void hsi_udp_idle_timeout_update (void);
 
 static_always_inline hsi_udp_tracked_action_t
