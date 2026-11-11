@@ -100,6 +100,9 @@ vnet_dev_port_eth_flag_change (vnet_main_t *vnm, vnet_hw_interface_t *hw,
   if (!di->is_primary_if)
     return ~0;
 
+  if (!p->attr.caps.mac_filter)
+    return 0;
+
   switch (flags)
     {
     case ETHERNET_INTERFACE_FLAG_DEFAULT_L3:
@@ -175,6 +178,9 @@ vnet_dev_add_del_mac_address (vnet_hw_interface_t *hi, const u8 *address,
 
   if (!di->is_primary_if)
     return vnet_dev_port_err (vm, p, VNET_DEV_ERR_NOT_PRIMARY_INTERFACE, "");
+
+  if (!p->attr.caps.mac_filter)
+    return 0;
 
   vnet_dev_set_hw_addr_eth_mac (&req.addr, address);
 

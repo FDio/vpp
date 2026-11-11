@@ -301,6 +301,7 @@ oct_init_nix (vlib_main_t *vm, vnet_dev_t *dev)
         .max_supported_rx_frame_size = roc_nix_max_pkt_len (cd->nix) + VNET_DEV_ETH_FCS_LEN,
 	.caps = {
 	  .rss = 1,
+	  .mac_filter = 1,
 	},
 	.speed_caps = oct_nix_get_speed_capa (dev),
 	.rx_offloads = {
