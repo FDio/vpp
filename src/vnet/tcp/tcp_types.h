@@ -426,7 +426,7 @@ typedef struct _tcp_connection
 
   /** Receive sequence variables RFC793 */
   u32 rcv_nxt;		/**< next sequence number expected */
-  u32 rcv_wnd;		/**< receive window we expect */
+  u32 rcv_wnd;		/**< receive window advertised, not rounded to scale */
 
   u32 rcv_las;		/**< rcv_nxt at last ack sent/rcv_wnd update */
 

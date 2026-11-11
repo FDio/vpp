@@ -5994,8 +5994,10 @@ tcp_test_tamper_queued_data_loss_mode (vlib_main_t *vm, u8 bt_mode)
 
   /* Drop a mid-stream data segment. */
   to_before = tcp_e2e_teardown_timeouts ();
+  /* Segments may not start at mss multiples if the peer offers windows
+   * smaller than an mss */
   drop_seq = client_tc->snd_una + 3 * mss;
-  seg_rule = tcp_tamper_drop_seq (client_tc, drop_seq, 1);
+  seg_rule = tcp_tamper_drop_first_from_seq (client_tc, drop_seq);
   tcp_tamper_enable (client_tc);
 
   vec_validate (data, total_bytes - 1);
@@ -8110,6 +8112,182 @@ cleanup:
   return rv;
 }
 
+/* With window scaling, the receiver may advertise a window that ends before
+ * a right edge it already advertised. Fill the server's rx fifo so that, after
+ * the client's next segment, the free space rounds down below an mss, and drop
+ * the client's segment after that. The client's acks for server data carry its
+ * snd_nxt, which was in window for an earlier ack, so the server must accept
+ * them, as per RFC7323 sec. 2.4. */
+static int
+tcp_test_tamper_rcv_wnd_retract (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "rcv_wnd",
+    .client_addr = 0x28282801,
+    .server_addr = 0x29292901,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2275,
+    .client_port = 0, /* ephemeral */
+    .secret = 2274,
+    .rx_fifo_size = 64 << 10,
+    .tx_fifo_size = 64 << 10,
+  };
+  const u32 srv_bytes = 100;
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc, *server_tc;
+  tcp_tamper_rule_t *seg_rule;
+  session_t *client_s, *server_s;
+  u32 g, mss, smss, wnd, promised, lo, hi, fill, last_len, una, srv_una, total, tries, max_iters;
+  u32 drained = 0;
+  u8 *data = 0;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "rcv_wnd: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "rcv_wnd: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  server_tc = tcp_connection_get (server_s->connection_index, server_s->thread_index);
+
+  /* Free space in [mss, 2 * g) rounds down to g < mss and is not offered */
+  g = 1 << server_tc->rcv_wscale;
+  mss = server_tc->rcv_opts.mss;
+  smss = client_tc->snd_mss;
+  if (!TCP_TEST_I ((g < mss && mss < 2 * g), "rcv_wnd: wscale %u granularity fits mss %u",
+		   server_tc->rcv_wscale, mss))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Leave enough space for the server to advertise wnd and, after the client's
+   * full segment, to have mss + (2 * g - mss) / 2 bytes free */
+  fill = params.rx_fifo_size - (mss + (2 * g - mss) / 2 + smss);
+  wnd = round_down_pow2 (params.rx_fifo_size - fill, g);
+  /* What's left of wnd after the full segment, if the server keeps its edge,
+   * advertised rounded down. Size the last segment to end past that, within
+   * what's left of wnd and what the client sends in one burst */
+  promised = wnd - smss;
+  lo = round_down_pow2 (promised, g);
+  hi = clib_min (promised, wnd - wnd % smss - smss);
+  if (!TCP_TEST_I ((lo < hi), "rcv_wnd: rounding leaves a gap (%u, %u]", lo, hi))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  last_len = lo + (hi - lo) / 2;
+  total = fill + smss + last_len;
+
+  /* Keep the pacer from splitting the client's bursts */
+  client_tc->connection.flags &= ~TRANSPORT_CONNECTION_F_IS_TX_PACED;
+
+  vec_validate (data, total - 1);
+  for (i = 0; i < (int) total; i++)
+    data[i] = i & 0xff;
+
+  /* The server does not read, so its window shrinks to wnd */
+  error = svm_fifo_enqueue (client_s->tx_fifo, fill, data);
+  if (!TCP_TEST_I ((error == (int) fill), "rcv_wnd: client queued %u bytes", fill))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  for (tries = 0; tries < 1000; tries++)
+    {
+      tcp_e2e_pump (vm, 1e-3);
+      if (client_tc->snd_una - client_tc->iss - 1 == fill && client_tc->snd_wnd == wnd)
+	break;
+    }
+  if (!TCP_TEST_I ((client_tc->snd_una - client_tc->iss - 1 == fill && client_tc->snd_wnd == wnd),
+		   "rcv_wnd: %u bytes acked, server offers %u (offers %u)", fill, wnd,
+		   client_tc->snd_wnd))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Send a full segment and a short one, and drop the short one */
+  una = client_tc->snd_una;
+  seg_rule = tcp_tamper_drop_seq (client_tc, una + smss, 1);
+  tcp_tamper_enable (client_tc);
+  error = svm_fifo_enqueue (client_s->tx_fifo, smss + last_len, data + fill);
+  if (!TCP_TEST_I ((error == (int) (smss + last_len)), "rcv_wnd: client queued %u bytes",
+		   smss + last_len))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  for (tries = 0; tries < 100; tries++)
+    {
+      tcp_e2e_pump (vm, 1e-3);
+      if (client_tc->snd_una == una + smss && client_tc->snd_nxt == una + smss + last_len)
+	break;
+    }
+  if (!TCP_TEST_I ((seg_rule->n_dropped == 1 && client_tc->snd_una == una + smss &&
+		    client_tc->snd_nxt == una + smss + last_len),
+		   "rcv_wnd: full segment acked, short one dropped (dropped %u)",
+		   seg_rule->n_dropped))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* One server segment, so the client acks it once. Its seq is the client's
+   * snd_nxt, past the server's rcv_nxt by more than the server now offers */
+  srv_una = server_tc->snd_una;
+  error = svm_fifo_enqueue (server_s->tx_fifo, srv_bytes, data);
+  if (!TCP_TEST_I ((error == (int) srv_bytes), "rcv_wnd: server queued %u bytes", srv_bytes))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  session_program_tx_io_evt (server_s->handle, SESSION_IO_EVT_TX);
+  /* Well before the client's retransmit timer resends the short segment */
+  for (tries = 0; tries < 20; tries++)
+    {
+      tcp_e2e_pump (vm, 1e-3);
+      if (server_tc->snd_una == srv_una + srv_bytes)
+	break;
+    }
+  if (!TCP_TEST_I (
+	(server_tc->snd_una == srv_una + srv_bytes && client_tc->snd_nxt == una + smss + last_len),
+	"rcv_wnd: client ack within an earlier window accepted (acked %u of %u)",
+	server_tc->snd_una - srv_una, srv_bytes))
+    rv = 1;
+
+  /* Let the client resend the short segment and deliver everything */
+  max_iters = tcp_e2e_rxt_wait_iters (client_tc, 10e-3);
+  for (tries = 0; drained < total && tries < max_iters; tries++)
+    {
+      drained += session_test_drain_rx_fifo (server_s);
+      if (drained >= total)
+	break;
+      tcp_e2e_pump (vm, 10e-3);
+    }
+  if (!TCP_TEST_I ((drained == total), "rcv_wnd: all %u bytes delivered (got %u)", total, drained))
+    rv = 1;
+
+cleanup:
+  tcp_tamper_reset ();
+  vec_free (data);
+  if (!tcp_e2e_teardown (vm, ctx))
+    rv = 1;
+  return rv;
+}
+
 static int
 tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -8137,6 +8315,7 @@ tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
     { "dsack-partial", tcp_test_tamper_dsack_partial },
     { "dupack-cwnd", tcp_test_tamper_dupack_cwnd },
     { "nosack-cwnd", tcp_test_tamper_nosack_cwnd },
+    { "rcv-wnd-retract", tcp_test_tamper_rcv_wnd_retract },
   };
   int res = 0, i;
 
