@@ -323,6 +323,16 @@ ifneq ($(TMP_DIR),)
 ARG22=--tmp-dir=$(TMP_DIR)
 endif
 
+ARG23=
+ifneq ($(NET_HELPER_LOCK_PATH),)
+ARG23=--net-helper-lock-path="$(NET_HELPER_LOCK_PATH)"
+endif
+
+ARG24=
+ifneq ($(NET_HELPER_LOCK_TIMEOUT),)
+ARG24=--net-helper-lock-timeout=$(NET_HELPER_LOCK_TIMEOUT)
+endif
+
 EXC_PLUGINS_ARG=
 ifneq ($(VPP_EXCLUDED_PLUGINS),)
 # convert the comma-separated list into N invocations of the argument to exclude a plugin
@@ -331,7 +341,7 @@ endif
 
 
 
-EXTRA_ARGS=$(ARG0) $(ARG1) $(ARG2) $(ARG3) $(ARG4) $(ARG5) $(ARG6) $(ARG7) $(ARG8) $(ARG9) $(ARG10) $(ARG11) $(ARG12) $(ARG13) $(ARG14) $(ARG15) $(ARG16) $(ARG17) $(ARG18) $(ARG19) $(ARG20) $(ARG21) $(ARG22)
+EXTRA_ARGS=$(ARG0) $(ARG1) $(ARG2) $(ARG3) $(ARG4) $(ARG5) $(ARG6) $(ARG7) $(ARG8) $(ARG9) $(ARG10) $(ARG11) $(ARG12) $(ARG13) $(ARG14) $(ARG15) $(ARG16) $(ARG17) $(ARG18) $(ARG19) $(ARG20) $(ARG21) $(ARG22) $(ARG23) $(ARG24)
 
 RUN_TESTS_ARGS=--failed-dir=$(FAILED_DIR) --verbose=$(V) --jobs=$(TEST_JOBS) --filter=$(TEST) --skip-filter=$(SKIP_TESTS) --retries=$(RETRIES) --venv-dir=$(VENV_PATH) --vpp-ws-dir=$(WS_ROOT) --vpp-tag=$(TAG) --rnd-seed=$(RND_SEED) --vpp-worker-count="$(VPP_WORKER_COUNT)" --keep-pcaps $(PLUGIN_PATH_ARGS) $(EXC_PLUGINS_ARG) $(TEST_PLUGIN_PATH_ARGS) $(EXTRA_ARGS)
 RUN_SCRIPT_ARGS=--python-opts=$(PYTHON_OPTS)
@@ -608,6 +618,14 @@ help:
 	@echo "       fail test suite if any single test takes longer"
 	@echo "       than <timeout> (in seconds) to finish"
 	@echo "       (default: 600)"
+	@echo ""
+	@echo "   NET_HELPER_LOCK_PATH=<path>"
+	@echo "       shared namespace and host-interface lock file"
+	@echo "       (default: /tmp/vpp-qemu-net-helper.lock)"
+	@echo ""
+	@echo "   NET_HELPER_LOCK_TIMEOUT=<seconds>"
+	@echo "       positive acquisition timeout, shorter than TIMEOUT"
+	@echo "       (default: half of TIMEOUT)"
 	@echo ""
 	@echo "   RETRIES=<n>"
 	@echo "       retry failed tests <n> times"
