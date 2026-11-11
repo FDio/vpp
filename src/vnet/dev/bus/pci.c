@@ -322,6 +322,7 @@ vnet_dev_pci_intx_add_handler (vlib_main_t *vm, vnet_dev_t *dev,
       return VNET_DEV_ERR_BUS;
     }
 
+  vnet_dev_get_bus_pci_device_data (dev)->intx_handler = fn;
   return VNET_DEV_OK;
 }
 
