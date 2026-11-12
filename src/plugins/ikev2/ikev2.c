@@ -5046,14 +5046,6 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
 			    nat_detection_sha1);
   vec_free (nat_detection_sha1);
 
-  u8 *sig_hash_algo = vec_new (u8, 8);
-  u64 tmpsig = clib_host_to_net_u64 (0x0001000200030004);
-  clib_memcpy_fast (sig_hash_algo, &tmpsig, sizeof (tmpsig));
-  ikev2_payload_add_notify (chain,
-			    IKEV2_NOTIFY_MSG_SIGNATURE_HASH_ALGORITHMS,
-			    sig_hash_algo);
-  vec_free (sig_hash_algo);
-
   bi0 = ikev2_get_new_ike_header_buff (vm, &b0);
   if (!bi0)
     {
