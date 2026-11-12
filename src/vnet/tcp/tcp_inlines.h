@@ -437,6 +437,18 @@ tcp_is_descheduled (tcp_connection_t * tc)
   return (transport_connection_is_descheduled (&tc->connection) ? 1 : 0);
 }
 
+/**
+ * Set persist timer if the peer's window is too small to send into and nothing is in flight. When
+ * it expires, it sends what fits. See tcp_round_snd_space
+ */
+always_inline void
+tcp_persist_timer_set_small_wnd (tcp_connection_t *tc)
+{
+  if (tc->snd_wnd && tc->snd_wnd < tc->snd_mss && tc->snd_una == tc->snd_nxt &&
+      !tcp_timer_is_active (tc, TCP_TIMER_PERSIST))
+    tcp_persist_timer_set (&tcp_get_worker (tc->c_thread_index)->timer_wheel, tc);
+}
+
 /* Compute TCP checksum in software when offloading is disabled for a connection */
 static inline u16
 ip6_tcp_compute_checksum_custom (vlib_main_t *vm, vlib_buffer_t *p0, ip46_address_t *src,

@@ -611,20 +611,23 @@ tcp_update_snd_wnd (tcp_connection_t * tc, u32 seq, u32 ack, u32 snd_wnd)
 	}
       else
 	{
-	  if (PREDICT_FALSE (tcp_timer_is_active (tc, TCP_TIMER_PERSIST)))
+	  /* Keep the persist timer deadline while the window is too small to send into, unless
+	   * backed off probing a zero window */
+	  if (PREDICT_FALSE (tcp_timer_is_active (tc, TCP_TIMER_PERSIST)) &&
+	      (tc->snd_wnd >= tc->snd_mss || tc->rto_boff))
 	    {
 	      tcp_worker_ctx_t *wrk = tcp_get_worker (tc->c_thread_index);
 	      tcp_persist_timer_reset (&wrk->timer_wheel, tc);
 	    }
-
-	  if (PREDICT_FALSE (tcp_is_descheduled (tc)))
-	    tcp_reschedule (tc);
 
 	  if (PREDICT_FALSE (!tcp_in_recovery (tc) && tc->rto_boff > 0))
 	    {
 	      tc->rto_boff = 0;
 	      tcp_update_rto (tc);
 	    }
+
+	  if (PREDICT_FALSE (tcp_is_descheduled (tc)))
+	    tcp_reschedule (tc);
 	}
     }
 }

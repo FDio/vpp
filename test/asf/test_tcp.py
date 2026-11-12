@@ -163,6 +163,7 @@ class TestTCPUnitTests(VppAsfTestCase):
             "tamper dupack-cwnd",
             "tamper nosack-cwnd",
             "tamper rcv-wnd-retract",
+            "tamper snd-small-wnd",
         )
 
         for test_case in test_cases:
