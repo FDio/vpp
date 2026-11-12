@@ -193,11 +193,11 @@ install-kube-deps: .deps.ok
 install-deps:
 	@rm -f .deps.ok
 	@if [ -d "/usr/local/go" ]; then \
-        echo "Go is already installed. You may have to update it manually if version < 1.27.3"; \
+        echo "Go is already installed. You may have to update it manually if version < 1.27.4"; \
 		go version; \
     else \
-        echo "Installing Go 1.27.3"; \
-		wget -t 2 https://go.dev/dl/go1.27.3.linux-$(ARCH).tar.gz -O /tmp/go1.27.3.linux-$(ARCH).tar.gz && sudo tar -C /usr/local -xzf /tmp/go1.27.3.linux-$(ARCH).tar.gz; \
+        echo "Installing Go 1.27.4"; \
+		wget -t 2 https://go.dev/dl/go1.27.4.linux-$(ARCH).tar.gz -O /tmp/go1.27.4.linux-$(ARCH).tar.gz && sudo tar -C /usr/local -xzf /tmp/go1.27.4.linux-$(ARCH).tar.gz; \
 		echo "Go installed successfully. Add it to your PATH by running:"; \
         echo "echo 'export PATH=/usr/local/go/bin:\$$PATH' >> ~/.bashrc && source ~/.bashrc"; \
 	fi
