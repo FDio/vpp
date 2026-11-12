@@ -495,37 +495,37 @@ u8x16_xor3 (u8x16 a, u8x16 b, u8x16 c)
 static_always_inline u8x16
 u8x16_load_partial (u8 *data, uword n)
 {
-  u8x16 r = {};
 #if defined(CLIB_HAVE_VEC128_MASK_LOAD_STORE)
   return u8x16_mask_load_zero (data, pow2_mask (n));
-#endif
+#else
+  /* Two loads that overlap: the head element starts at data and the tail element
+   * ends at data + n. The tail is shifted right by the bytes it shares with the
+   * head, which leaves the bytes from the end of the head up to data + n, zero
+   * extended. When n is the element size the whole tail is shared and the shift
+   * count would equal the element width, which C leaves undefined, so that length
+   * gets zero. */
   if (n > 7)
     {
-      u64x2 r;
-      r[1] = *(u64u *) (data + n - 8);
-      r >>= (16 - n) * 8;
-      r[0] = *(u64u *) data;
-      return (u8x16) r;
+      u64 head = *(u64u *) data;
+      u64 tail = n > 8 ? *(u64u *) (data + n - 8) >> ((16 - n) * 8) : 0;
+      return (u8x16) (u64x2) { head, tail };
     }
   else if (n > 3)
     {
-      u32x4 r = {};
-      r[1] = *(u32u *) (data + n - 4);
-      r >>= (8 - n) * 8;
-      r[0] = *(u32u *) data;
-      return (u8x16) r;
+      u32 head = *(u32u *) data;
+      u32 tail = n > 4 ? *(u32u *) (data + n - 4) >> ((8 - n) * 8) : 0;
+      return (u8x16) (u32x4) { head, tail };
     }
   else if (n > 1)
     {
-      u16x8 r = {};
-      r[1] = *(u16u *) (data + n - 2);
-      r >>= (4 - n) * 8;
-      r[0] = *(u16u *) data;
-      return (u8x16) r;
+      u16 head = *(u16u *) data;
+      u16 tail = n > 2 ? (u16) (*(u16u *) (data + n - 2) >> ((4 - n) * 8)) : 0;
+      return (u8x16) (u16x8) { head, tail };
     }
   else if (n > 0)
-    r[0] = *data;
-  return r;
+    return (u8x16){ *data };
+  return (u8x16) {};
+#endif
 }
 
 static_always_inline void
