@@ -192,6 +192,7 @@ fill_cksum_offload (vlib_buffer_t *b, u8 *l4_hdr_sz, u8 is_ip)
     {
       ip4_header_t *ip4 = (ip4_header_t *) (b->data + l2hdr_sz);
       vnet_buffer (b)->l4_hdr_offset = l2hdr_sz + ip4_header_bytes (ip4);
+      oflags |= VNET_BUFFER_OFFLOAD_F_IP_CKSUM;
       b->flags |= (VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
 		   VNET_BUFFER_F_L3_HDR_OFFSET_VALID |
 		   VNET_BUFFER_F_L4_HDR_OFFSET_VALID);
