@@ -557,6 +557,10 @@ tcp_handle_postponed_dequeues (tcp_worker_ctx_t * wrk)
        * otherwise update. */
       tcp_retransmit_timer_update (&wrk->timer_wheel, tc);
 
+      /* Not rescheduled if the window is too small to send into */
+      if (PREDICT_FALSE (tcp_is_descheduled (tc)))
+	tcp_persist_timer_set_small_wnd (tc);
+
       /* Update pacer based on our new cwnd estimate */
       tcp_connection_tx_pacer_update (tc);
 
@@ -625,6 +629,10 @@ tcp_update_snd_wnd (tcp_connection_t * tc, u32 seq, u32 ack, u32 snd_wnd)
 	      tc->rto_boff = 0;
 	      tcp_update_rto (tc);
 	    }
+
+	  /* Not rescheduled if the window is too small to send into */
+	  if (PREDICT_FALSE (tcp_is_descheduled (tc)))
+	    tcp_persist_timer_set_small_wnd (tc);
 	}
     }
 }
