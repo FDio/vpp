@@ -2311,7 +2311,7 @@ test_crypto_async_case (vlib_main_t *vm, crypto_test_main_t *tm,
       log_err (0, "%s %s %U-%U %s: fail-engine-err %U", engine_name, r->name,
 	       format_crypto_op_type_short, op_type, format_vnet_crypto_alg, r->alg,
 	       is_chained ? "chained" : "simple", format_uword_bitmap,
-	       result.frame->engine_error_bitmap);
+	       result.frame->engine_error_bitmap, ARRAY_LEN (result.frame->engine_error_bitmap));
       *test_result = CRYPTO_TEST_RESULT_ERROR;
       goto done;
     }
@@ -2321,7 +2321,7 @@ test_crypto_async_case (vlib_main_t *vm, crypto_test_main_t *tm,
       log_err (0, "%s %s %U-%U %s: fail-bad-hmac %U", engine_name, r->name,
 	       format_crypto_op_type_short, op_type, format_vnet_crypto_alg, r->alg,
 	       is_chained ? "chained" : "simple", format_uword_bitmap,
-	       result.frame->bad_hmac_bitmap);
+	       result.frame->bad_hmac_bitmap, ARRAY_LEN (result.frame->bad_hmac_bitmap));
       *test_result = CRYPTO_TEST_RESULT_FAIL;
       goto done;
     }
