@@ -1119,11 +1119,33 @@ tcp_session_cal_goal_size (tcp_connection_t * tc)
 }
 
 always_inline u32
+tcp_unsent_bytes (tcp_connection_t *tc)
+{
+  u32 n_bytes = transport_max_tx_dequeue (&tc->connection), flight = tc->snd_nxt - tc->snd_una;
+  return n_bytes > flight ? n_bytes - flight : 0;
+}
+
+always_inline u32
 tcp_round_snd_space (tcp_connection_t * tc, u32 snd_space)
 {
   if (PREDICT_FALSE (tc->snd_wnd < tc->snd_mss))
     {
-      return tc->snd_wnd <= snd_space ? tc->snd_wnd : 0;
+      if (!tc->snd_wnd || tc->snd_wnd > snd_space)
+	return 0;
+      /* Sender SWS avoidance, as per RFC9293 sec. 3.8.6.2.1: fill a window smaller than an mss
+       * only if it is at least half of the max window offered or all unsent data fits. If not,
+       * nothing is in flight, so set the persist timer, which sends what fits */
+      if (tc->snd_wnd < tc->snd_wnd_max / 2 && tcp_unsent_bytes (tc) > tc->snd_wnd)
+	{
+	  if (!tcp_timer_is_active (tc, TCP_TIMER_PERSIST))
+	    tcp_persist_timer_set (&tcp_get_worker (tc->c_thread_index)->timer_wheel, tc);
+	  return 0;
+	}
+      /* Sending, so stop a persist timer set while the window was too small to send into, or
+       * zero. Once data is in flight, the retransmit timer covers the connection */
+      if (PREDICT_FALSE (tcp_timer_is_active (tc, TCP_TIMER_PERSIST)))
+	tcp_persist_timer_reset (&tcp_get_worker (tc->c_thread_index)->timer_wheel, tc);
+      return tc->snd_wnd;
     }
 
   /* If not snd_wnd constrained and we can't write at least a segment,
