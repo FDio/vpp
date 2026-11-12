@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f1268d12_ab0d0001",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-12T09:47:57Z",
+      "side": 1,
+      "message": "- Fetch at most 500 recent GitHub verification workflow runs. These may include multiple runs for one change. Filter them locally:\n  - Past hour: relevant for CI admission quotas.\n  - Up to six hours: older runs of the same change are retained to check CI admission inheritance.\n- Query Gerrit for the change owner, which may differ from whoever uploaded the patchset.\n- Inspect that owner’s historical CI admission outcomes.\n- Apply the per-owner rolling limits of 3 new CI admissions/5 minutes and 5/hour (configurable), unless an eligible unfinished CI admission can be reused.\n\nA shared 150-second metadata request budget covers GitHub workflow run listing, Gerrit owner lookup, and historical job inspection.",
+      "revId": "dc1455bd95a14c3e8ca58d134622ebc91ceb330e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
