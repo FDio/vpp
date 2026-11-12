@@ -1,0 +1,174 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "50be4e4a_ce0fb7bd",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-12T14:25:33Z",
+      "side": 1,
+      "message": "It\u0027d be probably easier to just use filelock, which implements exactly what you\u0027re trying to implement here in a cross-platform way.",
+      "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9fec4a46_845aea63",
+        "filename": "test/asf/test_http_static.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-12T14:25:33Z",
+      "side": 1,
+      "message": "The test abuses \"except Exception\" for skip purposes. Instead of ironing over it, I\u0027d first fix the tests to not use bare Exception as a catch-all. Then we don\u0027t need this confusing code blocks.",
+      "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "43158bbc_f031eaab",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-12T14:25:33Z",
+      "side": 1,
+      "message": "This blob of text describing the general mechanism of operation should be a documentation string sitting next to the lock class - it describes the reason why the lock class exists and how it works. Also there is no reason to describe the existing (kernel) API unless we are using it in a surprising or hard to grasp way. The part where you describe how flock works is unneeded.",
+      "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b0749f74_6226182b",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-12T14:25:33Z",
+      "side": 1,
+      "message": "We have config.py for values like this. Most folks won\u0027t want to tune this, but some might. The value chosen is a good default. Parameter description is then the perfect place to describe the purpose of the file path.",
+      "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a5b41c42_7d73d1d0",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-12T14:25:33Z",
+      "side": 1,
+      "message": "This comment is not a very good comment. It names an invariant, which is true at the moment. But at the same time it encodes a statement about another file\u0027s default value. If that changes, then this either gets missed or it needs to be updated. Furthermore, if somebody runs the framework with a timeout of 100, the invariant breaks silently.\n\nI\u0027d make this a runtime parameter the same way as the lock path, and I\u0027d add a startup assert (lock-acq-timeout \u003c test-timeout).",
+      "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "898a8862_a0fb53ce",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-12T14:25:33Z",
+      "side": 1,
+      "message": "This doesn\u0027t need to be a separate constant. Just put 0.05 directly in the class.",
+      "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d72a02f3_ff21913b",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-12T14:25:33Z",
+      "side": 1,
+      "message": "So this sounds like instruction for AI, but generally it\u0027s just noise. The caller knows what to do with the exception, maybe they have a way of dealing with it and thus the \"must report\" is not a fair request for them?\n\nI know why your AI put the \"must not be converted into a skip\" here, but as I commented in the test file, the cause should be fixed there, not as a comment here. The moment the tests are fixed, this comment becomes a puzzling artifact for any future readers, who\u0027ll ponder \"who would ever convert an exception like this into a skip???\".",
+      "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "570a702e_41596d0a",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-12T14:25:33Z",
+      "side": 1,
+      "message": "O_CLOEXEC is the default since 3.4 iirc. No need to specify it.",
+      "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "80f03811_437f3d7e",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-12T14:25:33Z",
+      "side": 1,
+      "message": "if I\u0027m reading this convoluted try-within-try right, the only place that can actually raise is the raise NetHelperLockTimeout(...) on L66. \n\nHow about this?\n\n```\nwhile time.monotonic() \u003c deadline:\n    try:\n        fcntl.flock(...)\n        break\n    except BlockingIOError:\n        time.sleep(.05)    \nelse:\n    os.close(fd)\n    raise NetHelperLockTimeout(\n       f\"timed out after {LOCK_ACQUIRE_TIMEOUT}s waiting for \"\n       f\"{LOCK_PATH} (pid {os.getpid()})\"\n```",
+      "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "44b1fe9c_99327b59",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-12T14:25:33Z",
+      "side": 1,
+      "message": "So I\u0027m looking at this and think it\u0027s misleading. It\u0027s a thread-local variable and to add to it means the flock must have already succeeded on a previous __enter__. But because flock will block on second lock of the same file through a different fd, it will never get here, it\u0027ll raise BlockingIOError on L63.",
+      "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
