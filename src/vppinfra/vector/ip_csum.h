@@ -57,14 +57,14 @@ static_always_inline void
 clib_ip_csum_inline (clib_ip_csum_t *c, u8 *dst, u8 *src, u16 count,
 		     int is_copy)
 {
-  if (c->odd)
+  if (c->odd && count)
     {
       c->odd = 0;
       c->sum += (u16) src[0] << 8;
       count--;
-      src++;
       if (is_copy)
 	dst++[0] = src[0];
+      src++;
     }
 
 #if defined(CLIB_HAVE_VEC512)
@@ -108,7 +108,7 @@ clib_ip_csum_inline (clib_ip_csum_t *c, u8 *dst, u8 *src, u16 count,
 	{
 	  u32x16u *d = (u32x16u *) dst;
 	  d[0] = s[0];
-	  dst += 512;
+	  dst += 64;
 	}
     }
 
@@ -120,7 +120,7 @@ clib_ip_csum_inline (clib_ip_csum_t *c, u8 *dst, u8 *src, u16 count,
       sum8 += clib_ip_csum_cvt_and_add_16 (v);
       c->odd = count & 1;
       if (is_copy)
-	u32x16_mask_store (v, dst, mask);
+	u8x64_mask_store ((u8x64) v, dst, mask);
     }
   c->sum += clib_ip_csum_hadd_8 (sum8);
   return;
@@ -180,7 +180,7 @@ clib_ip_csum_inline (clib_ip_csum_t *c, u8 *dst, u8 *src, u16 count,
       sum4 += clib_ip_csum_cvt_and_add_8 (v);
       c->odd = count & 1;
       if (is_copy)
-	u32x8_mask_store (v, dst, mask);
+	u8x32_mask_store ((u8x32) v, dst, mask);
     }
   c->sum += clib_ip_csum_hadd_4 (sum4);
   return;
@@ -235,26 +235,26 @@ clib_ip_csum_inline (clib_ip_csum_t *c, u8 *dst, u8 *src, u16 count,
 #else
   while (count >= 4)
     {
-      u32 v = *((u32 *) src);
+      u32 v = *((u32u *) src);
       c->sum += v;
       count -= 4;
       src += 4;
       if (is_copy)
 	{
-	  *(u32 *) dst = v;
+	  *(u32u *) dst = v;
 	  dst += 4;
 	}
     }
 #endif
   while (count >= 2)
     {
-      u16 v = *((u16 *) src);
+      u16 v = *((u16u *) src);
       c->sum += v;
       count -= 2;
       src += 2;
       if (is_copy)
 	{
-	  *(u16 *) dst = v;
+	  *(u16u *) dst = v;
 	  dst += 2;
 	}
     }
@@ -311,17 +311,17 @@ clib_ip_csum (u8 *src, u16 count)
   if (COMPILE_TIME_CONST (count) && count == 12)
     {
       for (int i = 0; i < 3; i++)
-	c.sum += ((u32 *) src)[i];
+	c.sum += ((u32u *) src)[i];
     }
   else if (COMPILE_TIME_CONST (count) && count == 20)
     {
       for (int i = 0; i < 5; i++)
-	c.sum += ((u32 *) src)[i];
+	c.sum += ((u32u *) src)[i];
     }
   else if (COMPILE_TIME_CONST (count) && count == 40)
     {
       for (int i = 0; i < 10; i++)
-	c.sum += ((u32 *) src)[i];
+	c.sum += ((u32u *) src)[i];
     }
   else
     clib_ip_csum_inline (&c, 0, src, count, 0);
