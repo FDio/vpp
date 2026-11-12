@@ -847,9 +847,9 @@ dispatch_node (vlib_main_t *vm, vlib_node_runtime_t *node,
       ASSERT (n->type == type);
     }
 
-  if (attr.can_be_disabled == 0 && node->state == VLIB_NODE_STATE_DISABLED)
+  if (node->state == VLIB_NODE_STATE_DISABLED)
     {
-      ASSERT (0); /* disabled node should not be dispatched */
+      ASSERT (attr.can_be_disabled);
       return last_time_stamp;
     }
 
