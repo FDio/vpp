@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fa997bdf_38b6694c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3360
+      },
+      "writtenOn": "2026-11-12T05:19:10Z",
+      "side": 1,
+      "message": "We see VPP IPSec tunnel segfault every couple days without this patch.\n\nHad to add some reference counting, let me know if there is a preferred alternative.",
+      "revId": "caa8da2567bbe649f517175db8eeff31e6f386b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
