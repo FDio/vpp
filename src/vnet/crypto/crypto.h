@@ -645,6 +645,8 @@ typedef struct
   u8 key_data_per_thread[VNET_CRYPTO_HANDLER_N_TYPES][VNET_CRYPTO_N_ALGS];
   vnet_crypto_frame_dequeue_t *dequeue_handler;
   uword user_data;
+  vnet_crypto_key_change_fn_t *async_key_change_fn;
+  u16 async_key_data_sz;
 } vnet_crypto_engine_t;
 
 typedef struct
@@ -694,6 +696,7 @@ void vnet_crypto_register_key_handler_for_alg (vnet_crypto_engine_id_t engine,
 					       vnet_crypto_alg_t alg, vnet_crypto_handler_type_t t,
 					       vnet_crypto_key_change_fn_t *key_change_fn,
 					       u16 key_data_sz, u8 key_data_per_thread);
+void vnet_crypto_async_engine_update (vnet_crypto_alg_t alg);
 
 __clib_export u32 vnet_crypto_process_ops (vlib_main_t *vm, vnet_crypto_op_t ops[],
 					   vnet_crypto_op_chunk_t *chunks, u32 n_ops);

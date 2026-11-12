@@ -252,6 +252,9 @@ vnet_crypto_register_key_change_handler (vlib_main_t *vm __clib_unused,
   if (key_change_fn == 0)
     return 0;
 
+  e->async_key_change_fn = key_change_fn;
+  e->async_key_data_sz = key_data_sz;
+
   for (alg = 0; alg < VNET_CRYPTO_N_ALGS; alg++)
     {
       support_vec = cm->engine_supports_alg[alg][VNET_CRYPTO_HANDLER_TYPE_ASYNC];
@@ -271,8 +274,7 @@ vnet_crypto_register_key_change_handler (vlib_main_t *vm __clib_unused,
       e->key_change_fn[VNET_CRYPTO_HANDLER_TYPE_ASYNC][alg] = key_change_fn;
       e->key_data_sz[VNET_CRYPTO_HANDLER_TYPE_ASYNC][alg] = key_data_sz;
       e->key_data_per_thread[VNET_CRYPTO_HANDLER_TYPE_ASYNC][alg] = 0;
-      vnet_crypto_register_key_handler_for_alg (engine, alg, VNET_CRYPTO_HANDLER_TYPE_ASYNC,
-						key_change_fn, key_data_sz, 0);
+      vnet_crypto_async_engine_update (alg);
     }
 
   return 0;
