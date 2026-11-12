@@ -267,8 +267,7 @@ crypto_sw_scheduler_return_frame (crypto_sw_scheduler_queue_t *queue, u32 mask)
 }
 
 static_always_inline vnet_crypto_async_frame_t *
-crypto_sw_scheduler_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
-			     clib_thread_index_t *enqueue_thread_idx)
+crypto_sw_scheduler_dequeue (vlib_main_t *vm, vnet_crypto_frame_dequeue_args_t *args)
 {
   crypto_sw_scheduler_main_t *cm = &crypto_sw_scheduler_main;
   crypto_sw_scheduler_per_thread_data_t *ptd =
@@ -380,8 +379,8 @@ run_next_queues:
       process_ops (vm, f, ptd->chained_crypto_ops, ptd->chunks, 1);
       __atomic_store_n (&f->state, VNET_CRYPTO_FRAME_STATE_COMPLETED, __ATOMIC_RELEASE);
 
-      *enqueue_thread_idx = f->enqueue_thread_index;
-      *nb_elts_processed = f->n_elts;
+      args->enqueue_thread_index = f->enqueue_thread_index;
+      args->n_elts_processed = f->n_elts;
     }
 
   if (ptd->last_return_queue)

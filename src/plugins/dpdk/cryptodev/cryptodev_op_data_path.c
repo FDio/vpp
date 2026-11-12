@@ -603,8 +603,7 @@ cryptodev_enqueue_frame (vlib_main_t *vm, cryptodev_cache_ring_elt_t *ring_elt)
 }
 
 static_always_inline vnet_crypto_async_frame_t *
-cryptodev_frame_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
-			 clib_thread_index_t *enqueue_thread_idx)
+cryptodev_frame_dequeue (vlib_main_t *vm, vnet_crypto_frame_dequeue_args_t *args)
 {
   cryptodev_main_t *cmt = &cryptodev_main;
   vnet_crypto_main_t *cm = &crypto_main;
@@ -617,7 +616,7 @@ cryptodev_frame_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
 
   while (cet->inflight > 0 && dequeue_more)
     {
-      dequeue_more = cryptodev_frame_dequeue_internal (vm, enqueue_thread_idx);
+      dequeue_more = cryptodev_frame_dequeue_internal (vm, &args->enqueue_thread_index);
     }
 
   if (PREDICT_TRUE (ring->frames[ring->enq_head].f != 0))
@@ -627,7 +626,7 @@ cryptodev_frame_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
     {
       if (ring_elt->n_elts == ring_elt->deq_elts_tail)
 	{
-	  *nb_elts_processed = ring_elt->n_elts;
+	  args->n_elts_processed = ring_elt->n_elts;
 	  vlib_node_set_interrupt_pending (
 	    vlib_get_main_by_index (vm->thread_index), cm->crypto_node_index);
 	  ret_frame = cryptodev_cache_ring_pop (ring);

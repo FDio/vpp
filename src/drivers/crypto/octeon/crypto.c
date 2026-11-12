@@ -1362,8 +1362,7 @@ oct_crypto_enqueue_aead_aad0_dec (vlib_main_t *vm, vnet_crypto_async_frame_t *fr
 }
 
 vnet_crypto_async_frame_t *
-oct_crypto_frame_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
-			  clib_thread_index_t *enqueue_thread_idx)
+oct_crypto_frame_dequeue (vlib_main_t *vm, vnet_crypto_frame_dequeue_args_t *args)
 {
   oct_crypto_main_t *ocm = &oct_crypto_main;
   u32 deq_head;
@@ -1409,8 +1408,8 @@ oct_crypto_frame_dequeue (vlib_main_t *vm, u32 *nb_elts_processed,
 
   frame->state = VNET_CRYPTO_FRAME_STATE_COMPLETED;
 
-  *nb_elts_processed = frame->n_elts;
-  *enqueue_thread_idx = frame->enqueue_thread_index;
+  args->n_elts_processed = frame->n_elts;
+  args->enqueue_thread_index = frame->enqueue_thread_index;
 
   return frame;
 }
