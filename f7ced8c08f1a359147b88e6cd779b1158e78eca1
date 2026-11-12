@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "38a876e0_76733ce1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-11-12T22:24:44Z",
+      "side": 1,
+      "message": "this patch contains multiple independent fixes, please submit them as separate changes",
+      "revId": "f7ced8c08f1a359147b88e6cd779b1158e78eca1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
