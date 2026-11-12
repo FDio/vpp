@@ -20,6 +20,23 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "4cb1b559_2755321f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-12T18:04:53Z",
+      "side": 1,
+      "message": "It\u0027d be probably easier to just use filelock, which implements exactly what you\u0027re trying to implement here in a cross-platform way.",
+      "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "9fec4a46_845aea63",
         "filename": "test/asf/test_http_static.py",
         "patchSetId": 1
