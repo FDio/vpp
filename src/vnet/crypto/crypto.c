@@ -365,6 +365,8 @@ vnet_crypto_set_handlers (vnet_crypto_set_handlers_args_t *a)
     crypto_update_key_handler_for_alg (cm, alg, VNET_CRYPTO_HANDLER_TYPE_SIMPLE);
   if (a->set_chained)
     crypto_update_key_handler_for_alg (cm, alg, VNET_CRYPTO_HANDLER_TYPE_CHAINED);
+  if (a->set_async)
+    vnet_crypto_async_engine_update (alg);
 
   return 0;
 }
@@ -395,8 +397,25 @@ vnet_crypto_register_enqueue_handler_by_alg (vlib_main_t *vm __clib_unused,
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *e = vec_elt_at_index (cm->engines, engine);
+  vnet_crypto_handler_type_t t = VNET_CRYPTO_HANDLER_TYPE_ASYNC;
 
-  crypto_register_handler (cm, e, alg, type, VNET_CRYPTO_HANDLER_TYPE_ASYNC, enqueue_hdl);
+  if (enqueue_hdl == 0)
+    return;
+
+  if (e->async_key_change_fn && e->key_change_fn[t][alg] == 0)
+    {
+      if (cm->layout_initialized && e->async_key_data_sz > cm->ctx_layout[alg].key_data_size[t])
+	{
+	  log_err ("engine %s alg %s: async key data size %u, reserved %u", e->name,
+		   cm->algs[alg].name, e->async_key_data_sz, cm->ctx_layout[alg].key_data_size[t]);
+	  return;
+	}
+      e->key_change_fn[t][alg] = e->async_key_change_fn;
+      e->key_data_sz[t][alg] = e->async_key_data_sz;
+    }
+
+  crypto_register_handler (cm, e, alg, type, t, enqueue_hdl);
+  vnet_crypto_async_engine_update (alg);
 }
 
 static int
@@ -454,6 +473,48 @@ vnet_crypto_update_cm_dequeue_handlers (void)
     }
 
   vec_free (active_engines);
+}
+
+void
+vnet_crypto_async_engine_update (vnet_crypto_alg_t alg)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_alg_data_t *ad = cm->algs + alg;
+  vnet_crypto_handler_type_t t = VNET_CRYPTO_HANDLER_TYPE_ASYNC;
+  vnet_crypto_engine_id_t ei = cm->active_engine_index[alg][t];
+  vnet_crypto_engine_t *e = vec_elt_at_index (cm->engines, ei);
+  u32 n_moved = 0;
+
+  vnet_crypto_update_cm_dequeue_handlers ();
+
+  if (e->key_change_fn[t][alg] == 0)
+    ei = VNET_CRYPTO_ENGINE_ID_NONE;
+
+  if (ad->key_fn_engine[t] == ei)
+    return;
+
+  ad->key_change_fn[t] = e->key_change_fn[t][alg];
+  ad->key_data_sz[t] = ei == VNET_CRYPTO_ENGINE_ID_NONE ? 0 : e->key_data_sz[t][alg];
+  ad->key_fn_engine[t] = ei;
+
+  for (uword i = 0; i < vec_len (cm->ctxs); i++)
+    {
+      vnet_crypto_ctx_t *ctx;
+
+      if (pool_is_free_index (cm->ctxs, i))
+	continue;
+
+      ctx = cm->ctxs[i];
+      if (ctx->alg != alg || ctx->pending_destroy || vnet_crypto_ctx_get_engine (ctx, t) == ei)
+	continue;
+
+      vnet_crypto_ctx_set_engine (ctx, t, VNET_CRYPTO_ENGINE_ID_NONE);
+      vnet_crypto_ctx_set_default_engine (ctx, t);
+      n_moved++;
+    }
+
+  log_debug ("alg %s async key engine %s, %u context(s) moved", ad->name,
+	     ei == VNET_CRYPTO_ENGINE_ID_NONE ? "none" : e->name, n_moved);
 }
 
 void
