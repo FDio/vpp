@@ -8,6 +8,7 @@
 #include <vnet/hash/hash.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
+#include <vnet/udp/udp_packet.h>
 #include <vnet/mpls/packet.h>
 #include <vppinfra/crc32.h>
 #include <vppinfra/xxhash.h>
@@ -282,6 +283,96 @@ VNET_REGISTER_HASH_FUNCTION (handoff_eth, static) = {
   .description = "Ethernet/IPv4/IPv6/MPLS headers",
   .priority = 2,
   .function[VNET_HASH_FN_TYPE_ETHERNET] = handoff_eth_func,
+};
+
+/* Symmetric with tcp/udp ports, so both directions of a flow, not just of
+ * an address pair, hash to the same worker */
+static_always_inline u64
+ip4_get_sym_l4_key (ip4_header_t *ip)
+{
+  u64 key = ip->src_address.as_u32 ^ ip->dst_address.as_u32 ^ ip->protocol;
+
+  if ((ip->protocol == IP_PROTOCOL_TCP || ip->protocol == IP_PROTOCOL_UDP) && !ip4_is_fragment (ip))
+    {
+      udp_header_t *l4 = ip4_next_header (ip);
+      key ^= (u64) (l4->src_port ^ l4->dst_port) << 32;
+    }
+  return key;
+}
+
+static_always_inline u64
+ip6_get_sym_l4_key (ip6_header_t *ip)
+{
+  u64 key = ip->src_address.as_u64[0] ^ ip->src_address.as_u64[1] ^ ip->dst_address.as_u64[0] ^
+	    ip->dst_address.as_u64[1] ^ ip->protocol;
+
+  if (ip->protocol == IP_PROTOCOL_TCP || ip->protocol == IP_PROTOCOL_UDP)
+    {
+      udp_header_t *l4 = (udp_header_t *) (ip + 1);
+      key ^= (u64) (l4->src_port ^ l4->dst_port) << 32;
+    }
+  return key;
+}
+
+static inline u64
+eth_get_sym_l4_key (ethernet_header_t *h0)
+{
+  u16 type = h0->type;
+  void *l3 = h0 + 1;
+
+  if (PREDICT_FALSE (type == clib_host_to_net_u16 (ETHERNET_TYPE_VLAN) ||
+		     type == clib_host_to_net_u16 (ETHERNET_TYPE_DOT1AD)))
+    {
+      ethernet_vlan_header_t *outer = l3;
+
+      outer = (outer->type == clib_host_to_net_u16 (ETHERNET_TYPE_VLAN)) ? outer + 1 : outer;
+      type = outer->type;
+      l3 = outer + 1;
+    }
+
+  if (PREDICT_TRUE (type == clib_host_to_net_u16 (ETHERNET_TYPE_IP4)))
+    return ip4_get_sym_l4_key (l3);
+  if (type == clib_host_to_net_u16 (ETHERNET_TYPE_IP6))
+    return ip6_get_sym_l4_key (l3);
+  return eth_get_sym_key (h0);
+}
+
+void
+handoff_eth_sym_l4_func (void **p, u32 *hash, u32 n_packets)
+{
+  u32 n_left_from = n_packets;
+
+  while (n_left_from >= 8)
+    {
+      clib_prefetch_load (p[4]);
+      clib_prefetch_load (p[5]);
+      clib_prefetch_load (p[6]);
+      clib_prefetch_load (p[7]);
+
+      hash[0] = ho_hash (eth_get_sym_l4_key ((ethernet_header_t *) p[0]));
+      hash[1] = ho_hash (eth_get_sym_l4_key ((ethernet_header_t *) p[1]));
+      hash[2] = ho_hash (eth_get_sym_l4_key ((ethernet_header_t *) p[2]));
+      hash[3] = ho_hash (eth_get_sym_l4_key ((ethernet_header_t *) p[3]));
+
+      hash += 4;
+      n_left_from -= 4;
+      p += 4;
+    }
+
+  while (n_left_from > 0)
+    {
+      hash[0] = ho_hash (eth_get_sym_l4_key ((ethernet_header_t *) p[0]));
+      hash += 1;
+      n_left_from -= 1;
+      p += 1;
+    }
+}
+
+VNET_REGISTER_HASH_FUNCTION (handoff_eth_sym_l4, static) = {
+  .name = "handoff-eth-sym-l4",
+  .description = "Ethernet/IPv4/IPv6 headers and TCP/UDP ports Symmetric",
+  .priority = 0,
+  .function[VNET_HASH_FN_TYPE_ETHERNET] = handoff_eth_sym_l4_func,
 };
 
 void

@@ -216,13 +216,8 @@ interface_handoff_enable_disable (vlib_main_t *vm, u32 sw_if_index,
 	}
 
       if (is_sym)
-	{
-	  if (is_l4)
-	    return VNET_API_ERROR_UNIMPLEMENTED;
-
-	  d->hash_fn = vnet_hash_function_from_name (
-	    "handoff-eth-sym", VNET_HASH_FN_TYPE_ETHERNET);
-	}
+	d->hash_fn = vnet_hash_function_from_name (is_l4 ? "handoff-eth-sym-l4" : "handoff-eth-sym",
+						   VNET_HASH_FN_TYPE_ETHERNET);
       else
 	{
 	  if (is_l4)
