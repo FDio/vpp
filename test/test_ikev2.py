@@ -1316,8 +1316,8 @@ class TemplateInitiator(IkePeer):
 
     @staticmethod
     def find_notify_payload(packet, notify_type):
-        n = packet[ikev2.IKEv2_payload_Notify]
-        while n is not None:
+        n = packet.getlayer(ikev2.IKEv2_payload_Notify)
+        while isinstance(n, ikev2.IKEv2_payload_Notify):
             if n.type == notify_type:
                 return n
             n = n.payload
@@ -1374,6 +1374,9 @@ class TemplateInitiator(IkePeer):
         self.assertEqual(prop.trans[2].transform_id, self.p.ike_transforms["dh_group"])
 
         self.verify_nat_detection(packet)
+        # SIGNATURE_HASH_ALGORITHMS announces the Digital Signature
+        # authentication method (RFC 7427), which is not implemented
+        self.assertIsNone(self.find_notify_payload(packet, 16431))
         self.sa.set_ike_props(
             crypto="AES-GCM-16ICV",
             crypto_key_len=32,
