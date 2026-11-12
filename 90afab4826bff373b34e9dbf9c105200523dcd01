@@ -16,6 +16,24 @@
       "message": "Thank you, the patch looks good.\nWe tried this patch on VPP 23.02 on our systems and it mitigates the problem.",
       "revId": "90afab4826bff373b34e9dbf9c105200523dcd01",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9a648d2a_60ce50dd",
+        "filename": "test/socket_api_eof/run_repro.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-12T09:24:50Z",
+      "side": 1,
+      "message": "Could we check `proc.poll()` after the sampling sleep and fail if VPP exited? `wait_for(marker, proc)` is the last liveness check; a VPP crash during the next two seconds leaves an unreaped zombie whose `/proc/PID/stat` remains readable and whose CPU time stops increasing, so this code prints PASS. I reproduced this with a local socket child that creates the EOF marker and then exits with status 42: the runner reported `cpu_cores\u003d0.000` and returned success. This would hide a crash in the EOF cleanup path.",
+      "tag": "prview:9fe0f6a4c57117319d566579a992c552:90afab4826bff373b34e9dbf9c105200523dcd01",
+      "revId": "90afab4826bff373b34e9dbf9c105200523dcd01",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
