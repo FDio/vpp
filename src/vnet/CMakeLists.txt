@@ -40,6 +40,7 @@ list(APPEND VNET_SOURCES
   dev/process.c
   dev/queue.c
   dev/runtime.c
+  dev/slab.c
   error.c
   flow/flow.c
   flow/flow_cli.c
