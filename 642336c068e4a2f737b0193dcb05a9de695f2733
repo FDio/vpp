@@ -16,6 +16,23 @@
       "message": "Re-run failed jobs via GitHub UI",
       "revId": "642336c068e4a2f737b0193dcb05a9de695f2733",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8221412b_8a7b0b3a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-12T03:45:06Z",
+      "side": 1,
+      "message": "Thanks for the fix. Can you please cherry-pick this to stable/2610, and master?\n\nIn general, fixes should be submitted to master first, then cherry-picked to active release branches.",
+      "revId": "642336c068e4a2f737b0193dcb05a9de695f2733",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
