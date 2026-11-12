@@ -477,9 +477,7 @@ typedef struct
 {
   vnet_dev_op_t *device_open;
   vnet_dev_op_no_rv_t *device_close;
-  vnet_dev_rv_t (*dma_mem_alloc_fn) (vlib_main_t *, vnet_dev_t *, u32, u32,
-				     void **);
-  void (*dma_mem_free_fn) (vlib_main_t *, vnet_dev_t *, void *);
+  vnet_dev_rv_t (*dma_mem_map_fn) (vlib_main_t *, vnet_dev_t *, void *);
   void *(*get_device_info) (vlib_main_t *, char *);
   void (*free_device_info) (vlib_main_t *, void *);
   format_function_t *format_device_info;
@@ -640,6 +638,12 @@ __clib_export vnet_dev_rv_t vnet_dev_dma_mem_alloc (vlib_main_t *, vnet_dev_t *,
 __clib_export void vnet_dev_dma_mem_free (vlib_main_t *, vnet_dev_t *, void *);
 vnet_dev_bus_t *vnet_dev_find_device_bus (vlib_main_t *, vnet_dev_device_id_t);
 void *vnet_dev_get_device_info (vlib_main_t *, vnet_dev_device_id_t);
+
+/* slab.c */
+__clib_export void *vnet_dev_dma_slab_alloc (vlib_main_t *, vnet_dev_t *, u32, u32);
+__clib_export void vnet_dev_dma_slab_free (vlib_main_t *, vnet_dev_t *, void *);
+__clib_export u64 vnet_dev_dma_slab_get_dma_addr (vlib_main_t *, vnet_dev_t *, void *);
+format_function_t format_vnet_dev_dma_slabs;
 
 /* error.c */
 clib_error_t *vnet_dev_port_err (vlib_main_t *, vnet_dev_port_t *,

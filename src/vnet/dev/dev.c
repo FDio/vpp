@@ -156,7 +156,7 @@ vnet_dev_cleanup_bus_resources (vlib_main_t *vm, vnet_dev_t *dev)
   vec_foreach (a, dev->dma_allocs)
     {
       if (a->va)
-	bus->ops.dma_mem_free_fn (vm, dev, a->va);
+	vlib_physmem_free (vm, a->va);
       vec_free (a->description);
     }
   vec_reset_length (dev->dma_allocs);
@@ -357,26 +357,32 @@ vnet_dev_rv_t
 vnet_dev_dma_mem_alloc (vlib_main_t *vm, vnet_dev_t *dev, u32 size, u32 align, void **pp, char *fmt,
 			...)
 {
-  vnet_dev_main_t *dm = &vnet_dev_main;
-  vnet_dev_bus_t *bus = pool_elt_at_index (dm->buses, dev->bus_index);
-  vnet_dev_rv_t rv;
-  void *p = 0;
+  vnet_dev_bus_t *bus = pool_elt_at_index (vnet_dev_main.buses, dev->bus_index);
   vnet_dev_dma_mem_alloc_t *a = 0, *candidate;
+  clib_error_t *err;
+  vnet_dev_rv_t rv;
   va_list va;
+  void *p;
 
   vnet_dev_validate (vm, dev);
 
-  if (!bus->ops.dma_mem_alloc_fn)
-    return VNET_DEV_ERR_NOT_SUPPORTED;
-
-  rv = bus->ops.dma_mem_alloc_fn (vm, dev, size, align, &p);
-  if (rv != VNET_DEV_OK)
+  align = align ? align : CLIB_CACHE_LINE_BYTES;
+  p = vlib_physmem_alloc_aligned_on_numa (vm, round_pow2 (size, align), align, dev->numa_node);
+  if (p == 0)
     {
-      log_err (dev, "DMA alloc failed (size %u align %u rv %d)", size, align,
-	       rv);
+      err = vlib_physmem_last_error (vm);
+      log_err (dev, "DMA alloc failed (size %u align %u): %U", size, align, format_clib_error, err);
+      clib_error_free (err);
+      return VNET_DEV_ERR_DMA_MEM_ALLOC_FAIL;
+    }
+
+  if (bus->ops.dma_mem_map_fn && (rv = bus->ops.dma_mem_map_fn (vm, dev, p)) != VNET_DEV_OK)
+    {
+      vlib_physmem_free (vm, p);
       return rv;
     }
 
+  clib_memset (p, 0, round_pow2 (size, align));
   *pp = p;
   vec_foreach (candidate, dev->dma_allocs)
     if (candidate->va == 0)
@@ -393,7 +399,7 @@ vnet_dev_dma_mem_alloc (vlib_main_t *vm, vnet_dev_t *dev, u32 size, u32 align, v
   a->va = p;
   a->pa = vnet_dev_get_dma_addr (vm, dev, p);
   a->size = size;
-  a->align = align ? align : CLIB_CACHE_LINE_BYTES;
+  a->align = align;
 
   log_debug (dev, "%v: %u bytes va %p dma-addr 0x%lx numa %u align %u", a->description, size, p,
 	     a->pa, dev->numa_node, align);
@@ -404,13 +410,11 @@ vnet_dev_dma_mem_alloc (vlib_main_t *vm, vnet_dev_t *dev, u32 size, u32 align, v
 void
 vnet_dev_dma_mem_free (vlib_main_t *vm, vnet_dev_t *dev, void *p)
 {
-  vnet_dev_main_t *dm = &vnet_dev_main;
-  vnet_dev_bus_t *bus = pool_elt_at_index (dm->buses, dev->bus_index);
   vnet_dev_dma_mem_alloc_t *a;
 
   vnet_dev_validate (vm, dev);
 
-  if (p == 0 || !bus->ops.dma_mem_free_fn)
+  if (p == 0)
     return;
 
   vec_foreach (a, dev->dma_allocs)
@@ -418,7 +422,7 @@ vnet_dev_dma_mem_free (vlib_main_t *vm, vnet_dev_t *dev, void *p)
       {
 	vec_free (a->description);
 	clib_memset (a, 0, sizeof (*a));
-	return bus->ops.dma_mem_free_fn (vm, dev, p);
+	return vlib_physmem_free (vm, p);
       }
 }
 

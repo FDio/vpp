@@ -155,44 +155,18 @@ vnet_dev_bus_pci_close (vlib_main_t *vm, vnet_dev_t *dev)
 }
 
 static vnet_dev_rv_t
-vnet_dev_bus_pci_dma_mem_alloc (vlib_main_t *vm, vnet_dev_t *dev, u32 size,
-				u32 align, void **pp)
+vnet_dev_bus_pci_dma_mem_map (vlib_main_t *vm, vnet_dev_t *dev, void *p)
 {
   clib_error_t *err;
-  void *p;
-
-  align = align ? align : CLIB_CACHE_LINE_BYTES;
-  size = round_pow2 (size, align);
-
-  p = vlib_physmem_alloc_aligned_on_numa (vm, size, align, dev->numa_node);
-
-  if (p == 0)
-    {
-      err = vlib_physmem_last_error (vm);
-      log_err (dev, "dev_dma_mem_alloc: physmem_alloc_aligned error %U",
-	       format_clib_error, err);
-      clib_error_free (err);
-      return VNET_DEV_ERR_DMA_MEM_ALLOC_FAIL;
-    }
 
   if ((err = vlib_pci_map_dma (vm, vnet_dev_get_pci_handle (dev), p)))
     {
-      log_err (dev, "dev_dma_mem_alloc: pci_map_dma: %U", format_clib_error,
-	       err);
+      log_err (dev, "dma_mem_map: pci_map_dma: %U", format_clib_error, err);
       clib_error_free (err);
       return VNET_DEV_ERR_DMA_MEM_ALLOC_FAIL;
     }
 
-  clib_memset (p, 0, size);
-  pp[0] = p;
   return VNET_DEV_OK;
-}
-
-static void
-vnet_dev_bus_pci_dma_mem_free (vlib_main_t *vm, vnet_dev_t *dev, void *p)
-{
-  if (p)
-    vlib_physmem_free (vm, p);
 }
 
 vnet_dev_rv_t
@@ -727,8 +701,7 @@ VNET_DEV_REGISTER_BUS (pci) = {
     .device_close = vnet_dev_bus_pci_close,
     .get_device_info = vnet_dev_bus_pci_get_device_info,
     .free_device_info = vnet_dev_bus_pci_free_device_info,
-    .dma_mem_alloc_fn = vnet_dev_bus_pci_dma_mem_alloc,
-    .dma_mem_free_fn = vnet_dev_bus_pci_dma_mem_free,
+    .dma_mem_map_fn = vnet_dev_bus_pci_dma_mem_map,
     .format_device_info = format_dev_pci_device_info,
     .format_device_addr = format_dev_pci_device_addr,
   },

@@ -509,6 +509,24 @@ VLIB_CLI_COMMAND (show_device_drivers_cmd, static) = {
 };
 
 static clib_error_t *
+show_device_dma_slabs_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
+			      vlib_cli_command_t *cmd __clib_unused)
+{
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
+
+  vlib_cli_output (vm, "%U", format_vnet_dev_dma_slabs);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (show_device_dma_slabs_cmd, static) = {
+  .path = "show device dma-slabs",
+  .short_help = "show device dma-slabs",
+  .function = show_device_dma_slabs_cmd_fn,
+  .is_mp_safe = 1,
+};
+
+static clib_error_t *
 device_set_rss_config_cmd_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 {
   vnet_dev_api_port_set_rss_config_args_t a = {};
