@@ -2914,8 +2914,10 @@ ikev2_del_tunnel_from_main (ikev2_del_ipsec_tunnel_args_t *a)
     {
       sw_if_index = a->sw_if_index;
       /* A replacement Child SA may already protect the same GRE interface. */
-      u32 out_id = ipsec_tun_protect_get_out_sa_id (sw_if_index);
-      if (out_id != INDEX_INVALID && out_id != a->local_sa_id)
+      u32 out_id, *in_ids = 0;
+      int rv = ipsec_tun_protect_get_sa_ids (sw_if_index, &out_id, &in_ids);
+      vec_free (in_ids);
+      if (!rv && out_id != a->local_sa_id)
 	sw_if_index = INDEX_INVALID;
       else
 	vnet_sw_interface_admin_down (vnet_get_main (), sw_if_index);

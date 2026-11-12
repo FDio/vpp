@@ -216,13 +216,17 @@ ipsec_tun_protect_find (u32 sw_if_index, const ip_address_t * nh)
   return (p[0]);
 }
 
-u32
-ipsec_tun_protect_get_out_sa_id (u32 sw_if_index)
+int
+ipsec_tun_protect_get_sa_ids (u32 sw_if_index, u32 *sa_out, u32 **sas_in)
 {
   index_t itpi = ipsec_tun_protect_find (sw_if_index, &IP_ADDR_ALL_0);
   if (itpi == INDEX_INVALID)
-    return INDEX_INVALID;
-  return ipsec_sa_get (ipsec_tun_protect_get (itpi)->itp_out_sa)->id;
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+  ipsec_tun_protect_t *itp = ipsec_tun_protect_get (itpi);
+  *sa_out = ipsec_sa_get (itp->itp_out_sa)->id;
+  for (u32 i = 0; i < itp->itp_n_sa_in; i++)
+    vec_add1 (*sas_in, ipsec_sa_get (itp->itp_in_sas[i])->id);
+  return 0;
 }
 
 static void
