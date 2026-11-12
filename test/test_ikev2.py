@@ -3138,6 +3138,38 @@ class TestInitiatorInvalidModp(TestInitiatorPsk):
         self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
 
 
+class TestResponderTruncatedPskAuth(TemplateResponder, Ikev2Params):
+    """A shared-key AUTH payload shorter than the PRF output is rejected."""
+
+    auth_len = 1
+
+    def config_tc(self):
+        self.config_params()
+
+    def tearDown(self):
+        super(IkePeer, self).tearDown()
+        self.p.remove_vpp_config()
+
+    def verify_sa_auth_resp(self, packet):
+        ih = self.get_ike_header(packet)
+        self.assertEqual(ih.exch_type, 35)  # IKE_AUTH
+        self.assertIn("Response", ih.flags)
+        notify = ikev2.IKEv2_payload_Notify(self.sa.hmac_and_decrypt(ih))
+        self.assertEqual(notify.type, 24)  # AUTHENTICATION_FAILED
+
+    def test_responder(self):
+        self.send_sa_init_req()
+        self.sa.auth_data = self.sa.auth_data[: self.auth_len]
+        self.send_sa_auth()
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
+
+
+class TestResponderEmptyPskAuth(TestResponderTruncatedPskAuth):
+    """A shared-key AUTH payload without data is rejected."""
+
+    auth_len = 0
+
+
 class TestResponderInvalidNewChildModp(TestResponderPsk):
     """An invalid new Child KE preserves the existing Child and permits cleanup."""
 
