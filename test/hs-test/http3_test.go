@@ -685,6 +685,7 @@ func Http3MalformedMethodTest(s *Http3Suite) {
 		{Name: ":method", Value: "GET"}, {Name: ":protocol", Value: "websocket"},
 		{Name: ":status", Value: "200"}, {Name: "connection", Value: "close"},
 		{Name: "content-length", Value: "invalid"}, {Name: "content-length", Value: "18446744073709551616"},
+		{Name: "content-length", Value: ""},
 		{Name: "Uppercase", Value: "invalid"},
 		{Name: "", Value: "invalid"},
 	} {

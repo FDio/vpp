@@ -846,14 +846,6 @@ http1_identify_headers_chunk (http_ctx_t *hc, http_ctx_t *req, http_status_code_
 	    req->rx_buf_offset++;
 	  if (req->rx_buf_offset == available)
 	    return HTTP1_PARSE_INCOMPLETE;
-	  if (rx_buf[req->rx_buf_offset - base] == '\r')
-	    {
-	      if (available - req->rx_buf_offset < 2)
-		return HTTP1_PARSE_INCOMPLETE;
-	      clib_warning ("empty field value");
-	      *ec = HTTP_STATUS_BAD_REQUEST;
-	      return HTTP1_PARSE_ERROR;
-	    }
 	  field_line = vec_elt_at_index (req->headers, vec_len (req->headers) - 1);
 	  field_line->value_offset = req->rx_buf_offset - req->headers_offset;
 	  req->http1_parse_state = HTTP1_PARSE_STATE_HEADER_VALUE;
@@ -871,12 +863,6 @@ http1_identify_headers_chunk (http_ctx_t *hc, http_ctx_t *req, http_status_code_
 		  if (rx_buf[req->rx_buf_offset - base + 1] != '\n')
 		    {
 		      clib_warning ("CR without LF");
-		      *ec = HTTP_STATUS_BAD_REQUEST;
-		      return HTTP1_PARSE_ERROR;
-		    }
-		  if (!field_line->value_len)
-		    {
-		      clib_warning ("empty field value");
 		      *ec = HTTP_STATUS_BAD_REQUEST;
 		      return HTTP1_PARSE_ERROR;
 		    }
@@ -1313,6 +1299,12 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
   if (req->host_header_index == ~0)
     {
       HTTP_DBG (1, "Host header missing");
+      ec = HTTP_STATUS_BAD_REQUEST;
+      goto error;
+    }
+  if (!vec_elt_at_index (req->headers, req->host_header_index)->value_len)
+    {
+      HTTP_DBG (1, "Host header value empty");
       ec = HTTP_STATUS_BAD_REQUEST;
       goto error;
     }

@@ -821,6 +821,8 @@ func pseudoHeaderCases(address string) []pseudoHeaderCase {
 	}
 	add("valid extension method", change(base, ":method", "X-EXTENSION", false), 501)
 	add("ampersand in field name", append(append([]hpack.HeaderField{}, base...), hpack.HeaderField{Name: "x&name", Value: "value"}), 200)
+	add("empty ordinary field value", append(append([]hpack.HeaderField{}, base...), hpack.HeaderField{Name: "x-empty", Value: ""}), 200)
+	add("empty Content-Length", append(append([]hpack.HeaderField{}, base...), hpack.HeaderField{Name: "content-length", Value: ""}), 0)
 	for _, scheme := range []string{"1https", "ht:tps", "https ", "ht%74ps", "\x80https", "http_", "+http", "http/", "\x00https", "htt\x7fps"} {
 		add("invalid scheme "+scheme, change(base, ":scheme", scheme, false), 0)
 	}
@@ -895,6 +897,9 @@ func pseudoHeaderCases(address string) []pseudoHeaderCase {
 
 func pseudoResponseCases() []pseudoHeaderCase {
 	cases := []pseudoHeaderCase{{name: "empty initial response section"}}
+	cases = append(cases, pseudoHeaderCase{name: "empty Content-Length", fields: []hpack.HeaderField{
+		{Name: ":status", Value: "200"}, {Name: "content-length", Value: ""},
+	}})
 	for _, status := range []string{"", "20", "2000", "2x0", "099", "600", "101"} {
 		cases = append(cases, pseudoHeaderCase{name: "invalid status " + status, fields: []hpack.HeaderField{{Name: ":status", Value: status}}})
 	}

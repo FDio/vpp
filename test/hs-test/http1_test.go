@@ -36,6 +36,7 @@ func init() {
 		HttpContentLengthTest, HttpVersionNotSupportedTest, HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpUriDecodeTest,
 		HttpHeadersTest, HttpClientTest, HttpClientErrRespTest, HttpClientPostFormTest, HttpClientPostFormPtrTest,
 		HttpClientGet128kbResponseTest, HttpClientGetResponseBodyTest, HttpClientGetTlsNoRespBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest,
+		HttpClientEmptyContentLengthResponseTest,
 		HttpRequestLineTest, HttpClientGetTimeout, HttpConnTimeoutTest, HttpClientGetRepeatTest, HttpClientPostRepeatTest,
 		HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest,
 		HttpClientInvalidHeaderNameTest, HttpTimerSessionDisable, HttpClientBodySizeTest, HttpClientResponseLengthOverflowTest,
@@ -1770,6 +1771,15 @@ func HttpClientErrRespTest(s *Http1Suite) {
 	AssertContains(o, "404: Not Found", "error not found in the result!")
 }
 
+func HttpClientEmptyContentLengthResponseTest(s *Http1Suite) {
+	output := httpCliClientRawReply(s, "http client verbose timeout 5", func(conn *net.TCPConn) error {
+		_, err := io.WriteString(conn, "HTTP/1.1 200 OK\r\nContent-Length:\r\n\r\n")
+		return err
+	})
+	Log(output)
+	AssertNotContains(output, "HTTP/1.1 200 OK", "empty Content-Length response must be discarded")
+}
+
 func httpClientPostFormTest(s *Http1Suite, usePtr bool) {
 	serverAddress := s.HostAddr() + ":" + s.Ports.Http
 	body := "field1=value1&field2=value2"
@@ -3148,13 +3158,17 @@ func HttpInvalidHeadersTest(s *Http1Suite) {
 	AssertNil(err, fmt.Sprint(err))
 	AssertContains(resp, "HTTP/1.1 400 Bad Request", "invalid field line end not allowed")
 
-	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+"\r\nUser-Agent:\r\n\r\n")
-	AssertNil(err, fmt.Sprint(err))
-	AssertContains(resp, "HTTP/1.1 400 Bad Request", "empty field value not allowed")
+	for _, value := range []string{"", "   "} {
+		request := "GET /show/version HTTP/1.1\r\nHost:" + serverAddress +
+			"\r\nX-Empty: " + value + "\r\n\r\n"
+		resp, err = TcpSendReceive(serverAddress, request)
+		AssertNil(err, fmt.Sprint(err))
+		AssertContains(resp, "HTTP/1.1 200 OK", "empty ordinary field value should reach the application")
+	}
 
-	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+"\r\nUser-Agent:    \r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:\r\n\r\n")
 	AssertNil(err, fmt.Sprint(err))
-	AssertContains(resp, "HTTP/1.1 400 Bad Request", "empty field value not allowed")
+	AssertContains(resp, "HTTP/1.1 400 Bad Request", "empty Host value remains invalid")
 }
 
 func HeaderServerTest(s *Http1Suite) {

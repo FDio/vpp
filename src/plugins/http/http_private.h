@@ -883,6 +883,11 @@ http_parse_content_length (http_ctx_t *req, u8 *rx_buf)
   u64 body_len = 0, digit;
 
   field_line = vec_elt_at_index (req->headers, req->content_len_header_index);
+  if (!field_line->value_len)
+    {
+      HTTP_DBG (1, "empty content-length value");
+      return -1;
+    }
   p = rx_buf + req->headers_offset + field_line->value_offset;
   for (i = 0; i < field_line->value_len; i++)
     {
