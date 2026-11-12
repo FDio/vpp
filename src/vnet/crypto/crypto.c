@@ -418,6 +418,66 @@ vnet_crypto_register_enqueue_handler_by_alg (vlib_main_t *vm __clib_unused,
   vnet_crypto_async_engine_update (alg);
 }
 
+static vnet_crypto_engine_id_t
+crypto_async_engine_select (vnet_crypto_main_t *cm, vnet_crypto_alg_t alg,
+			    vnet_crypto_op_type_t type)
+{
+  vnet_crypto_engine_id_t best = VNET_CRYPTO_ENGINE_ID_NONE;
+  vnet_crypto_engine_t *e;
+
+  vec_foreach (e, cm->engines)
+    if (crypto_engine_has_handler (e, alg, type, VNET_CRYPTO_HANDLER_TYPE_ASYNC) &&
+	(best == VNET_CRYPTO_ENGINE_ID_NONE || cm->engines[best].priority <= e->priority))
+      best = e - cm->engines;
+
+  return best;
+}
+
+void
+vnet_crypto_unregister_enqueue_handler_by_alg (vlib_main_t *vm __clib_unused,
+					       vnet_crypto_engine_id_t engine,
+					       vnet_crypto_alg_t alg, vnet_crypto_op_type_t type)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_engine_t *e = vec_elt_at_index (cm->engines, engine);
+  vnet_crypto_handler_type_t t = VNET_CRYPTO_HANDLER_TYPE_ASYNC;
+  vnet_crypto_engine_id_t *active = &cm->active_engine_index[alg][t];
+  u8 *supports = cm->engine_supports_alg[alg][t];
+  u8 has_handler = 0;
+
+  if (e->ops[alg][type].handlers[t] == 0)
+    return;
+
+  e->ops[alg][type].handlers[t] = 0;
+
+  for (vnet_crypto_op_type_t i = 0; i < VNET_CRYPTO_OP_N_TYPES; i++)
+    if (crypto_engine_has_handler (e, alg, i, t))
+      has_handler = 1;
+
+  if (has_handler == 0 && engine < vec_len (supports))
+    supports[engine] = 0;
+
+  if (cm->active_op_engine_index[alg][type][t] == engine)
+    cm->active_op_engine_index[alg][type][t] = crypto_async_engine_select (cm, alg, type);
+
+  if (*active == engine)
+    {
+      *active = VNET_CRYPTO_ENGINE_ID_NONE;
+      for (vnet_crypto_op_type_t i = 0; i < VNET_CRYPTO_OP_N_TYPES; i++)
+	if (cm->active_op_engine_index[alg][i][t] != VNET_CRYPTO_ENGINE_ID_NONE)
+	  {
+	    *active = cm->active_op_engine_index[alg][i][t];
+	    break;
+	  }
+    }
+
+  log_debug ("engine %s alg %s type %u async handler removed, active engine %s", e->name,
+	     cm->algs[alg].name, type,
+	     *active == VNET_CRYPTO_ENGINE_ID_NONE ? "none" : cm->engines[*active].name);
+
+  vnet_crypto_async_engine_update (alg);
+}
+
 static int
 engine_index_cmp (void *v1, void *v2)
 {
