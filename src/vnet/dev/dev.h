@@ -520,6 +520,7 @@ struct vnet_dev_driver_registration
       vnet_dev_drv_op_no_rv_t *deinit;
     } ops;
     clib_arg_t *args;
+    u16 data_sz;
   } driver;
 };
 
@@ -533,7 +534,7 @@ typedef struct
 typedef struct vnet_dev_driver
 {
   u32 index;
-  void *dev_data;
+  void *data;
   vnet_dev_driver_registration_t *registration;
   char *description;
   u32 dev_class_index;

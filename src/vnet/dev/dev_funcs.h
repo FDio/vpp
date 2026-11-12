@@ -21,6 +21,12 @@ vnet_dev_from_data (void *p)
 }
 
 static_always_inline void *
+vnet_dev_get_driver_data (vnet_dev_driver_t *drv)
+{
+  return drv->data;
+}
+
+static_always_inline void *
 vnet_dev_get_port_data (vnet_dev_port_t *port)
 {
   return port->data;

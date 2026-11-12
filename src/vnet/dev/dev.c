@@ -615,6 +615,11 @@ vnet_dev_main_init (vlib_main_t *vm)
       driver->index = driver - dm->drivers;
       driver->bus_index = bus_index;
       driver->ops = r->device.ops;
+      if (r->driver.data_sz)
+	{
+	  driver->data = clib_mem_alloc_aligned (r->driver.data_sz, CLIB_CACHE_LINE_BYTES);
+	  clib_memset (driver->data, 0, r->driver.data_sz);
+	}
       dev_class = clib_mem_alloc (sizeof (vnet_device_class_t));
       *dev_class = (vnet_device_class_t) {
 	.name = r->name,
