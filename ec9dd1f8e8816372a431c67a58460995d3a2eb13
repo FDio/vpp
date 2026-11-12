@@ -104,6 +104,24 @@
       "parentUuid": "f9607125_9132023a",
       "revId": "ec9dd1f8e8816372a431c67a58460995d3a2eb13",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "30bd6745_d38d5cd8",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1447,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-11-12T14:44:31Z",
+      "side": 1,
+      "message": "Ah ok. Current approach is fine.",
+      "parentUuid": "fa5d872b_45d4db6e",
+      "revId": "ec9dd1f8e8816372a431c67a58460995d3a2eb13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
