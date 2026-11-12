@@ -321,10 +321,9 @@ ethernet_get_type_info (ethernet_main_t * em, ethernet_type_t type)
 }
 
 __clib_export ethernet_interface_t *ethernet_get_interface (ethernet_main_t *em, u32 hw_if_index);
-mac_address_t *ethernet_interface_add_del_address (ethernet_main_t * em,
-						   u32 hw_if_index,
-						   const u8 * address,
-						   u8 is_add);
+__clib_export mac_address_t *ethernet_interface_add_del_address (ethernet_main_t *em,
+								 u32 hw_if_index, const u8 *address,
+								 u8 is_add);
 
 __clib_export void ethernet_delete_interface (vnet_main_t *vnm, u32 hw_if_index);
 
