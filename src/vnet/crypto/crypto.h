@@ -497,6 +497,7 @@ typedef struct
   vnet_crypto_alg_t alg : 8;
   vnet_crypto_op_type_t type : 8;
   u8 n_elts;
+  uword user_data;
   vnet_crypto_ctx_t *ctxs[VNET_CRYPTO_FRAME_SIZE];
   u32 buffer_indices[VNET_CRYPTO_FRAME_SIZE];
   u16 next_node_index[VNET_CRYPTO_FRAME_SIZE];
@@ -584,9 +585,16 @@ typedef struct vnet_crypto_alg_data_t_
 /** async crypto function handlers **/
 typedef int (vnet_crypto_frame_enq_fn_t) (vlib_main_t *vm,
 					  vnet_crypto_async_frame_t *frame);
-typedef vnet_crypto_async_frame_t *(
-  vnet_crypto_frame_dequeue_t) (vlib_main_t *vm, u32 *nb_elts_processed,
-				clib_thread_index_t *enqueue_thread_idx);
+
+typedef struct
+{
+  uword user_data;
+  u32 n_elts_processed;
+  clib_thread_index_t enqueue_thread_index;
+} vnet_crypto_frame_dequeue_args_t;
+
+typedef vnet_crypto_async_frame_t *
+vnet_crypto_frame_dequeue_t (vlib_main_t *vm, vnet_crypto_frame_dequeue_args_t *args);
 
 __clib_export vnet_crypto_engine_id_t vnet_crypto_register_engine (vlib_main_t *vm, char *name,
 								   int prio, char *desc);
@@ -609,6 +617,8 @@ __clib_export void vnet_crypto_register_enqueue_handler_by_alg (vlib_main_t *vm,
 __clib_export void vnet_crypto_register_dequeue_handler (vlib_main_t *vm,
 							 vnet_crypto_engine_id_t engine,
 							 vnet_crypto_frame_dequeue_t *deq_fn);
+__clib_export void vnet_crypto_set_engine_user_data (vnet_crypto_engine_id_t engine,
+						     uword user_data);
 
 typedef struct
 {
@@ -634,6 +644,7 @@ typedef struct
   u16 key_data_sz[VNET_CRYPTO_HANDLER_N_TYPES][VNET_CRYPTO_N_ALGS];
   u8 key_data_per_thread[VNET_CRYPTO_HANDLER_N_TYPES][VNET_CRYPTO_N_ALGS];
   vnet_crypto_frame_dequeue_t *dequeue_handler;
+  uword user_data;
 } vnet_crypto_engine_t;
 
 typedef struct
@@ -655,7 +666,7 @@ typedef struct
   u8 ctx_pool_lock;
   u32 crypto_node_index;
   vnet_crypto_thread_t *threads;
-  vnet_crypto_frame_dequeue_t **dequeue_handlers;
+  vnet_crypto_engine_id_t *dequeue_engines;
   vnet_crypto_engine_t *engines;
   /* configs and hash by name */
   vnet_crypto_config_t *configs;

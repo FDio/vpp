@@ -172,37 +172,36 @@ crypto_dispatch_frame (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_crypto_t
 }
 
 static_always_inline u32
-crypto_dequeue_frame (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      vnet_crypto_thread_t * ct,
-		      vnet_crypto_frame_dequeue_t * hdl, u32 n_cache,
-		      u32 * n_total)
+crypto_dequeue_frame (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_crypto_thread_t *ct,
+		      vnet_crypto_engine_id_t engine, u32 n_cache, u32 *n_total)
 {
   vnet_crypto_main_t *cm = &crypto_main;
-  u32 n_elts = 0;
-  clib_thread_index_t enqueue_thread_idx = CLIB_INVALID_THREAD_INDEX;
-  vnet_crypto_async_frame_t *cf = (hdl) (vm, &n_elts, &enqueue_thread_idx);
-  *n_total += n_elts;
+  vnet_crypto_engine_t *e = cm->engines + engine;
+  vnet_crypto_frame_dequeue_args_t a = {
+    .user_data = e->user_data,
+    .enqueue_thread_index = CLIB_INVALID_THREAD_INDEX,
+  };
+  vnet_crypto_async_frame_t *cf = e->dequeue_handler (vm, &a);
+  *n_total += a.n_elts_processed;
 
-  while (cf || n_elts)
+  while (cf || a.n_elts_processed)
     {
       if (cf)
 	n_cache = crypto_dispatch_frame (vm, node, ct, cf, n_cache, n_total);
       /* signal enqueue-thread to dequeue the processed frame (n_elts>0) */
-      if (n_elts > 0 &&
+      if (a.n_elts_processed > 0 &&
 	  ((node->state == VLIB_NODE_STATE_POLLING &&
-	    (node->flags &
-	     VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE)) ||
+	    (node->flags & VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE)) ||
 	   node->state == VLIB_NODE_STATE_INTERRUPT))
 	{
-	  vlib_node_set_interrupt_pending (
-	    vlib_get_main_by_index (enqueue_thread_idx),
-	    cm->crypto_node_index);
+	  vlib_node_set_interrupt_pending (vlib_get_main_by_index (a.enqueue_thread_index),
+					   cm->crypto_node_index);
 	}
 
-      n_elts = 0;
-      enqueue_thread_idx = 0;
-      cf = (hdl) (vm, &n_elts, &enqueue_thread_idx);
-      *n_total += n_elts;
+      a.n_elts_processed = 0;
+      a.enqueue_thread_index = 0;
+      cf = e->dequeue_handler (vm, &a);
+      *n_total += a.n_elts_processed;
     }
 
   return n_cache;
@@ -293,6 +292,7 @@ VLIB_NODE_FN (crypto_enq_node)
       vnet_crypto_async_frame_t *f = frames[i].frame;
       vnet_crypto_engine_id_t engine;
       vnet_crypto_frame_enq_fn_t *fn = 0;
+      uword user_data = 0;
       u32 j;
       int ret;
 
@@ -304,10 +304,12 @@ VLIB_NODE_FN (crypto_enq_node)
 	  vnet_crypto_engine_t *e = vec_elt_at_index (cm->engines, engine);
 
 	  fn = e->ops[f->alg][f->type].handlers[VNET_CRYPTO_HANDLER_TYPE_ASYNC];
+	  user_data = e->user_data;
 	}
 
       f->state = VNET_CRYPTO_FRAME_STATE_PENDING;
       f->enqueue_thread_index = vm->thread_index;
+      f->user_data = user_data;
 
       if (PREDICT_FALSE (fn == 0))
 	{
@@ -388,11 +390,9 @@ VLIB_NODE_FN (crypto_deq_node)
     n_cache = crypto_dispatch_frame (vm, node, ct, cf[0], n_cache, &n_dispatched);
   vec_free (completed_frames);
 
-  vec_foreach_index (index, cm->dequeue_handlers)
-    {
-      n_cache = crypto_dequeue_frame (
-	vm, node, ct, cm->dequeue_handlers[index], n_cache, &n_dispatched);
-    }
+  vec_foreach_index (index, cm->dequeue_engines)
+    n_cache =
+      crypto_dequeue_frame (vm, node, ct, cm->dequeue_engines[index], n_cache, &n_dispatched);
   if (n_cache)
     vlib_buffer_enqueue_to_next_vec (vm, node, &ct->buffer_indices, &ct->nexts, n_cache);
 

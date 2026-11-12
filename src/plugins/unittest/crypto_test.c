@@ -2015,11 +2015,13 @@ crypto_test_wait_for_async_frame (vlib_main_t *vm, vnet_crypto_engine_id_t engin
       for (i = 0; i < tm->n_vlib_mains; i++)
 	{
 	  vlib_main_t *ovm = vlib_get_main_by_index (i);
-	  clib_thread_index_t enqueue_thread_idx = CLIB_INVALID_THREAD_INDEX;
-	  u32 n_elts = 0;
+	  vnet_crypto_frame_dequeue_args_t a = {
+	    .user_data = e->user_data,
+	    .enqueue_thread_index = CLIB_INVALID_THREAD_INDEX,
+	  };
 	  vnet_crypto_async_frame_t *frame;
 
-	  frame = e->dequeue_handler (ovm, &n_elts, &enqueue_thread_idx);
+	  frame = e->dequeue_handler (ovm, &a);
 	  if (frame == 0)
 	    continue;
 
