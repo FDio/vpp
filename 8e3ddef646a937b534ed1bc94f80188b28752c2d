@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ad2c9758_5951ec23",
+        "filename": "src/vnet/fib/fib_table.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1427,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-11-12T15:09:30Z",
+      "side": 1,
+      "message": "This looks fine, but you have other updates to fib/mfib code separated out into their own patch. This should probably be a distinct patch too or combined with one of the other fib-related patches.",
+      "revId": "8e3ddef646a937b534ed1bc94f80188b28752c2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c4245e84_09542b64",
+        "filename": "test/test_linux_cp.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 1571,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-11-12T15:09:30Z",
+      "side": 1,
+      "message": "`processe` should probably be `processed`. And `We cannot if the` seems to be missing a verb. Maybe it should be `We cannot tell if the` or `We cannot know if the`.",
+      "revId": "8e3ddef646a937b534ed1bc94f80188b28752c2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "19887180_7fc35cda",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1638,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-11-12T15:09:30Z",
+      "side": 1,
+      "message": "`lcp_router_table_free_if_unused()` checks the values of nlt_refs and the route counts before deciding to free a table so checking the route counts will happen twice if you do it here. I think you could just unconditionally add the table\u0027s pool index to `stale` and let `lcp_router_table_free_if_unused()` figure out whether to free the table. Or maybe just check that `nlt_refs \u003d\u003d 0` and add the pool index to `stale` if true.",
+      "revId": "5bc9cbc5f5bb64fd547a102d0048f257eb40d8cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
