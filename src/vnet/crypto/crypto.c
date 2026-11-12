@@ -273,6 +273,10 @@ vnet_crypto_register_engine (vlib_main_t *vm, char *name, int prio, char *desc)
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *p;
   vnet_crypto_engine_id_t engine;
+  uword *e = hash_get_mem (cm->engine_index_by_name, name);
+
+  if (e)
+    return e[0];
 
   vec_add2 (cm->engines, p, 1);
   engine = p - cm->engines;
