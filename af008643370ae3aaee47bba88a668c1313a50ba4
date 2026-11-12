@@ -50,6 +50,24 @@
       "message": "Please don\u0027t add ifdef\u0027s in source files unless absolutely necessary -- ifdefs like these should be in a header file as an inline function or macro definition to be used here\n\ne.g. tcp_test_maybe_set_window_clamp_sock_opt(window_clamp);\n\nand conditionally compiled in the header file.",
       "revId": "af008643370ae3aaee47bba88a668c1313a50ba4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "19842826_f193065b",
+        "filename": "src/plugins/hs_apps/vcl/tcp_test_endpoint.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 446,
+      "author": {
+        "id": 3375
+      },
+      "writtenOn": "2026-11-12T11:15:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1f423a47_e0f5cd06",
+      "revId": "af008643370ae3aaee47bba88a668c1313a50ba4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
