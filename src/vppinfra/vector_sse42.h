@@ -495,37 +495,39 @@ u8x16_xor3 (u8x16 a, u8x16 b, u8x16 c)
 static_always_inline u8x16
 u8x16_load_partial (u8 *data, uword n)
 {
-  u8x16 r = {};
 #if defined(CLIB_HAVE_VEC128_MASK_LOAD_STORE)
   return u8x16_mask_load_zero (data, pow2_mask (n));
-#endif
+#else
+  /* The head element starts at data and the tail element ends at data + n.
+   * The tail is shifted right so that the bytes it shares with the head
+   * drop out. When n equals the element size the count equals the element
+   * width: the SSE shift instructions define the result as zero, the C
+   * shift operator leaves it undefined, hence the intrinsics. */
   if (n > 7)
     {
-      u64x2 r;
-      r[1] = *(u64u *) (data + n - 8);
-      r >>= (16 - n) * 8;
-      r[0] = *(u64u *) data;
-      return (u8x16) r;
+      __m128i lo = _mm_cvtsi64_si128 (*(u64u *) data);
+      __m128i hi = _mm_cvtsi64_si128 (*(u64u *) (data + n - 8));
+      hi = _mm_srl_epi64 (hi, _mm_cvtsi32_si128 ((16 - n) * 8));
+      return (u8x16) _mm_unpacklo_epi64 (lo, hi);
     }
   else if (n > 3)
     {
-      u32x4 r = {};
-      r[1] = *(u32u *) (data + n - 4);
-      r >>= (8 - n) * 8;
-      r[0] = *(u32u *) data;
-      return (u8x16) r;
+      __m128i lo = _mm_cvtsi32_si128 (*(u32u *) data);
+      __m128i hi = _mm_cvtsi32_si128 (*(u32u *) (data + n - 4));
+      hi = _mm_srl_epi32 (hi, _mm_cvtsi32_si128 ((8 - n) * 8));
+      return (u8x16) _mm_unpacklo_epi32 (lo, hi);
     }
   else if (n > 1)
     {
-      u16x8 r = {};
-      r[1] = *(u16u *) (data + n - 2);
-      r >>= (4 - n) * 8;
-      r[0] = *(u16u *) data;
-      return (u8x16) r;
+      __m128i lo = _mm_cvtsi32_si128 (*(u16u *) data);
+      __m128i hi = _mm_cvtsi32_si128 (*(u16u *) (data + n - 2));
+      hi = _mm_srl_epi16 (hi, _mm_cvtsi32_si128 ((4 - n) * 8));
+      return (u8x16) _mm_unpacklo_epi16 (lo, hi);
     }
   else if (n > 0)
-    r[0] = *data;
-  return r;
+    return (u8x16) _mm_cvtsi32_si128 (*data);
+  return (u8x16) {};
+#endif
 }
 
 static_always_inline void

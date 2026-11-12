@@ -334,6 +334,7 @@ set(test_files
   test/dynamic_shuffle.c
   test/index_to_ptr.c
   test/ip_csum.c
+  test/load_partial.c
   test/mask_compare.c
   test/memcpy_x86_64.c
   test/sha2.c
