@@ -2863,6 +2863,36 @@ class TestInitiatorPeerPfsRekey(TestInitiatorPeerRekey):
     pfs_group = 20
 
 
+class TestInitiatorPeerChildDelete(TestInitiatorPsk):
+    """A Child SA Delete request from the original responder is answered
+    with the SPI of the paired SA, RFC 7296 section 1.4.1."""
+
+    def test_initiator(self):
+        super().test_initiator()
+        child = self.sa.child_sas[0]
+        header = ikev2.IKEv2(
+            init_SPI=self.sa.ispi,
+            resp_SPI=self.sa.rspi,
+            id=self.sa.new_msg_id(),
+            flags=0,
+            exch_type="INFORMATIONAL",
+        )
+        # the peer names its inbound SA, the response names the inbound SA of VPP
+        delete = ikev2.IKEv2_payload_Delete(
+            proto="ESP", SPIsize=4, SPInum=1, SPIs=child.rspi
+        )
+        packet = self.create_packet(
+            self.pg0, self.encrypt_ike_msg(header, delete, "Delete")
+        )
+        reply = self.get_ike_header(self.send_and_expect(self.pg0, packet, self.pg0)[0])
+        self.assertIn("Response", reply.flags)
+        self.assertEqual(reply[ikev2.IKEv2_payload_Encrypted].next_payload, 42)
+        paired = ikev2.IKEv2_payload_Delete(self.sa.hmac_and_decrypt(reply))
+        self.assertEqual(paired.proto, 3)  # ESP
+        self.assertEqual(raw(paired)[-4:], child.ispi)
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
+
+
 class TestInitiatorDelSAFromResponder(TemplateInitiator, Ikev2Params):
     """test ikev2 initiator - delete IKE SA from responder"""
 

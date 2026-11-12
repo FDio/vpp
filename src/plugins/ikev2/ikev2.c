@@ -3970,16 +3970,17 @@ ikev2_node_internal (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
 			if (ch_sa)
 			  {
 			    ikev2_delete_tunnel_interface (vnet_get_main (), sa0, ch_sa);
-			    if (!sa0->is_initiator)
+			    if (ike_hdr_is_request (ike0))
 			      {
 				vec_add2 (resp, tmp, 1);
 				tmp->protocol_id = d->protocol_id;
-				tmp->spi = ch_sa->r_proposals[0].spi;
+				tmp->spi = sa0->is_initiator ? ch_sa->i_proposals[0].spi :
+							       ch_sa->r_proposals[0].spi;
 			      }
 			    ikev2_sa_del_child_sa (sa0, ch_sa);
 			  }
 		      }
-		      if (!sa0->is_initiator)
+		      if (ike_hdr_is_request (ike0))
 			{
 			  vec_free (sa0->del);
 			  sa0->del = resp;
