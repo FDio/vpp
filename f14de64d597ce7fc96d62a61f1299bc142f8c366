@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "82884f7c_b5b4aeab",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 8
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-12T23:01:30Z",
+      "side": 1,
+      "message": "Done in patch set 8.\n\nSplit out as independent changes, below this one:\n- 47708 ikev2: answer a Child SA Delete with the paired SPI (RFC 7296 1.4.1). As the original initiator the plugin answered with the SPI of the request instead of its own.\n- 47709 ipsec: return all SA ids of a tunnel protection.\n\nRemoved: two comment-indentation hunks.\n\nFolded in: 47655. Patch set 7 dropped a Delete request whose teardown failed, and 47655 corrected that to TEMPORARY_FAILURE ten changes later (RFC 7296 1.4: an INFORMATIONAL request MUST get a response; 2.25). The fix belongs here; I will abandon 47655.\n\nNot split further. I tried to separate the handling of a failed install and of a failed teardown from accepting the second Child SA. Applied without the rest, the install part fails 6 of the existing rekey tests, and install plus teardown 8: the three change the same install and delete functions and the intermediate states do not hold. The commit message now describes the change as one feature with its install and delete consequences. If you see a seam I missed, point at it and I will cut there.\n\nNew in this patch set: a test for a rekey whose new SA cannot be installed (TEMPORARY_FAILURE, old Child SA kept).\n\nThe ten changes above are rebased with no functional change: the tree at the tip differs from the previous tip by the two removed style hunks and two added tests. I will push them in small groups.",
+      "parentUuid": "38a876e0_76733ce1",
+      "revId": "f14de64d597ce7fc96d62a61f1299bc142f8c366",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
