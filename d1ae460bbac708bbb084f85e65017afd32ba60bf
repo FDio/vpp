@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "964de12e_192f2e8d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-12T18:25:46Z",
+      "side": 1,
+      "message": "Ack. Thanks for the detailed review 😊 I will switch to `filelock` and update the patch. I had not considered the cross-platform implications.",
+      "parentUuid": "4cb1b559_2755321f",
+      "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9fec4a46_845aea63",
