@@ -2075,7 +2075,10 @@ ikev2_select_profile (vlib_main_t *vm, ikev2_main_t *km, ikev2_sa_t *sa,
 	  psk = ikev2_calc_prf (tr_prf, p->auth.data, key_pad);
 	  auth = ikev2_calc_prf (tr_prf, psk, authmsg);
 
-	  if (!clib_memcmp (auth, sa_auth->data, vec_len (sa_auth->data)))
+	  /* the whole PRF output must match; comparing only as many bytes
+	   * as the peer sent would accept a truncated or empty AUTH payload */
+	  if (vec_len (auth) > 0 && vec_len (auth) == vec_len (sa_auth->data) &&
+	      !CRYPTO_memcmp (auth, sa_auth->data, vec_len (auth)))
 	    {
 	    sa->state = IKEV2_STATE_AUTHENTICATED;
 	    log_debug ("ispi %lx SA state changed to AUTHENTICATED", sa->ispi);
