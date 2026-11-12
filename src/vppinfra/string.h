@@ -664,12 +664,12 @@ strncmp_s_inline (const char *s1, rsize_t s1max, const char *s2, rsize_t n,
   u8 bad;
   u8 s1_greater_s1max = (s1 && s1max && n > clib_strnlen (s1, s1max));
 
-  if (PREDICT_FALSE (s1_greater_s1max && indicator))
+  if (PREDICT_FALSE (s1_greater_s1max && s2 && indicator))
     {
       /*
-       * strcmp allows n > s1max. If indicator is non null, we can still
-       * do the compare without any harm and return EINVAL as well as the
-       * result in indicator.
+       * strcmp allows n > s1max. If indicator and s2 are non null, we can
+       * still do the compare without any harm and return EINVAL as well as
+       * the result in indicator.
        */
       clib_c11_violation ("n exceeds s1 length");
       *indicator = strncmp (s1, s2, n);
