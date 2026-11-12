@@ -3569,8 +3569,9 @@ tcp_test_persist_e2e (vlib_main_t *vm, unformat_input_t *input)
       goto cleanup;
     }
 
+  /* A window smaller than an mss is filled when the persist timer expires, then it is zero */
   tries = 0;
-  while ((!tcp_timer_is_active (client_tc, TCP_TIMER_PERSIST) ||
+  while ((!tcp_timer_is_active (client_tc, TCP_TIMER_PERSIST) || client_tc->snd_wnd ||
 	  svm_fifo_max_dequeue_cons (server_s->rx_fifo) == 0) &&
 	 ++tries < 200)
     {
@@ -3584,8 +3585,7 @@ tcp_test_persist_e2e (vlib_main_t *vm, unformat_input_t *input)
       rv = 1;
       goto cleanup;
     }
-  if (!TCP_TEST_I ((client_tc->snd_wnd < client_tc->snd_mss),
-		   "client send window is effectively zero"))
+  if (!TCP_TEST_I ((!client_tc->snd_wnd), "client send window is zero (%u)", client_tc->snd_wnd))
     {
       rv = 1;
       goto cleanup;
@@ -3891,6 +3891,18 @@ tcp_test_limited_transmit (vlib_main_t *vm, unformat_input_t *input)
   TCP_TEST ((tcp_snd_space (tc) == mss), "and one for the second");
   tc->snd_nxt += mss;
   TCP_TEST ((tcp_snd_space (tc) == 0), "nothing more until the next dupack");
+
+  /* Sender SWS avoidance. With nothing in flight, a window smaller than an mss is filled if it is
+   * at least half of the max window offered, e.g., the peer's buffer is that small. Smaller windows
+   * also depend on the data queued, see the snd-small-wnd e2e test */
+  tc->rcv_dupacks = 0;
+  tc->snd_nxt = una;
+  tc->snd_wnd = tc->snd_wnd_max = 1000;
+  TCP_TEST ((tcp_snd_space (tc) == 1000), "window smaller than an mss filled if it is the max");
+  tc->snd_wnd_max = 2000;
+  TCP_TEST ((tcp_snd_space (tc) == 1000), "and if it is half of the max");
+  tc->snd_nxt = una + 1;
+  TCP_TEST ((tcp_snd_space (tc) == 0), "but not with something in flight");
 
   return 0;
 }
@@ -8286,6 +8298,193 @@ cleanup:
   return rv;
 }
 
+/* Sender SWS avoidance, as per RFC9293 sec. 3.8.6.2.1. The server does not read, so after two full
+ * segments it holds a window smaller than an mss. The client does not fill it while more data is
+ * queued, sends what fits when the persist timer expires, even if server data keeps advertising
+ * the window, and sends a write that fits right away */
+static int
+tcp_test_tamper_snd_small_wnd (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "snd_small_wnd",
+    .client_addr = 0x2a2a2a01,
+    .server_addr = 0x2b2b2b01,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2277,
+    .client_port = 0, /* ephemeral */
+    .secret = 2276,
+    .rx_fifo_size = 4 << 10,
+    .tx_fifo_size = 64 << 10,
+  };
+  const u32 small_write = 100;
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc, *server_tc;
+  session_t *client_s, *server_s;
+  u32 smss, fill, extra, wnd, una, total, tries, max_iters, srv_nxt, drained = 0;
+  f64 hold_start, rto, elapsed;
+  u8 *data = 0;
+  int error, rv = 0, i;
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "snd_small_wnd: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "snd_small_wnd: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Keep the pacer from splitting the client's bursts */
+  client_tc->connection.flags &= ~TRANSPORT_CONNECTION_F_IS_TX_PACED;
+  smss = client_tc->snd_mss;
+  fill = 2 * smss;
+  extra = 2 * smss;
+  total = 2 * fill + extra + small_write;
+  vec_validate (data, total - 1);
+  for (i = 0; i < (int) total; i++)
+    data[i] = i & 0xff;
+
+  /* Two full segments fill the window but for less than an mss, and more data waits */
+  una = client_tc->snd_una;
+  error = svm_fifo_enqueue (client_s->tx_fifo, fill + extra, data);
+  if (!TCP_TEST_I ((error == (int) (fill + extra)), "snd_small_wnd: client queued %u bytes",
+		   fill + extra))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  for (tries = 0; tries < 100 && seq_lt (client_tc->snd_una, una + fill); tries++)
+    tcp_e2e_pump (vm, 1e-3);
+  /* The hold and the persist timer start with the ack. Without the hold, the window is filled
+   * right away */
+  hold_start = vlib_time_now (vm);
+  tcp_e2e_pump (vm, 1e-3);
+  if (!TCP_TEST_I ((client_tc->snd_una == una + fill && client_tc->snd_nxt == una + fill),
+		   "snd_small_wnd: %u bytes acked, then window not filled (sent %u more)", fill,
+		   client_tc->snd_nxt - una - fill))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  wnd = client_tc->snd_wnd;
+  if (!TCP_TEST_I ((wnd && wnd < smss && wnd < client_tc->snd_wnd_max / 2 &&
+		    tcp_timer_is_active (client_tc, TCP_TIMER_PERSIST)),
+		   "snd_small_wnd: server offers %u of max %u, persist timer set", wnd,
+		   client_tc->snd_wnd_max))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* No data carries acks for server data while holding, so acks must be sent */
+  server_tc = tcp_connection_get (server_s->connection_index, server_s->thread_index);
+  srv_nxt = server_tc->snd_nxt;
+  svm_fifo_enqueue (server_s->tx_fifo, 10, data);
+  session_program_tx_io_evt (server_s->handle, SESSION_IO_EVT_TX);
+  for (tries = 0; tries < 10 && server_tc->snd_una != srv_nxt + 10; tries++)
+    tcp_e2e_pump (vm, 1e-3);
+  if (!TCP_TEST_I ((server_tc->snd_una == srv_nxt + 10 && client_tc->snd_nxt == una + fill),
+		   "snd_small_wnd: server data acked while holding (acked %u of 10)",
+		   server_tc->snd_una - srv_nxt))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Server data every 10 ms advertises the same small window and must not postpone the persist
+   * timer */
+  srv_nxt = server_tc->snd_nxt;
+  rto = (f64) client_tc->rto / THZ;
+  max_iters = tcp_e2e_rxt_wait_iters (client_tc, 1e-3);
+  for (tries = 0; tries < max_iters && client_tc->snd_nxt == una + fill; tries++)
+    {
+      if (!(tries % 10))
+	{
+	  svm_fifo_enqueue (server_s->tx_fifo, 10, data);
+	  session_program_tx_io_evt (server_s->handle, SESSION_IO_EVT_TX);
+	}
+      tcp_e2e_pump (vm, 1e-3);
+    }
+  elapsed = vlib_time_now (vm) - hold_start;
+  if (!TCP_TEST_I (
+	(client_tc->snd_nxt == una + fill + wnd && server_tc->snd_nxt != srv_nxt &&
+	 elapsed < 4 * rto),
+	"snd_small_wnd: persist timer sent what fits despite server data (sent %u of %u, "
+	"server sent %u, after %.0f ms, rto %.0f ms)",
+	client_tc->snd_nxt - una - fill, wnd, server_tc->snd_nxt - srv_nxt, elapsed * 1e3,
+	rto * 1e3))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Server reads, opens the window and gets the rest */
+  max_iters = tcp_e2e_rxt_wait_iters (client_tc, 10e-3);
+  for (tries = 0; tries < max_iters; tries++)
+    {
+      drained += session_test_drain_rx_fifo (server_s);
+      if (drained == fill + extra && client_tc->snd_una == client_tc->snd_nxt)
+	break;
+      tcp_e2e_pump (vm, 10e-3);
+    }
+  if (!TCP_TEST_I ((drained == fill + extra), "snd_small_wnd: %u bytes delivered (got %u)",
+		   fill + extra, drained))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Hold a small window again, then a write that fits is sent right away */
+  una = client_tc->snd_una;
+  error = svm_fifo_enqueue (client_s->tx_fifo, fill, data + fill + extra);
+  session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  for (tries = 0; tries < 100; tries++)
+    {
+      tcp_e2e_pump (vm, 1e-3);
+      if (client_tc->snd_una == una + fill && client_tc->snd_wnd < smss)
+	break;
+    }
+  if (!TCP_TEST_I ((error == (int) fill && client_tc->snd_una == una + fill &&
+		    client_tc->snd_wnd >= small_write && client_tc->snd_wnd < smss &&
+		    client_tc->snd_wnd < client_tc->snd_wnd_max / 2),
+		   "snd_small_wnd: %u bytes acked, server offers %u again", fill,
+		   client_tc->snd_wnd))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  error = svm_fifo_enqueue (client_s->tx_fifo, small_write, data + 2 * fill + extra);
+  session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  for (tries = 0; tries < 10 && client_tc->snd_nxt == una + fill; tries++)
+    tcp_e2e_pump (vm, 1e-3);
+  if (!TCP_TEST_I ((error == (int) small_write && client_tc->snd_nxt == una + fill + small_write),
+		   "snd_small_wnd: write that fits sent right away (sent %u of %u)",
+		   client_tc->snd_nxt - una - fill, small_write))
+    rv = 1;
+
+  for (tries = 0; tries < max_iters && drained < total; tries++)
+    {
+      drained += session_test_drain_rx_fifo (server_s);
+      tcp_e2e_pump (vm, 10e-3);
+    }
+  if (!TCP_TEST_I ((drained == total), "snd_small_wnd: all %u bytes delivered (got %u)", total,
+		   drained))
+    rv = 1;
+
+cleanup:
+  vec_free (data);
+  if (!tcp_e2e_teardown (vm, ctx))
+    rv = 1;
+  return rv;
+}
+
 static int
 tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -8314,6 +8513,7 @@ tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
     { "dupack-cwnd", tcp_test_tamper_dupack_cwnd },
     { "nosack-cwnd", tcp_test_tamper_nosack_cwnd },
     { "rcv-wnd-retract", tcp_test_tamper_rcv_wnd_retract },
+    { "snd-small-wnd", tcp_test_tamper_snd_small_wnd },
   };
   int res = 0, i;
 
