@@ -7,15 +7,20 @@ import os
 import sys
 import time
 import signal
+import shutil
 from asfframework import VppAsfTestCase
 
 
-def set_iperf_affinity(cpus):
-    """Move an iperf child away from the test driver's VPP CPU."""
-    if cpus:
-        os.sched_setaffinity(0, set(cpus))
-    else:
-        os.sched_setaffinity(0, range(os.cpu_count()))
+def iperf_command_with_affinity(args, cpus):
+    """Set child affinity without running Python between fork and exec."""
+    taskset = shutil.which("taskset")
+    if taskset is None:
+        raise RuntimeError("taskset is required to set iPerf CPU affinity")
+    # Do not use sched_getaffinity(0) here: the test driver is pinned to the
+    # VPP main CPU. Preserve the broad fallback when no helpers were reserved;
+    # the kernel intersects this mask with the container's permitted CPUs.
+    cpu_list = ",".join(str(cpu) for cpu in sorted(set(cpus or range(os.cpu_count()))))
+    return [taskset, "-c", cpu_list] + args
 
 
 class VppIperf:
@@ -59,9 +64,7 @@ class VppIperf:
         if self.server_ns and self.client_ns and self.server_ip:
             return True
         else:
-            raise Exception(
-                "Error: Cannot Start." "iPerf object has not been initialized"
-            )
+            raise Exception("Error: Cannot Start.iPerf object has not been initialized")
 
     def get_iperf(self):
         """Return the iperf executable for running tests.
@@ -93,15 +96,15 @@ class VppIperf:
             "-D",
         ]
         args.extend(self.server_args.split())
-        cmd = " ".join(args)
+        launch_args = iperf_command_with_affinity(args, self.cpus)
+        cmd = " ".join(launch_args)
         self.logger.debug(f"Starting iperf server: {cmd}")
         try:
             result = subprocess.run(
-                args,
+                launch_args,
                 timeout=self.duration + self.timeout_delay,
                 encoding="utf-8",
                 capture_output=True,
-                preexec_fn=lambda: set_iperf_affinity(self.cpus),
             )
             if result.returncode != 0:
                 raise Exception(
@@ -138,15 +141,15 @@ class VppIperf:
         args.extend(self.client_args.split())
         if os.path.basename(self.iperf) == "iperf3" and "--connect-timeout" not in args:
             args.extend(["--connect-timeout", self.client_connect_timeout])
-        cmd = " ".join(args)
+        launch_args = iperf_command_with_affinity(args, self.cpus)
+        cmd = " ".join(launch_args)
         for attempt in range(1, self.client_retries + 1):
             try:
                 result = subprocess.run(
-                    args,
+                    launch_args,
                     timeout=self.duration + self.timeout_delay,
                     encoding="utf-8",
                     capture_output=True,
-                    preexec_fn=lambda: set_iperf_affinity(self.cpus),
                 )
                 transient_error = "unable to connect to server" in (
                     (result.stderr or "").lower()
