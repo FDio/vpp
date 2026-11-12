@@ -451,6 +451,9 @@ show_crypto_handlers_command_fn (vlib_main_t * vm,
 			  cell = format (cell, ANSI_FG_CYAN "%s*" ANSI_RESET, e->name);
 			else
 			  cell = format (cell, "%s", e->name);
+			if (ht == VNET_CRYPTO_HANDLER_TYPE_ASYNC &&
+			    (e - cm->engines) == cm->async_selected_engine_index[a - cm->algs])
+			  cell = format (cell, "+");
 		      }
 		  }
 
@@ -470,6 +473,7 @@ show_crypto_handlers_command_fn (vlib_main_t * vm,
     }
   s = format (s, "%U", format_table, t);
   vlib_cli_output (vm, "%v", s);
+  vlib_cli_output (vm, "* active, + selected with 'set crypto handler ... async'");
   table_free (t);
   vec_free (cell);
   vec_free (s);

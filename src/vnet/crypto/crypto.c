@@ -45,10 +45,13 @@ crypto_register_handler (vnet_crypto_main_t *cm, vnet_crypto_engine_t *e, vnet_c
 			 vnet_crypto_op_type_t type, vnet_crypto_handler_type_t t, void *fn)
 {
   vnet_crypto_engine_t *ae;
-  vnet_crypto_engine_id_t engine;
+  vnet_crypto_engine_id_t engine, selected = VNET_CRYPTO_ENGINE_ID_NONE;
 
   if (fn == 0)
     return;
+
+  if (t == VNET_CRYPTO_HANDLER_TYPE_ASYNC)
+    selected = cm->async_selected_engine_index[alg];
 
   engine = e - cm->engines;
   e->ops[alg][type].handlers[t] = fn;
@@ -60,6 +63,16 @@ crypto_register_handler (vnet_crypto_main_t *cm, vnet_crypto_engine_t *e, vnet_c
       cm->active_engine_index[alg][t] = engine;
       return;
     }
+
+  if (engine == selected)
+    {
+      crypto_set_active_engine (alg, type, engine, t);
+      return;
+    }
+
+  if (selected != VNET_CRYPTO_ENGINE_ID_NONE &&
+      cm->active_op_engine_index[alg][type][t] == selected)
+    return;
 
   ae = vec_elt_at_index (cm->engines, cm->active_op_engine_index[alg][type][t]);
   if (ae->priority <= e->priority)
@@ -354,7 +367,10 @@ vnet_crypto_set_handlers (vnet_crypto_set_handlers_args_t *a)
 	continue;
 
       if (a->set_async)
-	crypto_set_active_engine (alg, i, engine, VNET_CRYPTO_HANDLER_TYPE_ASYNC);
+	{
+	  cm->async_selected_engine_index[alg] = engine;
+	  crypto_set_active_engine (alg, i, engine, VNET_CRYPTO_HANDLER_TYPE_ASYNC);
+	}
       if (a->set_simple)
 	crypto_set_active_engine (alg, i, engine, VNET_CRYPTO_HANDLER_TYPE_SIMPLE);
       if (a->set_chained)
@@ -422,9 +438,13 @@ static vnet_crypto_engine_id_t
 crypto_async_engine_select (vnet_crypto_main_t *cm, vnet_crypto_alg_t alg,
 			    vnet_crypto_op_type_t type)
 {
-  vnet_crypto_engine_id_t best = VNET_CRYPTO_ENGINE_ID_NONE;
+  vnet_crypto_engine_id_t best = cm->async_selected_engine_index[alg];
   vnet_crypto_engine_t *e;
 
+  if (crypto_engine_has_handler (cm->engines + best, alg, type, VNET_CRYPTO_HANDLER_TYPE_ASYNC))
+    return best;
+
+  best = VNET_CRYPTO_ENGINE_ID_NONE;
   vec_foreach (e, cm->engines)
     if (crypto_engine_has_handler (e, alg, type, VNET_CRYPTO_HANDLER_TYPE_ASYNC) &&
 	(best == VNET_CRYPTO_ENGINE_ID_NONE || cm->engines[best].priority <= e->priority))
