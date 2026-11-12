@@ -613,6 +613,10 @@ __clib_export void vnet_crypto_register_enqueue_handler_by_alg (vlib_main_t *vm,
 								vnet_crypto_alg_t alg,
 								vnet_crypto_op_type_t type,
 								vnet_crypto_frame_enq_fn_t *enq_fn);
+__clib_export void vnet_crypto_unregister_enqueue_handler_by_alg (vlib_main_t *vm,
+								  vnet_crypto_engine_id_t engine,
+								  vnet_crypto_alg_t alg,
+								  vnet_crypto_op_type_t type);
 
 __clib_export void vnet_crypto_register_dequeue_handler (vlib_main_t *vm,
 							 vnet_crypto_engine_id_t engine,
