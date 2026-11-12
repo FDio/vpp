@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f3db85b7_35ac83ee",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 672,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-11-12T23:28:10Z",
+      "side": 1,
+      "message": "Isn\u0027t it cheaper to just move app alloc lower?",
+      "revId": "be3ee688351b66d81540da73bc831e3219eb1c8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
