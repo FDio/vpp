@@ -413,6 +413,11 @@ test_strncmp_s (vlib_main_t * vm, unformat_input_t * input)
   if (err != EINVAL)
     return -1;
 
+  /* n > s1max with a null s2 must not reach strncmp */
+  err = strncmp_s (s1, s1len, 0, s1len + 1, &indicator);
+  if (err != EINVAL)
+    return -1;
+
   /* unterminated s1 */
   s1[s1len] = 0x1;
   err = strncmp_s (s1, s1len, "Every moment is a fresh beginning",
