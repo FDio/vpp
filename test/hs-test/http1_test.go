@@ -36,6 +36,7 @@ func init() {
 		HttpContentLengthTest, HttpVersionNotSupportedTest, HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpUriDecodeTest,
 		HttpHeadersTest, HttpClientTest, HttpClientErrRespTest, HttpClientPostFormTest, HttpClientPostFormPtrTest,
 		HttpClientGet128kbResponseTest, HttpClientGetResponseBodyTest, HttpClientGetTlsNoRespBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest,
+		HttpClientEmptyContentLengthResponseTest, HttpClientDuplicateHeadersTest,
 		HttpRequestLineTest, HttpClientGetTimeout, HttpConnTimeoutTest, HttpClientGetRepeatTest, HttpClientPostRepeatTest,
 		HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest,
 		HttpClientInvalidHeaderNameTest, HttpTimerSessionDisable, HttpClientBodySizeTest, HttpClientResponseLengthOverflowTest,
@@ -1770,6 +1771,32 @@ func HttpClientErrRespTest(s *Http1Suite) {
 	AssertContains(o, "404: Not Found", "error not found in the result!")
 }
 
+func HttpClientEmptyContentLengthResponseTest(s *Http1Suite) {
+	output := httpCliClientRawReply(s, "http client verbose timeout 5", func(conn *net.TCPConn) error {
+		_, err := io.WriteString(conn, "HTTP/1.1 200 OK\r\nContent-Length:\r\n\r\n")
+		return err
+	})
+	Log(output)
+	AssertNotContains(output, "HTTP/1.1 200 OK", "empty Content-Length response must be discarded")
+}
+
+func HttpClientDuplicateHeadersTest(s *Http1Suite) {
+	for _, name := range []string{"Content-Length", "Host"} {
+		value := "0"
+		if name == "Host" {
+			value = "example.com"
+		}
+		for _, values := range [][2]string{{value, ""}, {"", value}, {value, value}, {value, "1"}} {
+			By(fmt.Sprintf("duplicate response %s: %q", name, values))
+			output := httpCliClientRawReply(s, "http client verbose timeout 5", func(conn *net.TCPConn) error {
+				_, err := fmt.Fprintf(conn, "HTTP/1.1 200 OK\r\n%s: %s\r\n%s: %s\r\n\r\n", name, values[0], strings.ToLower(name), values[1])
+				return err
+			})
+			AssertNotContains(output, "HTTP/1.1 200 OK", "duplicate response header must be discarded")
+		}
+	}
+}
+
 func httpClientPostFormTest(s *Http1Suite, usePtr bool) {
 	serverAddress := s.HostAddr() + ":" + s.Ports.Http
 	body := "field1=value1&field2=value2"
@@ -2842,27 +2869,56 @@ func HttpInvalidTargetSyntaxTest(s *Http1Suite) {
 	AssertContains(resp, "HTTP/1.1 400 Bad Request")
 }
 
+// Require the same rejection and connection close with the last field name
+// split before its colon, so duplicate detection also spans separate RX events.
+func http1RejectHeaderRequest(address, headers string) {
+	request := "GET /show/version HTTP/1.1\r\n" + headers + "\r\n"
+	lastFieldStart := strings.LastIndex(request[:len(request)-4], "\r\n") + 2
+	colon := lastFieldStart + strings.Index(request[lastFieldStart:], ":")
+	for _, split := range []int{len(request), colon} {
+		func() {
+			conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+			AssertNil(err)
+			defer conn.Close()
+			AssertNil(conn.SetDeadline(time.Now().Add(defaultHttpTimeout)))
+			_, err = io.WriteString(conn, request[:split])
+			AssertNil(err)
+			if split != len(request) {
+				AssertNil(conn.SetReadDeadline(time.Now().Add(50 * time.Millisecond)))
+				var b [1]byte
+				_, err = conn.Read(b[:])
+				timeout, ok := err.(net.Error)
+				AssertEqual(true, ok && timeout.Timeout(), "incomplete header name must wait for more data")
+				AssertNil(conn.SetReadDeadline(time.Now().Add(defaultHttpTimeout)))
+				_, err = io.WriteString(conn, request[split:])
+				AssertNil(err)
+			}
+			reader := bufio.NewReader(conn)
+			response, err := http.ReadResponse(reader, nil)
+			AssertNil(err)
+			defer response.Body.Close()
+			AssertHttpStatus(response, http.StatusBadRequest)
+			_, err = io.Copy(io.Discard, response.Body)
+			AssertNil(err)
+			_, err = reader.ReadByte()
+			AssertEqual(io.EOF, err, "invalid header must close the connection")
+		}()
+	}
+}
+
 func HttpInvalidContentLengthTest(s *Http1Suite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	vpp.Vppctl("http cli server uri http://" + serverAddress)
 
-	resp, err := TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nContent-Length:\r\n\r\n")
-	AssertNil(err, fmt.Sprint(err))
-	AssertContains(resp, "HTTP/1.1 400 Bad Request", "Content-Length value must be present")
-
-	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nContent-Length: \r\n\r\n")
-	AssertNil(err, fmt.Sprint(err))
-	AssertContains(resp, "HTTP/1.1 400 Bad Request", "Content-Length value must be present")
-
-	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nContent-Length: a\r\n\r\n")
-	AssertNil(err, fmt.Sprint(err))
-	AssertContains(resp, "HTTP/1.1 400 Bad Request",
-		"Content-Length value other than digit not allowed")
-
-	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nContent-Length: 111111111111111111111111111111111111111111111111\r\n\r\n")
-	AssertNil(err, fmt.Sprint(err))
-	AssertContains(resp, "HTTP/1.1 400 Bad Request", "Content-Length value exceeded U64_MAX")
+	for _, value := range []string{"", " \t ", "a", "111111111111111111111111111111111111111111111111"} {
+		By(fmt.Sprintf("invalid Content-Length %q", value))
+		http1RejectHeaderRequest(serverAddress, "Host: example.com\r\nContent-Length: "+value+"\r\n")
+	}
+	for _, values := range [][2]string{{"0", ""}, {"", "0"}, {"0", "0"}, {"0", "1"}, {"", ""}} {
+		By(fmt.Sprintf("duplicate Content-Length %q", values))
+		http1RejectHeaderRequest(serverAddress, "Host: example.com\r\nContent-Length: "+values[0]+"\r\ncOnTeNt-LeNgTh: "+values[1]+"\r\n")
+	}
 }
 
 func HttpContentLengthTest(s *Http1Suite) {
@@ -3121,6 +3177,10 @@ func HttpMissingHostHeaderTest(s *Http1Suite) {
 	resp, err := TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nhOsT: "+serverAddress+"\r\n\r\n")
 	AssertNil(err, fmt.Sprint(err))
 	AssertContains(resp, "HTTP/1.1 200 OK")
+	for _, values := range [][2]string{{serverAddress, ""}, {"", serverAddress}, {serverAddress, serverAddress}, {serverAddress, "other.example"}, {"", ""}} {
+		By(fmt.Sprintf("duplicate Host %q", values))
+		http1RejectHeaderRequest(serverAddress, "Host: "+values[0]+"\r\nhOsT: "+values[1]+"\r\n")
+	}
 }
 
 func HttpInvalidHeadersTest(s *Http1Suite) {
@@ -3148,13 +3208,17 @@ func HttpInvalidHeadersTest(s *Http1Suite) {
 	AssertNil(err, fmt.Sprint(err))
 	AssertContains(resp, "HTTP/1.1 400 Bad Request", "invalid field line end not allowed")
 
-	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+"\r\nUser-Agent:\r\n\r\n")
-	AssertNil(err, fmt.Sprint(err))
-	AssertContains(resp, "HTTP/1.1 400 Bad Request", "empty field value not allowed")
+	for _, value := range []string{"", "   "} {
+		request := "GET /show/version HTTP/1.1\r\nHost:" + serverAddress +
+			"\r\nX-Empty: " + value + "\r\n\r\n"
+		resp, err = TcpSendReceive(serverAddress, request)
+		AssertNil(err, fmt.Sprint(err))
+		AssertContains(resp, "HTTP/1.1 200 OK", "empty ordinary field value should reach the application")
+	}
 
-	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:"+serverAddress+"\r\nUser-Agent:    \r\n\r\n")
+	resp, err = TcpSendReceive(serverAddress, "GET /show/version HTTP/1.1\r\nHost:\r\n\r\n")
 	AssertNil(err, fmt.Sprint(err))
-	AssertContains(resp, "HTTP/1.1 400 Bad Request", "empty field value not allowed")
+	AssertContains(resp, "HTTP/1.1 400 Bad Request", "empty Host value remains invalid")
 }
 
 func HeaderServerTest(s *Http1Suite) {

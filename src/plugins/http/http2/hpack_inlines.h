@@ -762,9 +762,12 @@ hpack_preprocess_header (u8 *name, u32 name_len, u8 *value, u32 value_len,
 	}
       break;
     case 14:
-      if (!memcmp (name, "content-length", 14) &&
-	  *content_len_header_index == ~0)
-	*content_len_header_index = index;
+      if (!memcmp (name, "content-length", 14))
+	{
+	  if (*content_len_header_index != ~0)
+	    return HPACK_ERROR_PROTOCOL;
+	  *content_len_header_index = index;
+	}
       break;
     case 16:
       if (!memcmp (name, "proxy-connection", 16))
