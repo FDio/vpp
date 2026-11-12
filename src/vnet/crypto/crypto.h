@@ -691,6 +691,7 @@ typedef struct
   vnet_crypto_engine_id_t active_op_engine_index[VNET_CRYPTO_N_ALGS][VNET_CRYPTO_OP_N_TYPES]
 						[VNET_CRYPTO_HANDLER_N_TYPES];
   vnet_crypto_engine_id_t active_hash_engine_index[VNET_CRYPTO_N_HASH_ALGS][2];
+  vnet_crypto_engine_id_t async_selected_engine_index[VNET_CRYPTO_N_ALGS];
   u8 default_disabled;
 } vnet_crypto_main_t;
 
