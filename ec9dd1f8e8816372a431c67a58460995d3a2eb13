@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f58ddbb2_7d2a44af",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1439,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-11-12T13:11:37Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "5d1d7ffa_a199d121",
+      "revId": "ec9dd1f8e8816372a431c67a58460995d3a2eb13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5d81d9a7_4171b8ea",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7371e439_eb6998f9",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1441,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-11-12T13:11:37Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "5d81d9a7_4171b8ea",
+      "revId": "ec9dd1f8e8816372a431c67a58460995d3a2eb13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f9607125_9132023a",
@@ -48,6 +84,24 @@
       "writtenOn": "2026-11-11T23:14:23Z",
       "side": 1,
       "message": "Why is this necessary? If there are no paths left for this entry/source, won\u0027t it get removed automatically by one of the functions in the call chain invoked by `mfib_table_entry_paths_remove()`?",
+      "revId": "ec9dd1f8e8816372a431c67a58460995d3a2eb13",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fa5d872b_45d4db6e",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1447,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-11-12T13:11:37Z",
+      "side": 1,
+      "message": "because in route_add we do:\n```\n\t  /* it\u0027s not clear to me how linux expresses the RPF paramters\n\t   * so we\u0027ll allow from all interfaces and hope for the best */\n\t  mfib_table_entry_update (nlt-\u003enlt_mfib_index, \u0026mpfx,\n\t\t\t\t   MFIB_SOURCE_PLUGIN_LOW, MFIB_RPF_ID_NONE,\n\t\t\t\t   MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF);\n\n\t  mfib_table_entry_paths_update (nlt-\u003enlt_mfib_index, \u0026mpfx,\n\t\t\t\t\t MFIB_SOURCE_PLUGIN_LOW,\n\t\t\t\t\t MFIB_ENTRY_FLAG_NONE, np.paths);\n```\n\nand when any flag is set the entry is not being auto-removed:\n```\nstatic int\nmfib_entry_src_ok_for_delete (const mfib_entry_src_t *msrc)\n{\n    return ((INDEX_INVALID \u003d\u003d msrc-\u003emfes_cover \u0026\u0026\n             MFIB_ENTRY_FLAG_NONE \u003d\u003d msrc-\u003emfes_route_flags \u0026\u0026\n             0 \u003d\u003d fib_path_list_get_n_paths(msrc-\u003emfes_pl)) \u0026\u0026\n            (0 \u003d\u003d hash_elts(msrc-\u003emfes_itfs)));\n```\n\nwe could potentially rework the original approach of setting `MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF` (i.e. parsing `RTNL_FAMILY_IP(6)MR` messages and relying on `RTA_IFF`; maybe in this case we can even drop the special mcast routes) but I think today\u0027s approach also works well.",
+      "parentUuid": "f9607125_9132023a",
       "revId": "ec9dd1f8e8816372a431c67a58460995d3a2eb13",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
