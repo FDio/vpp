@@ -8,8 +8,11 @@ import time
 import random
 import string
 import json
+import shlex
 from filelock import BaseFileLock, FileLock
 from multiprocessing import Process
+
+NETWORK_COMMAND_TIMEOUT = 30
 
 
 def net_helper_lock() -> BaseFileLock:
@@ -23,16 +26,26 @@ def net_helper_lock() -> BaseFileLock:
     )
 
 
+def _run_network_command(args, **kwargs):
+    """Bound commands run while holding the shared namespace helper lock."""
+    try:
+        return subprocess.run(args, timeout=NETWORK_COMMAND_TIMEOUT, **kwargs)
+    except subprocess.TimeoutExpired as e:
+        raise TimeoutError(
+            f"Network helper command timed out after {e.timeout}s: {shlex.join(args)}"
+        ) from e
+
+
 def can_create_namespaces(namespace="vpp_chk_4212"):
     """Check if the environment allows creating the namespaces"""
     with net_helper_lock():
         try:
-            result = subprocess.run(
+            result = _run_network_command(
                 ["ip", "netns", "add", namespace], capture_output=True
             )
             if result.returncode != 0:
                 return False
-            subprocess.run(["ip", "netns", "del", namespace], capture_output=True)
+            _run_network_command(["ip", "netns", "del", namespace], capture_output=True)
             return True
         except FileNotFoundError:
             return False
@@ -54,7 +67,7 @@ def create_namespace(history_file, ns=None, prefix="vpp_ns"):
                 )
                 new_namespace_name = f"{prefix}{suffix}"
                 # Check if the namespace already exists
-                result = subprocess.run(
+                result = _run_network_command(
                     ["ip", "netns", "add", new_namespace_name],
                     capture_output=True,
                     text=True,
@@ -75,7 +88,7 @@ def create_namespace(history_file, ns=None, prefix="vpp_ns"):
 
         for namespace in namespaces:
             for attempt in range(retries):
-                result = subprocess.run(
+                result = _run_network_command(
                     ["ip", "netns", "add", namespace],
                     capture_output=True,
                     text=True,
@@ -111,7 +124,7 @@ def add_namespace_route(ns, prefix, gw_ip=None, dev=None, route_type=None, check
                 cmd += ["via", gw_ip]
             if dev is not None:
                 cmd += ["dev", dev]
-            subprocess.run(cmd, capture_output=True, check=check)
+            _run_network_command(cmd, capture_output=True, check=check)
         except subprocess.CalledProcessError as e:
             raise Exception(
                 f"Error adding route to namespace: {e.stderr.decode()}"
@@ -146,7 +159,7 @@ def add_namespace_multipath_route(ns, prefix, *next_hops):
             cmd = ["ip", "netns", "exec", ns, "ip", "route", "add", prefix]
             for next_hop in next_hops:
                 cmd += next_hop.args()
-            subprocess.run(cmd, capture_output=True, check=True)
+            _run_network_command(cmd, capture_output=True, check=True)
         except subprocess.CalledProcessError as e:
             raise Exception(
                 f"Error adding route to namespace: {e.stderr.decode()}"
@@ -158,7 +171,7 @@ def del_namespace_route(ns, prefix, check=True):
     with net_helper_lock():
         try:
             cmd = ["ip", "netns", "exec", ns, "ip", "route", "del", prefix]
-            subprocess.run(cmd, capture_output=True, check=check)
+            _run_network_command(cmd, capture_output=True, check=check)
         except subprocess.CalledProcessError as e:
             raise Exception(
                 f"Error deleting route from namespace: {e.stderr.decode()}"
@@ -181,7 +194,7 @@ def add_namespace_address(ns, ifname, prefix):
                 "dev",
                 ifname,
             ]
-            subprocess.run(cmd, capture_output=True, check=True)
+            _run_network_command(cmd, capture_output=True, check=True)
         except subprocess.CalledProcessError as e:
             raise Exception(
                 f"Error adding address {prefix} to {ifname} in namespace {ns}: "
@@ -205,7 +218,7 @@ def del_namespace_address(ns, ifname, prefix):
                 "dev",
                 ifname,
             ]
-            subprocess.run(cmd, capture_output=True, check=True)
+            _run_network_command(cmd, capture_output=True, check=True)
         except subprocess.CalledProcessError as e:
             raise Exception(
                 f"Error deleting address {prefix} from {ifname} in namespace {ns}: "
@@ -233,7 +246,7 @@ def add_namespace_neighbor(ns, ifname, ip_addr, mac_addr):
                 "nud",
                 "permanent",
             ]
-            subprocess.run(cmd, capture_output=True, check=True)
+            _run_network_command(cmd, capture_output=True, check=True)
         except subprocess.CalledProcessError as e:
             raise Exception(
                 f"Error adding neighbor {ip_addr} -> {mac_addr} on {ifname} "
@@ -257,7 +270,7 @@ def del_namespace_neighbor(ns, ifname, ip_addr):
                 "dev",
                 ifname,
             ]
-            subprocess.run(cmd, capture_output=True, check=True)
+            _run_network_command(cmd, capture_output=True, check=True)
         except subprocess.CalledProcessError as e:
             raise Exception(
                 f"Error deleting neighbor {ip_addr} on {ifname} "
@@ -286,7 +299,7 @@ def _delete_host_interfaces(*host_interface_names):
     for host_interface_name in host_interface_names:
         retries = 3
         for attempt in range(retries):
-            check_result = subprocess.run(
+            check_result = _run_network_command(
                 ["ip", "link", "show", host_interface_name],
                 capture_output=True,
                 text=True,
@@ -294,7 +307,7 @@ def _delete_host_interfaces(*host_interface_names):
             if check_result.returncode != 0:
                 break
 
-            result = subprocess.run(
+            result = _run_network_command(
                 ["ip", "link", "del", host_interface_name],
                 capture_output=True,
                 text=True,
@@ -334,7 +347,7 @@ def create_host_interface(
                 or f"vppout{''.join(random.choices(string.ascii_lowercase + string.digits, k=8))}"
             )
 
-            result = subprocess.run(
+            result = _run_network_command(
                 [
                     "ip",
                     "link",
@@ -360,7 +373,7 @@ def create_host_interface(
                     f"Failed to create host interface {if_name} and vpp {new_vpp_if_name} after {retries} attempts. Error: {result.stderr.decode()}"
                 )
 
-        result = subprocess.run(
+        result = _run_network_command(
             ["ip", "link", "set", host_if_name, "netns", host_namespace],
             capture_output=True,
         )
@@ -369,7 +382,7 @@ def create_host_interface(
                 f"Error setting host interface namespace: {result.stderr.decode()}"
             )
 
-        result = subprocess.run(
+        result = _run_network_command(
             ["ip", "link", "set", "dev", vpp_if_name, "up"], capture_output=True
         )
         if result.returncode != 0:
@@ -377,7 +390,7 @@ def create_host_interface(
                 f"Error bringing up the host interface: {result.stderr.decode()}"
             )
 
-        result = subprocess.run(
+        result = _run_network_command(
             [
                 "ip",
                 "netns",
@@ -398,7 +411,7 @@ def create_host_interface(
             )
 
         for host_ip_prefix in host_ip_prefixes:
-            result = subprocess.run(
+            result = _run_network_command(
                 [
                     "ip",
                     "netns",
@@ -429,7 +442,7 @@ def set_interface_mtu(namespace, interface, mtu, logger):
     with net_helper_lock():
         retries = 3
         for attempt in range(retries):
-            result = subprocess.run(args, capture_output=True)
+            result = _run_network_command(args, capture_output=True)
             if result.returncode == 0:
                 break
             if attempt < retries - 1:
@@ -446,7 +459,7 @@ def set_interface_up(namespace, interface):
     if namespace:
         args = ["ip", "netns", "exec", namespace] + args
     with net_helper_lock():
-        result = subprocess.run(args, capture_output=True)
+        result = _run_network_command(args, capture_output=True)
         if result.returncode != 0:
             raise Exception(f"Failed to set interface {interface} up state.")
 
@@ -457,7 +470,7 @@ def set_interface_down(namespace, interface):
     if namespace:
         args = ["ip", "netns", "exec", namespace] + args
     with net_helper_lock():
-        result = subprocess.run(args, capture_output=True)
+        result = _run_network_command(args, capture_output=True)
         if result.returncode != 0:
             raise Exception(f"Failed to set interface {interface} down state.")
 
@@ -468,7 +481,7 @@ def enable_interface_gso(namespace, interface):
     if namespace:
         args = ["ip", "netns", "exec", namespace] + args
     with net_helper_lock():
-        result = subprocess.run(args, capture_output=True)
+        result = _run_network_command(args, capture_output=True)
         if result.returncode != 0:
             raise Exception(
                 f"Error enabling GSO offload on interface {interface} in namespace {namespace}: {result.stderr.decode()}"
@@ -481,7 +494,7 @@ def disable_interface_gso(namespace, interface):
     if namespace:
         args = ["ip", "netns", "exec", namespace] + args
     with net_helper_lock():
-        result = subprocess.run(args, capture_output=True)
+        result = _run_network_command(args, capture_output=True)
         if result.returncode != 0:
             raise Exception(
                 f"Error disabling GSO offload on interface {interface} in namespace {namespace}: {result.stderr.decode()}"
@@ -511,7 +524,7 @@ def _delete_namespace(ns):
     else:
         namespaces = ns
 
-    existing_namespaces = subprocess.run(
+    existing_namespaces = _run_network_command(
         ["ip", "netns", "list"], capture_output=True, text=True
     ).stdout.splitlines()
     existing_namespaces = {line.split()[0] for line in existing_namespaces}
@@ -522,7 +535,7 @@ def _delete_namespace(ns):
 
         retries = 3
         for attempt in range(retries):
-            result = subprocess.run(
+            result = _run_network_command(
                 ["ip", "netns", "del", namespace], capture_output=True
             )
             if result.returncode == 0:
@@ -538,7 +551,7 @@ def _delete_namespace(ns):
 def list_namespace(ns):
     """List the IP address of a namespace."""
     with net_helper_lock():
-        result = subprocess.run(
+        result = _run_network_command(
             ["ip", "netns", "exec", ns, "ip", "addr"], capture_output=True
         )
         if result.returncode != 0:
@@ -551,7 +564,7 @@ def interface_exists(ns, ifname):
     """Check if an interface exists in a namespace."""
     args = ["ip", "netns", "exec", ns, "ip", "link", "show", "dev", ifname]
     with net_helper_lock():
-        result = subprocess.run(args, capture_output=True)
+        result = _run_network_command(args, capture_output=True)
         return result.returncode == 0
 
 
@@ -559,7 +572,7 @@ def get_interface_info(ns, ifname):
     """Get interface link info as a dict from 'ip -j link show' output."""
     args = ["ip", "netns", "exec", ns, "ip", "-j", "link", "show", "dev", ifname]
     with net_helper_lock():
-        result = subprocess.run(args, capture_output=True, text=True)
+        result = _run_network_command(args, capture_output=True, text=True)
         if result.returncode != 0:
             raise Exception(
                 f"Error getting interface info for {ifname} in namespace {ns}: "
@@ -578,7 +591,7 @@ def get_interface_addresses(ns, ifname, family=None):
     """
     args = ["ip", "netns", "exec", ns, "ip", "-j", "addr", "show", "dev", ifname]
     with net_helper_lock():
-        result = subprocess.run(args, capture_output=True, text=True)
+        result = _run_network_command(args, capture_output=True, text=True)
         if result.returncode != 0:
             raise Exception(
                 f"Error getting addresses for {ifname} in namespace {ns}: "
