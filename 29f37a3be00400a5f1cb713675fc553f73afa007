@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c734c09d_0827a773",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-13T11:27:46Z",
+      "side": 1,
+      "message": "Yet another filelock implementation 😊\n\nhttps://gerrit.fd.io/r/c/vpp/+/47690\nhttps://gerrit.fd.io/r/c/vpp/+/47702\n\nAritra\u0027s change has been reviewed and it\u0027s a solid base for the filelock introduction. It looks like you and Maxime both introduce bounding for the subprocess. I\u0027d rebase on top of Aritra\u0027s change and maybe you could sync so that only one change is in flight since you\u0027re both tackling the same issue?",
+      "revId": "29f37a3be00400a5f1cb713675fc553f73afa007",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
