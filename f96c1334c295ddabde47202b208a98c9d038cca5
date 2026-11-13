@@ -16,6 +16,24 @@
       "message": "nit: just use the 100 column width and move that undo above",
       "revId": "f96c1334c295ddabde47202b208a98c9d038cca5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1b31ff5d_bc3ebc45",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 698,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-13T10:37:04Z",
+      "side": 1,
+      "message": "Done in patch set 4: the comment is one line now.",
+      "parentUuid": "3d2f11ec_70d2468b",
+      "revId": "f96c1334c295ddabde47202b208a98c9d038cca5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
