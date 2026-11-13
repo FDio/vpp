@@ -16,6 +16,23 @@
       "message": "https://gerrit.fd.io/r/c/vpp/+/47690",
       "revId": "dc3b9f474275f6b76ad39437902c69438939ea75",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6b3f4a8b_aaf5cff3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-13T07:08:00Z",
+      "side": 1,
+      "message": "Hi Maxime,\n\nit looks like both you and Aritra attempted to implement ~filelock. I\u0027ve approved his patch, which has now been updated to use the filelock and properly expose the paths and timeouts via config.\n\nBut I see you also bound the subprocess execution in your patch. Have you seen a need to do that? If so, I\u0027d suggest you rebase your PR on top of Aritra\u0027s, drop the homemade filelock, and keep the subprocess bounding function. The timeout for that should be exposed in config.",
+      "revId": "dc3b9f474275f6b76ad39437902c69438939ea75",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
