@@ -5,6 +5,7 @@
 #ifndef __included_ptls_certs_h__
 #define __included_ptls_certs_h__
 
+#include <vppinfra/clib.h>
 #include <picotls/openssl.h>
 #include <picotls/pembase64.h>
 
@@ -12,6 +13,7 @@
 
 typedef struct quic_quicly_ptls_cert_list_
 {
+  u32 ref_count;
   size_t count;
   ptls_iovec_t certs[0];
 } quic_quicly_ptls_cert_list_t;
@@ -31,12 +33,15 @@ int load_bio_certificate_chain (ptls_context_t *ctx, const char *cert_data, int 
 int load_bio_private_key (ptls_context_t *ctx, const char *pk_data, int pk_len);
 
 EVP_PKEY *ptls_load_private_key (const char *pk_data, int pk_len);
-quic_quicly_ptls_cert_list_t *ptls_load_certificate_chain (const char *cert_data, int cert_len);
+__clib_export quic_quicly_ptls_cert_list_t *ptls_load_certificate_chain (const char *cert_data,
+									 int cert_len);
 int ptls_assign_private_key (ptls_openssl_sign_certificate_t *sc, ptls_context_t *ctx,
 			     EVP_PKEY *pkey);
 void ptls_release_private_key (ptls_openssl_sign_certificate_t *sc);
-int ptls_assign_certificate_chain (ptls_context_t *ctx,
-				   quic_quicly_ptls_cert_list_t *cl);
-void ptls_free_certificate_chain (ptls_context_t *ctx);
+/* Loading owns one reference. Assignment retains another for the context owner,
+ * which must release it after the context stops using the shared DER buffers. */
+__clib_export void ptls_assign_certificate_chain (ptls_context_t *ctx,
+						  quic_quicly_ptls_cert_list_t *cl);
+__clib_export void ptls_free_certificate_chain (quic_quicly_ptls_cert_list_t *cl);
 
 #endif /* __included_ptls_certs_h__ */

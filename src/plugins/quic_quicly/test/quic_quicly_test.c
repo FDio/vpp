@@ -20,6 +20,92 @@
   while (0)
 
 static int
+quicly_test_certificates (vlib_main_t *vm)
+{
+  static const char pem[] = "-----BEGIN CERTIFICATE-----\nAQID\n-----END CERTIFICATE-----\n"
+			    "-----BEGIN CERTIFICATE-----\nBAUGBw==\n-----END CERTIFICATE-----\n";
+  static const u8 payload[] = { 4, 5, 6, 7 };
+  static const char invalid[] = "-----BEGIN CERTIFICATE-----\n!\n-----END CERTIFICATE-----\n";
+  typeof (ptls_load_certificate_chain) *load_chain;
+  typeof (ptls_assign_certificate_chain) *assign_chain;
+  typeof (ptls_free_certificate_chain) *free_chain;
+  quic_quicly_ptls_cert_list_t *cached = NULL;
+  quic_quicly_ptls_cert_list_t *first_chain = NULL, *second_chain = NULL;
+  ptls_context_t first = {}, second = {};
+  u8 *malformed = NULL;
+  int res = 0;
+
+  load_chain = vlib_get_plugin_symbol ("quic_quicly_plugin.so", "ptls_load_certificate_chain");
+  assign_chain = vlib_get_plugin_symbol ("quic_quicly_plugin.so", "ptls_assign_certificate_chain");
+  free_chain = vlib_get_plugin_symbol ("quic_quicly_plugin.so", "ptls_free_certificate_chain");
+  QUICLY_TEST (load_chain && assign_chain && free_chain, "certificate fixture symbols loaded");
+  cached = load_chain (pem, sizeof (pem) - 1);
+  QUICLY_TEST (cached && cached->count == 2 && cached->ref_count == 1,
+	       "cache owns one reference to both certificates");
+  assign_chain (&second, cached);
+  second_chain = cached;
+  QUICLY_TEST (cached->ref_count == 2, "overlapping context retains the chain");
+  for (u32 i = 0; i < 8; i++)
+    {
+      assign_chain (&first, cached);
+      first_chain = cached;
+      QUICLY_TEST (cached->ref_count == 3, "reconnect retains the chain");
+      QUICLY_TEST (first.certificates.count == cached->count &&
+		     second.certificates.count == cached->count &&
+		     first.certificates.list == cached->certs &&
+		     first.certificates.list == second.certificates.list,
+		   "contexts share the cached iovec array");
+      for (size_t j = 0; j < cached->count; j++)
+	{
+	  QUICLY_TEST (first.certificates.list[j].len == cached->certs[j].len &&
+			 !memcmp (first.certificates.list[j].base, cached->certs[j].base,
+				  cached->certs[j].len),
+		       "reconnect certificate bytes match the cache");
+	  QUICLY_TEST (first.certificates.list[j].base == cached->certs[j].base &&
+			 first.certificates.list[j].base == second.certificates.list[j].base,
+		       "contexts share the cached DER payloads");
+	}
+      free_chain (first_chain);
+      first_chain = NULL;
+      QUICLY_TEST (cached->ref_count == 2, "context teardown releases one reference");
+      QUICLY_TEST (second.certificates.list[1].len == sizeof (payload) &&
+		     !memcmp (second.certificates.list[1].base, payload, sizeof (payload)),
+		   "overlapping context survives reconnect teardown");
+    }
+  free_chain (cached);
+  cached = NULL;
+  QUICLY_TEST (second_chain->ref_count == 1 &&
+		 second.certificates.list[1].len == sizeof (payload) &&
+		 !memcmp (second.certificates.list[1].base, payload, sizeof (payload)),
+	       "active context survives cache removal");
+  assign_chain (&first, second_chain);
+  first_chain = second_chain;
+  QUICLY_TEST (first_chain->ref_count == 2, "surviving context can share the chain");
+  free_chain (second_chain);
+  second_chain = NULL;
+  QUICLY_TEST (first_chain->ref_count == 1 &&
+		 !memcmp (first.certificates.list[1].base, payload, sizeof (payload)),
+	       "final context retains the payloads until its release");
+  free_chain (first_chain);
+  first_chain = NULL;
+
+  /* A parse failure after valid certificates must release those payloads too. */
+  malformed = format (0, "%s%s", pem, invalid);
+  cached = load_chain ((char *) malformed, vec_len (malformed));
+  QUICLY_TEST (!cached, "malformed chain after valid certificates is rejected");
+
+done:
+  if (free_chain)
+    {
+      free_chain (first_chain);
+      free_chain (second_chain);
+      free_chain (cached);
+    }
+  vec_free (malformed);
+  return res;
+}
+
+static int
 quicly_test_stream_close (vlib_main_t *vm, quic_quicly_main_t *qqm,
 			  const quicly_stream_callbacks_t *callbacks,
 			  const quic_engine_vft_t *engine, u32 thread_index, u64 stream_id,
@@ -385,6 +471,7 @@ quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
     TEST_STREAM_CLOSE,
     TEST_RX,
     TEST_CANCEL_RX,
+    TEST_CERTIFICATES,
     TEST_ALL,
   } test = TEST_NONE;
 
@@ -394,10 +481,23 @@ quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
     test = TEST_RX;
   else if (unformat (input, "cancel-rx"))
     test = TEST_CANCEL_RX;
+  else if (unformat (input, "certificates"))
+    test = TEST_CERTIFICATES;
   else if (unformat (input, "all"))
     test = TEST_ALL;
   if (test == TEST_NONE || unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    return clib_error_return (0, "expected exactly one of stream-close, rx, cancel-rx or all");
+    return clib_error_return (0, "expected exactly one of stream-close, rx, cancel-rx, "
+				 "certificates or all");
+  if (test == TEST_CERTIFICATES || test == TEST_ALL)
+    {
+      if (quicly_test_certificates (vm))
+	return clib_error_return (0, "quicly certificate unit test failed");
+      if (test == TEST_CERTIFICATES)
+	{
+	  vlib_cli_output (vm, "SUCCESS");
+	  return 0;
+	}
+    }
   QUIC_LOAD_SYMBOL_FROM_PLUGIN_TO ("quic_plugin.so", quic_main, qm);
   QUIC_LOAD_SYMBOL_FROM_PLUGIN_TO ("quic_plugin.so", quic_engine_vfts, engines);
   QUIC_LOAD_SYMBOL_FROM_PLUGIN_TO ("quic_quicly_plugin.so", quic_quicly_main, qqm);
@@ -478,7 +578,7 @@ quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 
 VLIB_CLI_COMMAND (quicly_test_command, static) = {
   .path = "test quicly",
-  .short_help = "test quicly [stream-close|rx|cancel-rx|all]",
+  .short_help = "test quicly [stream-close|rx|cancel-rx|certificates|all]",
   .function = quicly_test,
 };
 

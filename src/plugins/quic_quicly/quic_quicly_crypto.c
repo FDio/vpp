@@ -229,10 +229,9 @@ quic_quicly_crypto_context_free_if_needed (quic_quicly_crypto_ctx_t *crctx)
       crctx->quicly_ctx.cid_encryptor = NULL;
     }
   if (crctx->quicly_ctx.tls)
-    {
-      ptls_release_private_key (&crctx->sc);
-      ptls_free_certificate_chain (crctx->quicly_ctx.tls);
-    }
+    ptls_release_private_key (&crctx->sc);
+  ptls_free_certificate_chain (crctx->cert_chain);
+  crctx->cert_chain = NULL;
   if (CLIB_DEBUG)
     memset (crctx, 0xfe, sizeof (*crctx));
   pool_put_index (qqcm->crypto_ctx_pool, idx);
@@ -305,7 +304,7 @@ quic_quicly_cleanup_certkey_int_ctx (app_certkey_int_ctx_t *cki)
 	}
     }
   EVP_PKEY_free (cki->key);
-  clib_mem_free (cki->cert);
+  ptls_free_certificate_chain (cki->cert);
 }
 
 static int
@@ -760,6 +759,7 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
 
   ptls_assign_private_key (&crctx->sc, quicly_ctx->tls, cki->key);
   ptls_assign_certificate_chain (quicly_ctx->tls, cki->cert);
+  crctx->cert_chain = cki->cert;
 
   return 0;
 }
