@@ -70,6 +70,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d20a42ce_78aa1f82",
+        "filename": "test/asf/test_http_static.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-13T04:30:37Z",
+      "side": 1,
+      "message": "Removed the catch-all `Exception` setup handlers. Unsupported namespaces retain their explicit skip checks; unexpected setup failures now propagate normally.",
+      "parentUuid": "9fec4a46_845aea63",
+      "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "43158bbc_f031eaab",
@@ -83,6 +101,24 @@
       "writtenOn": "2026-11-12T14:25:33Z",
       "side": 1,
       "message": "This blob of text describing the general mechanism of operation should be a documentation string sitting next to the lock class - it describes the reason why the lock class exists and how it works. Also there is no reason to describe the existing (kernel) API unless we are using it in a surprising or hard to grasp way. The part where you describe how flock works is unneeded.",
+      "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "76cdadab_5f47aa10",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-13T04:30:37Z",
+      "side": 1,
+      "message": "Removed. The shared lock path’s purpose is now documented in configuration help.",
+      "parentUuid": "43158bbc_f031eaab",
       "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -104,6 +140,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "54c6c2e6_fe035a6e",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-13T04:30:37Z",
+      "side": 1,
+      "message": "Thanks. Added `--net-helper-lock-path`, exposed through `NET_HELPER_LOCK_PATH`, with its purpose described in configuration help.",
+      "parentUuid": "b0749f74_6226182b",
+      "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a5b41c42_7d73d1d0",
@@ -117,6 +171,24 @@
       "writtenOn": "2026-11-12T14:25:33Z",
       "side": 1,
       "message": "This comment is not a very good comment. It names an invariant, which is true at the moment. But at the same time it encodes a statement about another file\u0027s default value. If that changes, then this either gets missed or it needs to be updated. Furthermore, if somebody runs the framework with a timeout of 100, the invariant breaks silently.\n\nI\u0027d make this a runtime parameter the same way as the lock path, and I\u0027d add a startup assert (lock-acq-timeout \u003c test-timeout).",
+      "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8d69e0f1_a8113416",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-13T04:30:37Z",
+      "side": 1,
+      "message": "Ack. Added `--net-helper-lock-timeout`, exposed through `NET_HELPER_LOCK_TIMEOUT`, with its purpose described in configuration help. It defaults to half of `--timeout`. Startup rejects non-positive values and values greater than or equal to `--timeout`.",
+      "parentUuid": "a5b41c42_7d73d1d0",
       "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -138,6 +210,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "66b7c313_e0c1b455",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-13T04:30:37Z",
+      "side": 1,
+      "message": "Removed. Lock acquisition now uses `filelock`’s default polling interval.",
+      "parentUuid": "898a8862_a0fb53ce",
+      "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "d72a02f3_ff21913b",
@@ -151,6 +241,24 @@
       "writtenOn": "2026-11-12T14:25:33Z",
       "side": 1,
       "message": "So this sounds like instruction for AI, but generally it\u0027s just noise. The caller knows what to do with the exception, maybe they have a way of dealing with it and thus the \"must report\" is not a fair request for them?\n\nI know why your AI put the \"must not be converted into a skip\" here, but as I commented in the test file, the cause should be fixed there, not as a comment here. The moment the tests are fixed, this comment becomes a puzzling artifact for any future readers, who\u0027ll ponder \"who would ever convert an exception like this into a skip???\".",
+      "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e5dfbfdd_d966d780",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-13T04:30:37Z",
+      "side": 1,
+      "message": "Ack. Removed the custom exception hierarchy. Library exceptions now propagate naturally.",
+      "parentUuid": "d72a02f3_ff21913b",
       "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -172,6 +280,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "6180c245_3a655eff",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-13T04:30:37Z",
+      "side": 1,
+      "message": "Removed. `filelock` now manages the lifecycle.",
+      "parentUuid": "570a702e_41596d0a",
+      "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "80f03811_437f3d7e",
@@ -189,6 +315,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0d7f739d_ea9aa9c3",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-13T04:30:37Z",
+      "side": 1,
+      "message": "Removed the manual acquisition loop and cleanup handlers. `filelock` now handles acquisition failures and resource cleanup.",
+      "parentUuid": "80f03811_437f3d7e",
+      "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "44b1fe9c_99327b59",
@@ -202,6 +346,24 @@
       "writtenOn": "2026-11-12T14:25:33Z",
       "side": 1,
       "message": "So I\u0027m looking at this and think it\u0027s misleading. It\u0027s a thread-local variable and to add to it means the flock must have already succeeded on a previous __enter__. But because flock will block on second lock of the same file through a different fd, it will never get here, it\u0027ll raise BlockingIOError on L63.",
+      "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ff9dc10f_5296286f",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-13T04:30:37Z",
+      "side": 1,
+      "message": "Removed the thread-local descriptor stack. Each critical section now creates an independent `FileLock` instance.",
+      "parentUuid": "44b1fe9c_99327b59",
       "revId": "d1ae460bbac708bbb084f85e65017afd32ba60bf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
