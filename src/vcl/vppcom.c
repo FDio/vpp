@@ -3723,6 +3723,9 @@ vppcom_epoll_wait_condvar (vcl_worker_t *wrk, struct epoll_event *events,
       if (timeout_ms > 0)
 	end = clib_time_now (&wrk->clib_time) + (timeout_ms / 1e3);
     }
+  else
+    /* Already have events, poll mq but do not block */
+    timeout_ms = 0;
 
   do
     {
@@ -3758,6 +3761,9 @@ vppcom_epoll_wait_eventfd (vcl_worker_t *wrk, struct epoll_event *events,
       if (timeout_ms > 0)
 	end = clib_time_now (&wrk->clib_time) + (timeout_ms / 1e3);
     }
+  else
+    /* Already have events, poll mq but do not block */
+    timeout_ms = 0;
 
   do
     {
