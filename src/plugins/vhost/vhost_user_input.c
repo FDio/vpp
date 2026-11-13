@@ -60,14 +60,16 @@
 
 extern vlib_node_registration_t vhost_user_input_node;
 
-#define foreach_vhost_user_input_func_error      \
-  _(NO_ERROR, "no error")  \
-  _(NO_BUFFER, "no available buffer")  \
-  _(MMAP_FAIL, "mmap failure")  \
-  _(INDIRECT_OVERFLOW, "indirect descriptor overflows table")  \
-  _(UNDERSIZED_FRAME, "undersized ethernet frame received (< 14 bytes)") \
-  _(NOT_READY, "vhost interface not ready or down") \
-  _(FULL_RX_QUEUE, "full rx queue (possible driver tx drop)")
+#define foreach_vhost_user_input_func_error                                                        \
+  _ (NO_ERROR, "no error")                                                                         \
+  _ (NO_BUFFER, "no available buffer")                                                             \
+  _ (MMAP_FAIL, "mmap failure")                                                                    \
+  _ (INDIRECT_OVERFLOW, "indirect descriptor overflows table")                                     \
+  _ (UNDERSIZED_FRAME, "undersized ethernet frame received (< 14 bytes)")                          \
+  _ (BAD_CSUM_START, "invalid checksum start offset received")                                     \
+  _ (BAD_GSO_SIZE, "invalid gso size received")                                                    \
+  _ (NOT_READY, "vhost interface not ready or down")                                               \
+  _ (FULL_RX_QUEUE, "full rx queue (possible driver tx drop)")
 
 typedef enum
 {
@@ -238,16 +240,38 @@ vhost_user_input_rewind_buffers (vlib_main_t * vm,
 }
 
 static_always_inline void
-vhost_user_handle_rx_offload (vlib_buffer_t *b0, u8 *b0_data,
+vhost_user_handle_rx_offload (vlib_main_t *vm, vlib_buffer_t *b0, u8 *b0_data, u32 b0_data_len,
 			      vnet_virtio_net_hdr_t *hdr)
 {
   u8 l4_hdr_sz = 0;
   u8 l4_proto = 0;
   ethernet_header_t *eh = (ethernet_header_t *) b0_data;
-  u16 ethertype = clib_net_to_host_u16 (eh->type);
+  u16 ethertype;
   u16 l2hdr_sz = sizeof (ethernet_header_t);
   vnet_buffer_oflags_t oflags = 0;
 
+  if (PREDICT_FALSE (b0_data_len < sizeof (ethernet_header_t)))
+    {
+      vlib_error_count (vm, vhost_user_input_node.index,
+			VHOST_USER_INPUT_FUNC_ERROR_UNDERSIZED_FRAME, 1);
+      return;
+    }
+
+  if (PREDICT_FALSE (hdr->csum_start + sizeof (tcp_header_t) > b0_data_len))
+    {
+      vlib_error_count (vm, vhost_user_input_node.index, VHOST_USER_INPUT_FUNC_ERROR_BAD_CSUM_START,
+			1);
+      return;
+    }
+
+  if (PREDICT_FALSE (hdr->gso_type != VIRTIO_NET_HDR_GSO_NONE && hdr->gso_size == 0))
+    {
+      vlib_error_count (vm, vhost_user_input_node.index, VHOST_USER_INPUT_FUNC_ERROR_BAD_GSO_SIZE,
+			1);
+      return;
+    }
+
+  ethertype = clib_net_to_host_u16 (eh->type);
   if (ethernet_frame_is_tagged (ethertype))
     {
       ethernet_vlan_header_t *vlan = (ethernet_vlan_header_t *) (eh + 1);
@@ -596,6 +620,7 @@ vhost_user_if_input (vlib_main_t *vm, vhost_user_main_t *vum,
 	    }
 	  if (hdr->hdr.flags & VIRTIO_NET_HDR_F_NEEDS_CSUM)
 	    {
+	      u32 b_data_len;
 	      if ((desc_data_offset == desc_table[desc_current].len) &&
 		  (desc_table[desc_current].flags & VRING_DESC_F_NEXT))
 		{
@@ -609,11 +634,17 @@ vhost_user_if_input (vlib_main_t *vm, vhost_user_main_t *vum,
 					1);
 		      goto out;
 		    }
+		  b_data_len = desc_table[current].len;
 		}
 	      else
-		b_data = (u8 *) hdr + desc_data_offset;
+		{
+		  b_data = (u8 *) hdr + desc_data_offset;
+		  b_data_len = desc_table[desc_current].len > desc_data_offset ?
+				 desc_table[desc_current].len - desc_data_offset :
+				 0;
+		}
 
-	      vhost_user_handle_rx_offload (b_head, b_data, &hdr->hdr);
+	      vhost_user_handle_rx_offload (vm, b_head, b_data, b_data_len, &hdr->hdr);
 	    }
 	}
 
@@ -933,10 +964,9 @@ one_by_one:
 }
 
 static_always_inline u32
-vhost_user_do_offload (vhost_user_intf_t *vui,
-		       vnet_virtio_vring_packed_desc_t *desc_table,
-		       u16 desc_current, u16 mask, vlib_buffer_t *b_head,
-		       u32 *map_hint)
+vhost_user_do_offload (vlib_main_t *vm, vhost_user_intf_t *vui,
+		       vnet_virtio_vring_packed_desc_t *desc_table, u16 desc_current, u16 mask,
+		       vlib_buffer_t *b_head, u32 *map_hint)
 {
   u32 rc = VHOST_USER_INPUT_FUNC_ERROR_NO_ERROR;
   vnet_virtio_net_hdr_mrg_rxbuf_t *hdr;
@@ -948,6 +978,7 @@ vhost_user_do_offload (vhost_user_intf_t *vui,
     rc = VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL;
   else if (hdr->hdr.flags & VIRTIO_NET_HDR_F_NEEDS_CSUM)
     {
+      u32 b_data_len;
       if (desc_data_offset == desc_table[desc_current].len)
 	{
 	  desc_current = (desc_current + 1) & mask;
@@ -956,12 +987,18 @@ vhost_user_do_offload (vhost_user_intf_t *vui,
 	  if (PREDICT_FALSE (b_data == 0))
 	    rc = VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL;
 	  else
-	    vhost_user_handle_rx_offload (b_head, b_data, &hdr->hdr);
+	    {
+	      b_data_len = desc_table[desc_current].len;
+	      vhost_user_handle_rx_offload (vm, b_head, b_data, b_data_len, &hdr->hdr);
+	    }
 	}
       else
 	{
 	  b_data = (u8 *) hdr + desc_data_offset;
-	  vhost_user_handle_rx_offload (b_head, b_data, &hdr->hdr);
+	  b_data_len = desc_table[desc_current].len > desc_data_offset ?
+			 desc_table[desc_current].len - desc_data_offset :
+			 0;
+	  vhost_user_handle_rx_offload (vm, b_head, b_data, b_data_len, &hdr->hdr);
 	}
     }
 
@@ -1259,11 +1296,9 @@ vhost_user_if_input_packed (vlib_main_t *vm, vhost_user_main_t *vum,
 				      &map_hint);
 	  desc_idx = 0;
 	  if (PREDICT_FALSE (desc_table == 0) ||
-	      (enable_csum &&
-	       (PREDICT_FALSE
-		(vhost_user_do_offload
-		 (vui, desc_table, desc_idx, mask, b_head,
-		  &map_hint) != VHOST_USER_INPUT_FUNC_ERROR_NO_ERROR))))
+	      (enable_csum && (PREDICT_FALSE (vhost_user_do_offload (vm, vui, desc_table, desc_idx,
+								     mask, b_head, &map_hint) !=
+					      VHOST_USER_INPUT_FUNC_ERROR_NO_ERROR))))
 	    {
 	      vlib_error_count (vm, node->node_index,
 				VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL, 1);
@@ -1288,8 +1323,7 @@ vhost_user_if_input_packed (vlib_main_t *vm, vhost_user_main_t *vum,
 	{
 	  if (enable_csum)
 	    {
-	      rv = vhost_user_do_offload (vui, desc_table, desc_idx, mask,
-					  b_head, &map_hint);
+	      rv = vhost_user_do_offload (vm, vui, desc_table, desc_idx, mask, b_head, &map_hint);
 	      if (PREDICT_FALSE (rv != VHOST_USER_INPUT_FUNC_ERROR_NO_ERROR))
 		{
 		  vlib_error_count (vm, node->node_index, rv, 1);
