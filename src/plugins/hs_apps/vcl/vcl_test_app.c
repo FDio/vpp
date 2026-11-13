@@ -3,21 +3,27 @@
  */
 
 /*
- * VCL CL UDP Test Client/Server with Multi-threading Support
+ * VCL Test Client/Server with Multi-threading Support
  *
  * Usage:
- *   Server: vcl_test_app -s <server_ip> [-w <num_workers>]
- *   Client: vcl_test_app -c <server_ip> [-w <num_workers>]
+ *   Server: vcl_test_app -s <server_ip> [-p <proto>] [-w <num_workers>]
+ *   Client: vcl_test_app -c <server_ip> [-p <proto>] [-w <num_workers>]
  *
  * Options:
  *   -s <ip>    Start as server bound to specified IP address
  *   -c <ip>    Start as client connecting to specified IP address
+ *   -p <proto> Transport protocol, udp (connectionless, default) or tcp
  *   -w <num>   Number of worker threads (default: 1)
+ *
+ * With tcp, client workers send VTA_TCP_BYTES and wait for an ack. Server
+ * workers use level-triggered epoll and read at most VTA_TCP_SRV_READ bytes
+ * per event, so data is left in rx fifos across epoll waits.
  */
 
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <string.h>
+#include <fcntl.h>
 #include <pthread.h>
 #include <unistd.h>
 #include <getopt.h>
@@ -26,6 +32,10 @@
 #include <stdlib.h>
 #include <vcl/vppcom.h>
 #include <vperf/vcl/vperf.h>
+
+#define VTA_TCP_BYTES	     (64 << 10)
+#define VTA_TCP_SRV_READ     64
+#define VTA_MAX_EPOLL_EVENTS 8
 
 typedef enum vta_type_
 {
@@ -45,6 +55,7 @@ typedef struct vta_main_
   };
   uint16_t port;
   uint8_t dscp;
+  uint8_t proto;
   int num_workers;
   pthread_t *worker_threads;
   int thread_id_counter;
@@ -60,6 +71,12 @@ typedef struct vta_worker_args_
   int worker_id;
 } vta_worker_args_t;
 
+typedef struct vta_conn_
+{
+  int sh;
+  uint32_t bytes;
+} vta_conn_t;
+
 static void
 vta_parse_args (vta_main_t *vtam, int argc, char **argv)
 {
@@ -70,11 +87,18 @@ vta_parse_args (vta_main_t *vtam, int argc, char **argv)
   vtam->port = VPERF_SERVER_PORT;
   vtam->num_workers = 1;
   vtam->dscp = 0;
+  vtam->proto = VPPCOM_PROTO_UDP;
 
   opterr = 0;
-  while ((c = getopt (argc, argv, "s:c:w:d:")) != -1)
+  while ((c = getopt (argc, argv, "s:c:w:d:p:")) != -1)
     switch (c)
       {
+      case 'p':
+	if (!strcmp (optarg, "tcp"))
+	  vtam->proto = VPPCOM_PROTO_TCP;
+	else if (strcmp (optarg, "udp"))
+	  vperf_warn ("invalid proto %s, using udp", optarg);
+	break;
       case 's':
 	vtam->app_type = VTA_TYPE_SERVER;
 	if (inet_pton (AF_INET, optarg, &((struct sockaddr_in *) &vtam->srvr_addr)->sin_addr) != 1)
@@ -329,6 +353,191 @@ cleanup:
   return NULL;
 }
 
+static void *
+vta_tcp_server_worker (void *arg)
+{
+  vta_worker_args_t *args = (vta_worker_args_t *) arg;
+  vta_main_t *vtam = args->vtam;
+  int worker_id = args->worker_id;
+  struct epoll_event ev, events[VTA_MAX_EPOLL_EVENTS];
+  int rv, listen_sh, epfd, n_evts, i;
+  char buf[VTA_TCP_SRV_READ];
+  vta_conn_t *conn;
+
+  if (worker_id)
+    vppcom_worker_register ();
+
+  vperf_info ("Server worker %d starting", worker_id);
+
+  epfd = vppcom_epoll_create ();
+  if (epfd < 0)
+    {
+      vperf_err ("vppcom_epoll_create()", epfd);
+      return NULL;
+    }
+
+  listen_sh = vppcom_session_create (VPPCOM_PROTO_TCP, 0 /* is_nonblocking */);
+  if (listen_sh < 0)
+    {
+      vperf_err ("vppcom_session_create()", listen_sh);
+      return NULL;
+    }
+
+  if (vtam->dscp)
+    vppcom_session_attr (listen_sh, VPPCOM_ATTR_SET_DSCP, &vtam->dscp, (uint32_t *) &dscplen);
+
+  rv = vppcom_session_bind (listen_sh, &vtam->endpt);
+  if (rv < 0)
+    {
+      vperf_err ("vppcom_session_bind()", rv);
+      return NULL;
+    }
+
+  rv = vppcom_session_listen (listen_sh, 10);
+  if (rv < 0)
+    {
+      vperf_err ("vppcom_session_listen()", rv);
+      return NULL;
+    }
+
+  /* No EPOLLET, so level-triggered */
+  ev.events = EPOLLIN;
+  ev.data.ptr = NULL;
+  rv = vppcom_epoll_ctl (epfd, EPOLL_CTL_ADD, listen_sh, &ev);
+  if (rv < 0)
+    {
+      vperf_err ("vppcom_epoll_ctl()", rv);
+      return NULL;
+    }
+
+  vta_catch_sig (vta_sig_handler);
+  if (setjmp (sig_jmp_buf))
+    vta_handle_sig (vtam, worker_id);
+
+  while (!vta_test_done (vtam))
+    {
+      n_evts = vppcom_epoll_wait (epfd, events, VTA_MAX_EPOLL_EVENTS, -1);
+      if (n_evts < 0)
+	{
+	  vperf_warn ("worker %d: epoll_wait returned %d", worker_id, n_evts);
+	  break;
+	}
+
+      for (i = 0; i < n_evts; i++)
+	{
+	  conn = events[i].data.ptr;
+	  if (!conn)
+	    {
+	      rv = vppcom_session_accept (listen_sh, 0, O_NONBLOCK);
+	      if (rv < 0)
+		{
+		  vperf_warn ("worker %d: accept returned %d", worker_id, rv);
+		  continue;
+		}
+	      conn = calloc (1, sizeof (*conn));
+	      conn->sh = rv;
+	      ev.events = EPOLLIN;
+	      ev.data.ptr = conn;
+	      rv = vppcom_epoll_ctl (epfd, EPOLL_CTL_ADD, conn->sh, &ev);
+	      if (rv < 0)
+		{
+		  vperf_warn ("worker %d: epoll_ctl returned %d", worker_id, rv);
+		  vppcom_session_close (conn->sh);
+		  free (conn);
+		}
+	      continue;
+	    }
+
+	  /* Read less than available so data is left in the rx fifo */
+	  rv = vppcom_session_read (conn->sh, buf, sizeof (buf));
+	  if (rv == VPPCOM_EWOULDBLOCK)
+	    continue;
+	  if (rv <= 0)
+	    {
+	      vperf_warn ("worker %d: read returned %d after %u bytes", worker_id, rv, conn->bytes);
+	      vppcom_session_close (conn->sh);
+	      free (conn);
+	      continue;
+	    }
+	  conn->bytes += rv;
+	  if (conn->bytes < VTA_TCP_BYTES)
+	    continue;
+
+	  vperf_info ("Worker %d received %u bytes", worker_id, conn->bytes);
+	  rv = vppcom_session_write (conn->sh, "ack", 3);
+	  if (rv < 0)
+	    vperf_warn ("worker %d: write returned %d", worker_id, rv);
+	  vppcom_session_close (conn->sh);
+	  free (conn);
+	  vperf_atomic_add (&vtam->msgs_received, 1);
+	}
+    }
+
+  vppcom_session_close (listen_sh);
+  vppcom_session_close (epfd);
+  vperf_info ("Server worker %d exiting", worker_id);
+  return NULL;
+}
+
+static void *
+vta_tcp_client_worker (void *arg)
+{
+  vta_worker_args_t *args = (vta_worker_args_t *) arg;
+  vta_main_t *vtam = args->vtam;
+  int worker_id = args->worker_id;
+  uint32_t sent = 0, len;
+  char buf[4096];
+  int rv, sh;
+
+  if (worker_id)
+    vppcom_worker_register ();
+
+  vperf_info ("Client worker %d starting", worker_id);
+
+  sh = vppcom_session_create (VPPCOM_PROTO_TCP, 0 /* is_nonblocking */);
+  if (sh < 0)
+    vperf_fail ("vppcom_session_create()", sh);
+
+  if (vtam->dscp)
+    vppcom_session_attr (sh, VPPCOM_ATTR_SET_DSCP, &vtam->dscp, (uint32_t *) &dscplen);
+
+  rv = vppcom_session_connect (sh, &vtam->endpt);
+  if (rv < 0)
+    vperf_fail ("vppcom_session_connect()", rv);
+
+  vta_catch_sig (vta_sig_handler);
+  if (setjmp (sig_jmp_buf))
+    {
+      vta_handle_sig (vtam, worker_id);
+      goto cleanup;
+    }
+
+  memset (buf, 'a', sizeof (buf));
+  while (sent < VTA_TCP_BYTES)
+    {
+      len = VTA_TCP_BYTES - sent < sizeof (buf) ? VTA_TCP_BYTES - sent : sizeof (buf);
+      rv = vppcom_session_write (sh, buf, len);
+      if (rv < 0)
+	vperf_fail ("vppcom_session_write()", rv);
+      sent += rv;
+    }
+
+  /* Keep the session open until the ack is received. A disconnect would
+   * wake up the server even if its epoll wait is stuck */
+  rv = vppcom_session_read (sh, buf, sizeof (buf) - 1);
+  if (rv <= 0)
+    vperf_fail ("vppcom_session_read()", rv);
+  buf[rv] = 0;
+
+  vperf_info ("Worker %d received ack from server: %s", worker_id, buf);
+  vperf_atomic_add (&vtam->msgs_received, 1);
+
+cleanup:
+  vppcom_session_close (sh);
+  vperf_info ("Client worker %d exiting", worker_id);
+  return NULL;
+}
+
 int
 main (int argc, char **argv)
 {
@@ -353,8 +562,12 @@ main (int argc, char **argv)
       return -1;
     }
 
-  void *(*worker_func) (void *) =
-    (vtam->app_type == VTA_TYPE_SERVER) ? vta_server_worker : vta_client_worker;
+  void *(*worker_func) (void *);
+  if (vtam->proto == VPPCOM_PROTO_TCP)
+    worker_func =
+      (vtam->app_type == VTA_TYPE_SERVER) ? vta_tcp_server_worker : vta_tcp_client_worker;
+  else
+    worker_func = (vtam->app_type == VTA_TYPE_SERVER) ? vta_server_worker : vta_client_worker;
 
   /* Create worker threads */
   for (int i = 1; i < vtam->num_workers; i++)
