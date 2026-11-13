@@ -1744,9 +1744,15 @@ vnet_sw_interface_update_unnumbered (u32 unnumbered_sw_if_index,
     {
       ip4_sw_interface_enable_disable (unnumbered_sw_if_index, enable);
       if (enable)
+       {
 	ip6_link_enable (unnumbered_sw_if_index, NULL);
+        abort ();
+       }
       else
+       {
 	ip6_link_disable (unnumbered_sw_if_index);
+        abort ();
+       }
     }
 
   return 0;
