@@ -79,6 +79,11 @@ if(VPP_BUILD_VCL_TESTS)
     NO_INSTALL
   )
 
+  add_vpp_test(vcl_test_app SOURCES "vcl/vcl_test_app.c"
+    LINK_LIBRARIES vppcom pthread ${EPOLL_LIB}
+    NO_INSTALL
+  )
+
   add_vpp_test(evt_collector_sink
     SOURCES vcl/evt_collector_sink.c
     LINK_LIBRARIES vppcom pthread ${EPOLL_LIB}
