@@ -63,6 +63,7 @@ typedef struct quic_quicly_crypto_ctx_
   quicly_context_t quicly_ctx;
   char cid_key[QUIC_CID_KEY_LEN];
   ptls_context_t ptls_ctx;
+  quic_quicly_ptls_cert_list_t *cert_chain; /* retained reference */
   ptls_openssl_sign_certificate_t sc;
   quic_quicly_verify_certificate_t verify_cert;
   quic_quicly_on_client_hello_t client_hello_ctx;

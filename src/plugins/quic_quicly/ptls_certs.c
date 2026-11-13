@@ -5,6 +5,7 @@
 #include <openssl/pem.h>
 
 #include <vppinfra/error.h>
+#include <vppinfra/atomics.h>
 
 #include <quic_quicly/ptls_certs.h>
 
@@ -217,13 +218,14 @@ ptls_load_certificate_chain (const char *cert_data, int cert_len)
 
   cl = clib_mem_alloc (PTLS_MAX_CERTS_IN_CONTEXT * sizeof (ptls_iovec_t) +
 		       sizeof (quic_quicly_ptls_cert_list_t));
+  cl->ref_count = 1;
   cert_bio = BIO_new_mem_buf (cert_data, cert_len);
   rv = ptls_load_bio_pem_objects (cert_bio, "CERTIFICATE", cl->certs, PTLS_MAX_CERTS_IN_CONTEXT,
 				  &cl->count);
   BIO_free (cert_bio);
   if (rv)
     {
-      clib_mem_free (cl);
+      ptls_free_certificate_chain (cl);
       return 0;
     }
 
@@ -245,38 +247,21 @@ ptls_release_private_key (ptls_openssl_sign_certificate_t *sc)
   ptls_openssl_dispose_sign_certificate (sc);
 }
 
-int
-ptls_assign_certificate_chain (ptls_context_t *ctx,
-			       quic_quicly_ptls_cert_list_t *cl)
+void
+ptls_assign_certificate_chain (ptls_context_t *ctx, quic_quicly_ptls_cert_list_t *cl)
 {
-  ctx->certificates.list =
-    (ptls_iovec_t *) malloc (cl->count * sizeof (ptls_iovec_t));
-  if (ctx->certificates.list == NULL)
-    {
-      return PTLS_ERROR_NO_MEMORY;
-    }
-
-  memcpy (ctx->certificates.list, cl->certs,
-	  cl->count * sizeof (ptls_iovec_t));
+  clib_atomic_add_fetch (&cl->ref_count, 1);
+  ctx->certificates.list = cl->certs;
   ctx->certificates.count = cl->count;
-
-  return 0;
 }
 
 void
-ptls_free_certificate_chain (ptls_context_t *ctx)
+ptls_free_certificate_chain (quic_quicly_ptls_cert_list_t *cl)
 {
-  int i;
-
-  if (ctx->certificates.count == 0)
+  if (!cl || clib_atomic_sub_fetch (&cl->ref_count, 1))
     return;
 
-  for (i = 0; i < ctx->certificates.count; i++)
-    {
-      if (ctx->certificates.list[i].base)
-	free (ctx->certificates.list[i].base);
-    }
-  free (ctx->certificates.list);
-  ctx->certificates.list = NULL;
-  ctx->certificates.count = 0;
+  for (size_t i = 0; i < cl->count; i++)
+    free (cl->certs[i].base);
+  clib_mem_free (cl);
 }
