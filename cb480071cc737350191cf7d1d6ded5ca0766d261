@@ -16,6 +16,42 @@
       "message": "recheck",
       "revId": "cb480071cc737350191cf7d1d6ded5ca0766d261",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8c85c43a_5ee4ecd1",
+        "filename": "src/plugins/dpdk/device/flow.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 1236,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-13T15:25:09Z",
+      "side": 1,
+      "message": "Could we align each spec/conf offset to its type\u0027s alignment when laying out the slot (and include the padding in slot_size)? For an IPv4 template with MARK + RSS, the current layout puts the RSS configuration at byte 188: the 4-byte MARK shifts it off the 8-byte alignment required by dpdk_action_rss_data/rte_flow_action_rss. init_slot_compound_actions and dpdk_flow_update_slot_actions then dereference a misaligned struct. A UBSAN probe with the installed DPDK types reproduces the invalid access. Aligning only the beginning/end of the slot does not protect these interior objects.",
+      "tag": "prview:5b3d88a03f5f9a181dd5f726a37a69e9:cb480071cc737350191cf7d1d6ded5ca0766d261",
+      "revId": "cb480071cc737350191cf7d1d6ded5ca0766d261",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9405b20e_0bfbe765",
+        "filename": "src/vppinfra/clib.h",
+        "patchSetId": 25
+      },
+      "lineNbr": 262,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-13T15:25:09Z",
+      "side": 1,
+      "message": "Could we cast the left operand to uword before shifting, as max_pow2() does? The literal 1 is a 32-bit int, so this new uword helper has undefined behavior for inputs \u003e\u003d 2^31 and cannot round 64-bit values correctly. A probe calling the actual header\u0027s min_pow2((uword)1 \u003c\u003c 32) returns 1 instead of 4294967296 and triggers UBSAN\u0027s shift-exponent error. Use `(uword) 1 \u003c\u003c min_log2(x)`.",
+      "tag": "prview:5b3d88a03f5f9a181dd5f726a37a69e9:cb480071cc737350191cf7d1d6ded5ca0766d261",
+      "revId": "cb480071cc737350191cf7d1d6ded5ca0766d261",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
