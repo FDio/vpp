@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5daa8774_31a2d10c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-13T08:51:59Z",
+      "side": 1,
+      "message": "this now expose one issue with duplicate content-length and host header empty value validation.\n\nin http1.c 810 and 830 match Host and Content-Length regardless of whether their index is already set and return HTTP1_PARSE_ERROR if previously parsed.\n\nplease fix same issue with duplicate content-length in http/2 and http/3, they use shared hpack_preprocess_header(), duplicate host header is already rejected",
+      "revId": "45c6df434e67da9be6f5418ab9e9cfa22a671e16",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
