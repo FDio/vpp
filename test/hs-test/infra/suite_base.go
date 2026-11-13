@@ -567,8 +567,8 @@ func (s *HstSuite) WaitForCoreDump() bool {
 					binPath = fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vperf_client", debug)
 				} else if strings.Contains(core.binPath, "vperf_server") {
 					binPath = fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vperf_server", debug)
-				} else if strings.Contains(core.binPath, "vperf_cl_udp") {
-					binPath = fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vperf_cl_udp", debug)
+				} else if strings.Contains(core.binPath, "vcl_test_app") {
+					binPath = fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vcl_test_app", debug)
 				} else if strings.Contains(core.binPath, "vpp_echo") {
 					binPath = fmt.Sprintf("../../build-root/build-vpp%s-native/vpp/bin/vpp_echo", debug)
 				} else {

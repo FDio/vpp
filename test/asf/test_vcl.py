@@ -629,9 +629,9 @@ class VCLThruHostStackCLUDPEcho(VCLTestCase):
         server_args = ["-s", self.loop0.local_ip4]
         client_args = ["-c", self.loop0.local_ip4]
         self.thru_host_stack_test(
-            "vperf_cl_udp",
+            "vcl_test_app",
             server_args,
-            "vperf_cl_udp",
+            "vcl_test_app",
             client_args,
         )
 
@@ -640,9 +640,9 @@ class VCLThruHostStackCLUDPEcho(VCLTestCase):
         server_args = ["-s", self.loop0.local_ip4, "-w", "2"]
         client_args = ["-c", self.loop0.local_ip4, "-w", "2"]
         self.thru_host_stack_test(
-            "vperf_cl_udp",
+            "vcl_test_app",
             server_args,
-            "vperf_cl_udp",
+            "vcl_test_app",
             client_args,
         )
 
@@ -770,7 +770,7 @@ class VCLThruHostStackCLUDPBinds(VCLTestCase):
         }
 
         worker_server1 = VCLAppWorker(
-            "vperf_cl_udp",
+            "vcl_test_app",
             server1_args,
             self.logger,
             self.vcl_app_env,
@@ -781,7 +781,7 @@ class VCLThruHostStackCLUDPBinds(VCLTestCase):
         self.sleep(0.5)
 
         worker_server2 = VCLAppWorker(
-            "vperf_cl_udp",
+            "vcl_test_app",
             server2_args,
             self.logger,
             self.vcl_app_env,

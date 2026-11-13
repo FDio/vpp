@@ -46,11 +46,6 @@ if(VPP_BUILD_VCL_TESTS AND VPP_BUILD_VPERF_TESTS)
     NO_INSTALL
   )
 
-  add_vpp_test(vperf_cl_udp SOURCES "vcl/vperf_cl_udp.c"
-    LINK_LIBRARIES vppcom pthread ${EPOLL_LIB}
-    NO_INSTALL
-  )
-
   foreach(test
     test_vperf_client
     test_vperf_server

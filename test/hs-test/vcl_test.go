@@ -379,9 +379,9 @@ func VclClUdpDscpTest(s *VclSuite) {
 	serverVethAddress := s.Interfaces.Server.Ip4AddressString()
 
 	// DSCP 40 - Class selector 5 - Signalling
-	vclSrvCmd := fmt.Sprintf("vperf_cl_udp -s %s -d 40", serverVethAddress)
+	vclSrvCmd := fmt.Sprintf("vcl_test_app -s %s -d 40", serverVethAddress)
 	srvAppCont.ExecServer(true, vclSrvCmd)
-	srvVppCont.VppInstance.WaitForApp("vperf_cl_udp", 3)
+	srvVppCont.VppInstance.WaitForApp("vcl_test_app", 3)
 
 	cliVppCont := s.Containers.ClientVpp
 	cliAppCont := s.Containers.ClientApp
@@ -393,7 +393,7 @@ func VclClUdpDscpTest(s *VclSuite) {
 	srvVppCont.VppInstance.Vppctl("trace add tap-input 10")
 
 	// DSCP 16 - Class selector 2 - Network operations
-	cliSrvCmd := fmt.Sprintf("vperf_cl_udp -c %s -d 16", serverVethAddress)
+	cliSrvCmd := fmt.Sprintf("vcl_test_app -c %s -d 16", serverVethAddress)
 	o, err := cliAppCont.Exec(true, cliSrvCmd)
 	AssertNil(err, o)
 
