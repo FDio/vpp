@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cc9a3c5e_80c9c2af",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-13T11:41:17Z",
+      "side": 1,
+      "message": "I\u0027ve thought about this a bit more and I think we can be smarter than this. The `payload_to_info` function feels like a bad idea in the end. The issue we have is \"we receive a packet carrying info as its payload, but scapy steps in and due to how protocol parsing works, it can take some bytes and reinterpret them\". But we already know per-test that those bytes are really just our test info. So I\u0027m thinking - let\u0027s forget the udp-specific function and instead rework the whole logic. Drop `payload_to_info` completely, introduce `get_info_from_packet` taking a  packet as a parameter instead of payload. This effectively reverts the previous change, but in the end we get a \"just works\" function instead of having to remember to use A or B based on circumstances.\n\nWhat do you think?",
+      "revId": "7338a69238c9f4a1a6cb3ac626d6c87a382ec91f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
