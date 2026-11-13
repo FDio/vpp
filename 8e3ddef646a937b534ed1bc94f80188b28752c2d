@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "4d73f309_83665009",
+        "filename": "src/vnet/fib/fib_table.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1427,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-11-13T09:05:06Z",
+      "side": 1,
+      "message": "moved to a separate patch",
+      "parentUuid": "ad2c9758_5951ec23",
+      "revId": "8e3ddef646a937b534ed1bc94f80188b28752c2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "c4245e84_09542b64",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-11-12T15:09:30Z",
       "side": 1,
       "message": "`processe` should probably be `processed`. And `We cannot if the` seems to be missing a verb. Maybe it should be `We cannot tell if the` or `We cannot know if the`.",
+      "revId": "8e3ddef646a937b534ed1bc94f80188b28752c2d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9c2f9a7c_0701c04e",
+        "filename": "test/test_linux_cp.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 1571,
+      "author": {
+        "id": 2220
+      },
+      "writtenOn": "2026-11-13T09:05:06Z",
+      "side": 1,
+      "message": "oh sorry, dunno how this happened.",
+      "parentUuid": "c4245e84_09542b64",
       "revId": "8e3ddef646a937b534ed1bc94f80188b28752c2d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
