@@ -6,8 +6,8 @@
  * VCL CL UDP Test Client/Server with Multi-threading Support
  *
  * Usage:
- *   Server: vperf_cl_udp -s <server_ip> [-w <num_workers>]
- *   Client: vperf_cl_udp -c <server_ip> [-w <num_workers>]
+ *   Server: vcl_test_app -s <server_ip> [-w <num_workers>]
+ *   Client: vcl_test_app -c <server_ip> [-w <num_workers>]
  *
  * Options:
  *   -s <ip>    Start as server bound to specified IP address
@@ -27,16 +27,16 @@
 #include <vcl/vppcom.h>
 #include <vperf/vcl/vperf.h>
 
-typedef enum vperf_clu_type_
+typedef enum vta_type_
 {
-  VPERF_CLU_TYPE_NONE = 0,
-  VPERF_CLU_TYPE_SERVER,
-  VPERF_CLU_TYPE_CLIENT,
-} vperf_clu_type_t;
+  VTA_TYPE_NONE = 0,
+  VTA_TYPE_SERVER,
+  VTA_TYPE_CLIENT,
+} vta_type_t;
 
-typedef struct vtclu_main_
+typedef struct vta_main_
 {
-  vperf_clu_type_t app_type;
+  vta_type_t app_type;
   vppcom_endpt_t endpt;
   union
   {
@@ -49,52 +49,48 @@ typedef struct vtclu_main_
   pthread_t *worker_threads;
   int thread_id_counter;
   volatile int msgs_received;
-} vperf_clu_main_t;
+} vta_main_t;
 
-static vperf_clu_main_t vperf_clu_main;
+static vta_main_t vta_main;
 static const uint32_t dscplen = 1;
 
-typedef struct vtclu_worker_args_
+typedef struct vta_worker_args_
 {
-  vperf_clu_main_t *vclum;
+  vta_main_t *vtam;
   int worker_id;
-} vtclu_worker_args_t;
+} vta_worker_args_t;
 
 static void
-vperf_clu_parse_args (vperf_clu_main_t *vclum, int argc, char **argv)
+vta_parse_args (vta_main_t *vtam, int argc, char **argv)
 {
   int c;
   int temp;
 
-  memset (vclum, 0, sizeof (*vclum));
-  vclum->port = VPERF_SERVER_PORT;
-  vclum->num_workers = 1;
-  vclum->dscp = 0;
+  memset (vtam, 0, sizeof (*vtam));
+  vtam->port = VPERF_SERVER_PORT;
+  vtam->num_workers = 1;
+  vtam->dscp = 0;
 
   opterr = 0;
   while ((c = getopt (argc, argv, "s:c:w:d:")) != -1)
     switch (c)
       {
       case 's':
-	vclum->app_type = VPERF_CLU_TYPE_SERVER;
-	if (inet_pton (
-	      AF_INET, optarg,
-	      &((struct sockaddr_in *) &vclum->srvr_addr)->sin_addr) != 1)
+	vtam->app_type = VTA_TYPE_SERVER;
+	if (inet_pton (AF_INET, optarg, &((struct sockaddr_in *) &vtam->srvr_addr)->sin_addr) != 1)
 	  vperf_warn ("couldn't parse ipv4 addr %s", optarg);
 	break;
       case 'c':
-	vclum->app_type = VPERF_CLU_TYPE_CLIENT;
-	if (inet_pton (
-	      AF_INET, optarg,
-	      &((struct sockaddr_in *) &vclum->clnt_addr)->sin_addr) != 1)
+	vtam->app_type = VTA_TYPE_CLIENT;
+	if (inet_pton (AF_INET, optarg, &((struct sockaddr_in *) &vtam->clnt_addr)->sin_addr) != 1)
 	  vperf_warn ("couldn't parse ipv4 addr %s", optarg);
 	break;
       case 'w':
-	vclum->num_workers = atoi (optarg);
-	if (vclum->num_workers <= 0)
+	vtam->num_workers = atoi (optarg);
+	if (vtam->num_workers <= 0)
 	  {
 	    vperf_warn ("invalid number of workers %s", optarg);
-	    vclum->num_workers = 1;
+	    vtam->num_workers = 1;
 	  }
 	break;
       case 'd':
@@ -102,34 +98,33 @@ vperf_clu_parse_args (vperf_clu_main_t *vclum, int argc, char **argv)
 	if (temp <= 0 || temp > 63)
 	  {
 	    vperf_warn ("invalid dscp value %s", optarg);
-	    vclum->dscp = 0;
+	    vtam->dscp = 0;
 	  }
-	vclum->dscp = temp;
+	vtam->dscp = temp;
 	break;
       }
 
-  if (vclum->app_type == VPERF_CLU_TYPE_NONE)
+  if (vtam->app_type == VTA_TYPE_NONE)
     {
       vperf_warn ("client or server must be configured");
       exit (1);
     }
 
-  vclum->endpt.is_ip4 = 1;
-  vclum->endpt.ip =
-    (uint8_t *) &((struct sockaddr_in *) &vclum->srvr_addr)->sin_addr;
-  vclum->endpt.port = htons (vclum->port);
+  vtam->endpt.is_ip4 = 1;
+  vtam->endpt.ip = (uint8_t *) &((struct sockaddr_in *) &vtam->srvr_addr)->sin_addr;
+  vtam->endpt.port = htons (vtam->port);
 }
 
 static int
-vperf_clu_test_done (vperf_clu_main_t *vclum)
+vta_test_done (vta_main_t *vtam)
 {
-  return vclum->msgs_received >= vclum->num_workers;
+  return vtam->msgs_received >= vtam->num_workers;
 }
 
 __thread char ep_ip_str[INET_ADDRSTRLEN + 16];
 
 static char *
-vperf_clu_ep_to_str (vppcom_endpt_t *ep)
+vta_ep_to_str (vppcom_endpt_t *ep)
 {
   inet_ntop (AF_INET, ep->ip, ep_ip_str, INET_ADDRSTRLEN);
   snprintf (ep_ip_str + strlen (ep_ip_str),
@@ -140,29 +135,29 @@ vperf_clu_ep_to_str (vppcom_endpt_t *ep)
 __thread jmp_buf sig_jmp_buf;
 
 static void
-vperf_clu_sig_handler (int sig)
+vta_sig_handler (int sig)
 {
   longjmp (sig_jmp_buf, 1);
 }
 
 void
-vperf_clu_catch_sig (void (*handler) (int))
+vta_catch_sig (void (*handler) (int))
 {
   signal (SIGUSR1, handler);
 }
 
 void
-vperf_clu_handle_sig (vperf_clu_main_t *vclum, int worker_id)
+vta_handle_sig (vta_main_t *vtam, int worker_id)
 {
   vperf_info ("Worker %d interrupted", worker_id);
-  vclum->msgs_received = vclum->num_workers;
+  vtam->msgs_received = vtam->num_workers;
 }
 
 static void *
-vperf_clu_server_worker (void *arg)
+vta_server_worker (void *arg)
 {
-  vtclu_worker_args_t *args = (vtclu_worker_args_t *) arg;
-  vperf_clu_main_t *vclum = args->vclum;
+  vta_worker_args_t *args = (vta_worker_args_t *) arg;
+  vta_main_t *vtam = args->vtam;
   int worker_id = args->worker_id;
   int rv, vcl_sh, epfd;
   const int buflen = 64;
@@ -190,12 +185,11 @@ vperf_clu_server_worker (void *arg)
       return NULL;
     }
 
-  if (vclum->dscp)
-    vppcom_session_attr (vcl_sh, VPPCOM_ATTR_SET_DSCP, &vclum->dscp,
-			 (uint32_t *) &dscplen);
+  if (vtam->dscp)
+    vppcom_session_attr (vcl_sh, VPPCOM_ATTR_SET_DSCP, &vtam->dscp, (uint32_t *) &dscplen);
 
   /* Bind to the same endpoint as main thread */
-  rv = vppcom_session_bind (vcl_sh, &vclum->endpt);
+  rv = vppcom_session_bind (vcl_sh, &vtam->endpt);
   if (rv < 0)
     {
       vperf_err ("vppcom_session_bind()", rv);
@@ -213,12 +207,12 @@ vperf_clu_server_worker (void *arg)
       return NULL;
     }
 
-  vperf_clu_catch_sig (vperf_clu_sig_handler);
+  vta_catch_sig (vta_sig_handler);
   if (setjmp (sig_jmp_buf))
-    vperf_clu_handle_sig (vclum, worker_id);
+    vta_handle_sig (vtam, worker_id);
 
   /* Server worker loop */
-  while (!vperf_clu_test_done (vclum))
+  while (!vta_test_done (vtam))
     {
       rv = vppcom_epoll_wait (epfd, events, 1, -1);
       if (rv < 0)
@@ -241,8 +235,8 @@ vperf_clu_server_worker (void *arg)
       buf[rv] = 0;
 
       vperf_info ("Worker %d received message from client %s: %s", worker_id,
-		  vperf_clu_ep_to_str (&rmt_ep), buf);
-      vperf_atomic_add (&vclum->msgs_received, 1);
+		  vta_ep_to_str (&rmt_ep), buf);
+      vperf_atomic_add (&vtam->msgs_received, 1);
 
       char response[buflen];
       int msg_len =
@@ -268,10 +262,10 @@ vperf_clu_server_worker (void *arg)
 }
 
 static void *
-vperf_clu_client_worker (void *arg)
+vta_client_worker (void *arg)
 {
-  vtclu_worker_args_t *args = (vtclu_worker_args_t *) arg;
-  vperf_clu_main_t *vclum = args->vclum;
+  vta_worker_args_t *args = (vta_worker_args_t *) arg;
+  vta_main_t *vtam = args->vtam;
   int worker_id = args->worker_id;
   int rv, vcl_sh;
   const int buflen = 64;
@@ -290,25 +284,23 @@ vperf_clu_client_worker (void *arg)
       vperf_err ("vppcom_session_create()", vcl_sh);
       return NULL;
     }
-  if (vclum->dscp)
-    vppcom_session_attr (vcl_sh, VPPCOM_ATTR_SET_DSCP, &vclum->dscp,
-			 (uint32_t *) &dscplen);
+  if (vtam->dscp)
+    vppcom_session_attr (vcl_sh, VPPCOM_ATTR_SET_DSCP, &vtam->dscp, (uint32_t *) &dscplen);
 
   char message[buflen];
   int msg_len =
     snprintf (message, buflen, "hello from client worker %d", worker_id);
 
-  vperf_clu_catch_sig (vperf_clu_sig_handler);
+  vta_catch_sig (vta_sig_handler);
   if (setjmp (sig_jmp_buf))
-    vperf_clu_handle_sig (vclum, worker_id);
+    vta_handle_sig (vtam, worker_id);
 
-  while (!vperf_clu_test_done (vclum))
+  while (!vta_test_done (vtam))
     {
       /* send 3 times to be sure */
       for (int i = 0; i < 3; i++)
 	{
-	  rv =
-	    vppcom_session_sendto (vcl_sh, message, msg_len, 0, &vclum->endpt);
+	  rv = vppcom_session_sendto (vcl_sh, message, msg_len, 0, &vtam->endpt);
 	  if (rv < 0)
 	    {
 	      vperf_warn ("worker %d: sendto returned %d", worker_id, rv);
@@ -326,9 +318,9 @@ vperf_clu_client_worker (void *arg)
       buf[rv] = 0;
 
       vperf_info ("Worker %d received message from server %s: %s", worker_id,
-		  vperf_clu_ep_to_str (&rmt_ep), buf);
+		  vta_ep_to_str (&rmt_ep), buf);
 
-      vperf_atomic_add (&vclum->msgs_received, 1);
+      vperf_atomic_add (&vtam->msgs_received, 1);
     }
 
 cleanup:
@@ -340,68 +332,66 @@ cleanup:
 int
 main (int argc, char **argv)
 {
-  vperf_clu_main_t *vclum = &vperf_clu_main;
+  vta_main_t *vtam = &vta_main;
   int rv;
 
-  vperf_clu_parse_args (vclum, argc, argv);
+  vta_parse_args (vtam, argc, argv);
 
-  rv = vppcom_app_create ("vperf_cl_udp");
+  rv = vppcom_app_create ("vcl_test_app");
   if (rv)
     vperf_fail ("vppcom_app_create()", rv);
 
   vperf_info ("Starting %s with %d worker(s)",
-	      vclum->app_type == VPERF_CLU_TYPE_SERVER ? "server" : "client", vclum->num_workers);
+	      vtam->app_type == VTA_TYPE_SERVER ? "server" : "client", vtam->num_workers);
 
-  vclum->worker_threads = calloc (vclum->num_workers, sizeof (pthread_t));
-  vtclu_worker_args_t *worker_args =
-    calloc (vclum->num_workers, sizeof (vtclu_worker_args_t));
+  vtam->worker_threads = calloc (vtam->num_workers, sizeof (pthread_t));
+  vta_worker_args_t *worker_args = calloc (vtam->num_workers, sizeof (vta_worker_args_t));
 
-  if (!vclum->worker_threads || !worker_args)
+  if (!vtam->worker_threads || !worker_args)
     {
       vperf_err ("Failed to allocate memory for worker threads", -1);
       return -1;
     }
 
   void *(*worker_func) (void *) =
-    (vclum->app_type == VPERF_CLU_TYPE_SERVER) ? vperf_clu_server_worker : vperf_clu_client_worker;
+    (vtam->app_type == VTA_TYPE_SERVER) ? vta_server_worker : vta_client_worker;
 
   /* Create worker threads */
-  for (int i = 1; i < vclum->num_workers; i++)
+  for (int i = 1; i < vtam->num_workers; i++)
     {
-      worker_args[i].vclum = vclum;
+      worker_args[i].vtam = vtam;
       worker_args[i].worker_id = i;
 
-      rv = pthread_create (&vclum->worker_threads[i], NULL, worker_func,
-			   &worker_args[i]);
+      rv = pthread_create (&vtam->worker_threads[i], NULL, worker_func, &worker_args[i]);
       if (rv != 0)
 	{
 	  vperf_err ("Failed to create worker thread", rv);
 	  /* Clean up any threads that were created */
 	  for (int j = 0; j < i; j++)
-	    pthread_cancel (vclum->worker_threads[j]);
+	    pthread_cancel (vtam->worker_threads[j]);
 	  return rv;
 	}
     }
 
   /* First worker */
-  worker_args[0].vclum = vclum;
+  worker_args[0].vtam = vtam;
   worker_args[0].worker_id = 0;
   worker_func (worker_args);
 
   /* Wait for all worker threads to complete */
-  while (!vperf_clu_test_done (vclum))
+  while (!vta_test_done (vtam))
     ;
 
   /* Wait for pthreads to cleanup before signaling */
   usleep (100e3);
 
-  for (int i = 1; i < vclum->num_workers; i++)
+  for (int i = 1; i < vtam->num_workers; i++)
     {
-      pthread_kill (vclum->worker_threads[i], SIGUSR1);
-      pthread_join (vclum->worker_threads[i], NULL);
+      pthread_kill (vtam->worker_threads[i], SIGUSR1);
+      pthread_join (vtam->worker_threads[i], NULL);
     }
 
-  free (vclum->worker_threads);
+  free (vtam->worker_threads);
   free (worker_args);
   vperf_info ("All worker threads completed");
 
