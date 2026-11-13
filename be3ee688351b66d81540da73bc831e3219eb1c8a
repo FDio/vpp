@@ -16,6 +16,24 @@
       "message": "Isn\u0027t it cheaper to just move app alloc lower?",
       "revId": "be3ee688351b66d81540da73bc831e3219eb1c8a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "54350e46_16d0c5e6",
+        "filename": "src/vnet/session/application.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 672,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-13T00:26:48Z",
+      "side": 1,
+      "message": "Yes. None of the three checks uses the app, so patch set 2 allocates it after them and drops the error label. I also added a case to the basic session unit test: after a detach, a refused attach and a successful one must reuse the freed app index. Without the change it fails with \"index 3 expected 2\".",
+      "parentUuid": "f3db85b7_35ac83ee",
+      "revId": "be3ee688351b66d81540da73bc831e3219eb1c8a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
