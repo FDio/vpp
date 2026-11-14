@@ -2265,6 +2265,13 @@ http3_stream_transport_rx_req (http_ctx_t *req, http_ctx_t *stream, http_req_sta
 	      req->fh.length = 0;
 	      goto error;
 	    }
+	  /* PUSH_PROMISE is permitted on request streams only from a server. */
+	  if (req->fh.type == HTTP3_FRAME_TYPE_PUSH_PROMISE &&
+	      (stream->flags & HTTP_CONN_F_IS_SERVER))
+	    {
+	      err = HTTP3_ERROR_FRAME_UNEXPECTED;
+	      goto error;
+	    }
 	  http3_stream_drop_frame_header (req, stream);
 	  left_deq -= req->fh.header_len;
 	}
