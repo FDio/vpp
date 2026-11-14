@@ -4584,5 +4584,33 @@ class TestIP6InterfaceRx(VppTestCase):
         self.send_and_expect(self.pg0, pkts_dst, self.pg2)
 
 
+class TestIPv6ExtHeaderWalk(VppTestCase):
+    """IPv6 extension header walk"""
+
+    def test_ext_header_walk_last_header(self):
+        """A negative find type returns the chain's last recorded header
+
+        External consumers pass -1, read the terminating header from
+        eh[res] and treat a negative return as a malformed packet. The
+        bounded walk reports the terminating header separately, so the
+        walk must put it back in eh[] for these consumers.
+        """
+        reply = self.vapi.cli("test ip6 ext-header-walk")
+        self.assertIn("PASS: ip6 extension header walk", reply)
+
+    def test_ext_header_walk_boundary_cases(self):
+        """A negative find type matches the pre-bounded walk at boundaries
+
+        A later truncated chain header is recorded, a chain header or L4
+        header starting at the scan bound is not, a non-first fragment
+        ending at the bound has no datagram protocol entry, a first chain
+        header past the depth limit and a plain truncated L4 header are
+        malformed. The return value and eh[] must match the pre-bounded
+        walk for all of them.
+        """
+        reply = self.vapi.cli("test ip6 ext-header-walk boundary")
+        self.assertIn("PASS: ip6 extension header walk", reply)
+
+
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)

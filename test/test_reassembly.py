@@ -18,20 +18,205 @@ from scapy.layers.inet6 import (
     IPv6ExtHdrFragment,
     IPv6ExtHdrHopByHop,
     IPv6ExtHdrDestOpt,
+    IPv6ExtHdrRouting,
     PadN,
     ICMPv6EchoRequest,
     ICMPv6EchoReply,
     ICMPv6ND_RS,
+    getmacbyip6,
 )
 from scapy.layers.sctp import SCTP
 from util import ppp, fragment_rfc791, fragment_rfc8200
 from vpp_gre_interface import VppGreInterface
-from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ip_route import (
+    FibPathProto,
+    FibPathType,
+    VppIpMRoute,
+    VppMRoutePath,
+    VppIpRoute,
+    VppRoutePath,
+)
 from vpp_papi import VppEnum
 from config import config
 
 # 35 is enough to have >257 400-byte fragments
 test_packet_count = 35
+
+
+def chain_limit_first_fragment(src_if, dst_if, payload):
+    """A first fragment with the fragment header in the fourth chain slot.
+
+    The fragment header names a destination options header, so the walk
+    stops at the entry limit with an extension header last.
+    """
+    return (
+        Ether(dst=src_if.local_mac, src=src_if.remote_mac)
+        / IPv6(src=src_if.remote_ip6, dst=dst_if.remote_ip6)
+        / IPv6ExtHdrHopByHop(nh=60)
+        / IPv6ExtHdrDestOpt(nh=43)
+        / IPv6ExtHdrRouting(nh=44)
+        / IPv6ExtHdrFragment(offset=0, m=1, nh=60)
+        / IPv6ExtHdrDestOpt(nh=17)
+        / UDP(sport=1234, dport=5678)
+        / Raw(payload)
+    )
+
+
+def entry_limit_l4_fragments(src_if, dst_if, payload_first, payload_last):
+    """First and last fragments with a terminating UDP header in the fifth slot.
+
+    Four extension headers fill the chain and the next protocol is UDP, so
+    the walk recognises the L4 header at the entry limit.
+    """
+    first = (
+        Ether(dst=src_if.local_mac, src=src_if.remote_mac)
+        / IPv6(src=src_if.remote_ip6, dst=dst_if.remote_ip6)
+        / IPv6ExtHdrHopByHop(nh=60)
+        / IPv6ExtHdrDestOpt(nh=43)
+        / IPv6ExtHdrRouting(nh=44)
+        / IPv6ExtHdrFragment(offset=0, m=1, nh=17)
+        / UDP(sport=1234, dport=5678)
+        / Raw(payload_first)
+    )
+    last = (
+        Ether(dst=src_if.local_mac, src=src_if.remote_mac)
+        / IPv6(src=src_if.remote_ip6, dst=dst_if.remote_ip6)
+        / IPv6ExtHdrHopByHop(nh=60)
+        / IPv6ExtHdrDestOpt(nh=43)
+        / IPv6ExtHdrRouting(nh=44)
+        / IPv6ExtHdrFragment(offset=3, m=0, nh=17)
+        / Raw(payload_last)
+    )
+    return first, last
+
+
+class IPv6ParamProblemTests:
+    """Parameter Problem tests shared by the IPv6 reassembly classes
+
+    The full and shallow virtual reassembly nodes answer the same invalid
+    upper layer cases with a Parameter Problem, so both test classes share
+    these tests.
+    """
+
+    def test_missing_upper(self):
+        """missing upper layer"""
+        optdata = "\x00" * 100
+        p = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(src=self.src_if.remote_ip6, dst=self.src_if.local_ip6)
+            / IPv6ExtHdrFragment(m=1)
+            / IPv6ExtHdrDestOpt(
+                nh=17, options=PadN(optdata="\101" * 255) / PadN(optdata="\102" * 255)
+            )
+        )
+
+        rx = self.send_and_expect(self.src_if, [p], self.src_if)
+        self.assertIn(ICMPv6ParamProblem, rx[0])
+        self.assertEqual(rx[0][ICMPv6ParamProblem].code, 3)
+        self.assertEqual(rx[0][ICMPv6ParamProblem].ptr, 0)
+        self.dst_if.assert_nothing_captured()
+
+    def test_first_fragment_truncated_ext_header(self):
+        """A first fragment with a truncated extension header gets code 3
+
+        The destination options header after the fragment header does not
+        fit in the datagram, so the fragment's upper layer is incomplete."""
+        pkt = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(
+                src=self.src_if.remote_ip6,
+                dst=self.dst_if.remote_ip6,
+                nh=44,
+                plen=12,
+            )
+            / IPv6ExtHdrFragment(offset=0, m=1, nh=60)
+            / IPv6ExtHdrDestOpt(nh=17)
+        )
+
+        rx = self.send_and_expect(self.src_if, [pkt], self.src_if)
+        self.assertIn(ICMPv6ParamProblem, rx[0])
+        self.assertEqual(rx[0][ICMPv6ParamProblem].code, 3)
+        self.assertEqual(rx[0][ICMPv6ParamProblem].ptr, 0)
+        self.dst_if.assert_nothing_captured()
+
+    def test_first_fragment_truncated_l4_header(self):
+        """A first fragment whose L4 header does not fit gets code 3
+
+        The fragment header names UDP, but the UDP header does not fit in
+        the declared payload, so the fragment's upper layer is incomplete."""
+        pkt = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(
+                src=self.src_if.remote_ip6,
+                dst=self.dst_if.remote_ip6,
+                nh=44,
+                plen=12,
+            )
+            / IPv6ExtHdrFragment(offset=0, m=1, nh=17)
+            / UDP(sport=1234, dport=5678)
+        )
+
+        rx = self.send_and_expect(self.src_if, [pkt], self.src_if)
+        self.assertIn(ICMPv6ParamProblem, rx[0])
+        self.assertEqual(rx[0][ICMPv6ParamProblem].code, 3)
+        self.assertEqual(rx[0][ICMPv6ParamProblem].ptr, 0)
+        self.dst_if.assert_nothing_captured()
+
+    def test_unfragmented_truncated_l4_header(self):
+        """An unfragmented packet with a truncated L4 header gets code 0
+
+        The UDP header starts at the IPv6 header's end but does not fit in
+        the declared payload, so the erroneous header pointer is the L4
+        header's offset."""
+        pkt = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(
+                src=self.src_if.remote_ip6,
+                dst=self.dst_if.remote_ip6,
+                nh=17,
+                plen=4,
+            )
+            / UDP(sport=1234, dport=5678)
+        )
+
+        rx = self.send_and_expect(self.src_if, [pkt], self.src_if)
+        self.assertIn(ICMPv6ParamProblem, rx[0])
+        self.assertEqual(rx[0][ICMPv6ParamProblem].code, 0)
+        self.assertEqual(rx[0][ICMPv6ParamProblem].ptr, 40)
+        self.dst_if.assert_nothing_captured()
+
+    def test_icmp6_offender_dropped(self):
+        """A malformed ICMPv6 packet is dropped without a Parameter Problem
+
+        RFC 4443 sections 2.4(e.1) and 2.4(e.2) forbid answering an ICMPv6
+        error message or a redirect message with another ICMPv6 error. The
+        plain packet identifies ICMPv6 from the IPv6 header's protocol;
+        the extension header packet identifies it from the walk's
+        terminating protocol. Both must be dropped and accounted instead
+        of answered."""
+        error_cnt_str = "/err/%s/reass_malformed_packet" % self.reass_err_node
+        error_cnt = self.statistics.get_err_counter(error_cnt_str)
+
+        plain = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(
+                src=self.src_if.remote_ip6,
+                dst=self.dst_if.remote_ip6,
+                nh=58,
+                plen=2,
+            )
+            / Raw(b"\x01\x00")
+        )
+        ext = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6)
+            / IPv6ExtHdrHopByHop(nh=58)
+            / Raw(b"\x01\x00")
+        )
+
+        self.send_and_assert_no_replies(self.src_if, [plain, ext])
+        self.dst_if.assert_nothing_captured()
+        self.assert_error_counter_equal(error_cnt_str, error_cnt + 2)
 
 
 class TestIPv4Reassembly(VppTestCase):
@@ -1416,8 +1601,10 @@ class TestIPv4MWReassembly(VppTestCase):
             send_if.assert_nothing_captured()
 
 
-class TestIPv6Reassembly(VppTestCase):
+class TestIPv6Reassembly(IPv6ParamProblemTests, VppTestCase):
     """IPv6 Reassembly"""
+
+    reass_err_node = "ip6-full-reassembly-feature"
 
     @classmethod
     def setUpClass(cls):
@@ -1570,7 +1757,11 @@ class TestIPv6Reassembly(VppTestCase):
         self.verify_capture(packets)
 
     def test_buffer_boundary(self):
-        """fragment header crossing buffer boundary"""
+        """A fragment header crosses the buffer boundary
+
+        The hop-by-hop header runs past the buffer, so the walk reports a
+        truncated chain and the reassembly node answers with a Parameter
+        Problem pointing at that header."""
 
         p = (
             Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
@@ -1580,10 +1771,10 @@ class TestIPv6Reassembly(VppTestCase):
             / UDP(sport=1234, dport=5678)
             / Raw()
         )
-        self.pg_enable_capture()
-        self.src_if.add_stream([p])
-        self.pg_start()
-        self.src_if.assert_nothing_captured()
+        rx = self.send_and_expect(self.src_if, [p], self.src_if)
+        self.assertIn(ICMPv6ParamProblem, rx[0])
+        self.assertEqual(rx[0][ICMPv6ParamProblem].code, 0)
+        self.assertEqual(rx[0][ICMPv6ParamProblem].ptr, 40)
         self.dst_if.assert_nothing_captured()
 
     def test_verify_clear_trace_mid_reassembly(self):
@@ -1914,24 +2105,47 @@ class TestIPv6Reassembly(VppTestCase):
         self.dst_if.get_capture(1)
         self.assert_error_counter_equal(error_cnt_str, error_cnt)
 
-    def test_missing_upper(self):
-        """missing upper layer"""
-        p = (
+    def test_first_fragment_at_chain_limit(self):
+        """A first fragment at the entry limit is reassembled
+
+        The fragment header fills the last chain slot and names a
+        destination options header. The walk stops at the entry limit,
+        but the fragment is valid. The node must complete the reassembly
+        and forward the packet."""
+        payload_first = b"A" * 16
+        payload_last = b"B" * 16
+        first = chain_limit_first_fragment(self.src_if, self.dst_if, payload_first)
+        last = (
             Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
-            / IPv6(src=self.src_if.remote_ip6, dst=self.src_if.local_ip6)
-            / IPv6ExtHdrFragment(m=1)
-            / IPv6ExtHdrDestOpt(
-                nh=17, options=PadN(optdata="\101" * 255) / PadN(optdata="\102" * 255)
-            )
+            / IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6)
+            / IPv6ExtHdrHopByHop(nh=60)
+            / IPv6ExtHdrDestOpt(nh=43)
+            / IPv6ExtHdrRouting(nh=44)
+            / IPv6ExtHdrFragment(offset=4, m=0, nh=60)
+            / Raw(payload_last)
         )
 
-        self.pg_enable_capture()
-        self.src_if.add_stream([p])
-        self.pg_start()
-        pkts = self.src_if.get_capture(expected_count=1)
-        icmp = pkts[0]
-        self.assertIn(ICMPv6ParamProblem, icmp)
-        self.assert_equal(icmp[ICMPv6ParamProblem].code, 3, "ICMP code")
+        recvd = self.send_and_expect(self.src_if, [first, last], self.dst_if, n_rx=1)
+        self.src_if.assert_nothing_captured()
+        self.assertNotIn(IPv6ExtHdrFragment, recvd[0])
+        self.assertEqual(bytes(recvd[0][UDP].payload), payload_first + payload_last)
+
+    def test_l4_header_after_chain_limit(self):
+        """A terminating L4 header after four chain headers is recognised
+
+        Four extension headers fill the chain and the next protocol is UDP,
+        so the walk must report the L4 header instead of stopping at the
+        entry limit. The first fragment must be reassembled, not rejected."""
+        payload_first = b"A" * 16
+        payload_last = b"B" * 16
+        first, last = entry_limit_l4_fragments(
+            self.src_if, self.dst_if, payload_first, payload_last
+        )
+
+        recvd = self.send_and_expect(self.src_if, [first, last], self.dst_if, n_rx=1)
+        self.src_if.assert_nothing_captured()
+        self.assertNotIn(IPv6ExtHdrFragment, recvd[0])
+        self.assertEqual(bytes(recvd[0][UDP].payload), payload_first + payload_last)
 
     def test_invalid_frag_size(self):
         """fragment size not a multiple of 8"""
@@ -1973,6 +2187,81 @@ class TestIPv6Reassembly(VppTestCase):
         self.assertIn(ICMPv6ParamProblem, icmp)
         self.assert_equal(icmp[ICMPv6ParamProblem].code, 0, "ICMP code")
 
+    def test_invalid_frag_size_multicast(self):
+        """A malformed multicast fragment gets no Parameter Problem
+
+        The fragment payload length is not a multiple of 8, so the local
+        full reassembly node's fragment length check fails. RFC 4443
+        section 2.4(e.3) forbids an ICMPv6 error for a packet destined to a
+        multicast address, so the node must drop and account the packet
+        instead of answering."""
+        MRouteItfFlags = VppEnum.vl_api_mfib_itf_flags_t
+        MRouteEntryFlags = VppEnum.vl_api_mfib_entry_flags_t
+
+        VppIpMRoute(
+            self,
+            "::",
+            "ff02::1234",
+            128,
+            MRouteEntryFlags.MFIB_API_ENTRY_FLAG_NONE,
+            [
+                VppMRoutePath(
+                    self.src_if.sw_if_index,
+                    MRouteItfFlags.MFIB_API_ITF_FLAG_ACCEPT,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP6,
+                ),
+                VppMRoutePath(
+                    0xFFFFFFFF,
+                    MRouteItfFlags.MFIB_API_ITF_FLAG_FORWARD,
+                    proto=FibPathProto.FIB_PATH_NH_PROTO_IP6,
+                    type=FibPathType.FIB_PATH_TYPE_LOCAL,
+                ),
+            ],
+        ).add_vpp_config()
+
+        error_cnt_str = "/err/ip6-local-full-reassembly/reass_invalid_frag_size"
+        error_cnt = self.statistics.get_err_counter(error_cnt_str)
+
+        # The fragment payload after the fragment header is 12 bytes, not a
+        # multiple of 8, so the fragment length check fails. The multicast
+        # destination must suppress the Parameter Problem.
+        pkt = (
+            Ether(dst=getmacbyip6("ff02::1234"), src=self.src_if.remote_mac)
+            / IPv6(src=self.src_if.remote_ip6, dst="ff02::1234")
+            / IPv6ExtHdrFragment(m=1, nh=17)
+            / UDP(sport=1234, dport=5678)
+            / Raw(b"X" * 4)
+        )
+
+        self.send_and_assert_no_replies(self.src_if, [pkt])
+        self.assert_error_counter_equal(error_cnt_str, error_cnt + 1)
+
+    def test_invalid_frag_size_transit(self):
+        """A transit fragment with a bad fragment length gets a Parameter Problem
+
+        The packet is not addressed to the router, so the full reassembly
+        feature node, not the local node, must answer it."""
+        error_cnt_str = "/err/ip6-full-reassembly-feature/reass_invalid_frag_size"
+        error_cnt = self.statistics.get_err_counter(error_cnt_str)
+
+        # The fragment payload after the fragment header is 12 bytes, not a
+        # multiple of 8, so the fragment length check fails. The feature node
+        # must answer the packet instead of continuing it along the arc.
+        pkt = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6)
+            / IPv6ExtHdrFragment(m=1, nh=17)
+            / UDP(sport=1234, dport=5678)
+            / Raw(b"X" * 4)
+        )
+
+        rx = self.send_and_expect(self.src_if, [pkt], self.src_if)
+        self.assertIn(ICMPv6ParamProblem, rx[0])
+        self.assertEqual(rx[0][ICMPv6ParamProblem].code, 0)
+        self.assertEqual(rx[0][ICMPv6ParamProblem].ptr, 4)
+        self.dst_if.assert_nothing_captured()
+        self.assert_error_counter_equal(error_cnt_str, error_cnt + 1)
+
     def test_atomic_fragment(self):
         """IPv6 atomic fragment"""
         pkt = (
@@ -1990,12 +2279,16 @@ class TestIPv6Reassembly(VppTestCase):
     def test_truncated_fragment(self):
         """IPv6 truncated fragment header"""
         pkt = (
-            Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac)
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
             / IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6, nh=44, plen=2)
             / IPv6ExtHdrFragment(nh=6)
         )
 
-        self.send_and_assert_no_replies(self.pg0, [pkt])
+        rx = self.send_and_expect(self.pg0, [pkt], self.pg0)
+        self.assertIn(ICMPv6ParamProblem, rx[0])
+        self.assertEqual(rx[0][ICMPv6ParamProblem].code, 0)
+        self.assertEqual(rx[0][ICMPv6ParamProblem].ptr, 40)
+        self.dst_if.assert_nothing_captured()
 
         pkt = (
             Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
@@ -2365,8 +2658,10 @@ class TestIPv6MWReassembly(VppTestCase):
             send_if.assert_nothing_captured()
 
 
-class TestIPv6SVReassembly(VppTestCase):
+class TestIPv6SVReassembly(IPv6ParamProblemTests, VppTestCase):
     """IPv6 Shallow Virtual Reassembly"""
+
+    reass_err_node = "ip6-sv-reassembly-feature"
 
     @classmethod
     def setUpClass(cls):
@@ -2646,12 +2941,21 @@ class TestIPv6SVReassembly(VppTestCase):
     def test_truncated_fragment(self):
         """truncated fragment"""
         pkt = (
-            Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac)
-            / IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6, nh=44, plen=2)
+            Ether(src=self.src_if.remote_mac, dst=self.src_if.local_mac)
+            / IPv6(
+                src=self.src_if.remote_ip6,
+                dst=self.src_if.local_ip6,
+                nh=44,
+                plen=2,
+            )
             / IPv6ExtHdrFragment(nh=6)
         )
 
-        self.send_and_assert_no_replies(self.pg0, [pkt], self.pg0)
+        rx = self.send_and_expect(self.src_if, [pkt], self.src_if)
+        self.assertIn(ICMPv6ParamProblem, rx[0])
+        self.assertEqual(rx[0][ICMPv6ParamProblem].code, 0)
+        self.assertEqual(rx[0][ICMPv6ParamProblem].ptr, 40)
+        self.dst_if.assert_nothing_captured()
 
     def _get_buffers_used(self):
         r = self.vapi.cli_return_response("show buffers")
@@ -2909,6 +3213,195 @@ class TestIPv6SVReassembly(VppTestCase):
             "Buffer leak detected: before=%d, after=%d"
             % (buffers_before, buffers_after),
         )
+
+    def test_truncated_ext_header_pointer(self):
+        """A truncated extension header reports the erroneous header pointer
+
+        The hop-by-hop header ends before the destination options header,
+        whose length byte is not present. The node must report a Parameter
+        Problem with the erroneous header field code and point at the
+        truncated header."""
+        IP_PROTOCOL_IP6_DESTINATION_HEADER = 60
+
+        hbh = struct.pack("BB", IP_PROTOCOL_IP6_DESTINATION_HEADER, 0) + b"\x00" * 7
+
+        pkt = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(
+                src=self.src_if.remote_ip6,
+                dst=self.dst_if.remote_ip6,
+                nh="Hop-by-Hop Option Header",
+            )
+            / Raw(load=hbh)
+        )
+
+        rx = self.send_and_expect(
+            self.src_if,
+            [pkt],
+            self.src_if,
+        )
+        self.assertIn(ICMPv6ParamProblem, rx[0])
+        self.assertEqual(rx[0][ICMPv6ParamProblem].code, 0)
+        self.assertEqual(rx[0][ICMPv6ParamProblem].ptr, 48)
+
+    def test_ext_header_chain_over_limit(self):
+        """A packet with more extension headers than the chain limit is forwarded
+
+        The walk records at most four extension headers, so it cannot
+        classify a longer chain. The packet is valid, so the node must
+        pass it through instead of dropping it with an ICMP error."""
+        p = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6)
+            / IPv6ExtHdrHopByHop(nh=60)
+            / IPv6ExtHdrDestOpt(nh=43)
+            / IPv6ExtHdrRouting(nh=60)
+            / IPv6ExtHdrDestOpt(nh=60)
+            / IPv6ExtHdrDestOpt(nh=17)
+            / UDP(sport=1234, dport=5678)
+            / Raw(b"X" * 16)
+        )
+
+        recvd = self.send_and_expect(self.src_if, [p], self.dst_if)
+        self.src_if.assert_nothing_captured()
+        self.assertEqual(recvd[0][IPv6].src, p[IPv6].src)
+        self.assertEqual(recvd[0][IPv6].dst, p[IPv6].dst)
+        self.assertEqual(bytes(recvd[0][IPv6].payload), bytes(p[IPv6].payload))
+
+    def test_first_fragment_at_chain_limit(self):
+        """A first fragment at the entry limit is not rejected
+
+        The fragment header fills the last chain slot and names a
+        destination options header. The walk stops at the entry limit,
+        but the fragment is valid and must not be answered with a
+        Parameter Problem."""
+        payload_first = b"A" * 16
+        first = chain_limit_first_fragment(self.src_if, self.dst_if, payload_first)
+
+        recvd = self.send_and_expect(self.src_if, [first], self.dst_if)
+        self.src_if.assert_nothing_captured()
+        self.assertIn(IPv6ExtHdrFragment, recvd[0])
+        self.assertEqual(bytes(recvd[0][UDP].payload), payload_first)
+
+    def test_l4_header_after_chain_limit(self):
+        """A terminating L4 header after four chain headers is forwarded
+
+        Four extension headers fill the chain and the next protocol is UDP,
+        so the walk must report the L4 header instead of stopping at the
+        entry limit. The fragments must be forwarded, not rejected."""
+        payload_first = b"A" * 16
+        payload_last = b"B" * 16
+        first, last = entry_limit_l4_fragments(
+            self.src_if, self.dst_if, payload_first, payload_last
+        )
+
+        recvd = self.send_and_expect(self.src_if, [first, last], self.dst_if)
+        self.src_if.assert_nothing_captured()
+        for pkt in recvd:
+            self.assertIn(IPv6ExtHdrFragment, pkt)
+        payloads = [bytes(pkt[Raw].load) for pkt in recvd]
+        self.assertIn(payload_first, payloads)
+        self.assertIn(payload_last, payloads)
+
+    def test_malformed_multicast_no_icmp(self):
+        """A malformed multicast packet is dropped without an ICMPv6 error
+
+        RFC 4443 section 2.4(e) forbids an ICMPv6 error for a packet
+        destined to a multicast address. The node must drop the packet
+        instead of answering with a Parameter Problem."""
+        self.vapi.feature_enable_disable(
+            enable=1,
+            arc_name="ip6-multicast",
+            feature_name="ip6-sv-reassembly-mcast-feature",
+            sw_if_index=self.src_if.sw_if_index,
+        )
+        self.addCleanup(
+            self.vapi.feature_enable_disable,
+            enable=0,
+            arc_name="ip6-multicast",
+            feature_name="ip6-sv-reassembly-mcast-feature",
+            sw_if_index=self.src_if.sw_if_index,
+        )
+
+        error_cnt_str = "/err/ip6-sv-reassembly-mcast-feature/reass_malformed_packet"
+        error_cnt = self.statistics.get_err_counter(error_cnt_str)
+
+        # The UDP header does not fit in the declared payload, so the walk
+        # reports a truncated L4 header. The multicast destination must
+        # suppress the Parameter Problem.
+        pkt = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(src=self.src_if.remote_ip6, dst="ff02::1", nh=17, plen=4)
+            / UDP(sport=1234, dport=5678)
+        )
+        self.send_and_assert_no_replies(self.src_if, [pkt])
+        self.dst_if.assert_nothing_captured()
+        self.assert_error_counter_equal(error_cnt_str, error_cnt + 1)
+
+    def test_multicast_invalid_frag_len_no_icmp(self):
+        """A multicast fragment with a bad fragment length gets no ICMPv6 error
+
+        RFC 4443 section 2.4(e) forbids an ICMPv6 error for a packet
+        destined to a multicast address. The invalid-fragment-length path
+        must apply the same check as the classifier."""
+        self.vapi.feature_enable_disable(
+            enable=1,
+            arc_name="ip6-multicast",
+            feature_name="ip6-sv-reassembly-mcast-feature",
+            sw_if_index=self.src_if.sw_if_index,
+        )
+        self.addCleanup(
+            self.vapi.feature_enable_disable,
+            enable=0,
+            arc_name="ip6-multicast",
+            feature_name="ip6-sv-reassembly-mcast-feature",
+            sw_if_index=self.src_if.sw_if_index,
+        )
+
+        error_cnt_str = "/err/ip6-sv-reassembly-mcast-feature/reass_invalid_frag_len"
+        error_cnt = self.statistics.get_err_counter(error_cnt_str)
+
+        # The fragment payload after the fragment header is 12 bytes, not a
+        # multiple of 8, so verify_fragment_multiple_8 fails. The multicast
+        # destination must suppress the Parameter Problem.
+        pkt = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(src=self.src_if.remote_ip6, dst="ff02::1")
+            / IPv6ExtHdrFragment(m=1, nh=17)
+            / UDP(sport=1234, dport=5678)
+            / Raw(b"X" * 4)
+        )
+        self.send_and_assert_no_replies(self.src_if, [pkt])
+        self.dst_if.assert_nothing_captured()
+        self.assert_error_counter_equal(error_cnt_str, error_cnt + 1)
+
+    def test_icmp6_echo_invalid_frag_len_gets_icmp(self):
+        """An ICMPv6 echo fragment with a bad fragment length gets a Parameter Problem
+
+        The offender check only suppresses an ICMPv6 error for an ICMPv6
+        error or redirect message. An echo request is informational, so the
+        invalid fragment length is reported."""
+        error_cnt_str = "/err/ip6-sv-reassembly-feature/reass_invalid_frag_len"
+        error_cnt = self.statistics.get_err_counter(error_cnt_str)
+
+        # The fragment payload after the fragment header is 12 bytes, not a
+        # multiple of 8, so verify_fragment_multiple_8 fails. The ICMPv6
+        # echo request is informational, so the node answers with a
+        # Parameter Problem.
+        pkt = (
+            Ether(dst=self.src_if.local_mac, src=self.src_if.remote_mac)
+            / IPv6(src=self.src_if.remote_ip6, dst=self.dst_if.remote_ip6)
+            / IPv6ExtHdrFragment(m=1, nh=58)
+            / ICMPv6EchoRequest()
+            / Raw(b"X" * 4)
+        )
+
+        rx = self.send_and_expect(self.src_if, [pkt], self.src_if)
+        self.assertIn(ICMPv6ParamProblem, rx[0])
+        self.assertEqual(rx[0][ICMPv6ParamProblem].code, 0)
+        self.assertEqual(rx[0][ICMPv6ParamProblem].ptr, 4)
+        self.dst_if.assert_nothing_captured()
+        self.assert_error_counter_equal(error_cnt_str, error_cnt + 1)
 
 
 class TestIPv4ReassemblyLocalNode(VppTestCase):
