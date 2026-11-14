@@ -71,6 +71,11 @@ http3_frame_header_read (u8 *src, u64 src_len, http3_stream_type_t stream_type,
       break;
       /* clang-format on */
     }
+  /* A QPACK field section needs Required Insert Count and Delta Base
+   * (RFC 9204, Section 4.5.1), even when it contains no field lines. */
+  if (fh->type == HTTP3_FRAME_TYPE_HEADERS && fh->length < 2)
+    return HTTP3_ERROR_FRAME_ERROR;
+
   return HTTP3_ERROR_NO_ERROR;
 }
 

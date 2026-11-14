@@ -1133,14 +1133,6 @@ http3_req_state_wait_transport_method (http_ctx_t *stream, http_ctx_t *req,
   u8 *rx_buf;
   http_sm_result_t res = HTTP_SM_STOP;
 
-  if (req->fh.length == 0)
-    {
-      HTTP_DBG (1, "empty headers frame");
-      *n_deq = 0;
-      http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
-      return HTTP_SM_STOP;
-    }
-
   if (PREDICT_FALSE (req->fh.length > http_io_ts_fifo_size (stream, 1)))
     {
       HTTP_DBG (1, "ts rx fifo too small to hold headers frame (%lu)", req->fh.length);
@@ -1331,14 +1323,6 @@ http3_req_state_wait_transport_reply (http_ctx_t *stream, http_ctx_t *req,
   http_worker_t *wrk = http_worker_get (stream->c_thread_index);
   u8 *rx_buf;
   http_sm_result_t res = HTTP_SM_STOP;
-
-  if (req->fh.length == 0)
-    {
-      HTTP_DBG (1, "empty headers frame");
-      *n_deq = 0;
-      http3_stream_terminate (stream, req, HTTP3_ERROR_MESSAGE_ERROR);
-      return HTTP_SM_STOP;
-    }
 
   if (PREDICT_FALSE (req->fh.length > http_io_ts_fifo_size (stream, 1)))
     {
