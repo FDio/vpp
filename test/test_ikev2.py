@@ -3533,6 +3533,41 @@ class TestResponderShortAuthPayload(TemplateResponder, Ikev2Params):
         self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
 
 
+class TestResponderInitRetransmit(TemplateResponder, Ikev2Params):
+    """Only a request with the same nonce is answered as a retransmission."""
+
+    def config_tc(self):
+        self.config_params()
+
+    def tearDown(self):
+        super(IkePeer, self).tearDown()
+        self.p.remove_vpp_config()
+
+    def send_init(self, nonce):
+        msg = ikev2.IKEv2(
+            init_SPI=self.sa.ispi, flags="Initiator", exch_type="IKE_SA_INIT"
+        ) / ikev2.IKEv2_payload_Nonce(load=nonce)
+        packet = self.create_packet(
+            self.pg0, msg, self.sa.sport, self.sa.dport, self.sa.natt, self.ip6
+        )
+        self.pg0.add_stream(packet)
+        self.pg0.enable_capture()
+        self.pg_start()
+
+    def n_init_retransmit(self):
+        return sum(s.sa.stats.n_init_sa_retransmit for s in self.vapi.ikev2_sa_dump())
+
+    def test_responder(self):
+        self.send_sa_init_req()
+        self.assertEqual(self.n_init_retransmit(), 0)
+        # no nonce, a prefix of the nonce, the nonce followed by more data
+        for nonce in (b"", self.sa.i_nonce[:1], self.sa.i_nonce + b"\x00"):
+            self.send_init(nonce)
+            self.assertEqual(self.n_init_retransmit(), 0)
+        self.send_init(self.sa.i_nonce)
+        self.assertEqual(self.n_init_retransmit(), 1)
+
+
 class TestResponderInvalidNewChildModp(TestResponderPsk):
     """An invalid new Child KE preserves the existing Child and permits cleanup."""
 
