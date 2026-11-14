@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "49935f79_080fcf03",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1768,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-11-14T23:29:37Z",
+      "side": 1,
+      "message": "!conn? I hope that\u0027s not possible :)",
+      "revId": "e196f236264148249efa5df9b115579ce949ee3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
