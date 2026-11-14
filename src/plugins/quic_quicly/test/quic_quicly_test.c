@@ -222,6 +222,118 @@ quicly_test_conn_count (quicly_update_open_count_t *self, ssize_t delta)
   ((quicly_test_conn_count_t *) self)->count += delta;
 }
 
+typedef struct
+{
+  quicly_now_t super;
+  int64_t now;
+} quicly_test_clock_t;
+
+static int64_t
+quicly_test_now (quicly_now_t *self)
+{
+  return ((quicly_test_clock_t *) self)->now;
+}
+
+static int
+quicly_test_connection_close (vlib_main_t *vm, const quic_engine_vft_t *engine)
+{
+  quicly_context_t *spec, context;
+  ptls_context_t tls = {};
+  ptls_get_time_t *get_time;
+  typeof (quicly_connect) *connect;
+  typeof (quicly_close) *close_conn;
+  typeof (quicly_send) *send;
+  typeof (quicly_get_first_timeout) *first_timeout;
+  typeof (quicly_free) *free_conn;
+  typeof (quicly_amend_ptls_context) *amend;
+  quicly_test_conn_count_t count = { .super = { quicly_test_conn_count } };
+  quicly_test_credit_stream_t opened = { .super = { quicly_test_credit_open } };
+  quicly_test_clock_t clock = { .super = { quicly_test_now }, .now = 1000 };
+  quicly_cid_plaintext_t cid = {};
+  struct sockaddr_in peer = { .sin_family = AF_INET,
+			      .sin_port = 1234,
+			      .sin_addr.s_addr = clib_host_to_net_u32 (0x7f000001) };
+  quicly_conn_t *conn = NULL;
+  quicly_stream_t *stream = NULL;
+  quic_stream_data_t *data = NULL;
+  quicly_address_t dest, src;
+  struct iovec packets[10];
+  u8 buf[10 * QUIC_MAX_PACKET_SIZE];
+  size_t num_packets;
+  int res = 0;
+
+#define CLOSE_SYMBOL(symbol) vlib_get_plugin_symbol ("quic_quicly_plugin.so", #symbol)
+  spec = CLOSE_SYMBOL (quicly_spec_context);
+  connect = CLOSE_SYMBOL (quicly_connect);
+  close_conn = CLOSE_SYMBOL (quicly_close);
+  send = CLOSE_SYMBOL (quicly_send);
+  first_timeout = CLOSE_SYMBOL (quicly_get_first_timeout);
+  free_conn = CLOSE_SYMBOL (quicly_free);
+  amend = CLOSE_SYMBOL (quicly_amend_ptls_context);
+  tls.random_bytes = CLOSE_SYMBOL (ptls_openssl_random_bytes);
+  tls.key_exchanges = CLOSE_SYMBOL (ptls_openssl_key_exchanges);
+  tls.cipher_suites = CLOSE_SYMBOL (ptls_openssl_cipher_suites);
+  get_time = CLOSE_SYMBOL (ptls_get_time);
+#undef CLOSE_SYMBOL
+  QUICLY_TEST (spec && connect && close_conn && send && first_timeout && free_conn && amend &&
+		 tls.random_bytes && tls.key_exchanges && tls.cipher_suites && get_time,
+	       "connection close fixture symbols loaded");
+  tls.get_time = get_time;
+  amend (&tls);
+  context = *spec;
+  context.tls = &tls;
+  context.now = &clock.super;
+  context.update_open_count = &count.super;
+  context.stream_open = &opened.super;
+
+  for (u8 is_unidir = 0; is_unidir < 2; is_unidir++)
+    {
+      QUICLY_TEST (connect (&conn, &context, "localhost", (void *) &peer, NULL, &cid,
+			    ptls_iovec_init (NULL, 0), NULL, NULL, NULL) == 0,
+		   "real connection created before close");
+      QUICLY_TEST (engine->connect_stream (conn, (void **) &stream, &data, is_unidir) == 0 &&
+		     stream && data == &opened.data && quicly_num_streams (conn) == 1,
+		   "live connection permits stream creation");
+      QUICLY_TEST (close_conn (conn, 0, "connection close test") == 0, "connection enters closing");
+      for (u32 sent_close = 0; sent_close < 2; sent_close++)
+	{
+	  /* Model the deferred HTTP/3 accept both before and after the first
+	   * close send. It must never resurrect a stream on this connection. */
+	  stream = NULL;
+	  data = NULL;
+	  QUICLY_TEST (engine->connect_stream (conn, (void **) &stream, &data, is_unidir) ==
+			   SESSION_E_NOSESSION &&
+			 !stream && !data,
+		       "deferred accept cannot open a stream on a closing connection");
+	  QUICLY_TEST (quicly_num_streams (conn) == 1 - sent_close,
+		       "rejected stream open preserves the engine stream count");
+	  num_packets = ARRAY_LEN (packets);
+	  if (!sent_close)
+	    {
+	      QUICLY_TEST (send (conn, &dest, &src, packets, &num_packets, buf, sizeof (buf)) ==
+			       0 &&
+			     num_packets > 0 && quicly_num_streams (conn) == 0,
+			   "first close send destroys the existing stream");
+	      clock.now = first_timeout (conn);
+	      QUICLY_TEST (clock.now != INT64_MAX, "closing expiry is scheduled");
+	    }
+	  else
+	    QUICLY_TEST (send (conn, &dest, &src, packets, &num_packets, buf, sizeof (buf)) ==
+			     QUICLY_ERROR_FREE_CONNECTION &&
+			   num_packets == 0,
+			 "closing timer expires without live streams or an abort");
+	}
+      free_conn (conn);
+      conn = NULL;
+      QUICLY_TEST (count.count == 0, "closed engine connection is released once");
+    }
+
+done:
+  if (conn && free_conn)
+    free_conn (conn);
+  return res;
+}
+
 static int
 quicly_test_rx_credit (vlib_main_t *vm, quic_quicly_main_t *qqm,
 		       const quicly_stream_callbacks_t *callbacks, const quic_engine_vft_t *engine)
@@ -836,6 +948,7 @@ quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
   {
     TEST_NONE,
     TEST_STREAM_CLOSE,
+    TEST_CONNECTION_CLOSE,
     TEST_RX,
     TEST_CANCEL_RX,
     TEST_RX_FIN,
@@ -846,6 +959,8 @@ quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 
   if (unformat (input, "stream-close"))
     test = TEST_STREAM_CLOSE;
+  else if (unformat (input, "connection-close"))
+    test = TEST_CONNECTION_CLOSE;
   else if (unformat (input, "rx-fin"))
     test = TEST_RX_FIN;
   else if (unformat (input, "rx-credit"))
@@ -859,8 +974,9 @@ quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
   else if (unformat (input, "all"))
     test = TEST_ALL;
   if (test == TEST_NONE || unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    return clib_error_return (0, "expected exactly one of stream-close, rx, cancel-rx, rx-fin, "
-				 "rx-credit, certificates or all");
+    return clib_error_return (
+      0, "expected exactly one of stream-close, connection-close, rx, cancel-rx, rx-fin, "
+	 "rx-credit, certificates or all");
   if (test == TEST_CERTIFICATES || test == TEST_ALL)
     {
       if (quicly_test_certificates (vm))
@@ -909,7 +1025,9 @@ quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
   session_main.wrk = sessions;
   qqm->qm = qm;
   qqm->worker_stats = stats;
-  if (test == TEST_STREAM_CLOSE || test == TEST_ALL)
+  if (test == TEST_CONNECTION_CLOSE || test == TEST_ALL)
+    res = quicly_test_connection_close (vm, &(*engines)[QUIC_ENGINE_QUICLY]);
+  if (!res && (test == TEST_STREAM_CLOSE || test == TEST_ALL))
     for (u32 thread_index = 0; thread_index < 2 && !res; thread_index++)
       for (u32 i = 0; i < ARRAY_LEN (stream_ids) && !res; i++)
 	for (u32 order = 0; order < 3 && !res; order++)
@@ -956,7 +1074,8 @@ quicly_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 
 VLIB_CLI_COMMAND (quicly_test_command, static) = {
   .path = "test quicly",
-  .short_help = "test quicly [stream-close|rx|cancel-rx|rx-fin|rx-credit|certificates|all]",
+  .short_help =
+    "test quicly [stream-close|connection-close|rx|cancel-rx|rx-fin|rx-credit|certificates|all]",
   .function = quicly_test,
 };
 

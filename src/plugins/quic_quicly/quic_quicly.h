@@ -98,8 +98,10 @@ static_always_inline int
 quic_quicly_handshake_is_complete (quicly_conn_t *conn)
 {
   /* Peer streams can arrive before HANDSHAKE_DONE confirms a client's handshake.
-   * Publish the parent session once TLS completes, before accepting its streams. */
-  return conn && ptls_handshake_is_complete (quicly_get_tls (conn));
+   * Publish the parent session once TLS completes, before accepting its streams,
+   * unless QUIC has already rejected another frame in the same flight. */
+  return conn && quicly_get_state (conn) < QUICLY_STATE_CLOSING &&
+	 ptls_handshake_is_complete (quicly_get_tls (conn));
 }
 
 #endif /* __included_quic_quicly_h__ */
