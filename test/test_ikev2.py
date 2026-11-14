@@ -2781,6 +2781,32 @@ class TestResponderPskIntegAesCmac(TestResponderPsk):
         self.config_params({"ike-integ": "AES-CMAC-96"})
 
 
+class TestResponderEmptyNatDetection(TemplateResponder, Ikev2Params):
+    """An IKE_SA_INIT request with a NAT detection notify without data is dropped."""
+
+    def config_tc(self):
+        self.config_params()
+
+    def tearDown(self):
+        super(IkePeer, self).tearDown()
+        self.p.remove_vpp_config()
+
+    def test_responder(self):
+        for notify in ("NAT_DETECTION_SOURCE_IP", "NAT_DETECTION_DESTINATION_IP"):
+            msg = (
+                ikev2.IKEv2(
+                    init_SPI=self.sa.ispi, flags="Initiator", exch_type="IKE_SA_INIT"
+                )
+                / self.generate_sa_init_payload(next_payload="Notify")
+                / ikev2.IKEv2_payload_Notify(type=notify)
+            )
+            packet = self.create_packet(
+                self.pg0, msg, self.sa.sport, self.sa.dport, self.sa.natt, self.ip6
+            )
+            self.send_and_assert_no_replies(self.pg0, packet)
+            self.assertEqual(len(self.vapi.ikev2_sa_dump()), 0)
+
+
 class TestResponderDpd(TestResponderPsk):
     """
     Dead peer detection test
