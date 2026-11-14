@@ -7,9 +7,9 @@ from asfframework import VppTestRunner, CPUInterface
 from framework import VppTestCase
 from scapy.contrib.wireguard import Wireguard
 from scapy.layers.inet import IP, TCP, UDP
-from scapy.layers.inet6 import ICMPv6EchoRequest, IPv6
+from scapy.layers.inet6 import ICMPv6EchoRequest, IPv6, IPv6ExtHdrSegmentRouting
 from scapy.layers.isakmp import ISAKMP
-from scapy.layers.l2 import Ether
+from scapy.layers.l2 import Dot1Q, Ether
 from scapy.layers.vxlan import VXLAN
 from scapy.packet import Raw
 from vpp_papi import mac_pton, mac_ntop
@@ -84,6 +84,31 @@ class TestUtil(CPUInterface, unittest.TestCase):
         )
         self.assertIsInstance(packet[UDP].payload, ISAKMP)
         self.assert_packet_info(packet[Raw])
+
+    def test_info_after_srv6_srh(self):
+        """Decode packet info from the L2 or L3 payload of an SRv6 SRH."""
+        payload = pack("iiiih", 4, 1, 2, 4, 17)
+        mac = dict(src="00:11:22:33:44:55", dst="00:55:44:33:22:11")
+        for name, nh, inner in (
+            ("l2", 143, Ether(type=0x8137, **mac) / Raw(payload)),
+            (
+                "l2-dot1q",
+                143,
+                Ether(**mac) / Dot1Q(vlan=10, type=0x8137) / Raw(payload),
+            ),
+            ("l2-udp", 143, Ether(**mac) / IPv6() / UDP() / Raw(payload)),
+            ("l3-udp", 41, IPv6() / UDP() / Raw(payload)),
+        ):
+            with self.subTest(inner=name):
+                packet = Ether(
+                    bytes(
+                        Ether()
+                        / IPv6(dst="a::1")
+                        / IPv6ExtHdrSegmentRouting(addresses=["a::1"], segleft=0, nh=nh)
+                        / inner
+                    )
+                )
+                self.assert_packet_info(packet)
 
     def test_udp_packet_info_wireguard(self):
         """UDP dissection must not consume packet info bytes"""

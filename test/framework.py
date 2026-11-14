@@ -39,7 +39,7 @@ from util import ppp, ppc, is_core_present, StatsDiff
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror, UDP
 from scapy.layers.inet6 import ICMPv6DestUnreach, ICMPv6EchoRequest
-from scapy.layers.inet6 import ICMPv6EchoReply
+from scapy.layers.inet6 import ICMPv6EchoReply, IPv6ExtHdrSegmentRouting
 from asfframework import VppAsfTestCase
 
 """
@@ -367,7 +367,13 @@ class VppTestCase(VppAsfTestCase):
         Read UDP bytes before Scapy interprets its payload as another protocol.
         The UDP length also excludes Ethernet padding. Other test packets carry
         the info in Raw, except ICMPv6 Echo, which stores it in data.
+        Scapy leaves an L2 frame after an SRv6 SRH (nh=143) undissected, so
+        decode that frame first.
         """
+        if packet.haslayer(IPv6ExtHdrSegmentRouting):
+            srh = packet[IPv6ExtHdrSegmentRouting]
+            if srh.nh == 143 and isinstance(srh.payload, Raw):
+                return VppTestCase.get_info_from_packet(Ether(srh.payload.load))
         if packet.haslayer(UDP):
             udp = packet[UDP]
             data = udp.original or bytes(udp)
@@ -388,10 +394,6 @@ class VppTestCase(VppAsfTestCase):
 
         info = _PacketInfo()
         info.index, info.src, info.dst, info.ip, info.proto = unpack("iiiih", payload_b)
-
-        # some SRv6 TCs depend on get an exception if bad values are detected
-        if info.index > 0x4000:
-            raise ValueError("Index value is invalid")
 
         return info
 
