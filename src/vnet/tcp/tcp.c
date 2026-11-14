@@ -1416,12 +1416,14 @@ static int
 tcp_session_app_rx_evt (transport_connection_t *conn)
 {
   tcp_connection_t *tc = (tcp_connection_t *) conn;
-  u32 min_free, lo = 4 << 10, hi = 128 << 10;
+  u32 fifo_size, min_free, lo = 4 << 10, hi = 128 << 10;
 
   if (!(tc->flags & TCP_CONN_ZERO_RWND_SENT))
     return 0;
 
-  min_free = clib_clamp (transport_rx_fifo_size (conn) >> 3, lo, hi);
+  /* At most half of the fifo, so small fifos still get updates */
+  fifo_size = transport_rx_fifo_size (conn);
+  min_free = clib_min (clib_clamp (fifo_size >> 3, lo, hi), fifo_size >> 1);
   if (transport_max_rx_enqueue (conn) < min_free)
     {
       transport_rx_fifo_req_deq_ntf (conn);
