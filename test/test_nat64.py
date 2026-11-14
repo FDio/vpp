@@ -18,7 +18,15 @@ from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from scapy.data import IP_PROTOS
 from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
-from scapy.layers.inet6 import ICMPv6DestUnreach, IPerror6, IPv6ExtHdrFragment
+from scapy.layers.inet6 import (
+    HBHOptUnknown,
+    ICMPv6DestUnreach,
+    IPerror6,
+    IPv6ExtHdrFragment,
+    IPv6ExtHdrHopByHop,
+    IPv6ExtHdrDestOpt,
+    IPv6ExtHdrRouting,
+)
 from scapy.layers.inet6 import (
     IPv6,
     ICMPv6EchoRequest,
@@ -1185,6 +1193,159 @@ class TestNAT64(VppTestCase):
 
         # VPP must still be alive
         self.vapi.cli("show nat64 session table all")
+
+    def test_icmp_error_chain_headers(self):
+        """NAT64 ICMP error quoting a packet with four chain headers
+
+        The translated ICMPv4 error takes its total length and ICMP
+        checksum from the actual packet. A quoted packet with four
+        extension headers makes the quoted header length and the actual
+        translated length differ by the extension-header bytes.
+        """
+        self.vapi.nat64_add_del_pool_addr_range(
+            start_addr=self.nat_addr,
+            end_addr=self.nat_addr,
+            vrf_id=0xFFFFFFFF,
+            is_add=1,
+        )
+        flags = self.config_flags.NAT_IS_INSIDE
+        self.vapi.nat64_add_del_interface(
+            is_add=1, flags=flags, sw_if_index=self.pg0.sw_if_index
+        )
+        self.vapi.nat64_add_del_interface(
+            is_add=1, flags=0, sw_if_index=self.pg1.sw_if_index
+        )
+
+        # Create the UDP session.
+        server_ip6 = "".join(["64:ff9b::", self.pg1.remote_ip4])
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst=server_ip6)
+            / UDP(sport=self.udp_port_in, dport=20)
+        )
+        self.pg0.add_stream([p])
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg1.get_capture(1)
+
+        # ICMPv6 error quoting a UDP packet with four chain headers.
+        inner6 = (
+            IPv6(src=server_ip6, dst=self.pg0.remote_ip6)
+            / IPv6ExtHdrHopByHop(nh=60)
+            / IPv6ExtHdrDestOpt(nh=43)
+            / IPv6ExtHdrRouting(nh=60)
+            / IPv6ExtHdrDestOpt(nh=17)
+            / UDP(sport=20, dport=self.udp_port_in)
+            / Raw(b"X" * 16)
+        )
+        pkt = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst=server_ip6)
+            / ICMPv6DestUnreach(code=1)
+            / inner6
+        )
+        self.pg0.add_stream([pkt])
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        packet = self.pg1.get_capture(1)[0]
+        self.assertEqual(packet[IP].src, self.nat_addr)
+        self.assertEqual(packet[IP].dst, self.pg1.remote_ip4)
+        self.assertEqual(packet[ICMP].type, 3)
+        self.assertEqual(packet[ICMP].code, 13)
+        self.assertEqual(packet[IP].len, len(bytes(packet[IP])))
+        inner = packet[IPerror]
+        self.assertEqual(inner.src, self.pg1.remote_ip4)
+        self.assertEqual(inner.dst, self.nat_addr)
+        self.assert_packet_checksums_valid(packet)
+
+    def test_chain_beyond_depth_dropped(self):
+        """NAT64 drops a packet whose L4 header is beyond the scan depth
+
+        The hop-by-hop header ends past the 256-byte scan depth, so the walk
+        stops before the UDP header. The protocol and offset are then
+        unknown, so the node must drop the packet instead of translating it
+        as an unknown protocol.
+        """
+        self.vapi.nat64_add_del_pool_addr_range(
+            start_addr=self.nat_addr,
+            end_addr=self.nat_addr,
+            vrf_id=0xFFFFFFFF,
+            is_add=1,
+        )
+        flags = self.config_flags.NAT_IS_INSIDE
+        self.vapi.nat64_add_del_interface(
+            is_add=1, flags=flags, sw_if_index=self.pg0.sw_if_index
+        )
+        self.vapi.nat64_add_del_interface(
+            is_add=1, flags=0, sw_if_index=self.pg1.sw_if_index
+        )
+
+        error_cnt_str = "/err/nat64-in2out/unknown"
+        error_cnt = self.statistics.get_err_counter(error_cnt_str)
+
+        server_ip6 = "".join(["64:ff9b::", self.pg1.remote_ip4])
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst=server_ip6)
+            / IPv6ExtHdrHopByHop(
+                nh=17, options=[HBHOptUnknown(otype=0xFF, optlen=0)] * 108
+            )
+            / UDP(sport=self.udp_port_in, dport=20)
+            / Raw(b"X" * 16)
+        )
+
+        self.send_and_assert_no_replies(self.pg0, [p])
+        self.assert_error_counter_equal(error_cnt_str, error_cnt + 1)
+
+    def test_icmp_error_short_quote_dropped(self):
+        """NAT64 drops an ICMPv6 error whose quoted packet is outside the payload
+
+        The ICMPv6 error declares four payload bytes, so it carries no
+        quoted packet. Bytes after the declared payload must not be parsed
+        as the quoted packet; the node must drop the error instead of
+        translating it.
+        """
+        self.vapi.nat64_add_del_pool_addr_range(
+            start_addr=self.nat_addr,
+            end_addr=self.nat_addr,
+            vrf_id=0xFFFFFFFF,
+            is_add=1,
+        )
+        flags = self.config_flags.NAT_IS_INSIDE
+        self.vapi.nat64_add_del_interface(
+            is_add=1, flags=flags, sw_if_index=self.pg0.sw_if_index
+        )
+        self.vapi.nat64_add_del_interface(
+            is_add=1, flags=0, sw_if_index=self.pg1.sw_if_index
+        )
+
+        # Create the UDP session so a parsed quoted packet would translate.
+        server_ip6 = "".join(["64:ff9b::", self.pg1.remote_ip4])
+        p = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst=server_ip6)
+            / UDP(sport=self.udp_port_in, dport=20)
+        )
+        self.pg0.add_stream([p])
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg1.get_capture(1)
+
+        # The inner packet follows the four declared payload bytes as
+        # trailing bytes, outside the ICMPv6 payload.
+        inner6 = (
+            IPv6(src=server_ip6, dst=self.pg0.remote_ip6)
+            / UDP(sport=20, dport=self.udp_port_in)
+            / Raw(b"X" * 16)
+        )
+        pkt = (
+            Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst=server_ip6, nh=58, plen=4)
+            / ICMPv6DestUnreach(code=0)
+            / Raw(bytes(inner6))
+        )
+
+        self.send_and_assert_no_replies(self.pg0, [pkt])
 
     def test_hairpinning(self):
         """NAT64 hairpinning"""

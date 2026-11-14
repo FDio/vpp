@@ -1509,6 +1509,12 @@ counters ip6 {
     units "packets";
     description "unsupported ip protocol";
   };
+  reass_malformed_packet {
+    severity error;
+    type counter64;
+    units "packets";
+    description "malformed packets";
+  };
 };
 
 counters icmp4 {
