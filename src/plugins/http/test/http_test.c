@@ -2719,6 +2719,31 @@ http_test_h3_frame (vlib_main_t *vm)
   HTTP_TEST ((rv == HTTP3_ERROR_FRAME_UNEXPECTED),
 	     "frame is on wrong stream (rv=0x%04x)", rv);
 
+  u8 short_headers[][3] = { { 0x01, 0x00 }, { 0x01, 0x01, 0x00 } };
+  for (u32 i = 0; i < ARRAY_LEN (short_headers); i++)
+    {
+      rv = _http3_frame_header_read (short_headers[i], i + 2, HTTP3_STREAM_TYPE_REQUEST, &fh);
+      HTTP_TEST (rv == HTTP3_ERROR_FRAME_ERROR, "HEADERS with %u prefix bytes rejected (rv=0x%04x)",
+		 i, rv);
+      rv = _http3_frame_header_read (short_headers[i], i + 2, HTTP3_STREAM_TYPE_PUSH, &fh);
+      HTTP_TEST (rv == HTTP3_ERROR_FRAME_ERROR,
+		 "pushed HEADERS with %u prefix bytes rejected (rv=0x%04x)", i, rv);
+      rv = _http3_frame_header_read (short_headers[i], i + 2, HTTP3_STREAM_TYPE_CONTROL, &fh);
+      HTTP_TEST (rv == HTTP3_ERROR_FRAME_UNEXPECTED,
+		 "short HEADERS on control stream rejected as unexpected (rv=0x%04x)", rv);
+    }
+
+  u8 empty_section[] = { 0x01, 0x02, 0x00, 0x00 };
+  rv = _http3_frame_header_read (empty_section, sizeof (empty_section), HTTP3_STREAM_TYPE_REQUEST,
+				 &fh);
+  HTTP_TEST (rv == HTTP3_ERROR_NO_ERROR && fh.length == 2,
+	     "complete QPACK prefix reaches HTTP field validation (rv=0x%04x)", rv);
+
+  u8 empty_data[] = { 0x00, 0x00 };
+  rv = _http3_frame_header_read (empty_data, sizeof (empty_data), HTTP3_STREAM_TYPE_REQUEST, &fh);
+  HTTP_TEST (rv == HTTP3_ERROR_NO_ERROR && fh.length == 0, "empty DATA remains valid (rv=0x%04x)",
+	     rv);
+
   vlib_cli_output (vm, "http3_frame_header_write");
 
   u8 header_buf[HTTP3_FRAME_HEADER_MAX_LEN] = {};

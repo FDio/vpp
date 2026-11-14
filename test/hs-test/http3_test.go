@@ -30,6 +30,7 @@ func init() {
 	RegisterH3Tests(Http3GetTest, Http3AltSvcCompoundListenerTest, Http3DownloadTest, Http3PostTest, Http3UploadTest, Http3ClientGetRepeatTest,
 		Http3ClientGetMultiplexingTest, Http3PeerResetStream, Http3ClientRequestIncompleteTest,
 		Http3RequestFinCompleteTest, Http3RequestFinErrorsTest,
+		Http3ServerHeadersPrefixTest, Http3ClientHeadersPrefixTest,
 		Http3ClientStreamingBodyTest, Http3ClientStreamingAbortTest, Http3ClientStreamingChildAbortTest, Http3ClientStreamingBodylessTest,
 		Http3ServerStreamingBodyTest, Http3ServerStreamingMultiplexingTest,
 		Http3ServerStreamingFramingTest, Http3ServerStreamingRejectedTest,
@@ -455,6 +456,8 @@ func Http3TrailerErrorsTest(s *Http3Suite) {
 		{"pseudo-header", http3EarlyHeaders([]qpack.HeaderField{{Name: ":status", Value: "200"}}), "", http3.ErrCodeMessageError, false},
 		{"content-length", http3EarlyHeaders([]qpack.HeaderField{{Name: "content-length", Value: "0"}}), "", http3.ErrCodeMessageError, false},
 		{"short body", valid, "10", http3.ErrCodeMessageError, false},
+		{"missing QPACK prefix", http3FinFrame(1, nil), "", http3.ErrCodeFrameError, true},
+		{"short QPACK prefix", http3FinFrame(1, []byte{0}), "", http3.ErrCodeFrameError, true},
 		{"compression", http3FinFrame(1, []byte{1, 0}), "", http3.ErrCodeQPACKDecompressionFailed, true},
 		{"truncated", valid[:len(valid)-1], "", http3.ErrCodeFrameError, true},
 		{"second trailer", append(bytes.Clone(valid), valid...), "", http3.ErrCodeFrameUnexpected, true},
@@ -2424,6 +2427,67 @@ func Http3RequestFinErrorsTest(s *Http3Suite) {
 		AssertNil(conn.CloseWithError(0, ""))
 	}
 	http3TestSessionCleanupServer(s)
+}
+
+func Http3ServerHeadersPrefixTest(s *Http3Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	AssertEmpty(s.Containers.Vpp.VppInstance.Vppctl("http tps no-zc h3 uri https://" + address))
+	for _, prefix := range [][]byte{nil, {0}, {0, 0}} {
+		By(fmt.Sprintf("HEADERS with %d prefix bytes and no FIN", len(prefix)))
+		conn := H3ClientConnect(address)
+		stream, err := conn.OpenStream()
+		AssertNil(err)
+		AssertNil(stream.SetDeadline(time.Now().Add(3 * time.Second)))
+		_, err = stream.Write(http3FinFrame(1, prefix))
+		AssertNil(err)
+		// The declared frame size is already invalid; rejecting it must not wait for FIN.
+		_, err = stream.Read([]byte{0})
+		if len(prefix) < 2 {
+			expected := &quic.ApplicationError{ErrorCode: quic.ApplicationErrorCode(http3.ErrCodeFrameError), Remote: true}
+			AssertMatchError(err, expected)
+			AssertMatchError(context.Cause(conn.Context()), expected)
+		} else {
+			// An empty decoded section lacks mandatory pseudo-headers, but its framing is valid.
+			AssertMatchError(err, &quic.StreamError{StreamID: stream.StreamID(), ErrorCode: quic.StreamErrorCode(http3.ErrCodeMessageError), Remote: true})
+			AssertNil(context.Cause(conn.Context()))
+			healthy, err := conn.OpenStream()
+			AssertNil(err)
+			AssertNil(healthy.SetDeadline(time.Now().Add(3 * time.Second)))
+			_, err = healthy.Write(http3FinHeaders("GET", "/test_file_64", "0"))
+			AssertNil(err)
+			AssertNil(healthy.Close())
+			http3FinReadResponse(healthy, 64)
+		}
+		AssertNil(conn.CloseWithError(0, ""))
+	}
+}
+
+func Http3ClientHeadersPrefixTest(s *Http3Suite) {
+	for _, trailer := range []bool{false, true} {
+		for _, prefix := range [][]byte{nil, {0}} {
+			By(fmt.Sprintf("response HEADERS with %d prefix bytes, trailer=%t", len(prefix), trailer))
+			listener, address, done, _ := http3StreamingRxServer(s, true, func(conn *quic.Conn, stream *quic.Stream) error {
+				frame := http3FinFrame(1, prefix)
+				if trailer {
+					frame = append(http3EarlyHeaders([]qpack.HeaderField{{Name: ":status", Value: "200"}}), frame...)
+				}
+				if _, err := stream.Write(frame); err != nil {
+					return err
+				}
+				select {
+				case <-conn.Context().Done():
+					AssertMatchError(context.Cause(conn.Context()), &quic.ApplicationError{ErrorCode: quic.ApplicationErrorCode(http3.ErrCodeFrameError), Remote: true})
+				case <-time.After(3 * time.Second):
+					return fmt.Errorf("client did not close the connection for a short HEADERS prefix")
+				}
+				return nil
+			})
+			output := s.Containers.Vpp.VppInstance.Vppctl("http client http3 timeout 5 uri https://" + address + "/")
+			AssertContains(output, "transport closed")
+			AssertNil(<-done)
+			AssertNil(listener.Close())
+		}
+	}
 }
 
 func Http3MissingPseudoHeaderTest(s *Http3Suite) {
