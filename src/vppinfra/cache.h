@@ -27,6 +27,7 @@
 #define CLIB_CACHE_PREFETCH_BYTES (1 << CLIB_LOG2_CACHE_PREFETCH_BYTES)
 #define CLIB_CACHE_LINE_ALIGN_MARK(mark)                                      \
   u8 mark[0] __attribute__ ((aligned (CLIB_CACHE_LINE_BYTES)))
+#define __clib_cache_line_aligned __attribute__ ((aligned (CLIB_CACHE_LINE_BYTES)))
 #define CLIB_CACHE_LINE_ROUND(x)                                              \
   ((x + CLIB_CACHE_LINE_BYTES - 1) & ~(CLIB_CACHE_LINE_BYTES - 1))
 
