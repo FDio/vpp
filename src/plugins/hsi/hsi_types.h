@@ -22,6 +22,8 @@
 #define HSI_UDP_DRAIN_NO_PROGRESS_DEFAULT_TIMEOUT 10.0
 #define HSI_UDP_IDLE_DEFAULT_TIMEOUT		  300.0
 #define HSI_TCP_FIN_WAIT_DEFAULT_TIMEOUT	  2.0
+/* Like tcp's fin-wait-1 timeout, which bounds half-closes */
+#define HSI_TCP_HALF_CLOSE_DEFAULT_TIMEOUT	  60.0
 #define HSI_POSTPONED_CLEANUP_TIME		  0.1
 #define HSI_MQ_DEFAULT_LENGTH			  4096
 
@@ -106,6 +108,7 @@ typedef struct hsi_msg_ hsi_msg_t;
   _ (tcp_fin_cleanup, u64, "tcp-fin-cleanup")                                                      \
   _ (tcp_fin_wait_started, u64, "tcp-fin-wait-started")                                            \
   _ (tcp_fin_wait_cleanup, u64, "tcp-fin-wait-cleanup")                                            \
+  _ (tcp_half_close_cleanup, u64, "tcp-half-close-cleanup")                                        \
   _ (tcp_rst_cleanup, u64, "tcp-rst-cleanup")                                                      \
   _ (udp_track_accepted, u64, "udp-track-accepted")                                                \
   _ (udp_track_failed, u64, "udp-track-failed")                                                    \
@@ -182,7 +185,8 @@ typedef struct hsi_worker_
   session_handle_t *tcp_drain_update_handles;
   f64 tcp_drain_next_scan;
   uword *tcp_fin_wait_by_session_conn;
-  /** Fin-wait entries in the order they expire, deleted ones included */
+  /** Fin-wait entries, also of half-closed pairs, in the order they expire,
+   * deleted ones included */
   hsi_tcp_fin_wait_elt_t *tcp_fin_wait_fifo;
   hsi_worker_stats_t stats;
   uword *udp_track_peer_by_session_conn;
@@ -250,6 +254,7 @@ typedef struct hsi_main_
   f64 udp_drain_no_progress_timeout;
   f64 udp_idle_timeout;
   f64 tcp_fin_wait_timeout;
+  f64 tcp_half_close_timeout;
   f64 postponed_cleanup_time;
   u32 mq_length;
 

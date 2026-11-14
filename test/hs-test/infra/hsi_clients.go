@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	tcpharness "fd.io/hs-test/infra/tcpharness"
@@ -313,6 +314,104 @@ func StartHsiTcpHalfCloseClient(addr string, port uint16, netNs, readyPath,
 			return output.String(), nil
 		})
 		finished <- HsiClientResult{Output: output, Err: err}
+	}()
+	return finished
+}
+
+// StartHsiTcpHalfOpenServer echoes what it reads. Once the client half-closes,
+// it sends reply and keeps its side open, so connections stay half-closed. The
+// returned function closes the listener and the connections.
+func StartHsiTcpHalfOpenServer(addr string, port uint16, reply string) func() {
+	listener, err := net.ListenTCP(tcpNetwork(addr),
+		&net.TCPAddr{IP: net.ParseIP(addr), Port: int(port)})
+	AssertNil(err, fmt.Sprint(err))
+
+	var lock sync.Mutex
+	var conns []net.Conn
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			lock.Lock()
+			conns = append(conns, conn)
+			lock.Unlock()
+			go func() {
+				buf := make([]byte, 1500)
+				for {
+					n, err := conn.Read(buf)
+					if n > 0 {
+						if _, err := conn.Write(buf[:n]); err != nil {
+							return
+						}
+					}
+					if err == io.EOF {
+						conn.Write([]byte(reply))
+					}
+					if err != nil {
+						return
+					}
+				}
+			}()
+		}
+	}()
+
+	return func() {
+		listener.Close()
+		lock.Lock()
+		defer lock.Unlock()
+		for _, conn := range conns {
+			conn.Close()
+		}
+	}
+}
+
+// StartHsiTcpHalfOpenClient half-closes once signaled and reads the reply the
+// server sends after that. It keeps its side open until release is closed.
+func StartHsiTcpHalfOpenClient(addr string, port uint16, netNs, readyPath, signalPath,
+	reply string, release <-chan struct{}) <-chan HsiClientResult {
+	finished := make(chan HsiClientResult, 1)
+	go func() {
+		defer GinkgoRecover()
+		var conn *net.TCPConn
+		output, err := runInNetns(netNs, func() (string, error) {
+			var reader *bufio.Reader
+			var err error
+
+			conn, reader, err = hsiTcpClientConnect(addr, port)
+			if err != nil {
+				return "", err
+			}
+
+			warm := []byte("hsi-half-open-warm")
+			if _, err := conn.Write(warm); err != nil {
+				return "", err
+			}
+			if _, err := io.ReadFull(reader, make([]byte, len(warm))); err != nil {
+				return "", err
+			}
+
+			local := conn.LocalAddr().(*net.TCPAddr)
+			if err := writeReady(readyPath, local.Port); err != nil {
+				return "", err
+			}
+			if err := waitForSignal(signalPath, 10*time.Second); err != nil {
+				return "", err
+			}
+
+			if err := conn.CloseWrite(); err != nil {
+				return "", err
+			}
+			buf := make([]byte, len(reply))
+			n, err := io.ReadFull(reader, buf)
+			return string(buf[:n]), err
+		})
+		finished <- HsiClientResult{Output: output, Err: err}
+		if conn != nil {
+			<-release
+			conn.Close()
+		}
 	}()
 	return finished
 }
