@@ -1765,6 +1765,9 @@ quic_quicly_connect_stream (void *quic_conn, void **quic_stream,
   quicly_stream_t *quicly_stream;
   quicly_error_t rv;
 
+  if (!conn || quicly_get_state (conn) >= QUICLY_STATE_CLOSING)
+    return SESSION_E_NOSESSION;
+
   rv = quicly_open_stream (conn, (quicly_stream_t **) quic_stream, is_unidir);
   if (rv)
     {
