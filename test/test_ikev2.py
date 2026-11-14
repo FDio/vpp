@@ -3474,6 +3474,29 @@ class TestResponderEmptyPskAuth(TestResponderTruncatedPskAuth):
     auth_len = 0
 
 
+class TestResponderBadNonceSize(TemplateResponder, Ikev2Params):
+    """An IKE_SA_INIT request with a nonce of a wrong size is dropped."""
+
+    def config_tc(self):
+        self.config_params()
+
+    def tearDown(self):
+        super(IkePeer, self).tearDown()
+        self.p.remove_vpp_config()
+
+    def test_responder(self):
+        # RFC 7296, 3.9: a nonce is 16 to 256 octets long
+        for size in (0, 15, 257):
+            msg = ikev2.IKEv2(
+                init_SPI=self.sa.ispi, flags="Initiator", exch_type="IKE_SA_INIT"
+            ) / ikev2.IKEv2_payload_Nonce(load=bytes(size))
+            packet = self.create_packet(
+                self.pg0, msg, self.sa.sport, self.sa.dport, self.sa.natt, self.ip6
+            )
+            self.send_and_assert_no_replies(self.pg0, packet)
+            self.assertEqual(len(self.vapi.ikev2_sa_dump()), 0)
+
+
 class TestResponderInvalidNewChildModp(TestResponderPsk):
     """An invalid new Child KE preserves the existing Child and permits cleanup."""
 
