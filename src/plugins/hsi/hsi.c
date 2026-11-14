@@ -748,6 +748,15 @@ hsi_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cm
 	    }
 	  hm->tcp_fin_wait_timeout = timeout;
 	}
+      else if (unformat (line_input, "tcp half-close-timeout %f", &timeout))
+	{
+	  if (timeout <= 0)
+	    {
+	      error = clib_error_return (0, "timeout must be positive");
+	      goto done;
+	    }
+	  hm->tcp_half_close_timeout = timeout;
+	}
       else if (unformat (line_input, "postponed-cleanup-time %f", &timeout))
 	{
 	  if (timeout <= 0)
@@ -775,7 +784,7 @@ VLIB_CLI_COMMAND (hsi_command, static) = {
 		"[tcp drain-cache max-packets <n>] [tcp drain-timeout <sec>] "
 		"[udp drain-cache max-packets <n>] [udp drain-timeout <sec>] "
 		"[udp idle-timeout <sec>] [tcp fin-wait-timeout <sec>] "
-		"[postponed-cleanup-time <sec>]",
+		"[tcp half-close-timeout <sec>] [postponed-cleanup-time <sec>]",
   .function = hsi_command_fn,
 };
 
@@ -792,6 +801,7 @@ hsi_show_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_
   vlib_cli_output (vm, "udp drain-timeout %.3f", hm->udp_drain_no_progress_timeout);
   vlib_cli_output (vm, "udp idle-timeout %.3f", hm->udp_idle_timeout);
   vlib_cli_output (vm, "tcp fin-wait-timeout %.3f", hm->tcp_fin_wait_timeout);
+  vlib_cli_output (vm, "tcp half-close-timeout %.3f", hm->tcp_half_close_timeout);
   vlib_cli_output (vm, "postponed-cleanup-time %.3f", hm->postponed_cleanup_time);
   vlib_cli_output (vm, "mq-length %u", hm->mq_length);
 
@@ -852,6 +862,7 @@ hsi_init (vlib_main_t *vm)
   hm->udp_drain_no_progress_timeout = HSI_UDP_DRAIN_NO_PROGRESS_DEFAULT_TIMEOUT;
   hm->udp_idle_timeout = HSI_UDP_IDLE_DEFAULT_TIMEOUT;
   hm->tcp_fin_wait_timeout = HSI_TCP_FIN_WAIT_DEFAULT_TIMEOUT;
+  hm->tcp_half_close_timeout = HSI_TCP_HALF_CLOSE_DEFAULT_TIMEOUT;
   hm->postponed_cleanup_time = HSI_POSTPONED_CLEANUP_TIME;
   if (!hm->mq_length)
     hm->mq_length = HSI_MQ_DEFAULT_LENGTH;

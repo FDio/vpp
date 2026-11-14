@@ -1428,6 +1428,22 @@ hsi_tcp_fin_wait_rearm (tcp_connection_t *tc, hsi_tcp_tracker_t *trk, f64 now)
   hsi_tcp_fin_wait_add (tc, now);
 }
 
+/*
+ * Tcp timers, which bound half-closes, are off once committed and the other
+ * side might never close or ack. Check the pair with fin-wait entries until it
+ * closes or the half-close timeout passes. Fin-wait, once armed, replaces it.
+ */
+static void
+hsi_tcp_track_arm_half_close (tcp_connection_t *tc, hsi_tcp_tracker_t *trk)
+{
+  if (trk->flags & (HSI_TRACKER_F_HALF_CLOSED | HSI_TRACKER_F_FIN_WAIT))
+    return;
+
+  clib_atomic_fetch_or (&trk->flags, HSI_TRACKER_F_HALF_CLOSED);
+  trk->half_close_start = vlib_time_now (vlib_get_main ());
+  hsi_tcp_fin_wait_rearm (tc, trk, trk->half_close_start);
+}
+
 static void
 hsi_tcp_track_maybe_cleanup_pair (tcp_connection_t *tc, hsi_tcp_tracker_t *trk)
 {
@@ -1441,6 +1457,8 @@ hsi_tcp_track_maybe_cleanup_pair (tcp_connection_t *tc, hsi_tcp_tracker_t *trk)
 
   if (trk->flags & HSI_TRACKER_F_CLEANUP_PENDING)
     return;
+
+  hsi_tcp_track_arm_half_close (tc, trk);
 
   peer_s = hsi_session_peer_get_if_valid (peer_sh);
   if (!peer_s)
@@ -1516,7 +1534,8 @@ hsi_tcp_fin_wait_timer (clib_thread_index_t thread_index, f64 time_now)
 	}
 
       trk = hsi_tcp_tracker_from_connection (tc);
-      if (trk->magic != HSI_TCP_TRACKER_MAGIC || !(trk->flags & HSI_TRACKER_F_FIN_WAIT) ||
+      if (trk->magic != HSI_TCP_TRACKER_MAGIC ||
+	  !(trk->flags & (HSI_TRACKER_F_FIN_WAIT | HSI_TRACKER_F_HALF_CLOSED)) ||
 	  (trk->flags & HSI_TRACKER_F_CLEANUP_PENDING))
 	{
 	  hsi_tcp_fin_wait_del_key (thread_index, e.key);
@@ -1541,6 +1560,18 @@ hsi_tcp_fin_wait_timer (clib_thread_index_t thread_index, f64 time_now)
       if (!(peer_tc->cfg_flags & TCP_CFG_F_TRACKED) || !hsi_tcp_connection_is_committed (peer_tc))
 	{
 	  hsi_tcp_fin_wait_rearm (tc, trk, time_now);
+	  continue;
+	}
+
+      if (!(trk->flags & HSI_TRACKER_F_FIN_WAIT))
+	{
+	  if (time_now - trk->half_close_start < hsi_main.tcp_half_close_timeout)
+	    {
+	      hsi_tcp_fin_wait_rearm (tc, trk, time_now);
+	      continue;
+	    }
+	  hsi_worker_counter_inc (hsi_worker_get (thread_index), tcp_half_close_cleanup);
+	  hsi_tcp_track_schedule_cleanup_pair (tc, trk, HSI_TCP_CLEANUP_REASON_FIN);
 	  continue;
 	}
 
@@ -1972,6 +2003,7 @@ format_hsi_tcp_tracker_flags (u8 *s, va_list *args)
   _ (HSI_TRACKER_F_FIN_ACKED, "fin-acked");
   _ (HSI_TRACKER_F_PEER_FIN_PENDING, "peer-fin-pending");
   _ (HSI_TRACKER_F_FIN_WAIT, "fin-wait");
+  _ (HSI_TRACKER_F_HALF_CLOSED, "half-closed");
 #undef _
 
   if (flags)

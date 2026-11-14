@@ -25,6 +25,7 @@ typedef enum hsi_tracker_flags_
   HSI_TRACKER_F_FIN_ACKED = 1 << 2,
   HSI_TRACKER_F_PEER_FIN_PENDING = 1 << 3,
   HSI_TRACKER_F_FIN_WAIT = 1 << 4,
+  HSI_TRACKER_F_HALF_CLOSED = 1 << 5,
 } hsi_tracker_flags_t;
 
 #define HSI_TRACKER_F_FIN_DONE (HSI_TRACKER_F_FIN_RCVD | HSI_TRACKER_F_FIN_ACKED)
@@ -57,6 +58,8 @@ typedef struct hsi_tcp_tracker_
   u8 pad_[3];
   u32 next_node_opaque;
   u32 peer_next_node_opaque;
+  /* First fin seen, pair is cleaned up if not closed a timeout later */
+  f64 half_close_start;
 } hsi_tcp_tracker_t;
 
 #define HSI_TCP_TRACKER_OFFSET STRUCT_OFFSET_OF (tcp_connection_t, rcv_dupacks)

@@ -21,7 +21,7 @@ func init() {
 		HsiProxyLiteUdpIdleTimeoutTest, HsiProxyLiteUdpIpv6IdleTimeoutTest,
 		HsiProxyLiteDrainCacheOverflowTest,
 		HsiProxyLiteDrainTimeoutTest, HsiTrackerTcpHalfCloseTest,
-		HsiTrackerTcpInvalidRstTest,
+		HsiTrackerTcpHalfCloseTimeoutTest, HsiTrackerTcpInvalidRstTest,
 		HsiTrackerTcpFinDuplicateTest, HsiTrackerTcpFinRetransmitTest,
 		HsiTrackerTcpOptionRewriteTest,
 		HsiProxyLiteUdpDrainCacheOverflowTest,
@@ -851,6 +851,40 @@ func HsiTrackerTcpHalfCloseTest(s *HsiSuite) {
 	hsi := WaitHsiContains(vpp, "tcp-fin-cleanup 1")
 	Log(hsi)
 	AssertProxyLiteSessionsCleaned(s)
+}
+
+// Pairs that stay half-closed, because the server never closes, are cleaned
+// up, and the app notified, once the half-close timeout passes.
+func HsiTrackerTcpHalfCloseTimeoutTest(s *HsiSuite) {
+	reply := "hsi-half-open-reply"
+	closeServer := StartHsiTcpHalfOpenServer(s.ServerAddr(), s.Ports.Server, reply)
+	defer closeServer()
+
+	vpp := s.Containers.Vpp.VppInstance
+	Log(vpp.Vppctl("hsi tcp half-close-timeout 2"))
+	s.StartProxyLiteTcp4("hsi-offload")
+
+	readyPath, signalPath := HsiTempSignalPaths()
+	defer os.Remove(readyPath)
+	defer os.Remove(signalPath)
+	release := make(chan struct{})
+	defer close(release)
+
+	finished := StartHsiTcpHalfOpenClient(s.ServerAddr(), s.Ports.Server, s.NetNamespaces.Client,
+		readyPath, signalPath, reply, release)
+	WaitForFile(readyPath, 5*time.Second)
+	WaitProxyLiteTracked(vpp, func() {})
+	AssertNil(os.WriteFile(signalPath, []byte("go"), 0644))
+
+	result := <-finished
+	Log(result.Output)
+	AssertNil(result.Err, result.Output)
+
+	hsi := WaitHsiCounterAtLeast(vpp, "tcp-half-close-cleanup", 1)
+	Log(hsi)
+	AssertEqual(0, HsiCounterValue(hsi, "tcp-rst-cleanup"))
+	AssertProxyLiteSessionsCleaned(s)
+	AssertProxyLiteHsiCleanups(vpp, 2)
 }
 
 func HsiTrackerTcpInvalidRstTest(s *HsiSuite) {
