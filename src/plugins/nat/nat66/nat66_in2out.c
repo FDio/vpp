@@ -120,8 +120,8 @@ VLIB_NODE_FN (nat66_in2out_node) (vlib_main_t * vm,
 	  vlib_buffer_t *b0;
 	  u32 next0 = NAT66_IN2OUT_NEXT_IP6_LOOKUP;
 	  ip6_header_t *ip60;
-	  u16 l4_offset0, frag_offset0;
-	  u8 l4_protocol0;
+	  ip6_ext_hdr_chain_t chain;
+	  ip6_ext_hdr_chain_status_t status;
 	  nat66_static_mapping_t *sm0;
 	  u32 sw_if_index0, fib_index0;
 	  udp_header_t *udp0;
@@ -141,16 +141,6 @@ VLIB_NODE_FN (nat66_in2out_node) (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  ip60 = vlib_buffer_get_current (b0);
 
-	  if (PREDICT_FALSE
-	      (ip6_parse
-	       (vm, b0, ip60, b0->current_length, &l4_protocol0, &l4_offset0,
-		&frag_offset0)))
-	    {
-	      next0 = NAT66_IN2OUT_NEXT_DROP;
-	      b0->error = node->errors[NAT66_IN2OUT_ERROR_UNKNOWN];
-	      goto trace0;
-	    }
-
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	  fib_index0 =
 	    fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP6,
@@ -165,31 +155,60 @@ VLIB_NODE_FN (nat66_in2out_node) (vlib_main_t * vm,
 	      goto trace0;
 	    }
 
-	  if (l4_protocol0 == IP_PROTOCOL_UDP)
-	    {
-	      udp0 = (udp_header_t *) u8_ptr_add (ip60, l4_offset0);
-	      checksum0 = &udp0->checksum;
-	    }
-	  else if (l4_protocol0 == IP_PROTOCOL_TCP)
-	    {
-	      tcp0 = (tcp_header_t *) u8_ptr_add (ip60, l4_offset0);
-	      checksum0 = &tcp0->checksum;
-	    }
-	  else if (l4_protocol0 == IP_PROTOCOL_ICMP6)
-	    {
-	      icmp0 = (icmp46_header_t *) u8_ptr_add (ip60, l4_offset0);
-	      checksum0 = &icmp0->checksum;
-	    }
-	  else
-	    goto skip_csum0;
+	  status = ip6_parse (b0, ip60, &chain);
 
-	  csum0 = ip_csum_sub_even (*checksum0, ip60->src_address.as_u64[0]);
-	  csum0 = ip_csum_sub_even (csum0, ip60->src_address.as_u64[1]);
-	  csum0 = ip_csum_add_even (csum0, sm0->e_addr.as_u64[0]);
-	  csum0 = ip_csum_add_even (csum0, sm0->e_addr.as_u64[1]);
-	  *checksum0 = ip_csum_fold (csum0);
+	  /*
+	   * A chain stopped at the depth or entry limit does not locate the
+	   * terminating L4 header, which may lie beyond the limit. Translating
+	   * the address without updating that header's checksum would corrupt
+	   * the packet, so drop it like any other unparseable chain. A header
+	   * that fits in the datagram but not the first buffer keeps the old
+	   * pass-through.
+	   */
+	  if (PREDICT_FALSE (status == IP6_EXT_HDR_CHAIN_LIMIT ||
+			     ((status == IP6_EXT_HDR_CHAIN_TRUNCATED ||
+			       status == IP6_EXT_HDR_CHAIN_L4_TRUNCATED) &&
+			      !chain.buffer_bound)))
+	    {
+	      next0 = NAT66_IN2OUT_NEXT_DROP;
+	      b0->error = node->errors[NAT66_IN2OUT_ERROR_UNKNOWN];
+	      goto trace0;
+	    }
 
-	skip_csum0:
+	  /*
+	   * A non-first fragment carries no L4 header, so there is no
+	   * checksum to update.
+	   */
+	  if (ip6_ext_hdr_chain_has_l4 (&chain))
+	    {
+	      u16 l4_offset0 = chain.term_offset;
+
+	      if (chain.term_protocol == IP_PROTOCOL_UDP)
+		{
+		  udp0 = (udp_header_t *) u8_ptr_add (ip60, l4_offset0);
+		  checksum0 = &udp0->checksum;
+		}
+	      else if (chain.term_protocol == IP_PROTOCOL_TCP)
+		{
+		  tcp0 = (tcp_header_t *) u8_ptr_add (ip60, l4_offset0);
+		  checksum0 = &tcp0->checksum;
+		}
+	      else if (chain.term_protocol == IP_PROTOCOL_ICMP6)
+		{
+		  icmp0 = (icmp46_header_t *) u8_ptr_add (ip60, l4_offset0);
+		  checksum0 = &icmp0->checksum;
+		}
+
+	      if (checksum0)
+		{
+		  csum0 = ip_csum_sub_even (*checksum0, ip60->src_address.as_u64[0]);
+		  csum0 = ip_csum_sub_even (csum0, ip60->src_address.as_u64[1]);
+		  csum0 = ip_csum_add_even (csum0, sm0->e_addr.as_u64[0]);
+		  csum0 = ip_csum_add_even (csum0, sm0->e_addr.as_u64[1]);
+		  *checksum0 = ip_csum_fold (csum0);
+		}
+	    }
+
 	  ip60->src_address.as_u64[0] = sm0->e_addr.as_u64[0];
 	  ip60->src_address.as_u64[1] = sm0->e_addr.as_u64[1];
 

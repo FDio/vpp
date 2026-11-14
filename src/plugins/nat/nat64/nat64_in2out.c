@@ -357,7 +357,7 @@ nat64_in2out_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4, void *arg)
 }
 
 static int
-nat64_in2out_inner_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
+nat64_in2out_inner_icmp_set_cb (ip6_header_t *ip6, ip4_header_t *ip4, u8 protocol, void *l4_arg,
 				void *arg)
 {
   nat64_main_t *nm = &nat64_main;
@@ -366,8 +366,15 @@ nat64_in2out_inner_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
   nat64_db_bib_entry_t *bibe;
   ip46_address_t saddr, daddr;
   u32 sw_if_index, fib_index;
-  u8 proto = ip6->protocol;
+  u8 *l4 = l4_arg;
   nat64_db_t *db = &nm->db[ctx->thread_index];
+
+  /*
+   * A non-first fragment carries no L4 header, so there is no session
+   * to translate its addresses with.
+   */
+  if (l4 == NULL)
+    return -1;
 
   sw_if_index = vnet_buffer (ctx->b)->sw_if_index[VLIB_RX];
   fib_index =
@@ -378,24 +385,21 @@ nat64_in2out_inner_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
   daddr.as_u64[0] = ip6->dst_address.as_u64[0];
   daddr.as_u64[1] = ip6->dst_address.as_u64[1];
 
-  if (proto == IP_PROTOCOL_ICMP6)
+  if (protocol == IP_PROTOCOL_ICMP)
     {
-      icmp46_header_t *icmp = ip6_next_header (ip6);
+      icmp46_header_t *icmp = (icmp46_header_t *) l4;
       u16 in_id = ((u16 *) (icmp))[2];
-      proto = IP_PROTOCOL_ICMP;
 
       if (!
 	  (icmp->type == ICMP4_echo_request
 	   || icmp->type == ICMP4_echo_reply))
 	return -1;
 
-      ste =
-	nat64_db_st_entry_find (db, &daddr, &saddr, in_id, 0, proto,
-				fib_index, 1);
+      ste = nat64_db_st_entry_find (db, &daddr, &saddr, in_id, 0, protocol, fib_index, 1);
       if (!ste)
 	return -1;
 
-      bibe = nat64_db_bib_entry_by_index (db, proto, ste->bibe_index);
+      bibe = nat64_db_bib_entry_by_index (db, protocol, ste->bibe_index);
       if (!bibe)
 	return -1;
 
@@ -405,21 +409,19 @@ nat64_in2out_inner_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
     }
   else
     {
-      udp_header_t *udp = ip6_next_header (ip6);
-      tcp_header_t *tcp = ip6_next_header (ip6);
+      udp_header_t *udp = (udp_header_t *) l4;
+      tcp_header_t *tcp = (tcp_header_t *) l4;
       u16 *checksum;
       ip_csum_t csum;
 
       u16 sport = udp->src_port;
       u16 dport = udp->dst_port;
 
-      ste =
-	nat64_db_st_entry_find (db, &daddr, &saddr, dport, sport, proto,
-				fib_index, 1);
+      ste = nat64_db_st_entry_find (db, &daddr, &saddr, dport, sport, protocol, fib_index, 1);
       if (!ste)
 	return -1;
 
-      bibe = nat64_db_bib_entry_by_index (db, proto, ste->bibe_index);
+      bibe = nat64_db_bib_entry_by_index (db, protocol, ste->bibe_index);
       if (!bibe)
 	return -1;
 
@@ -427,7 +429,7 @@ nat64_in2out_inner_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
       udp->dst_port = bibe->out_port;
       ip4->src_address.as_u32 = ste->out_r_addr.as_u32;
 
-      if (proto == IP_PROTOCOL_TCP)
+      if (protocol == IP_PROTOCOL_TCP)
 	checksum = &tcp->checksum;
       else
 	checksum = &udp->checksum;
@@ -1032,6 +1034,8 @@ nat64_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_buffer_t *b0;
 	  u32 next0;
 	  ip6_header_t *ip60;
+	  ip6_ext_hdr_chain_t chain;
+	  ip6_ext_hdr_chain_status_t status;
 	  u16 l4_offset0, frag_hdr_offset0;
 	  u8 l4_protocol0;
 	  u32 proto0;
@@ -1057,21 +1061,37 @@ nat64_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  next0 = NAT64_IN2OUT_NEXT_IP4_LOOKUP;
 
-	  if (PREDICT_FALSE
-	      (ip6_parse
-	       (vm, b0, ip60, b0->current_length, &l4_protocol0, &l4_offset0,
-		&frag_hdr_offset0)))
+	  if (nat64_not_translate (sw_if_index0, ip60->dst_address))
+	    {
+	      next0 = NAT64_IN2OUT_NEXT_IP6_LOOKUP;
+	      goto trace0;
+	    }
+
+	  status = ip6_parse (b0, ip60, &chain);
+
+	  /*
+	   * A chain stopped at the depth or entry limit does not locate the
+	   * terminating L4 header, which may lie beyond the limit. The
+	   * protocol and offset are then unknown, so drop the packet like any
+	   * other unparseable chain. A header that fits in the datagram but
+	   * not the first buffer keeps the old pass-through.
+	   */
+	  if (PREDICT_FALSE (status == IP6_EXT_HDR_CHAIN_LIMIT ||
+			     ((status == IP6_EXT_HDR_CHAIN_TRUNCATED ||
+			       status == IP6_EXT_HDR_CHAIN_L4_TRUNCATED) &&
+			      !chain.buffer_bound)))
 	    {
 	      next0 = NAT64_IN2OUT_NEXT_DROP;
 	      b0->error = node->errors[NAT64_IN2OUT_ERROR_UNKNOWN];
 	      goto trace0;
 	    }
 
-	  if (nat64_not_translate (sw_if_index0, ip60->dst_address))
-	    {
-	      next0 = NAT64_IN2OUT_NEXT_IP6_LOOKUP;
-	      goto trace0;
-	    }
+	  l4_protocol0 = chain.term_protocol;
+	  l4_offset0 = chain.term_offset;
+
+	  if (!ip6_ext_hdr_chain_resolve (&chain, IP_PROTOCOL_IPV6_FRAGMENTATION, NULL, NULL,
+					  &frag_hdr_offset0))
+	    frag_hdr_offset0 = 0;
 
 	  proto0 = ip_proto_to_nat_proto (l4_protocol0);
 
