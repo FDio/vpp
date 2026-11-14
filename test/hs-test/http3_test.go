@@ -41,7 +41,7 @@ func init() {
 		Http3MissingAuthorityPseudoHeaderTest, Http3ConnectWithSchemePathPseudoHeadersTest,
 		Http3PseudoHeaderAfterRegularTest, Http3ReservedFrameTest, Http3DataFrameOnCtrlStreamTest,
 		Http3GoawayOnReqStreamTest, Http3UnknownFrameOnReqStreamTest, Http3GoawayInvalidLengthTest, Http3GoawayEmptyTest,
-		Http3GoawayTruncatedIdTest, Http3GoawayExtraBytesTest, Http3SecondSettingsFrameTest,
+		Http3GoawayTruncatedIdTest, Http3GoawayExtraBytesTest, Http3GoawayIdTest, Http3ClientGoawayIdTest, Http3SecondSettingsFrameTest,
 		Http3PushControlFrameErrorsTest, Http3MaxPushIdTest, Http3ClientPushControlFramesTest,
 		Http3ReservedSettingsTest, Http3MissingSettingsTest, Http3SecondCtrlStreamTest,
 		Http3SecondQpackDecoderStreamTest, Http3SecondQpackEncoderStreamTest, Http3CtrlStreamClosedTest,
@@ -2789,6 +2789,153 @@ func Http3GoawayTruncatedIdTest(s *Http3Suite) {
 
 func Http3GoawayExtraBytesTest(s *Http3Suite) {
 	http3SendCtrlExpectConnError(s, []byte{0x04, 0x00, 0x07, 0x02, 0x00, 0x00}, http3.ErrCodeFrameError)
+}
+
+func Http3GoawayIdTest(s *Http3Suite) {
+	address := s.VppAddr() + ":" + s.Ports.Port1
+	Log(s.Containers.Vpp.VppInstance.Vppctl("http tps no-zc h3 uri https://" + address))
+	for _, tc := range []struct {
+		name string
+		ids  []uint64
+		fail bool
+	}{
+		{"increase from zero", []uint64{0, 4}, true},
+		{"equal", []uint64{4, 4}, false},
+		{"decrease", []uint64{64, 4, 0}, false},
+		{"increase after decrease", []uint64{64, 4, 8}, true},
+		{"64-bit increase", []uint64{1 << 32, 1<<32 + 1}, true},
+		{"maximum then decrease", []uint64{1<<62 - 1, 1<<62 - 1, 0}, false},
+		{"new connection after zero", []uint64{16}, false},
+	} {
+		for _, coalesced := range []bool{false, true} {
+			By(fmt.Sprintf("%s, coalesced=%t", tc.name, coalesced))
+			conn := H3ClientConnect(address)
+			defer conn.CloseWithError(0, "")
+			control, err := conn.OpenUniStream()
+			AssertNil(err)
+			_, err = control.Write([]byte{0x00, 0x04, 0x00})
+			AssertNil(err)
+			var frames []byte
+			for i, id := range tc.ids {
+				// Exercise nonminimal and 64-bit identifier encodings too.
+				frames = append(frames, http3FinFrame(0x07, quicvarint.AppendWithLen(nil, id, 8))...)
+				if !coalesced {
+					_, err = control.Write(frames)
+					AssertNil(err)
+					frames = nil
+					if !tc.fail || i != len(tc.ids)-1 {
+						http3StreamTypeCheckRequest(conn)
+					}
+				}
+			}
+			if coalesced {
+				_, err = control.Write(frames)
+				AssertNil(err)
+			}
+			if tc.fail {
+				select {
+				case <-conn.Context().Done():
+					expected := quic.ApplicationError{ErrorCode: quic.ApplicationErrorCode(http3.ErrCodeIDError), Remote: true}
+					AssertMatchError(context.Cause(conn.Context()), &expected)
+				case <-time.After(3 * time.Second):
+					Fail("increasing GOAWAY identifier did not close the connection")
+				}
+			} else {
+				http3StreamTypeCheckRequest(conn)
+				AssertNil(context.Cause(conn.Context()), "non-increasing GOAWAY must keep the connection usable")
+			}
+			AssertNil(conn.CloseWithError(0, ""))
+		}
+	}
+	http3TestSessionCleanupServer(s)
+}
+
+func Http3ClientGoawayIdTest(s *Http3Suite) {
+	cert, err := tls.LoadX509KeyPair("resources/cert/localhost.crt", "resources/cert/localhost.key")
+	AssertNil(err)
+	listener, err := quic.ListenAddr(net.JoinHostPort(s.HostAddr(), "0"),
+		&tls.Config{Certificates: []tls.Certificate{cert}, NextProtos: []string{"h3"}}, nil)
+	AssertNil(err)
+	defer listener.Close()
+	vpp := s.Containers.Vpp.VppInstance
+	received := func() int {
+		for _, line := range strings.Split(vpp.Vppctl("show http stats"), "\n") {
+			if strings.Contains(line, "goaway frames received") {
+				n, err := strconv.Atoi(strings.Fields(line)[0])
+				AssertNil(err)
+				return n
+			}
+		}
+		return 0
+	}
+	for _, tc := range []struct {
+		name string
+		ids  []uint64
+		fail bool
+	}{
+		{"increase", []uint64{4, 8}, true},
+		{"equal", []uint64{4, 4}, false},
+		{"decrease", []uint64{64, 16, 4}, false},
+		{"increase after decrease", []uint64{64, 4, 8}, true},
+		{"64-bit increase", []uint64{1 << 32, 1<<32 + 4}, true},
+		{"maximum then decrease", []uint64{1<<62 - 4, 1<<62 - 4, 4}, false},
+		{"new connection", []uint64{16}, false},
+	} {
+		By(tc.name)
+		before := received()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		done := make(chan struct{})
+		go func() {
+			defer GinkgoRecover()
+			defer close(done)
+			conn, err := listener.Accept(ctx)
+			AssertNil(err)
+			defer conn.CloseWithError(0, "")
+			stream, err := conn.AcceptStream(ctx)
+			AssertNil(err)
+			deadline, _ := ctx.Deadline()
+			AssertNil(stream.SetReadDeadline(deadline))
+			_, err = io.Copy(io.Discard, stream)
+			AssertNil(err)
+			control, err := conn.OpenUniStream()
+			AssertNil(err)
+			frames := []byte{0x00, 0x04, 0x00}
+			for _, id := range tc.ids {
+				frames = append(frames, http3FinFrame(0x07, quicvarint.Append(nil, id))...)
+			}
+			_, err = control.Write(frames)
+			AssertNil(err)
+			if !tc.fail {
+				_, err = stream.Write(http3FinFrame(0x01, []byte{0, 0, 0xd9})) // 200
+				// A client can choose to close after receiving GOAWAY.
+				if err == nil {
+					_ = stream.Close()
+				}
+			}
+			select {
+			case <-conn.Context().Done():
+				expected := quic.ApplicationError{ErrorCode: quic.ApplicationErrorCode(http3.ErrCodeIDError), Remote: true}
+				if tc.fail {
+					AssertMatchError(context.Cause(conn.Context()), &expected)
+				} else {
+					appErr, ok := context.Cause(conn.Context()).(*quic.ApplicationError)
+					AssertEqual(true, ok, "expected graceful application close")
+					AssertEqual(true, appErr.Remote)
+					AssertEqual(true, appErr.ErrorCode == 0 || appErr.ErrorCode == quic.ApplicationErrorCode(http3.ErrCodeNoError))
+				}
+			case <-ctx.Done():
+				Fail("VPP client did not finish GOAWAY handling")
+			}
+		}()
+		Log(vpp.Vppctl("http client http3 timeout 4 uri https://" + listener.Addr().String() + "/"))
+		<-done
+		expected := len(tc.ids)
+		if tc.fail {
+			expected--
+		}
+		AssertEqual(expected, received()-before, "accepted GOAWAY frames on this connection")
+	}
 }
 
 func Http3PushControlFrameErrorsTest(s *Http3Suite) {

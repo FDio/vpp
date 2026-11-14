@@ -349,6 +349,7 @@ http3_conn_init (u32 parent_index, clib_thread_index_t thread_index, http_ctx_t 
   hc = http_ctx_get_w_thread (hc_index, thread_index);
   hc->our_ctrl_stream_index = ctrl_stream->hc_hc_index;
   hc->peer_max_push_id = HTTP_INVALID_VARINT;
+  hc->peer_goaway_id = HTTP_INVALID_VARINT;
   hc->settings = hm->h3_settings;
   /* adjust settings according to app rx_fifo size */
   hc->settings.max_field_section_size =
@@ -1994,6 +1995,13 @@ http3_stream_read_goaway (http_ctx_t *req, http_ctx_t *stream, u32 *to_deq,
       return -1;
     }
   hc = http_ctx_get_w_thread (stream->hc_http_conn_index, stream->c_thread_index);
+  if (stream_or_push_id > hc->peer_goaway_id)
+    {
+      HTTP_DBG (1, "goaway identifier increased");
+      http3_stream_error_terminate_conn (stream, req, HTTP3_ERROR_ID_ERROR);
+      return -1;
+    }
+  hc->peer_goaway_id = stream_or_push_id;
   http_stats_goaway_received_inc (hc->c_thread_index);
   /* graceful shutdown (no new streams for client) */
   if (!(stream->flags & HTTP_CONN_F_IS_SERVER) && hc->hc_parent_req_index != SESSION_INVALID_INDEX)
