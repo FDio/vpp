@@ -3251,7 +3251,7 @@ ikev2_retransmit_sa_init_one (ikev2_sa_t * sa, ike_header_t * ike,
 			      ip_address_t iaddr, ip_address_t raddr,
 			      u32 rlen)
 {
-  int p = 0;
+  u32 p = 0;
   ike_header_t *tmp;
   u8 payload = ike->nextpayload;
 
@@ -3262,15 +3262,22 @@ ikev2_retransmit_sa_init_one (ikev2_sa_t * sa, ike_header_t * ike,
       return 0;
     }
 
-  while (p < rlen && payload != IKEV2_PAYLOAD_NONE)
+  /* rlen is the length of the message, p an offset into its payloads */
+  if (rlen < sizeof (*ike))
+    return ~0;
+  rlen -= sizeof (*ike);
+
+  while (rlen - p >= sizeof (ike_payload_header_t) && payload != IKEV2_PAYLOAD_NONE)
     {
       ike_payload_header_t *ikep = (ike_payload_header_t *) & ike->payload[p];
       u32 plen = clib_net_to_host_u16 (ikep->length);
 
-      if (plen < sizeof (ike_payload_header_t))
+      if (plen < sizeof (ike_payload_header_t) || plen > rlen - p)
 	return ~0;
 
-      if (payload == IKEV2_PAYLOAD_NONCE &&
+      /* clib_memcmp () reports equality for a zero length */
+      if (payload == IKEV2_PAYLOAD_NONCE && plen > sizeof (*ikep) &&
+	  plen - sizeof (*ikep) == vec_len (sa->i_nonce) &&
 	  !clib_memcmp (sa->i_nonce, ikep->payload, plen - sizeof (*ikep)))
 	{
 	  /* req is retransmit */
