@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -13,11 +15,16 @@ import (
 
 	. "fd.io/hs-test/infra"
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/quic-go/quic-go"
+	"github.com/quic-go/quic-go/http3"
 )
 
 func init() {
 	RegisterHttpStaticSrvTests(HttpStaticMovedTest, HttpStaticNotFoundTest, HttpStaticBuildInUrlGetIfStatsTest, HttpStaticBuildInUrlPostIfStatsTest,
-		HttpStaticChunkedRequestRejectedTest,
+		HttpStaticChunkedGetTest, HttpStaticChunkedRequestRejectedTest,
+		HttpStaticHttp2StreamedGetTest, HttpStaticHttp3StreamedGetTest,
+		HttpStaticHttp3StreamedGetBodyLimitTest, HttpStaticHttp3StreamedGetResetTest,
+		HttpStaticBodyReaderReuseTest, HttpStaticHttp3StreamedGetUrlHandlerTest,
 		HttpStaticPostTest, HttpStaticBuildInUrlGetIfListTest, HttpStaticBuildInUrlGetVersionTest,
 		HttpStaticMacTimeTest, HttpStaticBuildInUrlGetVersionVerboseTest, HttpStaticPathSanitizationTest, HttpStaticFileHandlerTest, HttpStaticFileHandlerDefaultMaxAgeTest,
 		HttpStaticFileHandlerWrkTest, HttpStaticUrlHandlerWrkTest, HttpStaticHttp1OnlyTest, HttpStaticRedirectTest, HttpStaticPromTest, PromConcurrentConnectionsTest,
@@ -28,6 +35,242 @@ func init() {
 	RegisterHttpStaticSrvSoloTests(PromMemLeakTest)
 }
 
+const httpStaticStreamedGetContent = "<html><body>streamed GET completed</body></html>"
+
+func httpStaticStreamedGetServer(s *HttpStaticSrvSuite, h3 bool) string {
+	vpp := s.Containers.Vpp.VppInstance
+	vpp.Container.Exec(false, "mkdir -p "+wwwRootPath)
+	AssertNil(vpp.Container.CreateFile(wwwRootPath+"/index.html", httpStaticStreamedGetContent))
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	scheme, options := "http", ""
+	if h3 {
+		scheme, options = "https", "http3 "
+	}
+	AssertEmpty(vpp.Vppctl("http static server " + options + "url-handlers www-root " + wwwRootPath +
+		" fifo-size 4k max-body-size 64k ptr-thresh 1m cache-size 4m uri " + scheme + "://" + address))
+	return address
+}
+
+func httpStaticAssertNoResponse(stream interface {
+	io.Reader
+	SetReadDeadline(time.Time) error
+}) {
+	AssertNil(stream.SetReadDeadline(time.Now().Add(100 * time.Millisecond)))
+	n, err := stream.Read(make([]byte, 1))
+	AssertEqual(0, n, "request must complete before the handler responds")
+	var timeout net.Error
+	AssertEqual(true, errors.As(err, &timeout) && timeout.Timeout(),
+		"expected no response before request completion, got %v", err)
+	AssertNil(stream.SetReadDeadline(time.Now().Add(defaultHttpTimeout)))
+}
+
+func HttpStaticChunkedGetTest(s *HttpStaticSrvSuite) {
+	address := httpStaticStreamedGetServer(s, false)
+	for _, body := range []string{"", strings.Repeat("discarded!", 3200)} {
+		By(fmt.Sprintf("chunked GET with %d body bytes", len(body)))
+		func() {
+			conn, reader := httpCliChunkedConnect(address, "GET", "/index.html",
+				"Transfer-Encoding: chunked\r\n", "")
+			defer conn.Close()
+			httpStaticAssertNoResponse(conn)
+			if body != "" {
+				_, err := fmt.Fprintf(conn, "%x\r\n%s\r\n", len(body), body)
+				AssertNil(err)
+				httpStaticAssertNoResponse(conn)
+			}
+			_, err := io.WriteString(conn, "0\r\n\r\n")
+			AssertNil(err)
+			httpCliChunkedReply(conn, reader, "GET", httpStaticStreamedGetContent, http.StatusOK, false)
+		}()
+	}
+}
+
+func HttpStaticHttp2StreamedGetTest(s *HttpStaticSrvSuite) {
+	address := httpStaticStreamedGetServer(s, false)
+	p := http2RxConnect(address)
+	defer p.conn.Close()
+	for i, body := range []string{"", strings.Repeat("discarded!", 3200)} {
+		By(fmt.Sprintf("HTTP/2 GET with %d body bytes and separate END_STREAM", len(body)))
+		id := uint32(1 + i*4)
+		fields := http2RxRequest(address, "GET")
+		fields[3].Value = "/index.html"
+		AssertNil(p.headers(id, fields, false, false))
+		AssertNil(p.data(id, []byte(body), false, 0))
+
+		// An incomplete GET must not block another stream or produce an early 411.
+		AssertNil(p.headers(id+2, fields, true, false))
+		data, status, err := p.response(id + 2)
+		AssertNil(err)
+		AssertEqual("200", status)
+		AssertEqual(httpStaticStreamedGetContent, string(data))
+
+		AssertNil(p.data(id, nil, true, 0))
+		data, status, err = p.response(id)
+		AssertNil(err)
+		AssertEqual("200", status)
+		AssertEqual(httpStaticStreamedGetContent, string(data))
+	}
+}
+
+func HttpStaticHttp3StreamedGetTest(s *HttpStaticSrvSuite) {
+	address := httpStaticStreamedGetServer(s, true)
+	vpp := s.Containers.Vpp.VppInstance
+	inline := strings.Repeat("inline-response!", 8192)
+	pointer := strings.Repeat("pointer-response", 131072)
+	AssertNil(vpp.Container.CreateFile(wwwRootPath+"/inline.bin", inline))
+	AssertNil(vpp.Container.CreateFile(wwwRootPath+"/pointer.bin", pointer))
+	conn := http3StreamingTxConnect(address)
+	defer conn.CloseWithError(0, "")
+	for _, tc := range []struct {
+		name, path, body, response string
+	}{
+		{"empty request, separate FIN", "/index.html", "", httpStaticStreamedGetContent},
+		{"body exactly at limit", "/index.html", strings.Repeat("x", 64<<10), httpStaticStreamedGetContent},
+		{"inline response larger than FIFO", "/inline.bin", "discard me", inline},
+		{"pointer response", "/pointer.bin", "", pointer},
+	} {
+		By(tc.name)
+		stream, err := conn.OpenStream()
+		AssertNil(err)
+		AssertNil(stream.SetDeadline(time.Now().Add(defaultHttpTimeout)))
+		_, err = stream.Write(http3FinHeaders("GET", tc.path, ""))
+		AssertNil(err)
+		// No Content-Length and no FIN: reproduce Defensics' split send/close steps.
+		httpStaticAssertNoResponse(stream)
+		for body := []byte(tc.body); len(body) > 0; {
+			n := min(len(body), 4096)
+			_, err = stream.Write(http3FinFrame(0, body[:n]))
+			AssertNil(err)
+			body = body[n:]
+		}
+		if tc.body != "" {
+			httpStaticAssertNoResponse(stream)
+		}
+		AssertNil(stream.Close(), "GET input must not be canceled by an early response")
+		data, status := http3StreamingRxRead(stream)
+		AssertEqual("200", status)
+		AssertEqual(tc.response, string(data), "response must be complete through FIN")
+	}
+	AssertNil(context.Cause(conn.Context()))
+	AssertNotContains(vpp.Vppctl("show session verbose"), " closed ")
+}
+
+func HttpStaticHttp3StreamedGetBodyLimitTest(s *HttpStaticSrvSuite) {
+	address := httpStaticStreamedGetServer(s, true)
+	conn := http3StreamingTxConnect(address)
+	defer conn.CloseWithError(0, "")
+	stream, err := conn.OpenStream()
+	AssertNil(err)
+	AssertNil(stream.SetDeadline(time.Now().Add(defaultHttpTimeout)))
+	_, err = stream.Write(http3FinHeaders("GET", "/index.html", ""))
+	AssertNil(err)
+	httpStaticAssertNoResponse(stream)
+	for range 16 {
+		_, err = stream.Write(http3FinFrame(0, bytes.Repeat([]byte("x"), 4096)))
+		AssertNil(err)
+	}
+	httpStaticAssertNoResponse(stream)
+	_, err = stream.Write(http3FinFrame(0, []byte("x")))
+	AssertNil(err)
+	// The 65537th content byte must trigger 413 without requiring request FIN.
+	AssertEmpty(http3ReadEarlyResponse(stream, "413"))
+	next := http3StreamingTxRequest(conn, "GET", "/index.html", "known body", false)
+	data, status := http3StreamingRxRead(next)
+	AssertEqual("200", status)
+	AssertEqual(httpStaticStreamedGetContent, string(data))
+	AssertNil(context.Cause(conn.Context()), "body limit must affect only the rejected stream")
+}
+
+func HttpStaticHttp3StreamedGetResetTest(s *HttpStaticSrvSuite) {
+	address := httpStaticStreamedGetServer(s, true)
+	conn := http3StreamingTxConnect(address)
+	defer conn.CloseWithError(0, "")
+	stream, err := conn.OpenStream()
+	AssertNil(err)
+	AssertNil(stream.SetDeadline(time.Now().Add(defaultHttpTimeout)))
+	_, err = stream.Write(append(http3FinHeaders("GET", "/index.html", ""), http3FinFrame(0, []byte("unfinished"))...))
+	AssertNil(err)
+	httpStaticAssertNoResponse(stream)
+	stream.CancelWrite(quic.StreamErrorCode(http3.ErrCodeRequestCanceled))
+	data, err := io.ReadAll(stream)
+	AssertEmpty(data, "request reset must not be mistaken for successful request completion")
+	if err != nil {
+		var reset *quic.StreamError
+		AssertEqual(true, errors.As(err, &reset), "expected FIN or stream reset, got %v", err)
+		AssertEqual(true, reset.Remote)
+	}
+	next := http3StreamingTxRequest(conn, "GET", "/index.html", "", true)
+	data, status := http3StreamingRxRead(next)
+	AssertEqual("200", status)
+	AssertEqual(httpStaticStreamedGetContent, string(data))
+	AssertNil(context.Cause(conn.Context()), "canceling a GET must preserve the connection")
+}
+
+func HttpStaticBodyReaderReuseTest(s *HttpStaticSrvSuite) {
+	s.SkipIfMultiWorker()
+	address := httpStaticStreamedGetServer(s, false)
+	AssertEmpty(s.Containers.Vpp.VppInstance.Vppctl("test-url-handler enable"))
+	body := strings.Repeat("discarded!", 3200)
+	for _, tc := range []struct{ path, response string }{
+		{"/index.html", httpStaticStreamedGetContent},
+		{"/test3", ""},
+	} {
+		By("known-length POST followed by GET on the same connection: " + tc.path)
+		func() {
+			conn, reader := httpCliChunkedConnect(address, "POST", tc.path,
+				fmt.Sprintf("Content-Length: %d\r\n", len(body)), "")
+			defer conn.Close()
+			// Ensure the file/URL body reader is installed before sending content.
+			httpStaticAssertNoResponse(conn)
+			_, err := io.WriteString(conn, body)
+			AssertNil(err)
+			response, err := http.ReadResponse(reader, &http.Request{Method: "POST"})
+			AssertNil(err)
+			AssertHttpStatus(response, http.StatusOK)
+			data, err := io.ReadAll(response.Body)
+			AssertNil(err)
+			AssertEqual(tc.response, string(data))
+			AssertNil(response.Body.Close())
+			AssertEqual(false, response.Close)
+
+			_, err = fmt.Fprintf(conn, "GET /index.html HTTP/1.1\r\nHost: %s\r\n\r\n", address)
+			AssertNil(err)
+			response, err = http.ReadResponse(reader, &http.Request{Method: "GET"})
+			AssertNil(err)
+			AssertHttpStatus(response, http.StatusOK)
+			data, err = io.ReadAll(response.Body)
+			AssertNil(err)
+			AssertEqual(httpStaticStreamedGetContent, string(data), "completed body reader must not consume the next request")
+			AssertNil(response.Body.Close())
+		}()
+	}
+}
+
+func HttpStaticHttp3StreamedGetUrlHandlerTest(s *HttpStaticSrvSuite) {
+	s.SkipIfMultiWorker()
+	address := httpStaticStreamedGetServer(s, true)
+	AssertEmpty(s.Containers.Vpp.VppInstance.Vppctl("test-url-handler enable"))
+	conn := http3StreamingTxConnect(address)
+	defer conn.CloseWithError(0, "")
+	for _, path := range []string{"/version.json", "/test1"} {
+		By("streamed GET dispatched to URL handler after FIN: " + path)
+		stream, err := conn.OpenStream()
+		AssertNil(err)
+		AssertNil(stream.SetDeadline(time.Now().Add(defaultHttpTimeout)))
+		_, err = stream.Write(append(http3FinHeaders("GET", path, ""), http3FinFrame(0, []byte("discarded"))...))
+		AssertNil(err)
+		httpStaticAssertNoResponse(stream)
+		AssertNil(stream.Close())
+		data, status := http3StreamingRxRead(stream)
+		AssertEqual("200", status)
+		if path == "/test1" {
+			AssertEqual("hello", string(data))
+		} else {
+			AssertContains(string(data), "build_date")
+		}
+	}
+}
+
 func HttpStaticChunkedRequestRejectedTest(s *HttpStaticSrvSuite) {
 	s.SkipIfMultiWorker()
 	vpp := s.Containers.Vpp.VppInstance
@@ -35,12 +278,10 @@ func HttpStaticChunkedRequestRejectedTest(s *HttpStaticSrvSuite) {
 	Log(vpp.Vppctl("http static server url-handlers fifo-size 4k uri http://" + address))
 	Log(vpp.Vppctl("test-url-handler enable"))
 
-	conn, reader := httpCliChunkedConnect(address, "GET", "/test_delayed",
+	conn, reader := httpCliChunkedConnect(address, "POST", "/test3",
 		"Transfer-Encoding: chunked\r\n", "")
 	defer conn.Close()
-	time.Sleep(100 * time.Millisecond)
-	_, _ = io.WriteString(conn, "1\r\nx\r\n")
-	response, err := http.ReadResponse(reader, &http.Request{Method: "GET"})
+	response, err := http.ReadResponse(reader, &http.Request{Method: "POST"})
 	AssertNil(err)
 	defer response.Body.Close()
 	AssertHttpStatus(response, http.StatusLengthRequired)

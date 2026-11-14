@@ -131,6 +131,7 @@ start_send_data (hss_session_t *hs, http_status_code_t status)
   u32 n_enq;
   u64 to_send;
   int rv;
+  u8 reply_queued = 1;
 
   ts = session_get (hs->vpp_session_index, hs->thread_index);
 
@@ -192,6 +193,7 @@ start_send_data (hss_session_t *hs, http_status_code_t status)
   if (rv < to_send)
     {
       hs->data_offset = (rv > 0) ? rv : 0;
+      reply_queued = 0;
       svm_fifo_add_want_deq_ntf (ts->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
     }
 
@@ -199,6 +201,11 @@ done:
 
   if (svm_fifo_set_event (ts->tx_fifo))
     session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX);
+  if (hs->streamed_get_reply && reply_queued)
+    {
+      hs->streamed_get_reply = 0;
+      hss_session_disconnect_transport (hs);
+    }
 }
 
 __clib_export void
@@ -618,7 +625,10 @@ file_handler_discard_body (hss_session_t *hs, session_t *ts)
   hs->left_recv -= to_discard;
   hss_confirm_data_read (hs, to_discard);
   if (hs->left_recv == 0)
-    return try_file_handler (hs);
+    {
+      hs->read_body_handler = 0;
+      return try_file_handler (hs);
+    }
   return 0;
 }
 
@@ -637,7 +647,32 @@ url_handler_read_body (hss_session_t *hs, session_t *ts)
   hs->left_recv -= to_read;
   hss_confirm_data_read (hs, to_read);
   if (hs->left_recv == 0)
-    return try_url_handler (hs);
+    {
+      hs->read_body_handler = 0;
+      return try_url_handler (hs);
+    }
+  return 0;
+}
+
+/* GET handlers do not use request content. Drain it without buffering and
+ * wait for EOF so an empty request with a separate FIN can finish normally.
+ * Keep the reader active even when the size allowance reaches zero. */
+static int
+streamed_get_discard_body (hss_session_t *hs, session_t *ts)
+{
+  u32 n_discard = svm_fifo_max_dequeue (ts->rx_fifo);
+
+  if (n_discard > hs->left_recv)
+    {
+      hs->read_body_handler = 0;
+      start_send_data (hs, HTTP_STATUS_CONTENT_TOO_LARGE);
+      hss_session_disconnect_transport (hs);
+      svm_fifo_dequeue_drop_all (ts->rx_fifo);
+      return -1;
+    }
+  svm_fifo_dequeue_drop (ts->rx_fifo, n_discard);
+  hs->left_recv -= n_discard;
+  hss_confirm_data_read (hs, n_discard);
   return 0;
 }
 
@@ -654,11 +689,8 @@ hss_ts_rx_callback (session_t *ts)
       svm_fifo_dequeue_drop_all (ts->rx_fifo);
       return 0;
     }
-  if (hs->left_recv != 0)
-    {
-      ASSERT (hs->read_body_handler);
-      return hs->read_body_handler (hs, ts);
-    }
+  if (hs->read_body_handler)
+    return hs->read_body_handler (hs, ts);
 
   if (hs->free_data)
     vec_free (hs->data);
@@ -674,16 +706,17 @@ hss_ts_rx_callback (session_t *ts)
   /* Read the http message header */
   rv = svm_fifo_dequeue (ts->rx_fifo, sizeof (msg), (u8 *) &msg);
   ASSERT (rv == sizeof (msg));
+  ASSERT (msg.type == HTTP_MSG_REQUEST);
 
-  /* Request handlers require a known body length. */
-  if (msg.data.type == HTTP_MSG_DATA_STREAMING)
+  /* POST handlers require a known body length. GET content can be discarded
+   * until the transport reports message completion. */
+  if (msg.data.type == HTTP_MSG_DATA_STREAMING && msg.method_type != HTTP_REQ_GET)
     {
       start_send_data (hs, HTTP_STATUS_LENGTH_REQUIRED);
       goto err_done;
     }
 
-  if (msg.type != HTTP_MSG_REQUEST ||
-      (msg.method_type != HTTP_REQ_GET && msg.method_type != HTTP_REQ_POST))
+  if (msg.method_type != HTTP_REQ_GET && msg.method_type != HTTP_REQ_POST)
     {
       if (hss_add_header (hs, HTTP_HEADER_ALLOW, http_token_lit ("GET, POST")))
 	start_send_data (hs, HTTP_STATUS_INTERNAL_ERROR);
@@ -739,6 +772,15 @@ hss_ts_rx_callback (session_t *ts)
 	}
     }
 
+  if (msg.data.type == HTTP_MSG_DATA_STREAMING)
+    {
+      hs->read_body_handler = streamed_get_discard_body;
+      hs->left_recv = hss_listener_get (hs->listener_index)->max_req_body_size;
+      svm_fifo_dequeue_drop (ts->rx_fifo, msg.data.body_offset);
+      hss_confirm_data_read (hs, msg.data.body_offset);
+      return hs->read_body_handler (hs, ts);
+    }
+
   if (msg.data.body_len && msg.method_type == HTTP_REQ_POST)
     {
       hs->left_recv = msg.data.body_len;
@@ -790,6 +832,11 @@ hss_ts_tx_callback (session_t *ts)
 
   if (svm_fifo_set_event (ts->tx_fifo))
     session_program_tx_io_evt (ts->handle, SESSION_IO_EVT_TX);
+  if (hs->streamed_get_reply && rv == to_send)
+    {
+      hs->streamed_get_reply = 0;
+      hss_session_disconnect_transport (hs);
+    }
 
   return 0;
 }
@@ -837,7 +884,21 @@ static void
 hss_ts_disconnect_callback (session_t *ts)
 {
   hss_main_t *hsm = &hss_main;
+  hss_session_t *hs = hss_session_get (ts->thread_index, ts->opaque);
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
+
+  if (hs->read_body_handler == streamed_get_discard_body)
+    {
+      /* EOF leaves the response direction available. Consume final bytes
+       * before calling a handler, without acknowledging a full disconnect. */
+      if (streamed_get_discard_body (hs, ts))
+	return;
+      hs->read_body_handler = 0;
+      hs->left_recv = 0;
+      hs->streamed_get_reply = 1;
+      handle_request (hs);
+      return;
+    }
 
   a->handle = session_handle (ts);
   a->app_index = hsm->app_index;
@@ -848,8 +909,11 @@ static void
 hss_ts_reset_callback (session_t *ts)
 {
   hss_main_t *hsm = &hss_main;
+  hss_session_t *hs = hss_session_get (ts->thread_index, ts->opaque);
   vnet_disconnect_args_t _a = { 0 }, *a = &_a;
 
+  hs->read_body_handler = 0;
+  hs->streamed_get_reply = 0;
   a->handle = session_handle (ts);
   a->app_index = hsm->app_index;
   vnet_disconnect_session (a);
