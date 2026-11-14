@@ -39,7 +39,7 @@ from util import ppp, ppc, is_core_present, StatsDiff
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror, UDP
 from scapy.layers.inet6 import ICMPv6DestUnreach, ICMPv6EchoRequest
-from scapy.layers.inet6 import ICMPv6EchoReply
+from scapy.layers.inet6 import ICMPv6EchoReply, IPv6, IPv6ExtHdrSegmentRouting
 from asfframework import VppAsfTestCase
 
 """
@@ -367,7 +367,18 @@ class VppTestCase(VppAsfTestCase):
         Read UDP bytes before Scapy interprets its payload as another protocol.
         The UDP length also excludes Ethernet padding. Other test packets carry
         the info in Raw, except ICMPv6 Echo, which stores it in data.
+        Scapy leaves an L2 frame after IPv6 or an SRv6 SRH with next header
+        143 (Ethernet) undissected, so decode that frame first.
         """
+        layer = packet
+        while layer:
+            if (
+                isinstance(layer, (IPv6, IPv6ExtHdrSegmentRouting))
+                and layer.nh == 143
+                and isinstance(layer.payload, Raw)
+            ):
+                return VppTestCase.get_info_from_packet(Ether(layer.payload.load))
+            layer = layer.payload
         if packet.haslayer(UDP):
             udp = packet[UDP]
             data = udp.original or bytes(udp)
@@ -388,10 +399,6 @@ class VppTestCase(VppAsfTestCase):
 
         info = _PacketInfo()
         info.index, info.src, info.dst, info.ip, info.proto = unpack("iiiih", payload_b)
-
-        # some SRv6 TCs depend on get an exception if bad values are detected
-        if info.index > 0x4000:
-            raise ValueError("Index value is invalid")
 
         return info
 
