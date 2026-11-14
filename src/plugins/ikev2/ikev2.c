@@ -968,7 +968,7 @@ ikev2_process_sa_init_req (vlib_main_t *vm, ikev2_sa_t *sa, ike_header_t *ike,
 		}
 	      vec_free (dst_sha);
 	    }
-	  vec_free (n);
+	  ikev2_notify_free (&n);
 	}
       else if (payload == IKEV2_PAYLOAD_VENDOR)
 	{
@@ -1092,7 +1092,7 @@ ikev2_process_sa_init_resp (vlib_main_t * vm,
 		}
 	      vec_free (dst_sha);
 	    }
-	  vec_free (n);
+	  ikev2_notify_free (&n);
 	}
       else if (payload == IKEV2_PAYLOAD_VENDOR)
 	{
@@ -1444,7 +1444,7 @@ ikev2_process_auth_req (vlib_main_t * vm, ikev2_sa_t * sa,
 	    {
 	      first_child_sa->use_transport_mode = 1;
 	    }
-	  vec_free (n);
+	  ikev2_notify_free (&n);
 	}
       else if (payload == IKEV2_PAYLOAD_VENDOR)	/* 43 */
 	{
@@ -1535,7 +1535,7 @@ ikev2_process_informational_req (vlib_main_t * vm,
 	  if (n->msg_type == IKEV2_NOTIFY_MSG_AUTHENTICATION_FAILED)
 	    sa->state = IKEV2_STATE_AUTH_FAILED;
 	  log_debug ("ispi %lx SA state changed to AUTH_FAILED", sa->ispi);
-	  vec_free (n);
+	  ikev2_notify_free (&n);
 	}
       else if (payload == IKEV2_PAYLOAD_DELETE)	/* 42 */
 	{
@@ -1796,14 +1796,14 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
 	    goto cleanup_and_exit;
 	  if (n0->msg_type == IKEV2_NOTIFY_MSG_REKEY_SA)
 	    {
-	      vec_free (n);
+	      ikev2_notify_free (&n);
 	      n = n0;
 	    }
 	  else
 	    {
 	      if (n0->msg_type == IKEV2_NOTIFY_MSG_USE_TRANSPORT_MODE)
 		use_transport_mode = 1;
-	      vec_free (n0);
+	      ikev2_notify_free (&n0);
 	    }
 	}
       else if (payload == IKEV2_PAYLOAD_DELETE)
@@ -1928,12 +1928,12 @@ ikev2_process_create_child_sa_req (vlib_main_t * vm,
 	    }
 	}
     }
-  vec_free (n);
+  ikev2_notify_free (&n);
   ikev2_sa_free_all_vec (&sar);
   return 1;
 
 cleanup_and_exit:
-  vec_free (n);
+  ikev2_notify_free (&n);
   vec_free (proposal);
   vec_free (tsr);
   vec_free (tsi);
