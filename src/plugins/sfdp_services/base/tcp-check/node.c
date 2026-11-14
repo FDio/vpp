@@ -6,6 +6,7 @@
 #include <sfdp_services/base/tcp-check/tcp_check.h>
 #include <vnet/sfdp/service.h>
 #include <vnet/sfdp/timer/timer.h>
+#include <vnet/ip/ip6_inlines.h>
 
 #define foreach_sfdp_tcp_check_error _ (DROP, "drop")
 
@@ -53,6 +54,9 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant, u8 fsol_non_syn_secu
 		      sfdp_tcp_check_session_state_t *tcp_session, sfdp_session_t *session,
 		      f64 current_time, u8 dir, u16 *to_next, vlib_buffer_t **b, u32 *sf, u32 *nsf)
 {
+  sf[0] = tcp_session->flags;
+  nsf[0] = sf[0];
+
   /* Parse the packet */
   /* TODO: !!! Broken with IP options !!! */
   u8 *data = vlib_buffer_get_current (b[0]);
@@ -71,23 +75,32 @@ update_state_one_pkt (sfdp_tw_t *tw, sfdp_tenant_t *tenant, u8 fsol_non_syn_secu
       return;
     }
 
-  if (session->type == SFDP_SESSION_TYPE_IP6 && ip6_ext_hdr (ip6->protocol))
+  if (session->type == SFDP_SESSION_TYPE_IP6)
     {
-      ip6_ext_hdr_chain_t chain = { 0 };
-      int res = ip6_ext_header_walk (b[0], ip6, IP_PROTOCOL_IPV6_FRAGMENTATION,
-				     &chain);
-      if (res >= 0 && chain.eh[res].protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
+      u32 l4_offset;
+      u16 l4_hdr_offset;
+      int l4_protocol;
+
+      if (ip6_is_chain_header (ip6->protocol))
 	{
-	  ip6_frag_hdr_t *frag =
-	    ip6_ext_next_header_offset (ip6, chain.eh[res].offset);
-	  if (ip6_frag_hdr_offset (frag))
+	  l4_protocol = ip6_locate_header (b[0], ip6, -1, &l4_offset);
+	  if (l4_protocol != IP_PROTOCOL_TCP)
 	    {
+	      /*
+	       * The chain has no usable TCP header. Leave the session
+	       * state untouched.
+	       */
 	      sfdp_next (b[0], to_next);
 	      return;
 	    }
+	  l4_hdr_offset = l4_offset;
+	  tcph = ip6_ext_next_header_offset (ip6, l4_hdr_offset);
 	}
-      tcph =
-	ip6_ext_next_header_offset (ip6, chain.eh[chain.length - 1].offset);
+      else if (ip6->protocol != IP_PROTOCOL_TCP)
+	{
+	  sfdp_next (b[0], to_next);
+	  return;
+	}
     }
 
   u8 flags = tcph->flags & SFDP_TCP_CHECK_TCP_FLAGS_MASK;

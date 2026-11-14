@@ -76,8 +76,7 @@ ip6_to_ip4_set_icmp_cb (ip6_header_t * ip6, ip4_header_t * ip4, void *arg)
 }
 
 static int
-ip6_to_ip4_set_inner_icmp_cb (ip6_header_t * ip6, ip4_header_t * ip4,
-			      void *arg)
+ip6_to_ip4_set_inner_icmp_cb (ip6_header_t *ip6, ip4_header_t *ip4, void *arg)
 {
   icmp6_to_icmp_ctx_t *ctx = arg;
   u32 inner_ip4_dadr;
@@ -142,8 +141,7 @@ ip6_map_t_icmp (vlib_main_t * vm,
 			       vnet_buffer (p0)->map_t.map_domain_index);
 	  ctx0.d = d0;
 	  ctx0.sender_port = 0;
-	  if (!ip6_get_port (vm, p0, ip60, p0->current_length, NULL,
-			     &ctx0.sender_port, NULL, NULL, NULL, NULL, NULL))
+	  if (!ip6_get_port (p0, ip60, NULL, &ctx0.sender_port, NULL, NULL, NULL, NULL, NULL))
 	    {
 	      // In case of 1:1 mapping, we don't care about the port
 	      if (!(d0->ea_bits_len == 0 && d0->rules))
@@ -197,6 +195,46 @@ ip6_map_t_icmp (vlib_main_t * vm,
 }
 
 /*
+ * Parse the IPv6 extension header chain into the MAP-T parse outputs.
+ *
+ * For a chain that ends at an L4 or non-first-fragment header,
+ * l4_protocol and l4_offset describe that header. For a chain stopped at
+ * the scan limit, they describe the last recorded chain header.
+ * frag_hdr_offset is the fragment header offset when one was recorded, 0
+ * otherwise.
+ *
+ * Returns non-zero when the packet has no usable header.
+ */
+static_always_inline int
+map_ip6_parse (vlib_buffer_t *b, ip6_header_t *ip6, u8 *l4_protocol, u16 *l4_offset,
+	       u16 *frag_hdr_offset)
+{
+  ip6_ext_hdr_chain_t chain;
+  ip6_ext_hdr_chain_status_t status = ip6_parse (b, ip6, &chain);
+
+  if (status == IP6_EXT_HDR_CHAIN_TRUNCATED || status == IP6_EXT_HDR_CHAIN_L4_TRUNCATED ||
+      (status == IP6_EXT_HDR_CHAIN_LIMIT && chain.length == 0))
+    return -1;
+
+  if (status == IP6_EXT_HDR_CHAIN_LIMIT)
+    {
+      *l4_protocol = chain.eh[chain.length - 1].protocol;
+      *l4_offset = chain.eh[chain.length - 1].offset;
+    }
+  else
+    {
+      *l4_protocol = chain.term_protocol;
+      *l4_offset = chain.term_offset;
+    }
+
+  if (!ip6_ext_hdr_chain_resolve (&chain, IP_PROTOCOL_IPV6_FRAGMENTATION, NULL, NULL,
+				  frag_hdr_offset))
+    *frag_hdr_offset = 0;
+
+  return 0;
+}
+
+/*
  * Translate IPv6 fragmented packet to IPv4.
  */
 always_inline int
@@ -213,8 +251,7 @@ map_ip6_to_ip4_fragmented (vlib_main_t * vm, vlib_buffer_t * p)
 
   ip6 = vlib_buffer_get_current (p);
 
-  if (ip6_parse
-      (vm, p, ip6, p->current_length, &l4_protocol, &l4_offset, &frag_offset))
+  if (map_ip6_parse (p, ip6, &l4_protocol, &l4_offset, &frag_offset))
     return -1;
 
   frag = (ip6_frag_hdr_t *) u8_ptr_add (ip6, frag_offset);
@@ -329,8 +366,7 @@ map_ip6_to_ip4_tcp_udp (vlib_main_t * vm, vlib_buffer_t * p,
 
   ip6 = vlib_buffer_get_current (p);
 
-  if (ip6_parse
-      (vm, p, ip6, p->current_length, &l4_protocol, &l4_offset, &frag_offset))
+  if (map_ip6_parse (p, ip6, &l4_protocol, &l4_offset, &frag_offset))
     return -1;
 
   if (l4_protocol == IP_PROTOCOL_TCP)
@@ -549,14 +585,15 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      goto trace;
 	    }
 
-	  if (PREDICT_FALSE
-	      (ip6_parse (vm, p0, ip60, p0->current_length,
-			  &(vnet_buffer (p0)->map_t.v6.l4_protocol),
-			  &(vnet_buffer (p0)->map_t.v6.l4_offset),
-			  &(vnet_buffer (p0)->map_t.v6.frag_offset))))
+	  if (PREDICT_FALSE (map_ip6_parse (p0, ip60, &(vnet_buffer (p0)->map_t.v6.l4_protocol),
+					    &(vnet_buffer (p0)->map_t.v6.l4_offset),
+					    &(vnet_buffer (p0)->map_t.v6.frag_offset))))
 	    {
 	      error0 =
 		error0 == MAP_ERROR_NONE ? MAP_ERROR_MALFORMED : error0;
+	      p0->error = error_node->errors[error0];
+	      next0 = IP6_MAPT_NEXT_DROP;
+	      goto trace;
 	    }
 
 	  l4_len0 =
