@@ -1193,22 +1193,21 @@ ikev2_decrypt_sk_payload (ikev2_sa_t * sa, ike_header_t * ike,
       if (rlen < tr_integ->key_trunc)
 	return 0;
 
-      hmac =
-	ikev2_calc_integr (tr_integ, sa->is_initiator ? sa->sk_ar : sa->sk_ai,
-			   (u8 *) ike, rlen - tr_integ->key_trunc);
-
       if (plen < sizeof (*ikep) + tr_integ->key_trunc)
 	return 0;
 
       plen = plen - sizeof (*ikep) - tr_integ->key_trunc;
 
-      if (clib_memcmp (hmac, &ikep->payload[plen], tr_integ->key_trunc))
+      hmac = ikev2_calc_integr (tr_integ, sa->is_initiator ? sa->sk_ar : sa->sk_ai, (u8 *) ike,
+				rlen - tr_integ->key_trunc);
+
+      int mismatch = CRYPTO_memcmp (hmac, &ikep->payload[plen], tr_integ->key_trunc);
+      vec_free (hmac);
+      if (mismatch)
 	{
 	  log_err ("message integrity check failed");
-	  vec_free (hmac);
 	  return 0;
 	}
-      vec_free (hmac);
 
       int rc = ikev2_decrypt_data (sa, tr_encr, ikep->payload, plen, &dlen);
       if (rc)
