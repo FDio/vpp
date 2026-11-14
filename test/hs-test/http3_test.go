@@ -46,7 +46,7 @@ func init() {
 		Http3ReservedSettingsTest, Http3MissingSettingsTest, Http3SecondCtrlStreamTest,
 		Http3SecondQpackDecoderStreamTest, Http3SecondQpackEncoderStreamTest, Http3CtrlStreamClosedTest,
 		Http3FragmentedStreamTypeTest, Http3IncompleteStreamTypeCloseTest, Http3CriticalStreamFinTest,
-		Http3QpackDecompressionFailedTest, Http3ClientOpenPushStreamTest, Http3DataBeforeHeadersTest,
+		Http3QpackDecompressionFailedTest, Http3ClientOpenPushStreamTest, Http3RejectClientPushPromiseTest, Http3DataBeforeHeadersTest,
 		Http3LongerDataThanContentLengthTest, Http3HalfClosedBeforeAllDataTest, Http3StaticGetTest,
 		Http3MaxHeaderListSizeTest, Http3ServerHeadersFrameTooLargeTest, Http3ClientHeadersFrameTooLargeTest,
 		Http3Early431UploadTest, Http3Early431DecodedUploadTest, Http3Early501UploadTest,
@@ -3115,6 +3115,63 @@ func Http3QpackDecompressionFailedTest(s *Http3Suite) {
 			0x31, 0xc1, 0xff, 0x24,
 		},
 		http3.ErrCodeQPACKDecompressionFailed)
+}
+
+func Http3RejectClientPushPromiseTest(s *Http3Suite) {
+	address := s.VppAddr() + ":" + s.Ports.Port1
+	Log(s.Containers.Vpp.VppInstance.Vppctl("http tps no-zc h3 uri https://" + address))
+
+	// Reuse a valid static-only GET field section for the promised request.
+	headers := bytes.NewReader(http3FinHeaders(http.MethodGet, "/test_file_64", ""))
+	_, err := quicvarint.Read(headers)
+	AssertNil(err)
+	_, err = quicvarint.Read(headers)
+	AssertNil(err)
+	promise := make([]byte, 1+headers.Len()) // push ID 0, then the field section
+	_, err = io.ReadFull(headers, promise[1:])
+	AssertNil(err)
+
+	for _, tc := range []struct {
+		name  string
+		frame []byte
+	}{
+		{"original h3spec frame", http3FinFrame(0x05, []byte{0})},
+		{"valid promised request", http3FinFrame(0x05, promise)},
+		{"missing payload", []byte{0x05, 0x01}},
+	} {
+		for _, afterHeaders := range []bool{false, true} {
+			for _, fin := range []bool{false, true} {
+				By(fmt.Sprintf("%s, after HEADERS=%t, FIN=%t", tc.name, afterHeaders, fin))
+				conn := H3ClientConnect(address)
+				defer conn.CloseWithError(0, "")
+				control, err := conn.OpenUniStream()
+				AssertNil(err)
+				_, err = control.Write([]byte{0x00, 0x04, 0x00})
+				AssertNil(err)
+				stream, err := conn.OpenStream()
+				AssertNil(err)
+				data := append([]byte(nil), tc.frame...)
+				if afterHeaders {
+					// Leave the POST body incomplete so VPP keeps reading frames.
+					data = append(http3FinHeaders(http.MethodPost, "/test_file_64", "1"), data...)
+				}
+				_, err = stream.Write(data)
+				AssertNil(err)
+				if fin {
+					AssertNil(stream.Close())
+				}
+				select {
+				case <-conn.Context().Done():
+					expected := quic.ApplicationError{ErrorCode: quic.ApplicationErrorCode(http3.ErrCodeFrameUnexpected), Remote: true}
+					AssertMatchError(context.Cause(conn.Context()), &expected)
+				case <-time.After(3 * time.Second):
+					Fail("client PUSH_PROMISE did not close the connection")
+				}
+				AssertNil(conn.CloseWithError(0, ""))
+			}
+		}
+	}
+	http3TestSessionCleanupServer(s)
 }
 
 func Http3ClientOpenPushStreamTest(s *Http3Suite) {
