@@ -17,6 +17,40 @@
       "parentUuid": "cc9a3c5e_80c9c2af",
       "revId": "7b76caf59ae40822dbf7cba615effe9f6816b514",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cf494350_f86c5df6",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-14T09:23:09Z",
+      "side": 1,
+      "message": "LGTM.\n\nI\u0027ve flagged one part for a followup. If you want, feel free to squash my referenced change into this one.",
+      "revId": "7b76caf59ae40822dbf7cba615effe9f6816b514",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "178139cc_d5af2ee7",
+        "filename": "test/test_srv6_l2_subint.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-14T09:23:09Z",
+      "side": 1,
+      "message": "This is ... weird. And looking at why it works like this ... it\u0027s even weirder.\n\nNot that it uses bare exceptions for control logic, the 0x400 index-info bit is a great example on how not to do any of this.\n\nAnyhow, this is not introduced by your patch, so I\u0027m creating a follow-up commit to un-weird it. Mind giving it a read? https://gerrit.fd.io/r/c/vpp/+/47758",
+      "revId": "7b76caf59ae40822dbf7cba615effe9f6816b514",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
