@@ -171,7 +171,7 @@ vnet_crypto_ctx_layout_init (vnet_crypto_main_t *cm)
 	    }
 	  if (t == VNET_CRYPTO_HANDLER_TYPE_ASYNC)
 	    {
-	      min_async_size = n_threads * 16;
+	      min_async_size = clib_max (n_threads * 16, cm->async_key_data_reserved);
 	      if (max_size < min_async_size)
 		max_size = min_async_size;
 	    }
@@ -265,6 +265,21 @@ vnet_crypto_process_ops (vlib_main_t *vm, vnet_crypto_op_t ops[], vnet_crypto_op
     }
 
   return rv;
+}
+
+int
+vnet_crypto_reserve_async_key_data (u16 key_data_sz)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+
+  if (cm->layout_initialized)
+    {
+      log_err ("async key data reservation of %u bytes after ctx layout init", key_data_sz);
+      return -1;
+    }
+
+  cm->async_key_data_reserved = clib_max (cm->async_key_data_reserved, key_data_sz);
+  return 0;
 }
 
 vnet_crypto_engine_id_t
