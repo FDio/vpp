@@ -3656,6 +3656,42 @@ class TestResponderBadNonceSize(TemplateResponder, Ikev2Params):
             self.assertEqual(len(self.vapi.ikev2_sa_dump()), 0)
 
 
+class TestResponderShortAuthPayload(TemplateResponder, Ikev2Params):
+    """An AUTH payload shorter than its own header is rejected."""
+
+    def config_tc(self):
+        self.config_params()
+
+    def tearDown(self):
+        super(IkePeer, self).tearDown()
+        self.p.remove_vpp_config()
+
+    def test_responder(self):
+        self.send_sa_init_req()
+        # A generic payload header only: no method, no reserved bytes, no data.
+        plain = ikev2.IKEv2_payload_IDi(
+            next_payload="AUTH", IDtype=self.sa.id_type, load=self.sa.i_id
+        ) / Raw(b"\x00\x00\x00\x04")
+        header = ikev2.IKEv2(
+            init_SPI=self.sa.ispi,
+            resp_SPI=self.sa.rspi,
+            id=self.sa.new_msg_id(),
+            flags="Initiator",
+            exch_type="IKE_AUTH",
+        )
+        packet = self.create_packet(
+            self.pg0,
+            self.encrypt_ike_msg(header, plain, "IDi"),
+            self.sa.sport,
+            self.sa.dport,
+            self.sa.natt,
+            self.ip6,
+        )
+        self.send_and_assert_no_replies(self.pg0, packet)
+        self.assertEqual(len(self.vapi.ikev2_sa_dump()), 0)
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
+
+
 class TestResponderInvalidNewChildModp(TestResponderPsk):
     """An invalid new Child KE preserves the existing Child and permits cleanup."""
 
