@@ -97,7 +97,11 @@ sfdp_calc_key_v6 (vlib_buffer_t *b, u32 context_id,
   else
     {
       pr = ip->protocol;
-      ext_hdr = ip6_ext_hdr (pr);
+      /*
+       * AH stays on the unknown-protocol slow path because NAT rewriting
+       * an AH-authenticated packet would invalidate its ICV.
+       */
+      ext_hdr = ip6_ext_hdr (pr) || pr == IP_PROTOCOL_IPV6_FRAGMENTATION;
       next_header = ip6_next_header (ip);
     }
 
@@ -124,23 +128,44 @@ sfdp_calc_key_v6 (vlib_buffer_t *b, u32 context_id,
     {
       /* Parse the extension header chain and look for fragmentation */
       ip6_ext_hdr_chain_t chain = { 0 };
-      int res =
-	ip6_ext_header_walk (b, ip, IP_PROTOCOL_IPV6_FRAGMENTATION, &chain);
-      if (!(l4_from_sv_reass || from_full_reass) && res >= 0 &&
-	  chain.eh[res].protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
+      bool has_frag;
+
+      ip6_ext_header_walk_bounded (ip, ip6_ext_header_valid_end (b, ip),
+				   ip6_ext_header_datagram_end (b, ip), &chain);
+      has_frag =
+	ip6_ext_hdr_chain_resolve (&chain, IP_PROTOCOL_IPV6_FRAGMENTATION, NULL, NULL, NULL);
+      if (!(l4_from_sv_reass || from_full_reass) && has_frag)
 	{
 	  /* Reassembly is needed and has not been done yet */
 	  lookup_val[0] = (u64) SFDP_SP_NODE_IP6_REASS << 32 | SFDP_LV_TO_SP;
 	  return slowpath_needed;
 	}
-      else
+      else if (l4_from_sv_reass)
 	{
-	  next_header =
-	    ip6_ext_next_header_offset (ip, chain.eh[chain.length - 1].offset);
-	  pr = chain.eh[chain.length - 1].protocol;
+	  /*
+	   * The reassembly context holds the protocol and ports. A
+	   * non-first fragment carries no L4 header to parse, so the
+	   * offset points at the fragment payload.
+	   */
+	  pr = vnet_buffer (b)->ip.reass.ip_proto;
+	  tcp_or_udp = pr == IP_PROTOCOL_TCP || pr == IP_PROTOCOL_UDP;
+	  k.as_u8[6] = pr;
+	  if (ip6_ext_hdr_chain_has_l4 (&chain) || chain.status == IP6_EXT_HDR_CHAIN_NON_FIRST_FRAG)
+	    next_header = ip6_ext_next_header_offset (ip, chain.term_offset);
+	}
+      else if (ip6_ext_hdr_chain_has_l4 (&chain))
+	{
+	  next_header = ip6_ext_next_header_offset (ip, chain.term_offset);
+	  pr = chain.term_protocol;
 	  tcp_or_udp = pr == IP_PROTOCOL_TCP || pr == IP_PROTOCOL_UDP;
 	  k.as_u8[6] = pr;
 	}
+      /*
+       * Otherwise the walk stopped at the scan limit or ended at a
+       * non-first fragment, so there is no L4 header to key on.
+       * next_header and pr still name the IPv6 header's protocol, so the
+       * unknown-protocol slow path handles the packet.
+       */
     }
   l4_hdr_offset[0] = (u8 *) next_header - b[0].data;
   unknown_protocol = !tcp_or_udp && pr != IP_PROTOCOL_ICMP6;
