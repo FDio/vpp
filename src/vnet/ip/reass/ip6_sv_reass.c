@@ -16,6 +16,7 @@
 #include <vnet/ip/ip6_to_ip4.h>
 #include <vppinfra/bihash_48_8.h>
 #include <vnet/ip/reass/ip6_sv_reass.h>
+#include <vnet/ip/reass/ip6_reass.h>
 #include <vnet/ip/ip6_inlines.h>
 
 #define MSEC_PER_SEC			1000
@@ -403,22 +404,20 @@ ip6_sv_reass_is_complete (ip6_sv_reass_t *reass, bool extended)
 /**
  * @brief Extract L4 information from an IPv6 packet.
  *
- * Walks the IPv6 extension header chain to find the L4 header and
- * extracts ports, ICMP type/TCP flags, and TCP sequence/ack numbers.
+ * This function uses the shared ip6_l4_info_extract() core with the full
+ * set of protocols the reassembly features classify. TCP, UDP, DCCP,
+ * UDP-Lite and SCTP all have source and destination ports at offsets 0
+ * and 2. ICMP6 uses the identifier as the port and takes the inner
+ * packet's ports from ICMP error messages.
  *
- * Supports TCP, UDP, DCCP, UDP-Lite, SCTP (all have src/dst ports at
- * offsets 0 and 2) and ICMP6 (uses identifier as "port", and extracts
- * the inner packet's ports from ICMP error messages).
+ * An unsupported protocol, for example ICMP6 neighbor or router
+ * discovery, GRE or ESP, is not an extraction failure. The reassembly
+ * features must stay transparent for such traffic, so the packet passes
+ * through with zeroed port fields, as ip6_get_port() did before.
  *
- * Packets carrying an unsupported protocol (e.g. ICMP6 neighbor/router
- * discovery, GRE, ESP) are not a failure - the reassembly features must
- * stay transparent for such traffic. They pass through with zeroed port
- * fields, matching the historical behavior of ip6_get_port().
- *
- * @param vm                VLIB main.
  * @param b                 Buffer containing the packet.
  * @param ip6               IPv6 header.
- * @param buffer_len        Buffer length.
+ * @param chain             Header chain already walked from ip6, or NULL.
  * @param ip_protocol       Output: L4 protocol number.
  * @param src_port          Output: source port (network byte order).
  * @param dst_port          Output: destination port (network byte order).
@@ -428,151 +427,41 @@ ip6_sv_reass_is_complete (ip6_sv_reass_t *reass, bool extended)
  * @param l4_hdr            Output: pointer to L4 header.
  *
  * @returns 0 on success (unsupported protocols succeed with zeroed
- * ports), -1 on parse failure, non-first fragment or truncated L4
+ * ports), -1 on a parse failure, a non-first fragment, or a truncated L4
  * header of a supported protocol.
  */
 always_inline int
-ip6_sv_reass_get_l4_info_and_ports (vlib_main_t *vm, vlib_buffer_t *b, ip6_header_t *ip6,
-				    u16 buffer_len, u8 *ip_protocol, u16 *src_port, u16 *dst_port,
-				    u8 *icmp_type_or_tcp_flags, u32 *tcp_ack_number,
-				    u32 *tcp_seq_number, void **l4_hdr)
+ip6_sv_reass_get_l4_info_and_ports (vlib_buffer_t *b, ip6_header_t *ip6,
+				    const ip6_ext_hdr_chain_t *chain, u8 *ip_protocol,
+				    u16 *src_port, u16 *dst_port, u8 *icmp_type_or_tcp_flags,
+				    u32 *tcp_ack_number, u32 *tcp_seq_number, void **l4_hdr)
 {
-  u8 l4_protocol;
-  u16 l4_offset;
-  u16 frag_offset;
-  u8 *l4;
-  u8 *data_end = u8_ptr_add (vlib_buffer_get_current (b), b->current_length);
+  ip6_l4_info_t info;
+  ip6_l4_info_status_t status;
 
-  if (ip6_parse (vm, b, ip6, buffer_len, &l4_protocol, &l4_offset, &frag_offset))
-    {
-      return -1;
-    }
-  if (frag_offset && ip6_frag_hdr_offset (((ip6_frag_hdr_t *) u8_ptr_add (ip6, frag_offset))))
+  status =
+    ip6_l4_info_extract (b, ip6, chain,
+			 IP6_L4_SUPPORT_TCP | IP6_L4_SUPPORT_UDP | IP6_L4_SUPPORT_ICMP6 |
+			   IP6_L4_SUPPORT_DCCP | IP6_L4_SUPPORT_SCTP | IP6_L4_SUPPORT_UDP_LITE,
+			 false, true, &info);
+
+  if (status == IP6_L4_INFO_MALFORMED)
     return -1;
 
   if (ip_protocol)
-    *ip_protocol = l4_protocol;
-  l4 = u8_ptr_add (ip6, l4_offset);
+    *ip_protocol = info.protocol;
   if (l4_hdr)
-    *l4_hdr = l4;
-
-  if (PREDICT_TRUE ((l4_protocol == IP_PROTOCOL_TCP) || (l4_protocol == IP_PROTOCOL_UDP) ||
-		    (l4_protocol == IP_PROTOCOL_DCCP) || (l4_protocol == IP_PROTOCOL_SCTP) ||
-		    (l4_protocol == IP_PROTOCOL_UDP_LITE)))
-    {
-      if (l4_protocol == IP_PROTOCOL_TCP)
-	{
-	  if (l4 + sizeof (tcp_header_t) > data_end)
-	    return -1;
-	}
-      else
-	{
-	  if (l4 + sizeof (udp_header_t) > data_end)
-	    return -1;
-	}
-      if (src_port)
-	*src_port = ((udp_header_t *) l4)->src_port;
-      if (dst_port)
-	*dst_port = ((udp_header_t *) l4)->dst_port;
-      if (icmp_type_or_tcp_flags && l4_protocol == IP_PROTOCOL_TCP)
-	*icmp_type_or_tcp_flags = ((tcp_header_t *) l4)->flags;
-      if (tcp_ack_number && l4_protocol == IP_PROTOCOL_TCP)
-	*tcp_ack_number = ((tcp_header_t *) l4)->ack_number;
-      if (tcp_seq_number && l4_protocol == IP_PROTOCOL_TCP)
-	*tcp_seq_number = ((tcp_header_t *) l4)->seq_number;
-      return 0;
-    }
-  else if (l4_protocol == IP_PROTOCOL_ICMP6)
-    {
-      if (l4 + sizeof (icmp46_header_t) > data_end)
-	return -1;
-      icmp46_header_t *icmp = (icmp46_header_t *) l4;
-      if (icmp_type_or_tcp_flags)
-	*icmp_type_or_tcp_flags = icmp->type;
-      if (icmp->type == ICMP6_echo_request || icmp->type == ICMP6_echo_reply)
-	{
-	  if (l4 + sizeof (icmp46_header_t) + 2 > data_end)
-	    return -1;
-	  u16 id = ((u16 *) icmp)[2];
-	  if (src_port)
-	    *src_port = id;
-	  if (dst_port)
-	    *dst_port = id;
-	  return 0;
-	}
-      /*
-       * ICMP6 error message: extract ports from inner IPv6 packet.
-       * ICMP6 errors: 1=dest_unreachable, 2=packet_too_big,
-       * 3=time_exceeded, 4=parameter_problem.
-       */
-      if (clib_net_to_host_u16 (ip6->payload_length) >= 64 &&
-	  icmp->type >= ICMP6_destination_unreachable && icmp->type <= ICMP6_parameter_problem)
-	{
-	  u16 ip6_pay_len = clib_net_to_host_u16 (ip6->payload_length);
-	  ip6_header_t *inner_ip6 = (ip6_header_t *) u8_ptr_add (icmp, 8);
-	  u8 inner_l4_protocol;
-	  u16 inner_l4_offset;
-	  u16 inner_frag_offset;
-	  u8 *inner_l4;
-
-	  if (ip6_parse (vm, b, inner_ip6, ip6_pay_len - 8, &inner_l4_protocol, &inner_l4_offset,
-			 &inner_frag_offset))
-	    goto zero_ports;
-
-	  if (inner_frag_offset &&
-	      ip6_frag_hdr_offset (((ip6_frag_hdr_t *) u8_ptr_add (inner_ip6, inner_frag_offset))))
-	    goto zero_ports;
-
-	  inner_l4 = u8_ptr_add (inner_ip6, inner_l4_offset);
-	  if ((inner_l4_protocol == IP_PROTOCOL_TCP) || (inner_l4_protocol == IP_PROTOCOL_UDP) ||
-	      (inner_l4_protocol == IP_PROTOCOL_DCCP) || (inner_l4_protocol == IP_PROTOCOL_SCTP) ||
-	      (inner_l4_protocol == IP_PROTOCOL_UDP_LITE))
-	    {
-	      if (inner_l4 + sizeof (udp_header_t) > data_end)
-		goto zero_ports;
-	      if (src_port)
-		*src_port = ((udp_header_t *) inner_l4)->dst_port;
-	      if (dst_port)
-		*dst_port = ((udp_header_t *) inner_l4)->src_port;
-	      return 0;
-	    }
-	  else if (inner_l4_protocol == IP_PROTOCOL_ICMP6)
-	    {
-	      icmp46_header_t *inner_icmp = (icmp46_header_t *) inner_l4;
-	      if (inner_icmp->type == ICMP6_echo_request || inner_icmp->type == ICMP6_echo_reply)
-		{
-		  if (inner_l4 + sizeof (icmp46_header_t) + 2 > data_end)
-		    goto zero_ports;
-		  u16 id = ((u16 *) inner_icmp)[2];
-		  if (src_port)
-		    *src_port = id;
-		  if (dst_port)
-		    *dst_port = id;
-		  return 0;
-		}
-	    }
-	}
-    }
-
-  /*
-   * Unsupported protocol, or an ICMP6 message whose inner packet could
-   * not be used for port extraction. Not a failure - the reassembly
-   * features must stay transparent for such traffic (e.g. ICMP6
-   * neighbor/router discovery, GRE, ESP). Zero the port fields so the
-   * result is deterministic; consumers only use the ports for protocols
-   * they can classify.
-   */
-zero_ports:
+    *l4_hdr = info.l4_hdr;
   if (src_port)
-    *src_port = 0;
+    *src_port = info.src_port;
   if (dst_port)
-    *dst_port = 0;
+    *dst_port = info.dst_port;
+  if (icmp_type_or_tcp_flags)
+    *icmp_type_or_tcp_flags = info.icmp_type_or_tcp_flags;
   if (tcp_ack_number)
-    *tcp_ack_number = 0;
+    *tcp_ack_number = info.tcp_ack_number;
   if (tcp_seq_number)
-    *tcp_seq_number = 0;
-  if (icmp_type_or_tcp_flags && l4_protocol != IP_PROTOCOL_ICMP6)
-    *icmp_type_or_tcp_flags = 0;
+    *tcp_seq_number = info.tcp_seq_number;
   return 0;
 }
 always_inline ip6_sv_reass_rc_t
@@ -611,10 +500,10 @@ ip6_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
   void *l4_hdr = NULL;
   if (0 == fragment_first)
     {
-      if (ip6_sv_reass_get_l4_info_and_ports (
-	    vm, fb, fip, fb->current_length, &reass->ip_proto, &reass->l4_src_port,
-	    &reass->l4_dst_port, &reass->icmp_type_or_tcp_flags, &reass->tcp_ack_number,
-	    &reass->tcp_seq_number, &l4_hdr))
+      if (ip6_sv_reass_get_l4_info_and_ports (fb, fip, NULL, &reass->ip_proto, &reass->l4_src_port,
+					      &reass->l4_dst_port, &reass->icmp_type_or_tcp_flags,
+					      &reass->tcp_ack_number, &reass->tcp_seq_number,
+					      &l4_hdr))
 	return IP6_SV_REASS_RC_UNSUPP_IP_PROTO;
 
       reass->first_fragment_seen = true;
@@ -665,22 +554,6 @@ ip6_sv_reass_update (vlib_main_t *vm, vlib_node_runtime_t *node,
 	}
     }
   return IP6_SV_REASS_RC_OK;
-}
-
-always_inline bool
-ip6_sv_reass_verify_upper_layer_present (vlib_buffer_t *b,
-					 ip6_ext_hdr_chain_t *hc)
-{
-  int nh = hc->eh[hc->length - 1].protocol;
-  /* Checking to see if it's a terminating header */
-  if (ip6_ext_hdr (nh))
-    {
-      icmp6_error_set_vnet_buffer (
-	b, ICMP6_parameter_problem,
-	ICMP6_parameter_problem_first_fragment_has_incomplete_header_chain, 0);
-      return false;
-    }
-  return true;
 }
 
 always_inline bool
@@ -794,28 +667,55 @@ ip6_sv_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
 	  ip6_frag_hdr_t *frag_hdr;
 	  ip6_ext_hdr_chain_t hdr_chain;
+	  ip6_reass_icmp_error_t icmp_err;
 	  bool is_atomic_fragment = false;
+	  int frag_index;
+	  bool has_frag;
 
-	  int res = ip6_ext_header_walk (
-	    b0, ip0, IP_PROTOCOL_IPV6_FRAGMENTATION, &hdr_chain);
-	  if (res >= 0 &&
-	      hdr_chain.eh[res].protocol == IP_PROTOCOL_IPV6_FRAGMENTATION)
+	  ip6_ext_header_walk (b0, ip0, IP_PROTOCOL_IPV6_FRAGMENTATION, &hdr_chain);
+	  has_frag = ip6_ext_hdr_chain_resolve (&hdr_chain, IP_PROTOCOL_IPV6_FRAGMENTATION,
+						&frag_index, NULL, NULL);
+	  if ((has_frag || ip0->protocol == IP_PROTOCOL_IPV6_FRAGMENTATION) &&
+	      ip6_ext_hdr_chain_icmp_error (
+		&hdr_chain, (u32) ((u8 *) ip0 - (u8 *) vlib_buffer_get_current (b0)), &icmp_err))
 	    {
-	      frag_hdr =
-		ip6_ext_next_header_offset (ip0, hdr_chain.eh[res].offset);
+	      /*
+	       * The output arc has already routed the packet and is
+	       * handing it to the interface, so an ICMPv6 error cannot be
+	       * originated there. RFC 4443 sections 2.4(e.3) and 2.4(e.6)
+	       * also forbid an ICMPv6 error for a multicast destination or
+	       * for a source that does not identify a single node, and
+	       * sections 2.4(e.1) and 2.4(e.2) forbid answering an ICMPv6
+	       * error or redirect message. Drop the packet in those cases.
+	       */
+	      if (PREDICT_TRUE (
+		    ip6_reass_icmp_error_allowed (ip0, &hdr_chain, a.is_output_feature)))
+		{
+		  error0 = ip6_reass_set_icmp_error (b0, &icmp_err);
+		  next0 = IP6_SV_REASSEMBLY_NEXT_ICMP_ERROR;
+		}
+	      else
+		{
+		  error0 = icmp_err.error;
+		  next0 = IP6_SV_REASSEMBLY_NEXT_DROP;
+		}
+	      b0->error = node->errors[error0];
+	      goto packet_enqueue;
+	    }
+	  if (has_frag)
+	    {
+	      frag_hdr = ip6_ext_next_header_offset (ip0, hdr_chain.eh[frag_index].offset);
 	      is_atomic_fragment = (0 == ip6_frag_hdr_offset (frag_hdr) &&
 				    !ip6_frag_hdr_more (frag_hdr));
 	    }
 
-	  if (res < 0 ||
-	      hdr_chain.eh[res].protocol != IP_PROTOCOL_IPV6_FRAGMENTATION ||
-	      is_atomic_fragment)
+	  if (!has_frag || is_atomic_fragment)
 	    {
 	      void *l4_hdr;
 	      // this is a regular unfragmented packet or an atomic
 	      // fragment
 	      if (ip6_sv_reass_get_l4_info_and_ports (
-		    vm, b0, ip0, b0->current_length, &(vnet_buffer (b0)->ip.reass.ip_proto),
+		    b0, ip0, &hdr_chain, &(vnet_buffer (b0)->ip.reass.ip_proto),
 		    &(vnet_buffer (b0)->ip.reass.l4_src_port),
 		    &(vnet_buffer (b0)->ip.reass.l4_dst_port),
 		    &(vnet_buffer (b0)->ip.reass.icmp_type_or_tcp_flags),
@@ -845,26 +745,16 @@ ip6_sv_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      goto packet_enqueue;
 	    }
 
-	  vnet_buffer (b0)->ip.reass.ip6_frag_hdr_offset =
-	    hdr_chain.eh[res].offset;
+	  vnet_buffer (b0)->ip.reass.ip6_frag_hdr_offset = hdr_chain.eh[frag_index].offset;
 
-	  if (0 == ip6_frag_hdr_offset (frag_hdr))
-	    {
-	      // first fragment - verify upper-layer is present
-	      if (!ip6_sv_reass_verify_upper_layer_present (b0, &hdr_chain))
-		{
-		  error0 = IP6_ERROR_REASS_MISSING_UPPER;
-		  b0->error = node->errors[error0];
-		  next0 = IP6_SV_REASSEMBLY_NEXT_ICMP_ERROR;
-		  goto packet_enqueue;
-		}
-	    }
 	  if (!ip6_sv_reass_verify_fragment_multiple_8 (vm, b0, frag_hdr) ||
 	      !ip6_sv_reass_verify_packet_size_lt_64k (vm, b0, frag_hdr))
 	    {
 	      error0 = IP6_ERROR_REASS_INVALID_FRAG_LEN;
 	      b0->error = node->errors[error0];
-	      next0 = IP6_SV_REASSEMBLY_NEXT_ICMP_ERROR;
+	      next0 = ip6_reass_icmp_error_allowed (ip0, &hdr_chain, a.is_output_feature) ?
+			IP6_SV_REASSEMBLY_NEXT_ICMP_ERROR :
+			IP6_SV_REASSEMBLY_NEXT_DROP;
 	      goto packet_enqueue;
 	    }
 

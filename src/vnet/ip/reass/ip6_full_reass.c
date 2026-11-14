@@ -15,6 +15,7 @@
 #include <vnet/ip/ip.h>
 #include <vppinfra/bihash_48_8.h>
 #include <vnet/ip/reass/ip6_full_reass.h>
+#include <vnet/ip/reass/ip6_reass.h>
 #include <vnet/ip/ip6_inlines.h>
 
 #define MSEC_PER_SEC 1000
@@ -831,8 +832,7 @@ ip6_full_reass_finalize (vlib_main_t * vm, vlib_node_runtime_t * node,
   ip6_ext_header_t *prev_hdr = 0;
   int res = ip6_ext_header_walk (first_b, ip, IP_PROTOCOL_IPV6_FRAGMENTATION,
 				 &hdr_chain);
-  if (res < 0 ||
-      (hdr_chain.eh[res].protocol != IP_PROTOCOL_IPV6_FRAGMENTATION))
+  if (res < 0 || hdr_chain.eh[res].protocol != IP_PROTOCOL_IPV6_FRAGMENTATION)
     {
       rv = IP6_FULL_REASS_RC_INTERNAL_ERROR;
       goto free_buffers_and_return;
@@ -1109,24 +1109,6 @@ check_if_done_maybe:
 }
 
 always_inline bool
-ip6_full_reass_verify_upper_layer_present (vlib_node_runtime_t *node,
-					   vlib_buffer_t *b,
-					   ip6_ext_hdr_chain_t *hc)
-{
-  int nh = hc->eh[hc->length - 1].protocol;
-  /* Checking to see if it's a terminating header */
-  if (ip6_ext_hdr (nh))
-    {
-      icmp6_error_set_vnet_buffer (
-	b, ICMP6_parameter_problem,
-	ICMP6_parameter_problem_first_fragment_has_incomplete_header_chain, 0);
-      b->error = node->errors[IP6_ERROR_REASS_MISSING_UPPER];
-      return false;
-    }
-  return true;
-}
-
-always_inline bool
 ip6_full_reass_verify_fragment_multiple_8 (vlib_main_t *vm,
 					   vlib_node_runtime_t *node,
 					   vlib_buffer_t *b,
@@ -1205,11 +1187,43 @@ ip6_full_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  ip6_frag_hdr_t *frag_hdr = NULL;
 	  ip6_ext_hdr_chain_t hdr_chain;
 	  vnet_buffer_opaque_t *fvnb = vnet_buffer (b0);
+	  bool reass_enabled = !is_local || rm->is_local_reass_enabled;
+	  /* Read before the ICMP fields overwrite the reassembly union. */
+	  u32 next_icmp_error =
+	    is_custom_app ? fvnb->ip.reass.error_next_index : IP6_FULL_REASSEMBLY_NEXT_ICMP_ERROR;
 
-	  int res = ip6_ext_header_walk (
-	    b0, ip0, IP_PROTOCOL_IPV6_FRAGMENTATION, &hdr_chain);
-	  if (res < 0 ||
-	      hdr_chain.eh[res].protocol != IP_PROTOCOL_IPV6_FRAGMENTATION)
+	  int frag_index;
+	  bool has_frag;
+
+	  ip6_ext_header_walk (b0, ip0, IP_PROTOCOL_IPV6_FRAGMENTATION, &hdr_chain);
+	  has_frag = ip6_ext_hdr_chain_resolve (&hdr_chain, IP_PROTOCOL_IPV6_FRAGMENTATION,
+						&frag_index, NULL, NULL);
+	  if (reass_enabled && (has_frag || ip0->protocol == IP_PROTOCOL_IPV6_FRAGMENTATION))
+	    {
+	      ip6_reass_icmp_error_t icmp_err;
+
+	      if (ip6_ext_hdr_chain_icmp_error (
+		    &hdr_chain, (u32) ((u8 *) ip0 - (u8 *) vlib_buffer_get_current (b0)),
+		    &icmp_err))
+		{
+		  if (PREDICT_TRUE (ip6_reass_icmp_error_allowed (ip0, &hdr_chain, false)))
+		    {
+		      error0 = ip6_reass_set_icmp_error (b0, &icmp_err);
+		      next0 = next_icmp_error;
+		    }
+		  else
+		    {
+		      /*
+		       * RFC 4443 forbids some ICMPv6 errors. Drop the packet
+		       * instead of replying.
+		       */
+		      error0 = icmp_err.error;
+		      next0 = IP6_FULL_REASSEMBLY_NEXT_DROP;
+		    }
+		  goto skip_reass;
+		}
+	    }
+	  if (!has_frag)
 	    {
 	      vlib_node_increment_counter (vm, node->node_index,
 					   IP6_ERROR_REASS_NO_FRAG_HDR, 1);
@@ -1220,7 +1234,7 @@ ip6_full_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 					~0);
 	      goto skip_reass;
 	    }
-	  if (is_local && !rm->is_local_reass_enabled)
+	  if (!reass_enabled)
 	    {
 	      next0 = IP6_FULL_REASSEMBLY_NEXT_DROP;
 	      goto skip_reass;
@@ -1229,30 +1243,18 @@ ip6_full_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  /* Keep track of received fragments */
 	  vlib_node_increment_counter (vm, node->node_index,
 				       IP6_ERROR_REASS_FRAGMENTS_RCVD, 1);
-	  frag_hdr =
-	    ip6_ext_next_header_offset (ip0, hdr_chain.eh[res].offset);
-	  vnet_buffer (b0)->ip.reass.ip6_frag_hdr_offset =
-	    hdr_chain.eh[res].offset;
-
-	  if (0 == ip6_frag_hdr_offset (frag_hdr))
-	    {
-	      // first fragment - verify upper-layer is present
-	      if (!ip6_full_reass_verify_upper_layer_present (node, b0,
-							      &hdr_chain))
-		{
-		  next0 = is_custom_app ? fvnb->ip.reass.error_next_index :
-						IP6_FULL_REASSEMBLY_NEXT_ICMP_ERROR;
-		  goto skip_reass;
-		}
-	    }
+	  frag_hdr = ip6_ext_next_header_offset (ip0, hdr_chain.eh[frag_index].offset);
+	  vnet_buffer (b0)->ip.reass.ip6_frag_hdr_offset = hdr_chain.eh[frag_index].offset;
 
 	  if (!ip6_full_reass_verify_fragment_multiple_8 (vm, node, b0,
 							  frag_hdr) ||
 	      !ip6_full_reass_verify_packet_size_lt_64k (vm, node, b0,
 							 frag_hdr))
 	    {
-	      next0 = is_custom_app ? fvnb->ip.reass.error_next_index :
-					    IP6_FULL_REASSEMBLY_NEXT_ICMP_ERROR;
+	      error0 = IP6_ERROR_REASS_INVALID_FRAG_SIZE;
+	      next0 = ip6_reass_icmp_error_allowed (ip0, &hdr_chain, false) ?
+			next_icmp_error :
+			IP6_FULL_REASSEMBLY_NEXT_DROP;
 	      goto skip_reass;
 	    }
 
