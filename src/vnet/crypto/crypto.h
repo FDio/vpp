@@ -605,6 +605,9 @@ vnet_crypto_register_key_change_handler (vlib_main_t *vm, vnet_crypto_engine_id_
 					 vnet_crypto_key_change_fn_t *key_change_fn,
 					 u16 key_data_sz);
 
+/* reserve async key data for engines registered after the ctx layout is set */
+__clib_export int vnet_crypto_reserve_async_key_data (u16 key_data_sz);
+
 /** async crypto register functions */
 __clib_export u32 vnet_crypto_register_post_node (vlib_main_t *vm, char *post_node_name);
 
@@ -686,6 +689,7 @@ typedef struct
   vnet_crypto_engine_id_t active_engine_index[VNET_CRYPTO_N_ALGS][VNET_CRYPTO_HANDLER_N_TYPES];
   vnet_crypto_ctx_layout_t ctx_layout[VNET_CRYPTO_N_ALGS];
   u8 layout_initialized;
+  u16 async_key_data_reserved;
   vnet_crypto_alg_data_t algs[VNET_CRYPTO_N_ALGS];
   vnet_crypto_hash_alg_data_t hash_algs[VNET_CRYPTO_N_HASH_ALGS];
   vnet_crypto_engine_id_t active_op_engine_index[VNET_CRYPTO_N_ALGS][VNET_CRYPTO_OP_N_TYPES]
