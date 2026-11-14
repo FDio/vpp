@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d61340ae_11881d1a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-14T07:39:06Z",
+      "side": 1,
+      "message": "Agreed, and implemented in PS6: payload_to_info and udp_packet_to_info are gone; callers use get_info_from_packet(packet). It reads the UDP bytes before Scapy reinterprets them and also handles Raw and ICMPv6 Echo packets. One intentional offset remains: the IPsec policy tests put their info after an ISAKMP header, so they pass packet[Raw] to the same function. PS4 exposed that case and PS5/6 add a regression test. The PS6 CI is still running; please let me know if you would prefer another way to express that offset.",
+      "parentUuid": "cc9a3c5e_80c9c2af",
+      "revId": "7b76caf59ae40822dbf7cba615effe9f6816b514",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
