@@ -8714,6 +8714,112 @@ cleanup:
   return rv;
 }
 
+/* Read part of a server rx fifo and notify tcp, like an app would */
+static u32
+tcp_test_read_rx_fifo (session_t *s, u32 n_bytes)
+{
+  int rv = svm_fifo_dequeue_drop (s->rx_fifo, n_bytes);
+
+  if (rv > 0 && svm_fifo_needs_deq_ntf (s->rx_fifo, rv))
+    {
+      svm_fifo_clear_deq_ntf (s->rx_fifo);
+      session_program_transport_io_evt (s->handle, SESSION_IO_EVT_RX);
+    }
+  return rv > 0 ? rv : 0;
+}
+
+/* The server does not read, so after two full segments it offers a window smaller than an mss and
+ * the client holds its data. Once the server reads half of its fifo, it sends a window update and
+ * the client sends again, without waiting for its persist timer. Fifos this small used to send an
+ * update only once empty */
+static int
+tcp_test_tamper_rcv_wnd_update (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "rcv_wnd_update",
+    .client_addr = 0x2c2c2c01,
+    .server_addr = 0x2d2d2d01,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2279,
+    .client_port = 0, /* ephemeral */
+    .secret = 2278,
+    .rx_fifo_size = 4 << 10,
+    .tx_fifo_size = 64 << 10,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc;
+  session_t *client_s, *server_s;
+  u32 smss, fill, total, una, tries, max_iters, read, drained = 0;
+  u8 *data = 0;
+  int error, rv = 0, i;
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "rcv_wnd_update: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "rcv_wnd_update: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Keep the pacer from splitting the client's bursts */
+  client_tc->connection.flags &= ~TRANSPORT_CONNECTION_F_IS_TX_PACED;
+  smss = client_tc->snd_mss;
+  fill = 2 * smss;
+  total = 4 * smss;
+  vec_validate (data, total - 1);
+  for (i = 0; i < (int) total; i++)
+    data[i] = i & 0xff;
+
+  una = client_tc->snd_una;
+  error = svm_fifo_enqueue (client_s->tx_fifo, total, data);
+  session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  for (tries = 0; tries < 100 && seq_lt (client_tc->snd_una, una + fill); tries++)
+    tcp_e2e_pump (vm, 1e-3);
+  tcp_e2e_pump (vm, 1e-3);
+  if (!TCP_TEST_I ((error == (int) total && client_tc->snd_una == una + fill &&
+		    client_tc->snd_nxt == una + fill && client_tc->snd_wnd < smss),
+		   "rcv_wnd_update: %u bytes acked, client holds with window %u", fill,
+		   client_tc->snd_wnd))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Well before the client's persist timer expires */
+  read = tcp_test_read_rx_fifo (server_s, params.rx_fifo_size / 2);
+  drained += read;
+  for (tries = 0; tries < 20 && client_tc->snd_nxt == una + fill; tries++)
+    tcp_e2e_pump (vm, 1e-3);
+  /* At least a full segment, so not what fits sent by the persist timer */
+  if (!TCP_TEST_I ((read == params.rx_fifo_size / 2 && client_tc->snd_nxt - (una + fill) >= smss),
+		   "rcv_wnd_update: server read %u and updated its window, client sent %u more",
+		   read, client_tc->snd_nxt - una - fill))
+    rv = 1;
+
+  max_iters = tcp_e2e_rxt_wait_iters (client_tc, 10e-3);
+  for (tries = 0; tries < max_iters && drained < total; tries++)
+    {
+      drained += session_test_drain_rx_fifo (server_s);
+      tcp_e2e_pump (vm, 10e-3);
+    }
+  if (!TCP_TEST_I ((drained == total), "rcv_wnd_update: all %u bytes delivered (got %u)", total,
+		   drained))
+    rv = 1;
+
+cleanup:
+  vec_free (data);
+  if (!tcp_e2e_teardown (vm, ctx))
+    rv = 1;
+  return rv;
+}
+
 static int
 tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -8743,6 +8849,7 @@ tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
     { "nosack-cwnd", tcp_test_tamper_nosack_cwnd },
     { "rcv-wnd-retract", tcp_test_tamper_rcv_wnd_retract },
     { "snd-small-wnd", tcp_test_tamper_snd_small_wnd },
+    { "rcv-wnd-update", tcp_test_tamper_rcv_wnd_update },
   };
   int res = 0, i;
 
