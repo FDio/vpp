@@ -45,7 +45,7 @@ func init() {
 		Http3PushControlFrameErrorsTest, Http3MaxPushIdTest, Http3ClientPushControlFramesTest,
 		Http3ReservedSettingsTest, Http3MissingSettingsTest, Http3SecondCtrlStreamTest,
 		Http3SecondQpackDecoderStreamTest, Http3SecondQpackEncoderStreamTest, Http3CtrlStreamClosedTest,
-		Http3FragmentedStreamTypeTest, Http3IncompleteStreamTypeCloseTest,
+		Http3FragmentedStreamTypeTest, Http3IncompleteStreamTypeCloseTest, Http3CriticalStreamFinTest,
 		Http3QpackDecompressionFailedTest, Http3ClientOpenPushStreamTest, Http3DataBeforeHeadersTest,
 		Http3LongerDataThanContentLengthTest, Http3HalfClosedBeforeAllDataTest, Http3StaticGetTest,
 		Http3MaxHeaderListSizeTest, Http3ServerHeadersFrameTooLargeTest, Http3ClientHeadersFrameTooLargeTest,
@@ -3082,6 +3082,60 @@ func Http3IncompleteStreamTypeCloseTest(s *Http3Suite) {
 			}
 			http3StreamTypeCheckRequest(conn)
 			AssertNil(context.Cause(conn.Context()), "closing a noncritical stream must not close the connection")
+			AssertNil(conn.CloseWithError(0, ""))
+		}
+	}
+	http3TestSessionCleanupServer(s)
+}
+
+func Http3CriticalStreamFinTest(s *Http3Suite) {
+	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
+	Log(s.Containers.Vpp.VppInstance.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
+	for _, tc := range []struct {
+		name       string
+		streamType uint64
+		payload    []byte
+	}{
+		{"control", 0x00, []byte{0x04, 0x00}},
+		{"encoder", 0x02, nil},
+		{"decoder", 0x03, nil},
+		{"partial encoder instruction", 0x02, []byte{0x3f}},
+	} {
+		for _, mode := range []string{"type and FIN", "known type", "fragmented type and FIN"} {
+			By(tc.name + ": " + mode)
+			conn := H3ClientConnect(serverAddress)
+			defer conn.CloseWithError(0, "")
+			if tc.streamType != 0x00 {
+				control, err := conn.OpenUniStream()
+				AssertNil(err)
+				_, err = control.Write([]byte{0x00, 0x04, 0x00})
+				AssertNil(err)
+			}
+			stream, err := conn.OpenUniStream()
+			AssertNil(err)
+			encoded := quicvarint.Append(nil, tc.streamType)
+			if mode == "fragmented type and FIN" {
+				encoded = quicvarint.AppendWithLen(nil, tc.streamType, 8)
+				_, err = stream.Write(encoded[:7])
+				AssertNil(err)
+				// Ensure VPP has seen an incomplete type before its last byte and FIN.
+				http3StreamTypeCheckRequest(conn)
+				encoded = encoded[7:]
+			}
+			_, err = stream.Write(append(encoded, tc.payload...))
+			AssertNil(err)
+			if mode == "known type" {
+				// Complete a request so the stream type is parsed before FIN.
+				http3StreamTypeCheckRequest(conn)
+			}
+			AssertNil(stream.Close())
+			select {
+			case <-conn.Context().Done():
+				expected := quic.ApplicationError{ErrorCode: quic.ApplicationErrorCode(http3.ErrCodeClosedCriticalStream), Remote: true}
+				AssertMatchError(context.Cause(conn.Context()), &expected)
+			case <-time.After(3 * time.Second):
+				Fail("FIN on a critical stream did not close the connection")
+			}
 			AssertNil(conn.CloseWithError(0, ""))
 		}
 	}

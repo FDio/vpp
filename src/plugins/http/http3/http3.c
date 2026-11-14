@@ -2095,27 +2095,36 @@ done:
   return max_deq - to_deq;
 }
 
+static_always_inline u64
+http3_stream_peek_type (http_ctx_t *stream, u32 *type_len)
+{
+  u8 buf[HTTP_VARINT_MAX_LEN], *p = buf;
+  u32 to_read;
+  u64 stream_type;
+
+  *type_len = 0;
+  to_read = clib_min (http_io_ts_max_read (stream), HTTP_VARINT_MAX_LEN);
+  if (!to_read)
+    return HTTP3_STREAM_TYPE_UNKNOWN;
+  http_io_ts_read (stream, buf, to_read, 1);
+  stream_type = http_decode_varint (&p, p + to_read);
+  *type_len = p - buf;
+  return stream_type;
+}
+
 static u32
 http3_stream_transport_rx_unknown_type (http_ctx_t *req, http_ctx_t *stream)
 {
-  u32 max_deq, to_deq, n_deq;
-  u8 *rx_buf, *p;
+  u32 n_deq;
   u64 stream_type;
   http_ctx_t *hc;
 
-  max_deq = http_io_ts_max_read (stream);
-  ASSERT (max_deq > 0);
-  to_deq = clib_min (max_deq, HTTP_VARINT_MAX_LEN);
-  rx_buf = http_get_rx_buf (stream);
-  http_io_ts_read (stream, rx_buf, to_deq, 1);
-  p = rx_buf;
-  stream_type = http_decode_varint (&p, p + to_deq);
+  stream_type = http3_stream_peek_type (stream, &n_deq);
   if (stream_type == HTTP_INVALID_VARINT)
     {
       HTTP_DBG (1, "stream type incomplete");
       return 0;
     }
-  n_deq = p - rx_buf;
   http_io_ts_drain (stream, n_deq);
   req->stream_type = stream_type;
   HTTP_DBG (1, "stream type %lx [%u]%x req %x", stream_type, stream->hc_hc_index,
@@ -2926,6 +2935,24 @@ http3_transport_stream_close_callback (http_ctx_t *stream)
 	    }
 	  HTTP_DBG (1, "peer control stream closed");
 	  req = http_ctx_get_w_thread (stream->http_req_index, stream->c_thread_index);
+	  u64 stream_type = req->stream_type;
+	  if (stream_type == HTTP3_STREAM_TYPE_UNKNOWN)
+	    {
+	      /* FIN can precede the queued RX event that identifies the stream. */
+	      u32 type_len;
+	      stream_type = http3_stream_peek_type (stream, &type_len);
+	    }
+	  if (stream_type == HTTP3_STREAM_TYPE_CONTROL ||
+	      stream_type == HTTP3_STREAM_TYPE_ENCODER || stream_type == HTTP3_STREAM_TYPE_DECODER)
+	    {
+	      http3_stream_error_terminate_conn (stream, req, HTTP3_ERROR_CLOSED_CRITICAL_STREAM);
+	      /* The application notification can grow the context pool. */
+	      stream = http_ctx_get_w_thread_if_valid (stream_index, thread_index);
+	      if (!stream || stream->state == HTTP_CONN_STATE_CLOSED ||
+		  stream->http_req_index == SESSION_INVALID_INDEX)
+		return;
+	      req = http_ctx_get_w_thread (stream->http_req_index, thread_index);
+	    }
 	  http3_stream_close (stream, req);
 	}
       else
