@@ -124,8 +124,10 @@ the shared connection.
 
 The streaming TX interface accepts body bytes only; it does not expose an API for
 sending trailer fields. Applications that require a known body length must check
-``msg.data.type`` before interpreting ``body_len``. The HTTP static server rejects
-streamed requests with ``411 Length Required``. The CLI client and server support
+``msg.data.type`` before interpreting ``body_len``. The HTTP static server discards
+streamed GET content within the configured request body size limit and handles
+requests after message completion. Other streamed requests are rejected with
+``411 Length Required``. The CLI client and server support
 streaming; use ``http cli client ... stream`` or ``http client put ...`` to
 send an unknown-length request, and the CLI server's ``/echo-stream`` endpoint
 for a streamed response.

@@ -60,10 +60,13 @@ typedef struct hss_session_
   u8 *rx_buff;
   /** Current RX buffer offset */
   u64 rx_buff_offset;
-  /** POST body left to receive */
+  /** Remaining known-length body bytes or streamed GET body size allowance */
   u64 left_recv;
+  /** Close the application session after its EOF-triggered reply is queued */
+  u8 streamed_get_reply;
   /** threshold for switching to pointers */
   u64 use_ptr_thresh;
+  /** Active body reader, cleared when request input completes */
   int (*read_body_handler) (struct hss_session_ *hs, session_t *ts);
 } hss_session_t;
 
