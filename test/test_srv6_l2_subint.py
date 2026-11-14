@@ -124,16 +124,6 @@ class TestSRv6L2Subint(VppTestCase):
         input.assert_nothing_captured()
         self.verify_captured_pkts(output, capture, compare_func)
 
-    def get_payload_info(self, packet):
-        """Extract the payload_info from the packet."""
-        try:
-            payload_info = self.get_info_from_packet(packet)
-        except Exception:
-            payload_info = self.get_info_from_packet(
-                Ether(scapy.compat.raw(packet[Raw]))
-            )
-        return payload_info
-
     def verify_captured_pkts(self, dst_if, capture, compare_func):
         """Verify captured packet stream."""
         last_info = dict()
@@ -143,7 +133,7 @@ class TestSRv6L2Subint(VppTestCase):
 
         for packet in capture:
             try:
-                payload_info = self.get_payload_info(packet)
+                payload_info = self.get_info_from_packet(packet)
                 packet_index = payload_info.index
                 self.assertEqual(payload_info.dst, dst_sw_if_index)
 

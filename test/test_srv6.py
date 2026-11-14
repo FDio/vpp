@@ -2417,22 +2417,6 @@ class TestSRv6(VppTestCase):
         p = IPv6(src="1234::1", dst=dst_outer, nh=143) / eth
         return p
 
-    def get_payload_info(self, packet):
-        """Extract the payload_info from the packet"""
-        # in most cases, payload_info is in packet[Raw]
-        # but packet[Raw] gives the complete payload
-        # (incl L2 header) for the T.Encaps L2 case
-        try:
-            payload_info = self.get_info_from_packet(packet)
-
-        except:
-            # remote L2 header from packet[Raw]:
-            # take packet[Raw], convert it to an Ether layer
-            # and then extract Raw from it
-            payload_info = self.get_info_from_packet(Ether(scapy.compat.r(packet[Raw])))
-
-        return payload_info
-
     def verify_captured_pkts(self, dst_if, capture, compare_func):
         """
         Verify captured packet stream for specified interface.
@@ -2455,7 +2439,7 @@ class TestSRv6(VppTestCase):
         for packet in capture:
             try:
                 # extract payload_info from packet's payload
-                payload_info = self.get_payload_info(packet)
+                payload_info = self.get_info_from_packet(packet)
                 packet_index = payload_info.index
 
                 self.logger.debug("Verifying packet with index %d" % (packet_index))
