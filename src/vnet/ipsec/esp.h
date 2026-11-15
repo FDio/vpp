@@ -223,41 +223,4 @@ typedef struct
 extern esp_async_post_next_t esp_encrypt_async_next;
 extern esp_async_post_next_t esp_decrypt_async_next;
 
-/* when submitting a frame is failed, drop all buffers in the frame */
-always_inline u32
-esp_async_recycle_failed_submit (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
-				 vlib_node_runtime_t *node, u32 err,
-				 u32 ipsec_sa_err, u16 index, u32 *from,
-				 u16 *nexts, u16 drop_next_index,
-				 bool is_encrypt)
-{
-  vlib_buffer_t *b;
-  u32 n_drop = f->n_elts;
-  u32 *bi = f->buffer_indices;
-
-  while (n_drop--)
-    {
-      u32 sa_index;
-
-      from[index] = bi[0];
-      b = vlib_get_buffer (vm, bi[0]);
-
-      if (is_encrypt)
-	{
-	  sa_index = vnet_buffer (b)->ipsec.sad_index;
-	}
-      else
-	{
-	  sa_index = esp_post_data (b)->decrypt_data.sa_index;
-	}
-
-      ipsec_set_next_index (b, node, vm->thread_index, err, ipsec_sa_err,
-			    index, nexts, drop_next_index, sa_index);
-      bi++;
-      index++;
-    }
-
-  return (f->n_elts);
-}
-
 #endif /* __ESP_H__ */
