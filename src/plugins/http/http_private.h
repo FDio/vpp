@@ -326,6 +326,15 @@ typedef enum
 
 STATIC_ASSERT (HTTP2_RX_EXPECT_STATE_NUM <= 4, "no more than 4 http2 rx expect states allowed");
 
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  /* Each worker owns its count, listener references are dropped under the barrier. */
+  u32 refcnt;
+  u8 *app_name;
+  u8 *h3_alt_svc_port;
+} http_listener_metadata_t;
+
 typedef struct http_ctx_
 {
   union
@@ -360,7 +369,14 @@ typedef struct http_ctx_
       u32 timer_handle;
       u8 *app_name;
       u8 *host;
-      u8 *h3_alt_svc_port;
+      union
+      {
+	http_listener_metadata_t *metadata;
+	http_listener_metadata_t **metadata_by_thread;
+      } listener_data;
+#define hc_listener_metadata  listener_data.metadata
+#define hl_metadata_by_thread listener_data.metadata_by_thread
+#define hc_h3_alt_svc_port    listener_data.metadata->h3_alt_svc_port
       http_conn_settings_t peer_settings;
       http_conn_settings_t settings;
       union

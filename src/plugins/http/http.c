@@ -288,6 +288,45 @@ http_ho_conn_alloc (void)
   return ho_hc->hc_hc_index;
 }
 
+static http_listener_metadata_t *
+http_listener_metadata_alloc (u8 *app_name, u8 *h3_alt_svc_port)
+{
+  http_listener_metadata_t *metadata;
+
+  metadata = clib_mem_alloc_aligned (sizeof (*metadata), CLIB_CACHE_LINE_BYTES);
+  metadata->refcnt = 1; /* listener reference */
+  metadata->app_name = vec_dup (app_name);
+  metadata->h3_alt_svc_port = vec_dup (h3_alt_svc_port);
+  return metadata;
+}
+
+static_always_inline void
+http_listener_metadata_ref (http_listener_metadata_t *metadata)
+{
+  ASSERT (metadata->refcnt > 0);
+  metadata->refcnt++;
+}
+
+static_always_inline void
+http_listener_metadata_unref (http_listener_metadata_t *metadata)
+{
+  ASSERT (metadata->refcnt > 0);
+  if (--metadata->refcnt)
+    return;
+
+  vec_free (metadata->app_name);
+  vec_free (metadata->h3_alt_svc_port);
+  clib_mem_free (metadata);
+}
+
+static void
+http_transport_ctx_free (http_ctx_t *hc)
+{
+  if (hc->flags & HTTP_CONN_F_IS_SERVER)
+    http_listener_metadata_unref (hc->hc_listener_metadata);
+  http_ctx_free (hc);
+}
+
 static u32
 http_listener_alloc (void)
 {
@@ -301,6 +340,7 @@ http_listener_alloc (void)
   lhc->version = HTTP_VERSION_NA;
   lhc->hc_tl_handle_tcp = SESSION_INVALID_HANDLE;
   lhc->hc_tl_handle_quic = SESSION_INVALID_HANDLE;
+  vec_add1 (lhc->hl_metadata_by_thread, http_listener_metadata_alloc (0, 0));
   return lhc->hc_hc_index;
 }
 
@@ -313,8 +353,12 @@ http_listener_get (u32 lhc_index)
 static void
 http_listener_free (http_ctx_t *lhc)
 {
-  vec_free (lhc->app_name);
-  vec_free (lhc->h3_alt_svc_port);
+  http_listener_metadata_t **metadata;
+
+  ASSERT (vlib_thread_is_main_w_barrier ());
+  vec_foreach (metadata, lhc->hl_metadata_by_thread)
+    http_listener_metadata_unref (*metadata);
+  vec_free (lhc->hl_metadata_by_thread);
   http_ctx_free (lhc);
 }
 
@@ -373,6 +417,8 @@ http_connect_transport_stream (u32 parent_index, clib_thread_index_t thread_inde
   hc->hc_hc_index = hc_index;
   hc->hc_http_conn_index = parent->hc_hc_index;
   hc->hc_ho_index = SESSION_INVALID_INDEX;
+  if (hc->flags & HTTP_CONN_F_IS_SERVER)
+    http_listener_metadata_ref (hc->hc_listener_metadata);
 
   hc_handle.version = parent->version;
   hc_handle.conn_index = hc_index;
@@ -392,7 +438,7 @@ http_connect_transport_stream (u32 parent_index, clib_thread_index_t thread_inde
   if ((error = vnet_connect_stream (cargs)))
     {
       HTTP_DBG (1, "stream connect failed: %U", format_session_error, error);
-      http_ctx_free (http_ctx_get_w_thread (hc_index, thread_index));
+      http_transport_ctx_free (http_ctx_get_w_thread (hc_index, thread_index));
       return error;
     }
 
@@ -635,6 +681,9 @@ http_ts_accept_connection (session_t *ts)
   hc = http_ctx_get_w_thread (hc_index, ts->thread_index);
   lhc = http_listener_get (ts_listener->opaque);
   clib_memcpy_fast (hc, lhc, sizeof (*lhc));
+  hc->hc_listener_metadata = lhc->hl_metadata_by_thread[ts->thread_index];
+  http_listener_metadata_ref (hc->hc_listener_metadata);
+  hc->app_name = hc->hc_listener_metadata->app_name;
   hc->timer_handle = HTTP_TIMER_HANDLE_INVALID;
   hc->c_thread_index = ts->thread_index;
   hc->hc_hc_index = hc_index;
@@ -674,6 +723,7 @@ http_ts_accept_connection (session_t *ts)
 	  break;
 	default:
 	  ASSERT (0);
+	  http_transport_ctx_free (hc);
 	  return -1;
 	}
     }
@@ -743,10 +793,12 @@ http_ts_accept_stream (session_t *stream_session)
   stream->c_flags |= TRANSPORT_CONNECTION_F_NO_LOOKUP;
   stream->state = HTTP_CONN_STATE_ESTABLISHED;
   stream->hc_http_conn_index = hc->hc_hc_index;
+  if (stream->flags & HTTP_CONN_F_IS_SERVER)
+    http_listener_metadata_ref (stream->hc_listener_metadata);
 
   if ((rv = http_vfts[stream->version].transport_stream_accept_callback (stream, hc)))
     {
-      http_ctx_free (stream);
+      http_transport_ctx_free (http_ctx_get_w_thread (stream_index, thread_index));
       return rv;
     }
 
@@ -1023,7 +1075,7 @@ http_ts_cleanup_callback (session_t *ts, session_cleanup_ntf_t ntf)
 	  vec_free (hc->host);
 	}
     }
-  http_ctx_free (hc);
+  http_transport_ctx_free (hc);
 }
 
 static void
@@ -1337,6 +1389,7 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   app_worker_t *app_wrk;
   application_t *app;
   http_ctx_t *lhc;
+  http_listener_metadata_t *metadata;
   u32 lhc_index;
   transport_endpt_ext_cfg_t *ext_cfg;
   segment_manager_props_t *props;
@@ -1356,6 +1409,7 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 
   lhc_index = http_listener_alloc ();
   lhc = http_listener_get (lhc_index);
+  metadata = lhc->hl_metadata_by_thread[0];
   HTTP_DBG (1, "app_listener_index %u http_listener_index %u",
 	    app_listener_index, lhc_index);
 
@@ -1366,7 +1420,7 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
       HTTP_DBG (1, "app set timeout %u", http_cfg->timeout);
       lhc->hc_timeout = http_cfg->timeout;
       if (http_cfg->h3_alt_svc_port)
-	lhc->h3_alt_svc_port = format (0, "h3=\":%u\"", http_cfg->h3_alt_svc_port);
+	metadata->h3_alt_svc_port = format (0, "h3=\":%u\"", http_cfg->h3_alt_svc_port);
       lhc->flags |=
 	http_cfg->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM ? HTTP_CONN_F_UDP_TUNNEL_DGRAM : 0;
       if (http_cfg->flags & HTTP_ENDPT_CFG_F_ENABLE_CONNECT_UDP_DRAFT03)
@@ -1427,8 +1481,9 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 
 	  if (listen_tls)
 	    {
-	      vec_free (lhc->h3_alt_svc_port);
-	      lhc->h3_alt_svc_port = format (0, "h3=\":%u\"", clib_net_to_host_u16 (sep->port));
+	      vec_free (metadata->h3_alt_svc_port);
+	      metadata->h3_alt_svc_port =
+		format (0, "h3=\":%u\"", clib_net_to_host_u16 (sep->port));
 	    }
 
 	  if (vnet_listen (args))
@@ -1493,9 +1548,14 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
   lhc->hr_hc_index = lhc_index;
 
   if (vec_len (app->name))
-    lhc->app_name = vec_dup (app->name);
+    metadata->app_name = vec_dup (app->name);
   else
-    lhc->app_name = format (0, "VPP server app");
+    metadata->app_name = format (0, "VPP server app");
+  lhc->app_name = metadata->app_name;
+
+  for (u32 i = 1; i < vec_len (hm->wrk); i++)
+    vec_add1 (lhc->hl_metadata_by_thread,
+	      http_listener_metadata_alloc (metadata->app_name, metadata->h3_alt_svc_port));
 
   return lhc_index;
 }
