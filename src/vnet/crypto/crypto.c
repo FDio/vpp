@@ -299,6 +299,7 @@ vnet_crypto_register_engine (vlib_main_t *vm, char *name, int prio, char *desc)
   p->name = name;
   p->desc = desc;
   p->priority = prio;
+  p->deq_node_index = ~0;
 
   hash_set_mem (cm->engine_index_by_name, p->name, engine);
 
@@ -424,18 +425,13 @@ vnet_crypto_register_ops_handler_inline (vlib_main_t *vm __clib_unused,
     crypto_update_key_handler_for_alg (cm, alg, VNET_CRYPTO_HANDLER_TYPE_CHAINED);
 }
 
-void
-vnet_crypto_register_enqueue_handler_by_alg (vlib_main_t *vm __clib_unused,
-					     vnet_crypto_engine_id_t engine, vnet_crypto_alg_t alg,
-					     vnet_crypto_op_type_t type,
-					     vnet_crypto_frame_enq_fn_t *enqueue_hdl)
+static void
+crypto_register_async_handler (vnet_crypto_engine_id_t engine, vnet_crypto_alg_t alg,
+			       vnet_crypto_op_type_t type, void *enqueue_hdl)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *e = vec_elt_at_index (cm->engines, engine);
   vnet_crypto_handler_type_t t = VNET_CRYPTO_HANDLER_TYPE_ASYNC;
-
-  if (enqueue_hdl == 0)
-    return;
 
   if (e->async_key_change_fn && e->key_change_fn[t][alg] == 0)
     {
@@ -451,6 +447,33 @@ vnet_crypto_register_enqueue_handler_by_alg (vlib_main_t *vm __clib_unused,
 
   crypto_register_handler (cm, e, alg, type, t, enqueue_hdl);
   vnet_crypto_async_engine_update (alg);
+}
+
+void
+vnet_crypto_register_enqueue_handler_by_alg (vlib_main_t *vm __clib_unused,
+					     vnet_crypto_engine_id_t engine, vnet_crypto_alg_t alg,
+					     vnet_crypto_op_type_t type,
+					     vnet_crypto_frame_enq_fn_t *enqueue_hdl)
+{
+  if (enqueue_hdl)
+    crypto_register_async_handler (engine, alg, type, enqueue_hdl);
+}
+
+void
+vnet_crypto_register_async_alg (vlib_main_t *vm, vnet_crypto_engine_id_t engine,
+				vnet_crypto_alg_t alg, vnet_crypto_op_type_t type,
+				u32 enq_node_index)
+{
+  vnet_crypto_engine_t *e = vec_elt_at_index (crypto_main.engines, engine);
+  vnet_crypto_engine_op_t *op = &e->ops[alg][type];
+  vlib_node_t *enq = vlib_get_node_by_name (vm, (u8 *) "crypto-enq");
+
+  ASSERT (e->deq_node_index != ~0);
+  op->enq_node_index = enq_node_index;
+  op->enq_next_index = vlib_node_add_next (vm, enq->index, enq_node_index);
+
+  /* frames go to the enqueue node, the handler slot only marks the algorithm as supported */
+  crypto_register_async_handler (engine, alg, type, e);
 }
 
 static vnet_crypto_engine_id_t
@@ -515,6 +538,13 @@ vnet_crypto_unregister_enqueue_handler_by_alg (vlib_main_t *vm __clib_unused,
 	     *active == VNET_CRYPTO_ENGINE_ID_NONE ? "none" : cm->engines[*active].name);
 
   vnet_crypto_async_engine_update (alg);
+}
+
+void
+vnet_crypto_unregister_async_alg (vlib_main_t *vm, vnet_crypto_engine_id_t engine,
+				  vnet_crypto_alg_t alg, vnet_crypto_op_type_t type)
+{
+  vnet_crypto_unregister_enqueue_handler_by_alg (vm, engine, alg, type);
 }
 
 static int
@@ -632,6 +662,23 @@ vnet_crypto_register_dequeue_handler (vlib_main_t *vm __clib_unused, vnet_crypto
 }
 
 void
+vnet_crypto_register_engine_deq_node (vlib_main_t *vm, vnet_crypto_engine_id_t engine,
+				      u32 deq_node_index)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_engine_t *e = vec_elt_at_index (cm->engines, engine);
+  vlib_node_t *drop = vlib_get_node_by_name (vm, (u8 *) "error-drop");
+  vnet_crypto_async_next_node_t *nn;
+
+  e->deq_node_index = deq_node_index;
+
+  /* next indices of crypto frames are crypto-deq next indices */
+  vlib_node_add_next_with_slot (vm, deq_node_index, drop->index, 0);
+  vec_foreach (nn, cm->next_nodes)
+    vlib_node_add_next_with_slot (vm, deq_node_index, nn->node_idx, nn->next_idx);
+}
+
+void
 vnet_crypto_set_engine_user_data (vnet_crypto_engine_id_t engine, uword user_data)
 {
   vec_elt_at_index (crypto_main.engines, engine)->user_data = user_data;
@@ -642,6 +689,7 @@ vnet_crypto_register_post_node (vlib_main_t * vm, char *post_node_name)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_async_next_node_t *nn = 0;
+  vnet_crypto_engine_t *e;
   vlib_node_t *cc, *pn;
   uword index = vec_len (cm->next_nodes);
 
@@ -661,6 +709,10 @@ vnet_crypto_register_post_node (vlib_main_t * vm, char *post_node_name)
   cc = vlib_get_node_by_name (vm, (u8 *) "crypto-deq");
   nn->next_idx = vlib_node_add_named_next (vm, cc->index, post_node_name);
   nn->node_idx = pn->index;
+
+  vec_foreach (e, cm->engines)
+    if (e->deq_node_index != ~0)
+      vlib_node_add_next_with_slot (vm, e->deq_node_index, pn->index, nn->next_idx);
 
   return nn->next_idx;
 }
@@ -932,6 +984,7 @@ vnet_crypto_init (vlib_main_t * vm)
   vnet_crypto_engine_t *p;
 
   vec_add2 (cm->engines, p, 1);
+  p->deq_node_index = ~0;
   cm->engine_index_by_name = hash_create_string ( /* size */ 0,
 						 sizeof (uword));
   cm->alg_index_by_name = hash_create_string (0, sizeof (uword));

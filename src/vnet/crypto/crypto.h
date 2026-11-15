@@ -122,23 +122,6 @@ typedef enum
     VNET_CRYPTO_OP_N_TYPES,
 } __clib_packed vnet_crypto_op_type_t;
 
-typedef struct
-{
-  u16 next_node_index;
-  vnet_crypto_op_type_t op_type;
-  u8 reserved;
-} vnet_crypto_deq_scalar_data_t;
-STATIC_ASSERT_SIZEOF (vnet_crypto_deq_scalar_data_t, sizeof (u32));
-
-static_always_inline void
-vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar (
-  vlib_main_t *vm, vlib_node_runtime_t *node, u32 *buffers, u64 *aux_data, u16 next_index,
-  u32 count, vnet_crypto_deq_scalar_data_t *scalar_data)
-{
-  vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar_size (
-    vm, node, buffers, aux_data, scalar_data, sizeof (*scalar_data), next_index, count);
-}
-
 #define foreach_crypto_op_status                                                                   \
   _ (0, UNPROCESSED, "unprocessed")                                                                \
   _ (1, PENDING, "pending")                                                                        \
@@ -335,6 +318,24 @@ typedef enum
 #undef _
 		VNET_CRYPTO_N_ALGS,
 } __clib_packed vnet_crypto_alg_t;
+
+/* scalar data of frames to crypto-enq and to engine enqueue nodes */
+typedef struct
+{
+  u16 next_node_index;
+  vnet_crypto_op_type_t op_type;
+  vnet_crypto_alg_t alg;
+} vnet_crypto_deq_scalar_data_t;
+STATIC_ASSERT_SIZEOF (vnet_crypto_deq_scalar_data_t, sizeof (u32));
+
+static_always_inline void
+vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar (
+  vlib_main_t *vm, vlib_node_runtime_t *node, u32 *buffers, u64 *aux_data, u16 next_index,
+  u32 count, vnet_crypto_deq_scalar_data_t *scalar_data)
+{
+  vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar_size (
+    vm, node, buffers, aux_data, scalar_data, sizeof (*scalar_data), next_index, count);
+}
 
 typedef enum
 {
@@ -621,6 +622,18 @@ __clib_export void vnet_crypto_unregister_enqueue_handler_by_alg (vlib_main_t *v
 								  vnet_crypto_alg_t alg,
 								  vnet_crypto_op_type_t type);
 
+/* async engines take frames in per algorithm enqueue nodes and complete them in one dequeue node */
+__clib_export void vnet_crypto_register_engine_deq_node (vlib_main_t *vm,
+							 vnet_crypto_engine_id_t engine,
+							 u32 deq_node_index);
+__clib_export void vnet_crypto_register_async_alg (vlib_main_t *vm, vnet_crypto_engine_id_t engine,
+						   vnet_crypto_alg_t alg,
+						   vnet_crypto_op_type_t type, u32 enq_node_index);
+__clib_export void vnet_crypto_unregister_async_alg (vlib_main_t *vm,
+						     vnet_crypto_engine_id_t engine,
+						     vnet_crypto_alg_t alg,
+						     vnet_crypto_op_type_t type);
+
 __clib_export void vnet_crypto_register_dequeue_handler (vlib_main_t *vm,
 							 vnet_crypto_engine_id_t engine,
 							 vnet_crypto_frame_dequeue_t *deq_fn);
@@ -630,6 +643,8 @@ __clib_export void vnet_crypto_set_engine_user_data (vnet_crypto_engine_id_t eng
 typedef struct
 {
   void *handlers[VNET_CRYPTO_HANDLER_N_TYPES];
+  u32 enq_node_index; /* async */
+  u16 enq_next_index; /* crypto-enq next index of enq_node_index */
 } vnet_crypto_engine_op_t;
 
 typedef struct
@@ -654,6 +669,7 @@ typedef struct
   uword user_data;
   vnet_crypto_key_change_fn_t *async_key_change_fn;
   u16 async_key_data_sz;
+  u32 deq_node_index;
 } vnet_crypto_engine_t;
 
 typedef struct
