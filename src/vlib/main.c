@@ -98,9 +98,15 @@ vlib_frame_alloc (vlib_main_t * vm, vlib_node_runtime_t * from_node_runtime,
 vlib_frame_t *
 vlib_get_frame_to_node (vlib_main_t * vm, u32 to_node_index)
 {
-  vlib_frame_t *f = vlib_frame_alloc_to_node (vm, to_node_index,
-					      /* frame_flags */
-					      VLIB_FRAME_FREE_AFTER_DISPATCH);
+  vlib_node_t *to_node = vlib_get_node (vm, to_node_index);
+  vlib_frame_t *f;
+
+  /* nodes which keep their frames free them */
+  if (to_node->flags & VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH)
+    f = vlib_frame_alloc_to_node (vm, to_node_index, 0);
+  else
+    f = vlib_frame_alloc_to_node (vm, to_node_index, VLIB_FRAME_FREE_AFTER_DISPATCH);
+
   return vlib_get_frame (vm, f);
 }
 
