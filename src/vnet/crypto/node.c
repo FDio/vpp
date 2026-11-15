@@ -36,15 +36,6 @@ typedef enum
   CRYPTO_ENQUEUE_N_NEXT,
 } crypto_enqueue_next_t;
 
-typedef struct
-{
-  vnet_crypto_alg_t alg;
-  vnet_crypto_op_type_t type;
-  vnet_crypto_engine_id_t engine;
-  u16 next_node_index;
-  vnet_crypto_async_frame_t *frame;
-} crypto_enqueue_frame_t;
-
 typedef enum
 {
 #define _(n, s) CRYPTO_DISPATCH_NEXT_##n,
@@ -207,145 +198,141 @@ crypto_dequeue_frame (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_crypto_th
   return n_cache;
 }
 
+/* engines without enqueue nodes get the buffers in async frames */
+static_always_inline u32
+crypto_enq_async_frames (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_crypto_thread_t *ct,
+			 vnet_crypto_engine_t *e, vnet_crypto_alg_t alg, vnet_crypto_op_type_t type,
+			 u16 next_node_index, u32 *bi, vnet_crypto_ctx_t **ctx, u32 n, u32 *drop_bi)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_frame_enq_fn_t *fn = e->ops[alg][type].handlers[VNET_CRYPTO_HANDLER_TYPE_ASYNC];
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  u32 n_drop = 0;
+
+  while (n)
+    {
+      u32 n_elts = clib_min (n, VNET_CRYPTO_FRAME_SIZE);
+      vnet_crypto_async_frame_t *f;
+
+      if (PREDICT_FALSE (pool_free_elts (ct->frame_pool) == 0))
+	{
+	  vlib_node_increment_counter (vm, node->node_index,
+				       VNET_CRYPTO_ASYNC_ERROR_ENQUEUE_FAIL_NO_FRAME, n);
+	  clib_memcpy_fast (drop_bi + n_drop, bi, n * sizeof (bi[0]));
+	  return n_drop + n;
+	}
+
+      pool_get_aligned (ct->frame_pool, f, CLIB_CACHE_LINE_BYTES);
+#if CLIB_DEBUG > 0
+      clib_memset (f, 0xfe, sizeof (*f));
+#endif
+      f->state = VNET_CRYPTO_FRAME_STATE_PENDING;
+      f->alg = alg;
+      f->type = type;
+      f->n_elts = 0;
+      f->enqueue_thread_index = vm->thread_index;
+      f->user_data = e->user_data;
+      clib_memset (f->bad_hmac_bitmap, 0, sizeof (f->bad_hmac_bitmap));
+      clib_memset (f->engine_error_bitmap, 0, sizeof (f->engine_error_bitmap));
+
+      for (u32 i = 0; i < n_elts; i++)
+	vnet_crypto_async_add_to_frame (vm, f, ctx[i], bi[i], next_node_index);
+
+      if (PREDICT_TRUE (fn (vm, f) == 0))
+	{
+	  for (u32 j = 0; j < tm->n_vlib_mains; j++)
+	    vlib_node_set_interrupt_pending (vlib_get_main_by_index (j), cm->crypto_node_index);
+	}
+      else
+	{
+	  for (u32 j = 0; j < f->n_elts; j++)
+	    vlib_crypto_async_frame_set_engine_error (f, j);
+	  f->state = VNET_CRYPTO_FRAME_STATE_COMPLETED;
+	  vnet_crypto_async_complete_frame (vm, f);
+	  vlib_node_set_interrupt_pending (vm, cm->crypto_node_index);
+	  vlib_node_increment_counter (vm, node->node_index,
+				       VNET_CRYPTO_ASYNC_ERROR_FAIL_ENGINE_ERR, n_elts);
+	}
+
+      bi += n_elts;
+      ctx += n_elts;
+      n -= n_elts;
+    }
+
+  return n_drop;
+}
+
 VLIB_NODE_FN (crypto_enq_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_thread_t *ct = cm->threads + vm->thread_index;
-  crypto_enqueue_frame_t frames[VLIB_FRAME_SIZE] = {};
+  vnet_crypto_handler_type_t t = VNET_CRYPTO_HANDLER_TYPE_ASYNC;
   u32 *from = vlib_frame_vector_args (frame);
   vnet_crypto_ctx_t **ctx = vlib_frame_aux_args (frame);
   vnet_crypto_deq_scalar_data_t *scalar = vlib_frame_scalar_args (frame);
-  u32 drop_bi[VLIB_FRAME_SIZE];
-  u32 i;
-  u32 n_drop = 0;
-  u32 n_frames = 0;
-  u32 n_left = frame->n_vectors;
+  vnet_crypto_op_type_t type = scalar->op_type;
+  vnet_crypto_engine_id_t engines[VLIB_FRAME_SIZE];
+  u32 bi[VLIB_FRAME_SIZE], drop_bi[VLIB_FRAME_SIZE];
+  vnet_crypto_ctx_t *ctxs[VLIB_FRAME_SIZE];
+  u32 n_vectors = frame->n_vectors, n_left = n_vectors, n_drop = 0;
+  u8 done[VLIB_FRAME_SIZE] = {};
 
-  while (n_left--)
+  for (u32 i = 0; i < n_vectors; i++)
     {
-      vnet_crypto_async_frame_t *f = 0;
-      vnet_crypto_engine_id_t engine;
-      vnet_crypto_op_type_t type;
+      engines[i] = vnet_crypto_ctx_get_engine (ctx[i], t);
+      if (engines[i] == VNET_CRYPTO_ENGINE_ID_NONE)
+	engines[i] = cm->active_op_engine_index[ctx[i]->alg][type][t];
+    }
+
+  /* buffers of each algorithm and engine pair go out together */
+  for (u32 first = 0; n_left; first++)
+    {
       vnet_crypto_alg_t alg;
-      u32 bi;
-      u32 i;
+      vnet_crypto_engine_t *e;
+      u32 n = 0;
 
-      bi = from[0];
-      alg = ctx[0]->alg;
-      type = scalar->op_type;
-      engine = vnet_crypto_ctx_get_engine (ctx[0], VNET_CRYPTO_HANDLER_TYPE_ASYNC);
+      if (done[first])
+	continue;
 
-      for (i = 0; i < n_frames; i++)
-	if (frames[i].alg == alg && frames[i].type == type && frames[i].engine == engine &&
-	    frames[i].next_node_index == scalar->next_node_index &&
-	    frames[i].frame->n_elts != VNET_CRYPTO_FRAME_SIZE)
+      alg = ctx[first]->alg;
+      for (u32 i = first; i < n_vectors; i++)
+	if (done[i] == 0 && ctx[i]->alg == alg && engines[i] == engines[first])
 	  {
-	    f = frames[i].frame;
-	    break;
+	    bi[n] = from[i];
+	    ctxs[n++] = ctx[i];
+	    done[i] = 1;
 	  }
+      n_left -= n;
 
-      if (f == 0)
+      e = vec_elt_at_index (cm->engines, engines[first]);
+      if (PREDICT_FALSE (e->ops[alg][type].handlers[t] == 0))
 	{
-	  if (PREDICT_TRUE (pool_free_elts (ct->frame_pool)))
-	    {
-	      pool_get_aligned (ct->frame_pool, f, CLIB_CACHE_LINE_BYTES);
-#if CLIB_DEBUG > 0
-	      clib_memset (f, 0xfe, sizeof (*f));
-#endif
-	      f->state = VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED;
-	      f->alg = alg;
-	      f->type = type;
-	      f->n_elts = 0;
-	      clib_memset (f->bad_hmac_bitmap, 0, sizeof (f->bad_hmac_bitmap));
-	      clib_memset (f->engine_error_bitmap, 0, sizeof (f->engine_error_bitmap));
-	    }
-	  if (PREDICT_FALSE (f == 0))
-	    {
-	      drop_bi[n_drop++] = bi;
-	      vlib_node_increment_counter (vm, node->node_index,
-					   VNET_CRYPTO_ASYNC_ERROR_ENQUEUE_FAIL_NO_FRAME, 1);
-	      goto next;
-	    }
-
-	  frames[n_frames++] = (crypto_enqueue_frame_t){
-	    .alg = alg,
-	    .type = type,
-	    .engine = engine,
-	    .next_node_index = scalar->next_node_index,
-	    .frame = f,
-	  };
+	  vlib_node_increment_counter (vm, node->node_index,
+				       VNET_CRYPTO_ASYNC_ERROR_FAIL_NO_HANDLER, n);
+	  clib_memcpy_fast (drop_bi + n_drop, bi, n * sizeof (bi[0]));
+	  n_drop += n;
 	}
+      else if (e->deq_node_index != ~0)
+	{
+	  vnet_crypto_deq_scalar_data_t s = {
+	    .next_node_index = scalar->next_node_index,
+	    .op_type = type,
+	    .alg = alg,
+	  };
 
-      vnet_crypto_async_add_to_frame (vm, f, ctx[0], bi, scalar->next_node_index);
-
-    next:
-      from++;
-      ctx++;
+	  vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar (
+	    vm, node, bi, (u64 *) ctxs, e->ops[alg][type].enq_next_index, n, &s);
+	}
+      else
+	n_drop += crypto_enq_async_frames (vm, node, ct, e, alg, type, scalar->next_node_index, bi,
+					   ctxs, n, drop_bi + n_drop);
     }
 
   if (n_drop)
     vlib_buffer_enqueue_to_single_next (vm, node, drop_bi, CRYPTO_ENQUEUE_NEXT_ERR_DROP, n_drop);
 
-  for (i = 0; i < n_frames; i++)
-    {
-      vnet_crypto_async_frame_t *f = frames[i].frame;
-      vnet_crypto_engine_id_t engine;
-      vnet_crypto_frame_enq_fn_t *fn = 0;
-      uword user_data = 0;
-      u32 j;
-      int ret;
-
-      engine = vnet_crypto_ctx_get_engine (f->ctxs[0], VNET_CRYPTO_HANDLER_TYPE_ASYNC);
-      if (engine == VNET_CRYPTO_ENGINE_ID_NONE)
-	engine = cm->active_op_engine_index[f->alg][f->type][VNET_CRYPTO_HANDLER_TYPE_ASYNC];
-      if (engine != VNET_CRYPTO_ENGINE_ID_NONE)
-	{
-	  vnet_crypto_engine_t *e = vec_elt_at_index (cm->engines, engine);
-
-	  fn = e->ops[f->alg][f->type].handlers[VNET_CRYPTO_HANDLER_TYPE_ASYNC];
-	  user_data = e->user_data;
-	}
-
-      f->state = VNET_CRYPTO_FRAME_STATE_PENDING;
-      f->enqueue_thread_index = vm->thread_index;
-      f->user_data = user_data;
-
-      if (PREDICT_FALSE (fn == 0))
-	{
-	  for (j = 0; j < f->n_elts; j++)
-	    vlib_crypto_async_frame_set_engine_error (f, j);
-	  f->state = VNET_CRYPTO_FRAME_STATE_COMPLETED;
-	  vnet_crypto_async_complete_frame (vm, f);
-	  vlib_node_set_interrupt_pending (vm, cm->crypto_node_index);
-	  ret = -1;
-	}
-      else
-	{
-	  vlib_thread_main_t *tm = vlib_get_thread_main ();
-
-	  ret = fn (vm, f);
-	  if (PREDICT_TRUE (ret == 0))
-	    {
-	      for (j = 0; j < tm->n_vlib_mains; j++)
-		vlib_node_set_interrupt_pending (vlib_get_main_by_index (j), cm->crypto_node_index);
-	    }
-	  else
-	    {
-	      for (j = 0; j < f->n_elts; j++)
-		vlib_crypto_async_frame_set_engine_error (f, j);
-	      f->state = VNET_CRYPTO_FRAME_STATE_COMPLETED;
-	      vnet_crypto_async_complete_frame (vm, f);
-	      vlib_node_set_interrupt_pending (vm, cm->crypto_node_index);
-	    }
-	}
-
-      if (ret < 0)
-	vlib_node_increment_counter (vm, node->node_index, VNET_CRYPTO_ASYNC_ERROR_FAIL_ENGINE_ERR,
-				     f->n_elts);
-    }
-
-  return frame->n_vectors;
+  return n_vectors;
 }
 
 VLIB_REGISTER_NODE (crypto_enq_node) = {
