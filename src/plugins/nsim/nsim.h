@@ -16,7 +16,8 @@
 #include <vppinfra/error.h>
 #include <nsim/nsim_model.h>
 
-#define NSIM_MAX_TX_BURST 32	/**< max packets in a tx burst */
+#define NSIM_MAX_TX_BURST    32		     /**< max packets in a tx burst */
+#define NSIM_MAX_TX_PER_POLL VLIB_FRAME_SIZE /**< max packets released per poll */
 
 typedef struct
 {
