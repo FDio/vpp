@@ -1316,8 +1316,8 @@ http2_sched_dispatch_resp_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissi
       http2_stream_error (hc, req, HTTP2_ERROR_INTERNAL_ERROR);
       return 0;
     }
-  control_data.alt_svc = hc->h3_alt_svc_port;
-  control_data.alt_svc_len = vec_len (hc->h3_alt_svc_port);
+  control_data.alt_svc = hc->hc_h3_alt_svc_port;
+  control_data.alt_svc_len = vec_len (hc->hc_h3_alt_svc_port);
 
   if (msg.data.headers_len)
     {

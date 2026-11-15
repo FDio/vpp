@@ -7,6 +7,7 @@ import (
 func init() {
 	RegisterNoTopoTests(HttpUnitTest, TcpUnitTest, UdpUnitTest, SvmUnitTest, SessionUnitTest, QuicUnitTest,
 		QuicQuiclyUnitTest)
+	RegisterNoTopoMWTests(HttpListenerMetadataMWTest)
 }
 
 func runUnitTest(s *NoTopoSuite, vppCmd string) {
@@ -18,6 +19,12 @@ func runUnitTest(s *NoTopoSuite, vppCmd string) {
 
 func HttpUnitTest(s *NoTopoSuite) {
 	runUnitTest(s, "test http all")
+}
+
+func HttpListenerMetadataMWTest(s *NoTopoSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
+	runUnitTest(s, "test http listener-metadata")
 }
 
 func QuicUnitTest(s *NoTopoSuite) {
