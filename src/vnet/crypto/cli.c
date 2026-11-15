@@ -577,29 +577,31 @@ VLIB_CLI_COMMAND (set_crypto_handler_command, static) = {
 };
 
 static clib_error_t *
-show_crypto_async_status_command_fn (vlib_main_t * vm,
-				     unformat_input_t * input,
-				     vlib_cli_command_t * cmd)
+show_crypto_async_status_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				     vlib_cli_command_t *cmd)
 {
+  static const char *state_names[] = {
+    [VLIB_NODE_STATE_POLLING] = "POLLING",
+    [VLIB_NODE_STATE_INTERRUPT] = "INTERRUPT",
+    [VLIB_NODE_STATE_DISABLED] = "DISABLED",
+  };
   vnet_crypto_main_t *cm = &crypto_main;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  unformat_input_t _line_input, *line_input = &_line_input;
-  int i;
+  vnet_crypto_engine_t *e;
 
-  if (unformat_user (input, unformat_line_input, line_input))
-    unformat_free (line_input);
-
-  for (i = 0; i < tm->n_vlib_mains; i++)
+  vec_foreach (e, cm->engines)
     {
-      vlib_node_state_t state = vlib_node_get_state (
-	vlib_get_main_by_index (i), cm->crypto_node_index);
-      if (state == VLIB_NODE_STATE_POLLING)
-	vlib_cli_output (vm, "threadId: %-6d POLLING", i);
-      if (state == VLIB_NODE_STATE_INTERRUPT)
-	vlib_cli_output (vm, "threadId: %-6d INTERRUPT", i);
-      if (state == VLIB_NODE_STATE_DISABLED)
-	vlib_cli_output (vm, "threadId: %-6d DISABLED", i);
+      if (e->deq_node_index == ~0)
+	continue;
+
+      vlib_cli_output (vm, "%s:", e->name);
+      for (u32 i = 0; i < vlib_get_n_threads (); i++)
+	{
+	  vlib_node_state_t state =
+	    vlib_node_get_state (vlib_get_main_by_index (i), e->deq_node_index);
+	  vlib_cli_output (vm, "  threadId: %-6d %s", i, state_names[state]);
+	}
     }
+
   return 0;
 }
 
