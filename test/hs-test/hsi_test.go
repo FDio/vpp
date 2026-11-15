@@ -21,7 +21,9 @@ func init() {
 		HsiProxyLiteUdpIdleTimeoutTest, HsiProxyLiteUdpIpv6IdleTimeoutTest,
 		HsiProxyLiteDrainCacheOverflowTest,
 		HsiProxyLiteDrainTimeoutTest, HsiTrackerTcpHalfCloseTest,
-		HsiTrackerTcpHalfCloseTimeoutTest, HsiTrackerTcpInvalidRstTest,
+		HsiTrackerTcpHalfCloseTimeoutTest, HsiTrackerTcpIdleTimeoutTest,
+		HsiTrackerTcpIdleTrackArgTest, HsiTrackerTcpIdleDisabledTest,
+		HsiTrackerTcpInvalidRstTest,
 		HsiTrackerTcpFinDuplicateTest, HsiTrackerTcpFinRetransmitTest,
 		HsiTrackerTcpOptionRewriteTest,
 		HsiProxyLiteUdpDrainCacheOverflowTest,
@@ -885,6 +887,81 @@ func HsiTrackerTcpHalfCloseTimeoutTest(s *HsiSuite) {
 	AssertEqual(0, HsiCounterValue(hsi, "tcp-rst-cleanup"))
 	AssertProxyLiteSessionsCleaned(s)
 	AssertProxyLiteHsiCleanups(vpp, 2)
+}
+
+// Tracks a proxy-lite tcp pair, with hsi's default tcp idle timeout set to
+// hsiTimeout, that exchanges data once more after it's tracked and then stays
+// open and idle until release. Options are passed to proxy-lite. Returns when
+// the pair's last packet was forwarded, at the latest.
+func startHsiTrackerTcpIdle(s *HsiSuite, hsiTimeout string, release <-chan struct{},
+	options ...string) time.Time {
+	vpp := s.Containers.Vpp.VppInstance
+	Log(vpp.Vppctl("hsi tcp idle-timeout " + hsiTimeout))
+	s.StartProxyLiteTcp4(append([]string{"hsi-offload"}, options...)...)
+	want := "tcp idle-timeout " + hsiTimeout
+	if hsiTimeout == "~0" {
+		want = "tcp idle-timeout never"
+	}
+	AssertContains(vpp.Vppctl("show hsi"), want)
+
+	readyPath, signalPath := HsiTempSignalPaths()
+	defer os.Remove(readyPath)
+	defer os.Remove(signalPath)
+	finished := StartHsiTcpIdleClient(s.ServerAddr(), s.Ports.Server, s.NetNamespaces.Client,
+		readyPath, signalPath, release)
+	WaitForFile(readyPath, 5*time.Second)
+	WaitProxyLiteTracked(vpp, func() {})
+	AssertNil(os.WriteFile(signalPath, []byte("go"), 0644))
+	AssertNil((<-finished).Err)
+	return time.Now()
+}
+
+// Checks that the idle pair, with an idle timeout of 2 seconds, is cleaned up,
+// and the app notified, although neither side closes. Cleanup is a timeout
+// after the last packet and at most a wheel tick later.
+func runHsiTrackerTcpIdleCleanupTest(s *HsiSuite, hsiTimeout string, options ...string) {
+	closeServer := StartHsiTcpHalfOpenServer(s.ServerAddr(), s.Ports.Server, "")
+	defer closeServer()
+	release := make(chan struct{})
+	defer close(release)
+	last := startHsiTrackerTcpIdle(s, hsiTimeout, release, options...)
+
+	vpp := s.Containers.Vpp.VppInstance
+	time.Sleep(time.Until(last.Add(1500 * time.Millisecond)))
+	AssertEqual(0, HsiCounterValue(vpp.Vppctl("show hsi"), "tcp-idle-cleanup"))
+	hsi := WaitHsiCounterAtLeastWithin(vpp, "tcp-idle-cleanup", 1,
+		time.Until(last.Add(4500*time.Millisecond)))
+	Log(hsi)
+	AssertEqual(0, HsiCounterValue(hsi, "tcp-fin-cleanup"))
+	AssertEqual(0, HsiCounterValue(hsi, "tcp-rst-cleanup"))
+	AssertProxyLiteSessionsCleaned(s)
+	AssertProxyLiteHsiCleanups(vpp, 2)
+}
+
+// Pairs tracked without their own idle timeout use hsi's default.
+func HsiTrackerTcpIdleTimeoutTest(s *HsiSuite) {
+	runHsiTrackerTcpIdleCleanupTest(s, "2")
+}
+
+// A pair's own idle timeout applies although hsi's default keeps idle pairs.
+func HsiTrackerTcpIdleTrackArgTest(s *HsiSuite) {
+	runHsiTrackerTcpIdleCleanupTest(s, "~0", "hsi-idle-timeout 2")
+}
+
+// Pairs tracked with an idle timeout of ~0 are kept, although hsi's default
+// would clean them up.
+func HsiTrackerTcpIdleDisabledTest(s *HsiSuite) {
+	closeServer := StartHsiTcpHalfOpenServer(s.ServerAddr(), s.Ports.Server, "")
+	defer closeServer()
+	release := make(chan struct{})
+	defer close(release)
+	startHsiTrackerTcpIdle(s, "2", release, "hsi-idle-timeout ~0")
+
+	time.Sleep(8 * time.Second)
+	hsi := s.Containers.Vpp.VppInstance.Vppctl("show hsi")
+	Log(hsi)
+	AssertEqual(0, HsiCounterValue(hsi, "tcp-idle-cleanup"))
+	AssertContains(hsi, "tcp-tracked session")
 }
 
 func HsiTrackerTcpInvalidRstTest(s *HsiSuite) {
