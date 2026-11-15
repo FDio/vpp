@@ -54,20 +54,23 @@ typedef enum
   NSIM_N_NEXT,
 } nsim_next_t;
 
+/* Release up to max_tx packets of one wheel, those due by until */
 always_inline uword
 nsim_drain_wheel (vlib_main_t *vm, vlib_node_runtime_t *node, nsim_worker_t *nsw, nsim_wheel_t *wp,
-		  f64 now, int is_trace)
+		  f64 now, f64 until, u32 max_tx, int is_trace)
 {
   nsim_wheel_entry_t *ep;
+
+  ASSERT (max_tx <= NSIM_MAX_TX_BURST);
 
   if (wp->cursize == 0)
     return 0;
 
   ep = wp->entries + wp->head;
-  if (ep->tx_time > now)
+  if (ep->tx_time > until)
     return 0;
 
-  u32 n_burst = clib_min (wp->cursize, NSIM_MAX_TX_BURST), n_tx_packets = 0;
+  u32 n_burst = clib_min (wp->cursize, max_tx), n_tx_packets = 0;
   u32 froms[NSIM_MAX_TX_BURST], *from;
   u16 nexts[NSIM_MAX_TX_BURST], *next;
 
@@ -76,7 +79,7 @@ nsim_drain_wheel (vlib_main_t *vm, vlib_node_runtime_t *node, nsim_worker_t *nsw
   while (n_tx_packets < n_burst)
     {
       ep = wp->entries + wp->head;
-      if (ep->tx_time > now)
+      if (ep->tx_time > until)
 	break;
 
       /* Prefetch the next cache line while draining a due backlog. */
@@ -129,17 +132,34 @@ nsim_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f, 
 {
   nsim_main_t *nsm = &nsim_main;
   nsim_worker_t *nsw = vec_elt_at_index (nsm->workers, vm->thread_index);
-  nsim_wheel_t *wp = nsw->wheel;
-  f64 now = vlib_time_now (vm);
-  uword n_tx;
+  nsim_wheel_t *wp = nsw->wheel, *rwp = nsw->reorder_wheel, *w;
+  f64 now = vlib_time_now (vm), until;
+  uword n_tx = 0, n;
 
-  n_tx = nsim_drain_wheel (vm, node, nsw, wp, now, is_trace);
-
-  /* Also drain the side wheel of late-reordered packets, if present. */
-  if (PREDICT_FALSE (nsw->reorder_wheel != 0))
+  /* Release all that is due, up to a frame per poll, so the wheels never fall behind their
+   * departure times. Both share the link: drain the one with the earlier head, up to the other's */
+  do
     {
-      n_tx += nsim_drain_wheel (vm, node, nsw, nsw->reorder_wheel, now, is_trace);
+      w = wp;
+      until = now;
+      if (PREDICT_FALSE (rwp != 0) && rwp->cursize)
+	{
+	  f64 reorder_head = rwp->entries[rwp->head].tx_time;
+
+	  if (!wp->cursize || reorder_head < wp->entries[wp->head].tx_time)
+	    {
+	      if (wp->cursize)
+		until = clib_min (now, wp->entries[wp->head].tx_time);
+	      w = rwp;
+	    }
+	  else
+	    until = clib_min (now, reorder_head);
+	}
+      n = nsim_drain_wheel (vm, node, nsw, w, now, until,
+			    clib_min (NSIM_MAX_TX_PER_POLL - n_tx, NSIM_MAX_TX_BURST), is_trace);
+      n_tx += n;
     }
+  while (n && n_tx < NSIM_MAX_TX_PER_POLL);
 
   return n_tx;
 }
