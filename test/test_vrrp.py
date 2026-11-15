@@ -230,14 +230,14 @@ class VppVRRPVirtualRouter(VppObject):
         vr_details = self.query_vpp_config()
         return vr_details.runtime.master_down_int * 0.01
 
-    def vrrp_adv_packet(self, prio=None, src_ip=None):
+    def vrrp_adv_packet(self, prio=None, src_ip=None, adv=None):
         dst_ip = self._adv_dest_ip
         if prio is None:
             prio = self._prio
+        if adv is None:
+            adv = self._intvl
         eth = Ether(dst=self._adv_dest_mac, src=self._virtual_mac)
-        vrrp = VRRPv3(
-            vrid=self._vr_id, priority=prio, ipcount=len(self._vips), adv=self._intvl
-        )
+        vrrp = VRRPv3(vrid=self._vr_id, priority=prio, ipcount=len(self._vips), adv=adv)
         if self._is_ipv6:
             src_ip = self._intf.local_ip6_ll if src_ip is None else src_ip
             ip = IPv6(src=src_ip, dst=dst_ip, nh=IPPROTO_VRRP, hlim=255)
@@ -639,6 +639,44 @@ class TestVRRP4(VppTestCase):
         self.pg0.enable_capture()
         self.pg0.wait_for_packet(timeout=intvl_s, filter_out_fn=is_not_adv)
         vr.assert_state_equals(VRRP_VR_STATE_MASTER)
+
+    def test_vrrp4_backup_learns_master_adv_int(self):
+        """IPv4 Backup VR keeps a master advertisement interval over 255 cs"""
+
+        vr_id = 100
+        prio = 100
+        intvl = self._default_adv
+        master_intvl = 300  # does not fit in 8 bits
+        vip = self.pg0.remote_ip4
+        vr = VppVRRPVirtualRouter(
+            self,
+            self.pg0,
+            vr_id,
+            prio=prio,
+            intvl=intvl,
+            flags=self._default_flags,
+            vips=[vip],
+        )
+        self._vrs.append(vr)
+        vr.add_vpp_config()
+        vr.start_stop(is_start=1)
+        vr.assert_state_equals(VRRP_VR_STATE_BACKUP)
+
+        # a higher priority master advertising every 3 seconds
+        pkts = [
+            vr.vrrp_adv_packet(
+                prio=prio + 10, src_ip=self.pg0.remote_ip4, adv=master_intvl
+            )
+        ]
+        self.send_and_assert_no_replies(self.pg0, pkts, timeout=intvl * 0.01)
+
+        # RFC 9568 6.1: Skew_Time and Master_Down_Interval follow the
+        # master's interval, not our own
+        rt = vr.query_vpp_config().runtime
+        skew = ((256 - prio) * master_intvl) // 256
+        self.assertEqual(rt.master_adv_int, master_intvl)
+        self.assertEqual(rt.master_down_int, 3 * master_intvl + skew)
+        vr.assert_state_equals(VRRP_VR_STATE_BACKUP)
 
     @unittest.skipUnless(config.extended, "part of extended tests")
     def test_vrrp4_master_preempted(self):
