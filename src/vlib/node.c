@@ -110,6 +110,9 @@ vlib_node_runtime_update (vlib_main_t * vm, u32 node_index, u32 next_index)
   next_node = vlib_get_node (vm, node->next_nodes[next_index]);
   nf = nm->next_frames + r->next_frame_index + next_index;
   nf->node_runtime_index = next_node->runtime_index;
+  nf->flags &= ~VLIB_FRAME_NO_FREE_AFTER_DISPATCH;
+  if (next_node->flags & VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH)
+    nf->flags |= VLIB_FRAME_NO_FREE_AFTER_DISPATCH;
 
   vlib_worker_thread_node_runtime_update ();
 }
