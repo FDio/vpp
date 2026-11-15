@@ -16,6 +16,24 @@
       "message": "!conn? I hope that\u0027s not possible :)",
       "revId": "e196f236264148249efa5df9b115579ce949ee3c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "da33b2f5_7ddf836a",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1768,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-15T10:15:24Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "49935f79_080fcf03",
+      "revId": "e196f236264148249efa5df9b115579ce949ee3c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
