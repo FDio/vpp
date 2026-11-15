@@ -1205,6 +1205,9 @@ ip6_full_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  ip6_frag_hdr_t *frag_hdr = NULL;
 	  ip6_ext_hdr_chain_t hdr_chain;
 	  vnet_buffer_opaque_t *fvnb = vnet_buffer (b0);
+	  /* Read the error next index before the ICMP fields overwrite the reassembly union. */
+	  u32 next_icmp_error =
+	    is_custom_app ? fvnb->ip.reass.error_next_index : IP6_FULL_REASSEMBLY_NEXT_ICMP_ERROR;
 
 	  int res = ip6_ext_header_walk (
 	    b0, ip0, IP_PROTOCOL_IPV6_FRAGMENTATION, &hdr_chain);
@@ -1240,8 +1243,7 @@ ip6_full_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      if (!ip6_full_reass_verify_upper_layer_present (node, b0,
 							      &hdr_chain))
 		{
-		  next0 = is_custom_app ? fvnb->ip.reass.error_next_index :
-						IP6_FULL_REASSEMBLY_NEXT_ICMP_ERROR;
+		  next0 = next_icmp_error;
 		  goto skip_reass;
 		}
 	    }
@@ -1251,8 +1253,7 @@ ip6_full_reassembly_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	      !ip6_full_reass_verify_packet_size_lt_64k (vm, node, b0,
 							 frag_hdr))
 	    {
-	      next0 = is_custom_app ? fvnb->ip.reass.error_next_index :
-					    IP6_FULL_REASSEMBLY_NEXT_ICMP_ERROR;
+	      next0 = next_icmp_error;
 	      goto skip_reass;
 	    }
 
