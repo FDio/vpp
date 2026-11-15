@@ -749,7 +749,7 @@ void vnet_crypto_ctx_set_default_engine (vnet_crypto_ctx_t *ctx, vnet_crypto_han
 __clib_export format_function_t format_vnet_crypto_alg;
 __clib_export format_function_t format_vnet_crypto_engine;
 __clib_export format_function_t format_crypto_op_type_short;
-format_function_t format_vnet_crypto_op_type;
+__clib_export format_function_t format_vnet_crypto_op_type;
 __clib_export format_function_t format_vnet_crypto_op_status;
 __clib_export unformat_function_t unformat_vnet_crypto_alg;
 __clib_export unformat_function_t unformat_vnet_crypto_engine;

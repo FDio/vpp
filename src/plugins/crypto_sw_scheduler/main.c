@@ -40,47 +40,6 @@ crypto_sw_scheduler_set_worker_crypto (u32 worker_idx, u8 enabled)
   return 0;
 }
 
-static int
-crypto_sw_scheduler_frame_enqueue (vlib_main_t *vm,
-				   vnet_crypto_async_frame_t *frame, u8 is_enc)
-{
-  crypto_sw_scheduler_main_t *cm = &crypto_sw_scheduler_main;
-  crypto_sw_scheduler_per_thread_data_t *ptd =
-    vec_elt_at_index (cm->per_thread_data, vm->thread_index);
-  crypto_sw_scheduler_queue_t *current_queue =
-    is_enc ? &ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_ENCRYPT] :
-	     &ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_DECRYPT];
-  vnet_crypto_async_frame_t **jobs = current_queue->jobs;
-  u32 mask = cm->crypto_sw_scheduler_queue_mask;
-  u64 head = current_queue->head;
-
-  if (jobs[head & mask])
-    {
-      u32 n_elts = frame->n_elts, i;
-      for (i = 0; i < n_elts; i++)
-	vlib_crypto_async_frame_set_engine_error (frame, i);
-      frame->state = VNET_CRYPTO_FRAME_STATE_COMPLETED;
-      return -1;
-    }
-
-  jobs[head & mask] = frame;
-  __atomic_store_n (&current_queue->head, head + 1, __ATOMIC_RELEASE);
-  return 0;
-}
-
-static int
-crypto_sw_scheduler_frame_enqueue_decrypt (vlib_main_t *vm,
-					   vnet_crypto_async_frame_t *frame)
-{
-  return crypto_sw_scheduler_frame_enqueue (vm, frame, 0);
-}
-
-static int
-crypto_sw_scheduler_frame_enqueue_encrypt (vlib_main_t *vm, vnet_crypto_async_frame_t *frame)
-{
-  return crypto_sw_scheduler_frame_enqueue (vm, frame, 1);
-}
-
 static_always_inline void
 cryptodev_sw_scheduler_sgl (vlib_main_t *vm,
 			    crypto_sw_scheduler_per_thread_data_t *ptd,
@@ -212,208 +171,283 @@ crypto_sw_scheduler_convert (vlib_main_t *vm, crypto_sw_scheduler_per_thread_dat
 }
 
 static_always_inline void
-process_ops (vlib_main_t *vm, vnet_crypto_async_frame_t *f, vnet_crypto_op_t *ops,
+process_ops (vlib_main_t *vm, crypto_sw_scheduler_job_t *job, vnet_crypto_op_t *ops,
 	     vnet_crypto_op_chunk_t *chunks, u8 is_chained)
 {
   u32 n_ops = vec_len (ops);
-  vnet_crypto_op_t *op = ops;
-  u8 has_fail = 0;
 
   if (n_ops == 0)
     return;
 
-  if (is_chained)
-    vnet_crypto_process_ops (vm, op, chunks, n_ops);
-  else
-    vnet_crypto_process_ops (vm, op, 0, n_ops);
+  vnet_crypto_process_ops (vm, ops, is_chained ? chunks : 0, n_ops);
 
   for (u32 i = 0; i < n_ops; i++)
-    {
-      if (ops[i].status != VNET_CRYPTO_OP_STATUS_COMPLETED)
-	{
-	  has_fail = 1;
-	  break;
-	}
-    }
-
-  if (!has_fail)
-    return;
-
-  for (u32 i = 0; i < n_ops; i++, op++)
-    {
-      if (op->status == VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC)
-	vlib_crypto_async_frame_set_hmac_fail (f, op->user_data);
-      else if (op->status != VNET_CRYPTO_OP_STATUS_COMPLETED)
-	vlib_crypto_async_frame_set_engine_error (f, op->user_data);
-    }
+    job->status[ops[i].user_data] = ops[i].status;
 }
 
-static_always_inline vnet_crypto_async_frame_t *
-crypto_sw_scheduler_return_frame (crypto_sw_scheduler_queue_t *queue, u32 mask)
+#define foreach_crypto_sw_scheduler_error                                                          \
+  _ (QUEUE_FULL, "queue-full")                                                                     \
+  _ (BAD_HMAC, "bad-hmac")                                                                         \
+  _ (ENGINE_ERROR, "engine-error")
+
+typedef enum
 {
-  vnet_crypto_async_frame_t **jobs = queue->jobs;
-  vnet_crypto_async_frame_t *f;
-  u32 tail = queue->tail & mask;
+#define _(f, s) CRYPTO_SW_SCHED_ERROR_##f,
+  foreach_crypto_sw_scheduler_error
+#undef _
+    CRYPTO_SW_SCHED_N_ERROR,
+} crypto_sw_scheduler_error_t;
 
-  if (!jobs[tail] ||
-      __atomic_load_n (&jobs[tail]->state, __ATOMIC_ACQUIRE) != VNET_CRYPTO_FRAME_STATE_COMPLETED)
-    return 0;
+static char *crypto_sw_scheduler_error_strings[] = {
+#define _(f, s) s,
+  foreach_crypto_sw_scheduler_error
+#undef _
+};
 
-  queue->tail++;
-  f = jobs[tail];
-  jobs[tail] = 0;
+typedef struct
+{
+  vnet_crypto_alg_t alg;
+  vnet_crypto_op_type_t type;
+  vnet_crypto_op_status_t status;
+} crypto_sw_scheduler_trace_t;
 
-  return f;
+static u8 *
+format_crypto_sw_scheduler_trace (u8 *s, va_list *args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  crypto_sw_scheduler_trace_t *t = va_arg (*args, crypto_sw_scheduler_trace_t *);
+
+  return format (s, "%U-%U: %U", format_vnet_crypto_op_type, t->type, format_vnet_crypto_alg,
+		 t->alg, format_vnet_crypto_op_status, t->status);
 }
 
-static_always_inline vnet_crypto_async_frame_t *
-crypto_sw_scheduler_dequeue (vlib_main_t *vm, vnet_crypto_frame_dequeue_args_t *args)
+static_always_inline crypto_sw_scheduler_queue_t *
+crypto_sw_scheduler_queue (crypto_sw_scheduler_per_thread_data_t *ptd, vnet_crypto_op_type_t type)
+{
+  if (type == VNET_CRYPTO_OP_TYPE_ENCRYPT)
+    return ptd->queue + CRYPTO_SW_SCHED_QUEUE_TYPE_ENCRYPT;
+  return ptd->queue + CRYPTO_SW_SCHED_QUEUE_TYPE_DECRYPT;
+}
+
+VLIB_NODE_FN (crypto_sw_scheduler_enq_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   crypto_sw_scheduler_main_t *cm = &crypto_sw_scheduler_main;
-  crypto_sw_scheduler_per_thread_data_t *ptd =
-    cm->per_thread_data + vm->thread_index;
-  vnet_crypto_async_frame_t *f = 0;
-  vnet_crypto_async_frame_t **jobs;
-  crypto_sw_scheduler_queue_t *current_queue = 0;
-  u32 mask = cm->crypto_sw_scheduler_queue_mask;
-  u32 tail, head;
-  u8 found = 0;
-  u8 recheck_queues = 1;
+  crypto_sw_scheduler_per_thread_data_t *ptd = cm->per_thread_data + vm->thread_index;
+  vnet_crypto_deq_scalar_data_t *sd = vlib_frame_scalar_args (frame);
+  crypto_sw_scheduler_queue_t *q = crypto_sw_scheduler_queue (ptd, sd->op_type);
+  u32 head = q->head, n_vectors = frame->n_vectors;
+  crypto_sw_scheduler_job_t *job = q->jobs + (head & cm->crypto_sw_scheduler_queue_mask);
 
-run_next_queues:
-  /* get a pending frame to process */
-  if (ptd->self_crypto_enabled)
+  if (PREDICT_FALSE (job->frame != 0))
     {
-      u32 i = ptd->last_serve_lcore_id + 1;
+      vlib_error_drop_buffers (vm, node, vlib_frame_vector_args (frame), 0, n_vectors, 0,
+			       node->node_index, CRYPTO_SW_SCHED_ERROR_QUEUE_FULL);
+      vlib_frame_free (vm, frame);
+      return n_vectors;
+    }
 
-      while (1)
+  job->frame = frame;
+  job->is_traced = (node->flags & VLIB_NODE_FLAG_TRACE) != 0;
+  __atomic_store_n (&job->state, CRYPTO_SW_SCHED_JOB_STATE_PENDING, __ATOMIC_RELEASE);
+  __atomic_store_n (&q->head, head + 1, __ATOMIC_RELEASE);
+
+  /* any thread with crypto enabled may process the job */
+  for (u32 i = 0; i < vlib_get_n_threads (); i++)
+    vlib_node_set_interrupt_pending (vlib_get_main_by_index (i), cm->deq_node_index);
+
+  return n_vectors;
+}
+
+VLIB_REGISTER_NODE (crypto_sw_scheduler_enq_node) = {
+  .name = "crypto-sw-scheduler-enq",
+  .vector_size = sizeof (u32),
+  .scalar_size = sizeof (vnet_crypto_deq_scalar_data_t),
+  .aux_size = sizeof (vnet_crypto_ctx_t *),
+  .flags = VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH,
+  .n_errors = CRYPTO_SW_SCHED_N_ERROR,
+  .error_strings = crypto_sw_scheduler_error_strings,
+  .n_next_nodes = 1,
+  .next_nodes = { [0] = "error-drop" },
+};
+
+static_always_inline crypto_sw_scheduler_job_t *
+crypto_sw_scheduler_get_pending_job (crypto_sw_scheduler_main_t *cm,
+				     crypto_sw_scheduler_per_thread_data_t *ptd)
+{
+  u32 mask = cm->crypto_sw_scheduler_queue_mask;
+  u32 i = ptd->last_serve_lcore_id + 1;
+  crypto_sw_scheduler_job_t *found = 0;
+
+  while (1)
+    {
+      crypto_sw_scheduler_per_thread_data_t *st;
+      crypto_sw_scheduler_queue_t *q;
+      u32 tail, head;
+
+      if (i >= vec_len (cm->per_thread_data))
+	i = 0;
+
+      st = cm->per_thread_data + i;
+      q = st->queue + (ptd->last_serve_encrypt ? CRYPTO_SW_SCHED_QUEUE_TYPE_DECRYPT :
+						 CRYPTO_SW_SCHED_QUEUE_TYPE_ENCRYPT);
+      tail = __atomic_load_n (&q->tail, __ATOMIC_ACQUIRE);
+      head = __atomic_load_n (&q->head, __ATOMIC_ACQUIRE);
+
+      for (u32 j = tail; j != head; j++)
 	{
-	  crypto_sw_scheduler_per_thread_data_t *st;
-	  u32 j;
+	  crypto_sw_scheduler_job_t *job = q->jobs + (j & mask);
+	  u8 pending = CRYPTO_SW_SCHED_JOB_STATE_PENDING;
 
-	  if (i >= vec_len (cm->per_thread_data))
-	    i = 0;
-
-	  st = cm->per_thread_data + i;
-
-	  if (ptd->last_serve_encrypt)
-	    current_queue = &st->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_DECRYPT];
-	  else
-	    current_queue = &st->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_ENCRYPT];
-	  jobs = current_queue->jobs;
-
-	  tail = current_queue->tail;
-	  head = __atomic_load_n (&current_queue->head, __ATOMIC_ACQUIRE);
-
-	  /* Skip this queue unless tail < head or head has overflowed
-	   * and tail has not. At the point where tail overflows (== 0),
-	   * the largest possible value of head is (queue size - 1).
-	   * Prior to that, the largest possible value of head is
-	   * (queue size - 2).
-	   */
-	  if ((tail > head) && (head >= cm->crypto_sw_scheduler_queue_mask))
-	    goto skip_queue;
-
-	  for (j = tail; j != head; j++)
+	  if (__atomic_compare_exchange_n (&job->state, &pending,
+					   CRYPTO_SW_SCHED_JOB_STATE_WORK_IN_PROGRESS, 0,
+					   __ATOMIC_ACQUIRE, __ATOMIC_RELAXED))
 	    {
-
-	      f = jobs[j & mask];
-
-	      if (!f)
-		continue;
-
-	      if (clib_atomic_bool_cmp_and_swap (
-		    &f->state, VNET_CRYPTO_FRAME_STATE_PENDING,
-		    VNET_CRYPTO_FRAME_STATE_WORK_IN_PROGRESS))
-		{
-		  found = 1;
-		  break;
-		}
-	    }
-
-	skip_queue:
-	  if (found || i == ptd->last_serve_lcore_id)
-	    {
-	      __atomic_store_n (&ptd->last_serve_encrypt, !ptd->last_serve_encrypt,
-				__ATOMIC_RELEASE);
+	      found = job;
 	      break;
 	    }
-
-	  i++;
 	}
 
-      ptd->last_serve_lcore_id = i;
+      if (found || i == ptd->last_serve_lcore_id)
+	{
+	  ptd->last_serve_encrypt = !ptd->last_serve_encrypt;
+	  break;
+	}
+
+      i++;
     }
 
-  if (found)
-    {
-      vnet_crypto_ctx_t *ctx;
-      vnet_crypto_ctx_t **ctxs = f->ctxs;
-      u32 *bi;
-      u32 *bis = f->buffer_indices;
-      u32 n = f->n_elts;
-      vec_reset_length (ptd->crypto_ops);
-      vec_reset_length (ptd->chained_crypto_ops);
-      vec_reset_length (ptd->chunks);
-
-      if (crypto_main.algs[f->alg].alg_type == VNET_CRYPTO_ALG_T_AEAD)
-	for (u32 i = 0; i < n; i++)
-	  {
-	    ctx = ctxs[i];
-	    bi = &bis[i];
-	    if (i + 1 < n)
-	      clib_prefetch_load (&ctxs[i + 1]);
-	    crypto_sw_scheduler_convert (vm, ptd, ctx, i, bi[0], f->type, 1);
-	  }
-      else
-	for (u32 i = 0; i < n; i++)
-	  {
-	    ctx = ctxs[i];
-	    bi = &bis[i];
-	    if (i + 1 < n)
-	      clib_prefetch_load (&ctxs[i + 1]);
-	    crypto_sw_scheduler_convert (vm, ptd, ctx, i, bi[0], f->type, 0);
-	  }
-
-      process_ops (vm, f, ptd->crypto_ops, 0, 0);
-      process_ops (vm, f, ptd->chained_crypto_ops, ptd->chunks, 1);
-      __atomic_store_n (&f->state, VNET_CRYPTO_FRAME_STATE_COMPLETED, __ATOMIC_RELEASE);
-
-      args->enqueue_thread_index = f->enqueue_thread_index;
-      args->n_elts_processed = f->n_elts;
-    }
-
-  if (ptd->last_return_queue)
-    {
-      current_queue = &ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_DECRYPT];
-      ptd->last_return_queue = 0;
-    }
-  else
-    {
-      current_queue = &ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_ENCRYPT];
-      ptd->last_return_queue = 1;
-    }
-
-  f = crypto_sw_scheduler_return_frame (current_queue, mask);
-  if (f)
-    return f;
-
-  if (ptd->last_return_queue)
-    current_queue = &ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_DECRYPT];
-  else
-    current_queue = &ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_ENCRYPT];
-
-  f = crypto_sw_scheduler_return_frame (current_queue, mask);
-  if (f)
-    return f;
-
-  if (!found && recheck_queues)
-    {
-      recheck_queues = 0;
-      goto run_next_queues;
-    }
-  return 0;
+  ptd->last_serve_lcore_id = i;
+  return found;
 }
+
+static_always_inline void
+crypto_sw_scheduler_process_job (vlib_main_t *vm, crypto_sw_scheduler_per_thread_data_t *ptd,
+				 crypto_sw_scheduler_job_t *job)
+{
+  vlib_frame_t *f = job->frame;
+  vnet_crypto_deq_scalar_data_t *sd = vlib_frame_scalar_args (f);
+  vnet_crypto_ctx_t **ctxs = vlib_frame_aux_args (f);
+  u32 *bis = vlib_frame_vector_args (f), n = f->n_vectors;
+  u8 is_aead = crypto_main.algs[sd->alg].alg_type == VNET_CRYPTO_ALG_T_AEAD;
+
+  vec_reset_length (ptd->crypto_ops);
+  vec_reset_length (ptd->chained_crypto_ops);
+  vec_reset_length (ptd->chunks);
+
+  for (u32 i = 0; i < n; i++)
+    {
+      if (i + 1 < n)
+	clib_prefetch_load (ctxs[i + 1]);
+      crypto_sw_scheduler_convert (vm, ptd, ctxs[i], i, bis[i], sd->op_type, is_aead);
+    }
+
+  process_ops (vm, job, ptd->crypto_ops, 0, 0);
+  process_ops (vm, job, ptd->chained_crypto_ops, ptd->chunks, 1);
+  __atomic_store_n (&job->state, CRYPTO_SW_SCHED_JOB_STATE_COMPLETED, __ATOMIC_RELEASE);
+}
+
+static_always_inline u32
+crypto_sw_scheduler_return_job (vlib_main_t *vm, vlib_node_runtime_t *node,
+				crypto_sw_scheduler_job_t *job)
+{
+  vlib_frame_t *f = job->frame;
+  vnet_crypto_deq_scalar_data_t *sd = vlib_frame_scalar_args (f);
+  u32 *bis = vlib_frame_vector_args (f), n = f->n_vectors;
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
+  u16 nexts[VLIB_FRAME_SIZE];
+
+  vlib_get_buffers (vm, bis, bufs, n);
+
+  for (u32 i = 0; i < n; i++)
+    {
+      nexts[i] = sd->next_node_index;
+      if (PREDICT_FALSE (job->status[i] != VNET_CRYPTO_OP_STATUS_COMPLETED))
+	{
+	  bufs[i]->error = node->errors[job->status[i] == VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC ?
+					  CRYPTO_SW_SCHED_ERROR_BAD_HMAC :
+					  CRYPTO_SW_SCHED_ERROR_ENGINE_ERROR];
+	  nexts[i] = 0;
+	}
+    }
+
+  if (PREDICT_FALSE (job->is_traced))
+    for (u32 i = 0; i < n; i++)
+      if (bufs[i]->flags & VLIB_BUFFER_IS_TRACED)
+	{
+	  crypto_sw_scheduler_trace_t *t = vlib_add_trace (vm, node, bufs[i], sizeof (*t));
+	  t->alg = sd->alg;
+	  t->type = sd->op_type;
+	  t->status = job->status[i];
+	}
+
+  vlib_buffer_enqueue_to_next (vm, node, bis, nexts, n);
+  vlib_frame_free (vm, f);
+  return n;
+}
+
+VLIB_NODE_FN (crypto_sw_scheduler_deq_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  crypto_sw_scheduler_main_t *cm = &crypto_sw_scheduler_main;
+  crypto_sw_scheduler_per_thread_data_t *ptd = cm->per_thread_data + vm->thread_index;
+  u32 mask = cm->crypto_sw_scheduler_queue_mask, n_returned = 0, n_in_flight = 0;
+  u32 n_processed = 0;
+  crypto_sw_scheduler_job_t *job;
+
+  /* each lookup checks the encrypt or the decrypt queues, so stop after a miss of both */
+  for (u32 n_misses = 0; ptd->self_crypto_enabled && n_misses < CRYPTO_SW_SCHED_QUEUE_N_TYPES;)
+    {
+      job = crypto_sw_scheduler_get_pending_job (cm, ptd);
+      if (job == 0)
+	{
+	  n_misses++;
+	  continue;
+	}
+
+      crypto_sw_scheduler_process_job (vm, ptd, job);
+      n_processed++;
+      n_misses = 0;
+    }
+
+  /* jobs are returned in order, by the thread which enqueued them */
+  for (u32 i = 0; i < CRYPTO_SW_SCHED_QUEUE_N_TYPES; i++)
+    {
+      crypto_sw_scheduler_queue_t *q = ptd->queue + i;
+      u32 tail = q->tail;
+
+      for (; tail != q->head; tail++)
+	{
+	  job = q->jobs + (tail & mask);
+	  if (__atomic_load_n (&job->state, __ATOMIC_ACQUIRE) !=
+	      CRYPTO_SW_SCHED_JOB_STATE_COMPLETED)
+	    break;
+
+	  n_returned += crypto_sw_scheduler_return_job (vm, node, job);
+	  job->state = 0;
+	  job->frame = 0;
+	}
+
+      __atomic_store_n (&q->tail, tail, __ATOMIC_RELEASE);
+      n_in_flight += q->head - tail;
+    }
+
+  if (n_in_flight || n_processed)
+    vlib_node_set_interrupt_pending (vm, node->node_index);
+
+  return n_returned;
+}
+
+VLIB_REGISTER_NODE (crypto_sw_scheduler_deq_node) = {
+  .name = "crypto-sw-scheduler-deq",
+  .type = VLIB_NODE_TYPE_INPUT,
+  .sibling_of = "crypto-deq",
+  .state = VLIB_NODE_STATE_INTERRUPT,
+  .format_trace = format_crypto_sw_scheduler_trace,
+  .n_errors = CRYPTO_SW_SCHED_N_ERROR,
+  .error_strings = crypto_sw_scheduler_error_strings,
+};
 
 static clib_error_t *
 sw_scheduler_set_worker_crypto (vlib_main_t * vm, unformat_input_t * input,
@@ -533,19 +567,20 @@ crypto_sw_scheduler_init (vlib_main_t * vm)
 
   crypto_sw_scheduler_api_init (vm);
 
+  cm->deq_node_index = crypto_sw_scheduler_deq_node.index;
+  vnet_crypto_register_engine_deq_node (vm, cm->crypto_engine_index, cm->deq_node_index);
+
   for (alg = 1; alg < VNET_CRYPTO_N_ALGS; alg++)
     {
       if (vnet_crypto_alg_has_op_type (alg, VNET_CRYPTO_OP_TYPE_ENCRYPT))
-	vnet_crypto_register_enqueue_handler_by_alg (vm, cm->crypto_engine_index, alg,
-						     VNET_CRYPTO_OP_TYPE_ENCRYPT,
-						     crypto_sw_scheduler_frame_enqueue_encrypt);
+	vnet_crypto_register_async_alg (vm, cm->crypto_engine_index, alg,
+					VNET_CRYPTO_OP_TYPE_ENCRYPT,
+					crypto_sw_scheduler_enq_node.index);
       if (vnet_crypto_alg_has_op_type (alg, VNET_CRYPTO_OP_TYPE_DECRYPT))
-	vnet_crypto_register_enqueue_handler_by_alg (vm, cm->crypto_engine_index, alg,
-						     VNET_CRYPTO_OP_TYPE_DECRYPT,
-						     crypto_sw_scheduler_frame_enqueue_decrypt);
+	vnet_crypto_register_async_alg (vm, cm->crypto_engine_index, alg,
+					VNET_CRYPTO_OP_TYPE_DECRYPT,
+					crypto_sw_scheduler_enq_node.index);
     }
-
-  vnet_crypto_register_dequeue_handler (vm, cm->crypto_engine_index, crypto_sw_scheduler_dequeue);
 
   return error;
 }
@@ -603,9 +638,8 @@ crypto_sw_scheduler_config (vlib_main_t *vm, unformat_input_t *input)
       ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_DECRYPT].head = 0;
       ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_DECRYPT].tail = 0;
 
-      vec_validate_aligned (
-	ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_DECRYPT].jobs,
-	CRYPTO_SW_SCHEDULER_QUEUE_SIZE - 1, CLIB_CACHE_LINE_BYTES);
+      vec_validate_aligned (ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_DECRYPT].jobs,
+			    crypto_sw_scheduler_queue_size - 1, CLIB_CACHE_LINE_BYTES);
 
       ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_ENCRYPT].head = 0;
       ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_ENCRYPT].tail = 0;
@@ -613,9 +647,8 @@ crypto_sw_scheduler_config (vlib_main_t *vm, unformat_input_t *input)
       ptd->last_serve_encrypt = 0;
       ptd->last_return_queue = 0;
 
-      vec_validate_aligned (
-	ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_ENCRYPT].jobs,
-	CRYPTO_SW_SCHEDULER_QUEUE_SIZE - 1, CLIB_CACHE_LINE_BYTES);
+      vec_validate_aligned (ptd->queue[CRYPTO_SW_SCHED_QUEUE_TYPE_ENCRYPT].jobs,
+			    crypto_sw_scheduler_queue_size - 1, CLIB_CACHE_LINE_BYTES);
     }
 
   if (error)

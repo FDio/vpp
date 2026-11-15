@@ -21,12 +21,27 @@ typedef enum crypto_sw_scheduler_queue_type_t_
   CRYPTO_SW_SCHED_QUEUE_N_TYPES
 } crypto_sw_scheduler_queue_type_t;
 
+typedef enum
+{
+  CRYPTO_SW_SCHED_JOB_STATE_PENDING = 1,
+  CRYPTO_SW_SCHED_JOB_STATE_WORK_IN_PROGRESS,
+  CRYPTO_SW_SCHED_JOB_STATE_COMPLETED,
+} crypto_sw_scheduler_job_state_t;
+
+typedef struct
+{
+  vlib_frame_t *frame; /* 0 if the slot is free */
+  u8 state;
+  u8 is_traced;
+  vnet_crypto_op_status_t status[VLIB_FRAME_SIZE];
+} crypto_sw_scheduler_job_t;
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u32 head;
   u32 tail;
-  vnet_crypto_async_frame_t **jobs;
+  crypto_sw_scheduler_job_t *jobs;
 } crypto_sw_scheduler_queue_t;
 
 typedef struct
@@ -45,6 +60,7 @@ typedef struct
 typedef struct
 {
   u32 crypto_engine_index;
+  u32 deq_node_index;
   crypto_sw_scheduler_per_thread_data_t *per_thread_data;
   vnet_crypto_ctx_t *ctxs;
   u32 crypto_sw_scheduler_queue_mask;
