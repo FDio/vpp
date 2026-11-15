@@ -66,9 +66,6 @@ vnet_crypto_buffer_metadata_pre_data_off (vlib_buffer_t *b)
 #define log_err(f, ...)	   vlib_log (VLIB_LOG_LEVEL_ERR, crypto_log.class, f, ##__VA_ARGS__)
 #endif
 
-#define VNET_CRYPTO_FRAME_SIZE 64
-#define VNET_CRYPTO_FRAME_POOL_SIZE 1024
-
 /* CRYPTO_ID, PRETTY_NAME, FAMILY, KEY_LEN, BLOCK_LEN */
 #define foreach_crypto_cipher_alg_non_ctr                                                          \
   _ (DES_CBC, "des-cbc", DES_CBC, 7, 8)                                                            \
@@ -471,68 +468,6 @@ vnet_crypto_ctx_get_engine (vnet_crypto_ctx_t *ctx, vnet_crypto_handler_type_t t
   return ctx->engine_index[t];
 }
 
-typedef enum vnet_crypto_async_frame_state_t_
-{
-  VNET_CRYPTO_FRAME_STATE_NOT_PROCESSED,
-  /* frame waiting to be processed */
-  VNET_CRYPTO_FRAME_STATE_PENDING,
-  VNET_CRYPTO_FRAME_STATE_WORK_IN_PROGRESS,
-  VNET_CRYPTO_FRAME_STATE_COMPLETED,
-} __clib_packed vnet_crypto_async_frame_state_t;
-
-#define VNET_CRYPTO_ASYNC_FRAME_BITMAP_N_UWORDS                                                    \
-  (((VNET_CRYPTO_FRAME_SIZE + uword_bits - 1) & ~(uword_bits - 1)) / uword_bits)
-
-typedef uword vnet_crypto_async_frame_bitmap_t[VNET_CRYPTO_ASYNC_FRAME_BITMAP_N_UWORDS];
-
-static_always_inline u32
-vnet_crypto_async_frame_bitmap_count_set_bits (vnet_crypto_async_frame_bitmap_t bitmap)
-{
-  return uword_bitmap_count_set_bits (bitmap, VNET_CRYPTO_ASYNC_FRAME_BITMAP_N_UWORDS);
-}
-
-typedef struct
-{
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  vnet_crypto_async_frame_state_t state;
-  vnet_crypto_alg_t alg : 8;
-  vnet_crypto_op_type_t type : 8;
-  u8 n_elts;
-  uword user_data;
-  vnet_crypto_ctx_t *ctxs[VNET_CRYPTO_FRAME_SIZE];
-  u32 buffer_indices[VNET_CRYPTO_FRAME_SIZE];
-  u16 next_node_index[VNET_CRYPTO_FRAME_SIZE];
-  vnet_crypto_async_frame_bitmap_t bad_hmac_bitmap;
-  vnet_crypto_async_frame_bitmap_t engine_error_bitmap;
-  clib_thread_index_t enqueue_thread_index;
-} vnet_crypto_async_frame_t;
-
-static_always_inline void
-vlib_crypto_async_frame_set_hmac_fail (vnet_crypto_async_frame_t *f, u32 elt_index)
-{
-  uword_bitmap_set_bits_at_index (f->bad_hmac_bitmap, elt_index, 1);
-  ;
-}
-
-static_always_inline void
-vlib_crypto_async_frame_set_engine_error (vnet_crypto_async_frame_t *f, u32 elt_index)
-{
-  uword_bitmap_set_bits_at_index (f->engine_error_bitmap, elt_index, 1);
-  ;
-}
-
-typedef struct
-{
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  vnet_crypto_async_frame_t *frame_pool;
-  clib_spinlock_t free_frames_lock;
-  clib_spinlock_t completed_frames_lock;
-  vnet_crypto_async_frame_t **free_frames;
-  vnet_crypto_async_frame_t **completed_frames;
-  u32 *buffer_indices;
-  u16 *nexts;
-} vnet_crypto_thread_t;
-
 typedef u32 (vnet_crypto_sync_op_fn_t) (vnet_crypto_op_t *ops[], vnet_crypto_op_chunk_t *chunks,
 					u32 n_ops, clib_thread_index_t thread_index);
 typedef u8 *vnet_crypto_key_data_t __clib_aligned (64);
@@ -583,20 +518,6 @@ typedef struct vnet_crypto_alg_data_t_
 
 #include <vnet/crypto/hash.h>
 
-/** async crypto function handlers **/
-typedef int (vnet_crypto_frame_enq_fn_t) (vlib_main_t *vm,
-					  vnet_crypto_async_frame_t *frame);
-
-typedef struct
-{
-  uword user_data;
-  u32 n_elts_processed;
-  clib_thread_index_t enqueue_thread_index;
-} vnet_crypto_frame_dequeue_args_t;
-
-typedef vnet_crypto_async_frame_t *
-vnet_crypto_frame_dequeue_t (vlib_main_t *vm, vnet_crypto_frame_dequeue_args_t *args);
-
 __clib_export vnet_crypto_engine_id_t vnet_crypto_register_engine (vlib_main_t *vm, char *name,
 								   int prio, char *desc);
 __clib_export vnet_crypto_engine_id_t vnet_crypto_get_engine_index_by_name (const char *fmt, ...);
@@ -609,18 +530,11 @@ vnet_crypto_register_key_change_handler (vlib_main_t *vm, vnet_crypto_engine_id_
 /* reserve async key data for engines registered after the ctx layout is set */
 __clib_export int vnet_crypto_reserve_async_key_data (u16 key_data_sz);
 
+/* anchor of the engine dequeue nodes, which are its siblings */
+extern vlib_node_registration_t crypto_deq_node;
+
 /** async crypto register functions */
 __clib_export u32 vnet_crypto_register_post_node (vlib_main_t *vm, char *post_node_name);
-
-__clib_export void vnet_crypto_register_enqueue_handler_by_alg (vlib_main_t *vm,
-								vnet_crypto_engine_id_t engine,
-								vnet_crypto_alg_t alg,
-								vnet_crypto_op_type_t type,
-								vnet_crypto_frame_enq_fn_t *enq_fn);
-__clib_export void vnet_crypto_unregister_enqueue_handler_by_alg (vlib_main_t *vm,
-								  vnet_crypto_engine_id_t engine,
-								  vnet_crypto_alg_t alg,
-								  vnet_crypto_op_type_t type);
 
 /* async engines take frames in per algorithm enqueue nodes and complete them in one dequeue node */
 __clib_export void vnet_crypto_register_engine_deq_node (vlib_main_t *vm,
@@ -633,12 +547,6 @@ __clib_export void vnet_crypto_unregister_async_alg (vlib_main_t *vm,
 						     vnet_crypto_engine_id_t engine,
 						     vnet_crypto_alg_t alg,
 						     vnet_crypto_op_type_t type);
-
-__clib_export void vnet_crypto_register_dequeue_handler (vlib_main_t *vm,
-							 vnet_crypto_engine_id_t engine,
-							 vnet_crypto_frame_dequeue_t *deq_fn);
-__clib_export void vnet_crypto_set_engine_user_data (vnet_crypto_engine_id_t engine,
-						     uword user_data);
 
 typedef struct
 {
@@ -665,18 +573,11 @@ typedef struct
   vnet_crypto_key_change_fn_t *key_change_fn[VNET_CRYPTO_HANDLER_N_TYPES][VNET_CRYPTO_N_ALGS];
   u16 key_data_sz[VNET_CRYPTO_HANDLER_N_TYPES][VNET_CRYPTO_N_ALGS];
   u8 key_data_per_thread[VNET_CRYPTO_HANDLER_N_TYPES][VNET_CRYPTO_N_ALGS];
-  vnet_crypto_frame_dequeue_t *dequeue_handler;
-  uword user_data;
   vnet_crypto_key_change_fn_t *async_key_change_fn;
   u16 async_key_data_sz;
   u32 deq_node_index;
 } vnet_crypto_engine_t;
 
-typedef struct
-{
-  u32 node_idx;
-  u32 next_idx;
-} vnet_crypto_async_next_node_t;
 
 typedef struct
 {
@@ -689,9 +590,6 @@ typedef struct
 {
   vnet_crypto_ctx_t **ctxs;
   u8 ctx_pool_lock;
-  u32 crypto_node_index;
-  vnet_crypto_thread_t *threads;
-  vnet_crypto_engine_id_t *dequeue_engines;
   vnet_crypto_engine_t *engines;
   /* configs and hash by name */
   vnet_crypto_config_t *configs;
@@ -699,7 +597,6 @@ typedef struct
   uword *engine_index_by_name;
   uword *alg_index_by_name;
   vnet_crypto_engine_registration_t *engine_registrations;
-  vnet_crypto_async_next_node_t *next_nodes;
   u8 *engine_supports_alg[VNET_CRYPTO_N_ALGS][VNET_CRYPTO_HANDLER_N_TYPES];
   u8 *hash_engine_supports_alg[VNET_CRYPTO_N_HASH_ALGS][2];
   vnet_crypto_engine_id_t active_engine_index[VNET_CRYPTO_N_ALGS][VNET_CRYPTO_HANDLER_N_TYPES];
@@ -882,21 +779,6 @@ vnet_crypto_async_get_data_ptr (vlib_main_t *vm, vlib_buffer_t *b, i16 offset)
     }
 
   return 0;
-}
-
-static_always_inline void
-vnet_crypto_async_add_to_frame (vlib_main_t *vm, vnet_crypto_async_frame_t *f,
-				vnet_crypto_ctx_t *ctx, u32 buffer_index, u16 next_node)
-{
-  u16 index;
-
-  ASSERT (f->n_elts < VNET_CRYPTO_FRAME_SIZE);
-
-  index = f->n_elts;
-  f->n_elts++;
-  f->ctxs[index] = ctx;
-  f->buffer_indices[index] = buffer_index;
-  f->next_node_index[index] = next_node;
 }
 
 #endif /* included_vnet_crypto_crypto_h */
