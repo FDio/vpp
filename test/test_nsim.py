@@ -627,6 +627,31 @@ class TestNsimTrace(VppTestCase):
                     finally:
                         self.vapi.cli(feature + " disable")
 
+    def test_due_packets_leave_together(self):
+        """Release in one poll all the packets due by then"""
+        # Fixed delay: a frame's packets share their departure time, and more
+        # of them than a tx burst must still leave in a single poll
+        count = 200
+        self.vapi.cli("set nsim delay 10 ms bandwidth 1 gbit packet-size 128")
+        feature = "nsim cross-connect enable-disable pg0 pg1"
+        self.vapi.cli(feature)
+        try:
+            self.vapi.cli("clear trace")
+            self.vapi.cli(f"trace add pg-input {count}")
+            self.pg0.add_stream(create_stream(self, self.pg0, self.pg1, count))
+            self.pg1.enable_capture()
+            self.pg_start(trace=False)
+            self.pg1.get_capture(count, timeout=1)
+
+            trace = self.vapi.cli(f"show trace max {count}")
+            released = re.findall(r"NSIM: tx at ([0-9.]+)", trace)
+            self.assertEqual(len(released), count)
+            self.assertEqual(
+                len(set(released)), 1, f"released over {len(set(released))} polls"
+            )
+        finally:
+            self.vapi.cli(feature + " disable")
+
 
 @unittest.skipIf("nsim" in config.excluded_plugins, "Exclude NSIM plugin tests")
 class TestNsimApi(VppTestCase):
