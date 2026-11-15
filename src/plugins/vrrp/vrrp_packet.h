@@ -53,7 +53,7 @@ typedef struct vrrp_input_process_args
   u32 vr_index;
   ip46_address_t src_addr;
   u8 priority;
-  u8 max_adv_int;
+  u16 max_adv_int;
 } vrrp_input_process_args_t;
 
 #endif /* __included_vrrp_packet_h__ */
