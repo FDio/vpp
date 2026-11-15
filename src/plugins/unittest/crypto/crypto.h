@@ -36,10 +36,21 @@ typedef struct
   /* perf */
   vnet_crypto_alg_t alg;
   u32 warmup_rounds;
+  f64 warmup_time;
+  u8 warmup_time_set;
   u32 rounds;
   u32 buffer_size;
   u32 n_buffers;
   u32 elts_per_frame;
+  u32 max_in_flight;
+  u32 trace_count;
+  clib_bitmap_t *threads;
+
+  /* async */
+  u32 async_post_next_index;
+  u32 async_process_node_index;
+  u32 async_n_expected;
+  u32 *async_done; /* buffers received by the post node */
 
   unittest_crypto_test_registration_t *test_registrations;
 } crypto_test_main_t;

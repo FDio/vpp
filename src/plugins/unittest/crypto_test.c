@@ -1932,11 +1932,6 @@ done:
   return err;
 }
 
-typedef struct
-{
-  vnet_crypto_async_frame_t *frame;
-} crypto_test_async_result_t;
-
 static int
 crypto_test_engine_has_async_rows (crypto_test_result_row_t *rows, vnet_crypto_engine_id_t engine)
 {
@@ -1944,7 +1939,7 @@ crypto_test_engine_has_async_rows (crypto_test_result_row_t *rows, vnet_crypto_e
   vnet_crypto_engine_t *e = vec_elt_at_index (cm->engines, engine);
   crypto_test_result_row_t *row;
 
-  if (e->dequeue_handler == 0)
+  if (e->deq_node_index == ~0)
     return 0;
 
   vec_foreach (row, rows)
@@ -1983,44 +1978,118 @@ crypto_test_async_result_table_init (crypto_test_result_table_t *rt, crypto_test
   vec_free (regs);
 }
 
-static clib_error_t *
-crypto_test_wait_for_async_frame (vlib_main_t *vm, vnet_crypto_engine_id_t engine,
-				  crypto_test_async_result_t *result)
+VLIB_NODE_FN (crypto_test_async_post_node)
+(vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
-  vnet_crypto_main_t *cm = &crypto_main;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  vnet_crypto_engine_t *e = vec_elt_at_index (cm->engines, engine);
-  f64 deadline = clib_time_now (&vm->clib_time) + 1.0;
-  u32 i;
+  crypto_test_main_t *tm = &crypto_test_main;
 
-  if (e->dequeue_handler == 0)
-    return clib_error_return (0, "engine '%s' has no async dequeue handler", e->name);
+  vec_add (tm->async_done, (u32 *) vlib_frame_vector_args (frame), frame->n_vectors);
+  if (tm->async_n_expected)
+    vlib_process_signal_event (vm, tm->async_process_node_index, 0, 0);
 
-  while (clib_time_now (&vm->clib_time) < deadline)
+  return frame->n_vectors;
+}
+
+VLIB_REGISTER_NODE (crypto_test_async_post_node) = {
+  .name = "crypto-test-async-post",
+  .vector_size = sizeof (u32),
+};
+
+/* buffers failed by the engine are dropped, they show up only in error counters */
+static u64
+crypto_test_async_error_count (vlib_main_t *vm, vnet_crypto_engine_t *e, vnet_crypto_alg_t alg,
+			       vnet_crypto_op_type_t type)
+{
+  vlib_error_main_t *em = &vm->error_main;
+  u32 node_indices[] = {
+    vlib_get_node_by_name (vm, (u8 *) "crypto-enq")->index,
+    e->ops[alg][type].enq_node_index,
+    e->deq_node_index,
+  };
+  u64 n = 0;
+
+  for (u32 i = 0; i < ARRAY_LEN (node_indices); i++)
     {
-      for (i = 0; i < tm->n_vlib_mains; i++)
-	{
-	  vlib_main_t *ovm = vlib_get_main_by_index (i);
-	  vnet_crypto_frame_dequeue_args_t a = {
-	    .user_data = e->user_data,
-	    .enqueue_thread_index = CLIB_INVALID_THREAD_INDEX,
-	  };
-	  vnet_crypto_async_frame_t *frame;
+      vlib_node_t *node = vlib_get_node (vm, node_indices[i]);
 
-	  frame = e->dequeue_handler (ovm, &a);
-	  if (frame == 0)
-	    continue;
-
-	  *result = (crypto_test_async_result_t){
-	    .frame = frame,
-	  };
-	  return 0;
-	}
-
-      vlib_process_wait_for_event_or_clock (vm, 10e-3);
+      for (u32 j = 0; j < node->n_errors; j++)
+	n += em->counters[node->error_heap_index + j];
     }
 
-  return clib_error_return (0, "async frame timeout");
+  return n;
+}
+
+clib_error_t *
+crypto_test_async_run (vlib_main_t *vm, crypto_test_main_t *tm, vnet_crypto_engine_id_t engine,
+		       vnet_crypto_op_type_t type, u32 *buffers, vnet_crypto_ctx_t **ctxs, u32 n,
+		       u32 elts_per_frame, u64 *n_errors)
+{
+  vnet_crypto_engine_t *e = vec_elt_at_index (crypto_main.engines, engine);
+  u32 enq_node_index = vlib_get_node_by_name (vm, (u8 *) "crypto-enq")->index;
+  f64 deadline = vlib_time_now (vm) + 1.0;
+  u64 errors_before;
+  u32 n_submitted = 0;
+
+  if (e->ops[ctxs[0]->alg][type].handlers[VNET_CRYPTO_HANDLER_TYPE_ASYNC] == 0)
+    return clib_error_return (0, "engine '%s' has no enqueue node", e->name);
+
+  if (tm->async_post_next_index == 0)
+    {
+      tm->async_post_next_index = vnet_crypto_register_post_node (vm, "crypto-test-async-post");
+      if (tm->async_post_next_index == ~0)
+	{
+	  tm->async_post_next_index = 0;
+	  return clib_error_return (0, "crypto post node registration failed");
+	}
+    }
+
+  vec_reset_length (tm->async_done);
+  tm->async_process_node_index = vlib_get_current_process_node_index (vm);
+  tm->async_n_expected = n;
+  errors_before = crypto_test_async_error_count (vm, e, ctxs[0]->alg, type);
+
+  while (1)
+    {
+      u32 n_completed;
+
+      *n_errors = crypto_test_async_error_count (vm, e, ctxs[0]->alg, type) - errors_before;
+      n_completed = vec_len (tm->async_done) + *n_errors;
+      if (n_completed >= n)
+	break;
+
+      while (n_submitted < n)
+	{
+	  u32 n_vectors = clib_min (elts_per_frame, n - n_submitted);
+	  vlib_frame_t *f = vlib_get_frame_to_node (vm, enq_node_index);
+
+	  f->n_vectors = n_vectors;
+	  clib_memcpy_fast (vlib_frame_vector_args (f), buffers + n_submitted,
+			    n_vectors * sizeof (u32));
+	  clib_memcpy_fast (vlib_frame_aux_args (f), ctxs + n_submitted,
+			    n_vectors * sizeof (ctxs[0]));
+	  *(vnet_crypto_deq_scalar_data_t *) vlib_frame_scalar_args (f) =
+	    (vnet_crypto_deq_scalar_data_t) {
+	      .next_node_index = tm->async_post_next_index,
+	      .op_type = type,
+	      .alg = ctxs[n_submitted]->alg,
+	    };
+	  vlib_put_frame_to_node (vm, enq_node_index, f);
+	  n_submitted += n_vectors;
+	}
+
+      if (vlib_time_now (vm) > deadline)
+	{
+	  tm->async_n_expected = 0;
+	  return clib_error_return (0, "timeout, %u of %u buffers completed",
+				    vec_len (tm->async_done) + *n_errors, n);
+	}
+
+      vlib_process_wait_for_event_or_clock (vm, 1e-3);
+      vlib_process_get_events (vm, 0);
+    }
+
+  tm->async_n_expected = 0;
+  return 0;
 }
 
 static_always_inline u32
@@ -2106,13 +2175,8 @@ test_crypto_async_case (vlib_main_t *vm, crypto_test_main_t *tm,
 			vnet_crypto_op_type_t op_type, u8 is_chained,
 			crypto_test_result_t *test_result)
 {
-  vlib_main_t *async_vm;
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_alg_data_t *ad = cm->algs + r->alg;
-  vlib_node_t *enq_node;
-  vlib_node_runtime_t *enq_rt;
-  vlib_frame_t *enq_frame = 0;
-  u32 post_next_index;
   char *engine_name = vec_elt_at_index (cm->engines, engine)->name;
   unittest_crypto_test_data_t *input = 0;
   unittest_crypto_test_data_t *output = 0;
@@ -2130,23 +2194,15 @@ test_crypto_async_case (vlib_main_t *vm, crypto_test_main_t *tm,
   u8 *aad = 0;
   u8 *iv = 0;
   u8 *tag = 0;
-  u8 enqueued = 0;
+  u8 enqueued = 0, completed = 0;
   vnet_crypto_ctx_t **ctxs = 0;
-  crypto_test_async_result_t result = {};
+  u64 n_errors = 0;
   clib_error_t *rv = 0;
   char *mismatch = 0;
   u32 fail_idx = ~0;
   u32 aad_len = 0, i;
 
   *test_result = CRYPTO_TEST_RESULT_FAIL;
-  async_vm = vlib_num_workers () > 0 ? vlib_get_main_by_index (1) : vm;
-  enq_node = vlib_get_node_by_name (async_vm, (u8 *) "crypto-enq");
-  if (enq_node == 0)
-    return clib_error_return (0, "crypto-enq node not found");
-  enq_rt = vlib_node_get_runtime (async_vm, enq_node->index);
-  post_next_index = vnet_crypto_register_post_node (vm, "error-drop");
-  if (post_next_index == ~0)
-    return clib_error_return (0, "crypto post node registration failed");
 
   switch (op_type)
     {
@@ -2188,8 +2244,8 @@ test_crypto_async_case (vlib_main_t *vm, crypto_test_main_t *tm,
   n_elts = tm->elts_per_frame ? tm->elts_per_frame : 31;
   total_buffers = n_buffers * n_elts;
 
-  if (n_elts == 0 || n_elts > VNET_CRYPTO_FRAME_SIZE)
-    return clib_error_return (0, "elts-per-frame must be in range 1..%u", VNET_CRYPTO_FRAME_SIZE);
+  if (n_elts == 0 || n_elts > VLIB_FRAME_SIZE)
+    return clib_error_return (0, "elts-per-frame must be in range 1..%u", VLIB_FRAME_SIZE);
 
   vec_validate_aligned (buffer_indices, total_buffers - 1, CLIB_CACHE_LINE_BYTES);
   vec_validate_aligned (head_indices, n_elts - 1, CLIB_CACHE_LINE_BYTES);
@@ -2202,13 +2258,6 @@ test_crypto_async_case (vlib_main_t *vm, crypto_test_main_t *tm,
       return clib_error_return (0, "buffer alloc failure");
     }
 
-  enq_frame = vlib_get_frame_to_node (vm, enq_node->index);
-  if (enq_frame == 0)
-    {
-      rv = clib_error_return (0, "crypto-enq frame alloc failed");
-      goto done;
-    }
-
   vec_validate (ctxs, n_elts - 1);
 
   for (i = 0; i < n_elts; i++)
@@ -2216,7 +2265,7 @@ test_crypto_async_case (vlib_main_t *vm, crypto_test_main_t *tm,
       u8 is_hmac_check = 0;
       vnet_crypto_buffer_metadata_t *md;
 
-      ctxs[i] = crypto_test_ctx_add_data (async_vm, engine, r->alg, r->key.data, r->key.length, 1);
+      ctxs[i] = crypto_test_ctx_add_data (vm, engine, r->alg, r->key.data, r->key.length, 1);
       if (ctxs[i] == 0)
 	{
 	  rv = clib_error_return (0, "key add failed");
@@ -2265,51 +2314,18 @@ test_crypto_async_case (vlib_main_t *vm, crypto_test_main_t *tm,
       };
     }
 
-  {
-    u32 *to = vlib_frame_vector_args (enq_frame);
-    vnet_crypto_ctx_t **aux = vlib_frame_aux_args (enq_frame);
-    vnet_crypto_deq_scalar_data_t *scalar = vlib_frame_scalar_args (enq_frame);
-
-    enq_frame->n_vectors = n_elts;
-    clib_memcpy_fast (to, head_indices, n_elts * sizeof (head_indices[0]));
-    clib_memcpy_fast (aux, ctxs, n_elts * sizeof (ctxs[0]));
-    *scalar = (vnet_crypto_deq_scalar_data_t){
-      .next_node_index = post_next_index,
-      .op_type = op_type,
-    };
-    enq_rt->function (async_vm, enq_rt, enq_frame);
-    enqueued = 1;
-  }
-
-  rv = crypto_test_wait_for_async_frame (vm, engine, &result);
+  rv =
+    crypto_test_async_run (vm, tm, engine, op_type, head_indices, ctxs, n_elts, n_elts, &n_errors);
+  enqueued = 1;
   if (rv)
     goto done;
+  completed = 1;
 
-  if (result.frame->n_elts != n_elts)
+  if (n_errors)
     {
-      log_err (0, "%s %s %U-%U %s: frame elt count mismatch got %u expected %u", engine_name,
-	       r->name, format_crypto_op_type_short, op_type, format_vnet_crypto_alg, r->alg,
-	       is_chained ? "chained" : "simple", result.frame->n_elts, n_elts);
-      *test_result = CRYPTO_TEST_RESULT_ERROR;
-      goto done;
-    }
-
-  if (vnet_crypto_async_frame_bitmap_count_set_bits (result.frame->engine_error_bitmap))
-    {
-      log_err (0, "%s %s %U-%U %s: fail-engine-err %U", engine_name, r->name,
+      log_err (0, "%s %s %U-%U %s: %u of %u failed", engine_name, r->name,
 	       format_crypto_op_type_short, op_type, format_vnet_crypto_alg, r->alg,
-	       is_chained ? "chained" : "simple", format_uword_bitmap,
-	       result.frame->engine_error_bitmap, ARRAY_LEN (result.frame->engine_error_bitmap));
-      *test_result = CRYPTO_TEST_RESULT_ERROR;
-      goto done;
-    }
-
-  if (vnet_crypto_async_frame_bitmap_count_set_bits (result.frame->bad_hmac_bitmap))
-    {
-      log_err (0, "%s %s %U-%U %s: fail-bad-hmac %U", engine_name, r->name,
-	       format_crypto_op_type_short, op_type, format_vnet_crypto_alg, r->alg,
-	       is_chained ? "chained" : "simple", format_uword_bitmap,
-	       result.frame->bad_hmac_bitmap, ARRAY_LEN (result.frame->bad_hmac_bitmap));
+	       is_chained ? "chained" : "simple", n_errors, n_elts);
       *test_result = CRYPTO_TEST_RESULT_FAIL;
       goto done;
     }
@@ -2365,15 +2381,10 @@ test_crypto_async_case (vlib_main_t *vm, crypto_test_main_t *tm,
   *test_result = CRYPTO_TEST_RESULT_OK;
 
 done:
-  if (result.frame)
-    {
-      vnet_crypto_thread_t *ct = crypto_main.threads + result.frame->enqueue_thread_index;
-
-      pool_put (ct->frame_pool, result.frame);
-    }
-  if (enq_frame)
-    vlib_frame_free (vm, enq_frame);
-  if (n_alloc && (!enqueued || result.frame))
+  /* buffers failed by the engine were freed by error-drop */
+  if (completed)
+    vlib_buffer_free (vm, tm->async_done, vec_len (tm->async_done));
+  else if (n_alloc && !enqueued)
     {
       if (is_chained)
 	vlib_buffer_free (vm, head_indices, n_elts);
@@ -2381,8 +2392,8 @@ done:
 	vlib_buffer_free (vm, buffer_indices, n_alloc);
     }
   vec_foreach_index (i, ctxs)
-    if (ctxs[i] && (result.frame || !enqueued))
-      vnet_crypto_ctx_destroy (async_vm, ctxs[i]);
+    if (ctxs[i] && (completed || !enqueued))
+      vnet_crypto_ctx_destroy (vm, ctxs[i]);
   vec_free (head_indices);
   vec_free (ctxs);
   vec_free (buffer_indices);
@@ -2421,7 +2432,7 @@ test_crypto_async_engine (vlib_main_t *vm, crypto_test_main_t *tm, vnet_crypto_e
 	  if (!crypto_test_reg_has_op_type (r, i) || !vnet_crypto_alg_has_op_type (r->alg, i))
 	    continue;
 
-	  if (vec_elt_at_index (crypto_main.engines, engine)->dequeue_handler == 0 ||
+	  if (vec_elt_at_index (crypto_main.engines, engine)->deq_node_index == ~0 ||
 	      vec_elt_at_index (crypto_main.engines, engine)
 		  ->ops[r->alg][i]
 		  .handlers[VNET_CRYPTO_HANDLER_TYPE_ASYNC] == 0)
@@ -2469,39 +2480,12 @@ test_crypto_async_engine (vlib_main_t *vm, crypto_test_main_t *tm, vnet_crypto_e
   return err;
 }
 
-void
-crypto_test_async_deq_node_disable (vlib_node_state_t **node_states)
-{
-  vlib_thread_main_t *vtm = vlib_get_thread_main ();
-  u32 i;
-
-  vec_validate (*node_states, vtm->n_vlib_mains - 1);
-  vec_foreach_index (i, *node_states)
-    {
-      vlib_main_t *ovm = vlib_get_main_by_index (i);
-      vlib_node_t *n = vlib_get_node (ovm, crypto_main.crypto_node_index);
-
-      (*node_states)[i] = n->state;
-      vlib_node_set_state (ovm, crypto_main.crypto_node_index, VLIB_NODE_STATE_DISABLED);
-    }
-}
-
-void
-crypto_test_async_deq_node_restore (vlib_node_state_t *node_states)
-{
-  u32 i;
-
-  vec_foreach_index (i, node_states)
-    vlib_node_set_state (vlib_get_main_by_index (i), crypto_main.crypto_node_index, node_states[i]);
-}
-
 static clib_error_t *
 test_crypto_async (vlib_main_t *vm, crypto_test_main_t *tm)
 {
   clib_error_t *err = 0;
   crypto_test_result_table_t results;
   vnet_crypto_engine_id_t engine = VNET_CRYPTO_ENGINE_ID_NONE;
-  vlib_node_state_t *node_states = 0;
 
   if (tm->engine)
     {
@@ -2511,9 +2495,7 @@ test_crypto_async (vlib_main_t *vm, crypto_test_main_t *tm)
     }
 
   crypto_test_async_result_table_init (&results, tm);
-  crypto_test_async_deq_node_disable (&node_states);
   err = crypto_test_run_engines (vm, tm, engine, &results, test_crypto_async_engine);
-  crypto_test_async_deq_node_restore (node_states);
 
   if (tm->quiet)
     vlib_cli_output (vm, "%s", crypto_test_has_failures (&results) ? "FAIL" : "OK");
@@ -2524,7 +2506,6 @@ test_crypto_async (vlib_main_t *vm, crypto_test_main_t *tm)
       crypto_test_summary_table_print (vm, &results, "Async Test Execution Summary");
     }
 
-  vec_free (node_states);
   crypto_test_result_table_free (&results);
   return err;
 }
@@ -2788,6 +2769,8 @@ test_crypto_command_dispatch (vlib_main_t *vm, unformat_input_t *input, u8 force
 
   tr = tm->test_registrations;
   vec_free (tm->engine);
+  vec_free (tm->async_done);
+  clib_bitmap_free (tm->threads);
   memset (tm, 0, sizeof (crypto_test_main_t));
   tm->test_registrations = tr;
   tm->async = force_async;
@@ -2815,7 +2798,15 @@ test_crypto_command_dispatch (vlib_main_t *vm, unformat_input_t *input, u8 force
 	;
       else if (unformat (input, "warmup-rounds %u", &tm->warmup_rounds))
 	;
+      else if (unformat (input, "trace %u", &tm->trace_count))
+	;
+      else if (unformat (input, "warmup %f", &tm->warmup_time))
+	tm->warmup_time_set = 1;
       else if (unformat (input, "buffer-size %u", &tm->buffer_size))
+	;
+      else if (unformat (input, "max-in-flight %u", &tm->max_in_flight))
+	;
+      else if (unformat (input, "threads %U", unformat_bitmap_list, &tm->threads))
 	;
       else if (unformat (input, "elts-per-frame %u", &tm->elts_per_frame))
 	;
@@ -2844,7 +2835,8 @@ test_crypto_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (test_crypto_command, static) = {
   .path = "test crypto",
-  .short_help = "test crypto [quiet|verbose] [async] [engine <name>] [perf <alg>]",
+  .short_help = "test crypto [quiet|verbose] [async] [engine <name>] [perf <alg>] "
+		"[threads <list>] [max-in-flight <n>] [warmup <seconds>] [trace <n>]",
   .function = test_crypto_command_fn,
   .is_mp_safe = 1,
 };
