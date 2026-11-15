@@ -74,6 +74,8 @@ typedef struct proxy_lite_main_
   u8 hsi_offload;
   u8 hsi_offload_stall;
   u8 started;
+  /* Tcp pairs' hsi idle timeout, 0 for hsi's default */
+  u32 hsi_idle_timeout;
 
   proxy_lite_hsi_track_pair_fn hsi_track_pair;
 
@@ -352,6 +354,7 @@ proxy_lite_start_hsi_offload (session_t *s, session_handle_t peer_handle, u32 ps
     .peer_session_handle = peer_handle,
     /* Session state is freed once hsi reports the sessions cleaned up */
     .flags = HSI_TRACK_F_NOTIFY_CLEANUP,
+    .idle_timeout = pm->hsi_idle_timeout,
   };
   proxy_lite_session_t *ps;
   session_handle_tu_t sh = { .handle = peer_handle };
@@ -821,6 +824,7 @@ proxy_lite_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_comman
   pm->segment_size = 512 << 20;
   pm->hsi_offload = 0;
   pm->hsi_offload_stall = 0;
+  pm->hsi_idle_timeout = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, "expected server-uri and client-uri");
@@ -842,6 +846,10 @@ proxy_lite_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_comman
 	}
       else if (unformat (line_input, "hsi-offload"))
 	pm->hsi_offload = 1;
+      else if (unformat (line_input, "hsi-idle-timeout ~0"))
+	pm->hsi_idle_timeout = ~0;
+      else if (unformat (line_input, "hsi-idle-timeout %u", &pm->hsi_idle_timeout))
+	;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'", format_unformat_error, line_input);
@@ -897,7 +905,7 @@ VLIB_CLI_COMMAND (proxy_lite_command, static) = {
   .short_help = "proxy-lite server-uri <tcp://ip:port|udp://ip:port> "
 		"client-uri <tcp://ip:port|udp://ip:port> "
 		"[fifo-size <n>[k|m]] [segment-size <n>[k|m]] "
-		"[hsi-offload] [hsi-offload-stall]",
+		"[hsi-offload] [hsi-offload-stall] [hsi-idle-timeout <sec>|~0]",
   .function = proxy_lite_command_fn,
 };
 

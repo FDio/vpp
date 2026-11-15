@@ -29,6 +29,11 @@ typedef struct hsi_track_args_
   session_t *s;
   session_handle_t peer_session_handle;
   hsi_track_flags_t flags;
+  /*
+   * Tcp only. Seconds the pair can be idle before HSI cleans it up, 0 for the
+   * "hsi tcp idle-timeout" default, ~0 to never clean it up for being idle.
+   */
+  u32 idle_timeout;
 } hsi_track_args_t;
 
 /*

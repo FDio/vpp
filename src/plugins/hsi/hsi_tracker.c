@@ -394,6 +394,7 @@ typedef void (*hsi_wheel_expired_fn) (clib_thread_index_t thread_index, u32 *ind
 /* Called with the indices of all their timers that expired */
 static const hsi_wheel_expired_fn hsi_wheel_expired_fns[HSI_WHEEL_N_TIMERS] = {
   [HSI_WHEEL_TIMER_UDP_IDLE] = hsi_udp_idle_expired,
+  [HSI_WHEEL_TIMER_TCP_IDLE] = hsi_tcp_idle_expired,
 };
 
 /*
@@ -605,7 +606,7 @@ hsi_track_pair (hsi_track_args_t *a)
   switch (proto)
     {
     case TRANSPORT_PROTO_TCP:
-      rv = hsi_track_tcp (s, peer_s, a->flags);
+      rv = hsi_track_tcp (s, peer_s, a->flags, a->idle_timeout);
       break;
     case TRANSPORT_PROTO_UDP:
       rv = hsi_track_udp (s, peer_s, a->flags);
