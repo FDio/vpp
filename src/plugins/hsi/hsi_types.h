@@ -24,6 +24,9 @@
 #define HSI_TCP_FIN_WAIT_DEFAULT_TIMEOUT	  2.0
 /* Like tcp's fin-wait-1 timeout, which bounds half-closes */
 #define HSI_TCP_HALF_CLOSE_DEFAULT_TIMEOUT	  60.0
+#define HSI_TCP_IDLE_TIMEOUT_NEVER		  ((u32) ~0)
+/* Like tcp, which keeps idle established connections */
+#define HSI_TCP_IDLE_DEFAULT_TIMEOUT		  HSI_TCP_IDLE_TIMEOUT_NEVER
 #define HSI_POSTPONED_CLEANUP_TIME		  0.1
 #define HSI_MQ_DEFAULT_LENGTH			  4096
 
@@ -37,6 +40,7 @@
 typedef enum hsi_wheel_timer_
 {
   HSI_WHEEL_TIMER_UDP_IDLE,
+  HSI_WHEEL_TIMER_TCP_IDLE,
   HSI_WHEEL_N_TIMERS,
 } hsi_wheel_timer_t;
 
@@ -58,6 +62,8 @@ typedef struct hsi_tcp_track_snapshot_
   u8 rcv_wscale;
   u8 snd_wscale;
   u32 next_node_opaque;
+  /** Pair's idle timeout, see hsi_track_args_t */
+  u32 idle_timeout;
 } hsi_tcp_track_snapshot_t;
 
 typedef struct hsi_tcp_track_commit_req_
@@ -109,6 +115,7 @@ typedef struct hsi_msg_ hsi_msg_t;
   _ (tcp_fin_wait_started, u64, "tcp-fin-wait-started")                                            \
   _ (tcp_fin_wait_cleanup, u64, "tcp-fin-wait-cleanup")                                            \
   _ (tcp_half_close_cleanup, u64, "tcp-half-close-cleanup")                                        \
+  _ (tcp_idle_cleanup, u64, "tcp-idle-cleanup")                                                    \
   _ (tcp_rst_cleanup, u64, "tcp-rst-cleanup")                                                      \
   _ (udp_track_accepted, u64, "udp-track-accepted")                                                \
   _ (udp_track_failed, u64, "udp-track-failed")                                                    \
@@ -255,6 +262,9 @@ typedef struct hsi_main_
   f64 udp_idle_timeout;
   f64 tcp_fin_wait_timeout;
   f64 tcp_half_close_timeout;
+  /** For pairs tracked without their own, see hsi_track_args_t. Seconds,
+   * HSI_TCP_IDLE_TIMEOUT_NEVER if idle pairs are kept */
+  u32 tcp_idle_timeout;
   f64 postponed_cleanup_time;
   u32 mq_length;
 

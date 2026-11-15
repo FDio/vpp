@@ -416,6 +416,52 @@ func StartHsiTcpHalfOpenClient(addr string, port uint16, netNs, readyPath, signa
 	return finished
 }
 
+// StartHsiTcpIdleClient exchanges data, and again once signaled, and then keeps
+// the connection open and idle until release is closed.
+func StartHsiTcpIdleClient(addr string, port uint16, netNs, readyPath, signalPath string,
+	release <-chan struct{}) <-chan HsiClientResult {
+	finished := make(chan HsiClientResult, 1)
+	go func() {
+		defer GinkgoRecover()
+		var conn *net.TCPConn
+		_, err := runInNetns(netNs, func() (string, error) {
+			var reader *bufio.Reader
+			var err error
+
+			conn, reader, err = hsiTcpClientConnect(addr, port)
+			if err != nil {
+				return "", err
+			}
+
+			exchange := func(msg string) error {
+				if _, err := conn.Write([]byte(msg)); err != nil {
+					return err
+				}
+				_, err := io.ReadFull(reader, make([]byte, len(msg)))
+				return err
+			}
+
+			if err := exchange("hsi-idle-warm"); err != nil {
+				return "", err
+			}
+			local := conn.LocalAddr().(*net.TCPAddr)
+			if err := writeReady(readyPath, local.Port); err != nil {
+				return "", err
+			}
+			if err := waitForSignal(signalPath, 10*time.Second); err != nil {
+				return "", err
+			}
+			return "", exchange("hsi-idle-last")
+		})
+		finished <- HsiClientResult{Err: err}
+		if conn != nil {
+			<-release
+			conn.Close()
+		}
+	}()
+	return finished
+}
+
 func StartHsiTcpFinReplayClient(addr string, port uint16, netNs, ifName, readyPath,
 	signalPath string, replayDelay time.Duration, replayCount int) <-chan HsiClientResult {
 	finished := make(chan HsiClientResult, 1)
