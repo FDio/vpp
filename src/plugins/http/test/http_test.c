@@ -4740,6 +4740,182 @@ http_test_decode_varint (vlib_main_t *vm)
   return 0;
 }
 
+static int
+http_test_listener_metadata (vlib_main_t *vm)
+{
+  session_enable_disable_args_t session_args = { .is_en = 1 };
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
+  fifo_segment_main_t fsm = {};
+  fifo_segment_create_args_t args = {
+    .segment_type = SSVM_SEGMENT_PRIVATE,
+    .segment_size = 1 << 20,
+    .segment_name = "http-listener-metadata",
+  };
+  const transport_proto_vft_t *vft = &tp_vfts[TRANSPORT_PROTO_HTTP];
+  http_listener_metadata_t **metadata = 0;
+  session_handle_t *connections = 0,
+		   streams[2] = { SESSION_INVALID_HANDLE, SESSION_INVALID_HANDLE };
+  session_handle_t listener = SESSION_INVALID_HANDLE, tcp_listener, parent_handle;
+  session_cb_vft_t callbacks;
+  http_main_t *hm;
+  http_ctx_t *lhc, *hc;
+  session_t *s;
+  fifo_segment_t *fs = 0;
+  svm_fifo_t *fifo = 0;
+  transport_endpt_ext_cfg_t *ext_cfg;
+  transport_endpt_cfg_http_t http_cfg = { .timeout = 60, .h3_alt_svc_port = 8443 };
+  http_wrk_stats_t saved_stats = {};
+  clib_error_t *error;
+  u32 lhc_index = SESSION_INVALID_INDEX;
+  clib_thread_index_t ti = 0;
+  int result = 1;
+  u8 barrier = 0, stats_saved = 0;
+
+#define METADATA_TEST(_cond, _comment)                                                             \
+  do                                                                                               \
+    {                                                                                              \
+      if (!HTTP_TEST_I ((_cond), _comment))                                                        \
+	goto done;                                                                                 \
+    }                                                                                              \
+  while (0)
+
+  hm = vlib_get_plugin_symbol ("http_plugin.so", "http_main");
+  METADATA_TEST (hm != 0, "HTTP main resolved for listener metadata");
+  error = vnet_session_enable_disable (vm, &session_args);
+  if (error)
+    {
+      clib_error_report (error);
+      return 1;
+    }
+  callbacks = application_get (hm->app_index)->cb_fns;
+  sep.is_ip4 = 1;
+  sep.transport_proto = TRANSPORT_PROTO_HTTP;
+  sep.app_wrk_index = application_get_default_worker (application_get (hm->app_index))->wrk_index;
+  ext_cfg = session_endpoint_add_ext_cfg (&sep, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
+  clib_memcpy (ext_cfg->data, &http_cfg, sizeof (http_cfg));
+  fifo_segment_main_init (&fsm, 0, 5);
+  METADATA_TEST (!fifo_segment_create (&fsm, &args), "listener metadata test segment allocated");
+  fs = fifo_segment_get_segment (&fsm, args.new_segment_indices[0]);
+  fifo = fifo_segment_alloc_fifo_w_slice (fs, 0, 4096, FIFO_SEGMENT_TX_FIFO);
+  METADATA_TEST (fifo != 0, "listener metadata test FIFO allocated");
+
+  /* Exercise worker pools while their owners are stopped. The fixture uses
+   * real HTTP callbacks without attaching its synthetic transport sessions. */
+  vlib_worker_thread_barrier_sync (vm);
+  barrier = 1;
+  s = listen_session_alloc (0, session_type_from_proto_and_ip (TRANSPORT_PROTO_HTTP, 1));
+  listener = session_handle (s);
+  lhc_index = vft->start_listen (s->session_index, (transport_endpoint_cfg_t *) &sep);
+  METADATA_TEST (lhc_index != SESSION_INVALID_INDEX, "HTTP listener created");
+  lhc = (http_ctx_t *) vft->get_listener (lhc_index);
+  metadata = vec_dup (lhc->hl_metadata_by_thread);
+  METADATA_TEST (vec_len (metadata) == vec_len (hm->wrk), "each HTTP worker has listener metadata");
+  tcp_listener =
+    session_handle (app_listener_get_session (app_listener_get_w_handle (lhc->hc_tl_handle_tcp)));
+  for (u32 i = 0; i < vec_len (metadata); i++)
+    {
+      METADATA_TEST (metadata[i]->refcnt == 1 && !((uword) metadata[i] % CLIB_CACHE_LINE_BYTES) &&
+		       (!i || (metadata[i]->app_name != metadata[0]->app_name &&
+			       metadata[i]->h3_alt_svc_port != metadata[0]->h3_alt_svc_port)),
+		     "worker metadata has a listener reference and private cache-aligned storage");
+      s = session_alloc (i);
+      s->listener_handle = tcp_listener;
+      s->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_TCP, 1);
+      s->tx_fifo = fifo;
+      vec_add1 (connections, session_handle (s));
+      METADATA_TEST (!callbacks.session_accept_callback (s), "HTTP connection accepted");
+      s = session_get_from_handle (connections[i]);
+      hc = pool_elt_at_index (hm->wrk[i].ctx_pool, ((http_conn_handle_t) s->opaque).conn_index);
+      METADATA_TEST (hc->hc_listener_metadata == metadata[i] && metadata[i]->refcnt == 2 &&
+		       hc->app_name == metadata[i]->app_name,
+		     "accepted connection references its worker's metadata");
+    }
+
+  ti = vec_len (hm->wrk) - 1;
+  saved_stats = hm->wrk[ti].stats;
+  stats_saved = 1;
+  parent_handle = connections[ti];
+  s = session_get_from_handle (parent_handle);
+  /* Reuse the accepted context as a QUIC parent; unidirectional stream
+   * acceptance needs no app session or QUIC handshake. */
+  s->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, 1);
+  hc = pool_elt_at_index (hm->wrk[ti].ctx_pool, ((http_conn_handle_t) s->opaque).conn_index);
+  hc->version = HTTP_VERSION_3;
+  hc->hc_parent_req_index = SESSION_INVALID_INDEX;
+  for (u32 i = 0; i < ARRAY_LEN (streams); i++)
+    {
+      s = session_alloc (ti);
+      s->listener_handle = parent_handle;
+      s->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, 1);
+      s->flags = SESSION_F_STREAM | SESSION_F_UNIDIRECTIONAL;
+      s->tx_fifo = fifo;
+      streams[i] = session_handle (s);
+      METADATA_TEST (!callbacks.session_accept_callback (s), "HTTP/3 stream accepted");
+      METADATA_TEST (metadata[ti]->refcnt == 3, "HTTP/3 stream owns an independent reference");
+      if (!i)
+	{
+	  METADATA_TEST (!vft->stop_listen (lhc_index),
+			 "HTTP listener stopped with live connections");
+	  lhc_index = SESSION_INVALID_INDEX;
+	  METADATA_TEST (metadata[ti]->refcnt == 2, "unlisten drops only the listener reference");
+	}
+    }
+
+  callbacks.session_cleanup_callback (session_get_from_handle (parent_handle),
+				      SESSION_CLEANUP_SESSION);
+  session_free (session_get_from_handle (parent_handle));
+  connections[ti] = SESSION_INVALID_HANDLE;
+  METADATA_TEST (metadata[ti]->refcnt == 2, "streams retain metadata after parent cleanup");
+  for (u32 i = 0; i < ARRAY_LEN (streams); i++)
+    {
+      s = session_get_from_handle (streams[i]);
+      hc = pool_elt_at_index (hm->wrk[ti].ctx_pool, ((http_conn_handle_t) s->opaque).conn_index);
+      METADATA_TEST (
+	vec_is_equal (hc->app_name, application_get (hm->app_index)->name) &&
+	  vec_len (hc->hc_h3_alt_svc_port) == sizeof ("h3=\":8443\"") - 1 &&
+	  !memcmp (hc->hc_h3_alt_svc_port, "h3=\":8443\"", sizeof ("h3=\":8443\"") - 1),
+	"server name and Alt-Svc remain valid after unlisten and parent cleanup");
+      callbacks.session_cleanup_callback (s, SESSION_CLEANUP_SESSION);
+      session_free (session_get_from_handle (streams[i]));
+      streams[i] = SESSION_INVALID_HANDLE;
+    }
+  result = 0;
+
+done:
+  for (u32 i = 0; i < ARRAY_LEN (streams); i++)
+    if (streams[i] != SESSION_INVALID_HANDLE)
+      {
+	s = session_get_from_handle (streams[i]);
+	callbacks.session_cleanup_callback (s, SESSION_CLEANUP_SESSION);
+	session_free (session_get_from_handle (streams[i]));
+      }
+  for (u32 i = 0; i < vec_len (connections); i++)
+    if (connections[i] != SESSION_INVALID_HANDLE)
+      {
+	s = session_get_from_handle (connections[i]);
+	callbacks.session_cleanup_callback (s, SESSION_CLEANUP_SESSION);
+	session_free (session_get_from_handle (connections[i]));
+      }
+  if (lhc_index != SESSION_INVALID_INDEX)
+    vft->stop_listen (lhc_index);
+  if (listener != SESSION_INVALID_HANDLE)
+    listen_session_free (session_get_from_handle (listener));
+  if (stats_saved)
+    hm->wrk[ti].stats = saved_stats;
+  if (barrier)
+    vlib_worker_thread_barrier_release (vm);
+  if (fifo)
+    fifo_segment_free_fifo (fs, fifo);
+  if (fs)
+    fifo_segment_delete (&fsm, fs);
+  session_endpoint_free_ext_cfgs (&sep);
+  vec_free (args.new_segment_indices);
+  vec_free (connections);
+  vec_free (metadata);
+  return result;
+#undef METADATA_TEST
+}
+
 static clib_error_t *
 test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		      vlib_cli_command_t *cmd)
@@ -4791,8 +4967,12 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_streaming_lifecycle (vm);
       else if (unformat (input, "decode-varint"))
 	res = http_test_decode_varint (vm);
+      else if (unformat (input, "listener-metadata"))
+	res = http_test_listener_metadata (vm);
       else if (unformat (input, "all"))
 	{
+	  if ((res = http_test_listener_metadata (vm)))
+	    goto done;
 	  if ((res = http_test_rx_publication (vm)))
 	    goto done;
 	  if ((res = http_test_streaming_lifecycle (vm)))
