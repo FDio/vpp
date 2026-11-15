@@ -26,8 +26,10 @@ vnet_crypto_ctx_t *crypto_test_ctx_add_data (vlib_main_t *vm, vnet_crypto_engine
 					     u8 is_async);
 int crypto_test_alg_has_fixed_auth_len (vnet_crypto_alg_t alg);
 int crypto_test_alg_has_fixed_aad_len (vnet_crypto_alg_t alg);
-void crypto_test_async_deq_node_disable (vlib_node_state_t **node_states);
-void crypto_test_async_deq_node_restore (vlib_node_state_t *node_states);
+clib_error_t *crypto_test_async_run (vlib_main_t *vm, crypto_test_main_t *tm,
+				     vnet_crypto_engine_id_t engine, vnet_crypto_op_type_t type,
+				     u32 *buffers, vnet_crypto_ctx_t **ctxs, u32 n,
+				     u32 elts_per_frame, u64 *n_errors);
 clib_error_t *test_crypto_perf (vlib_main_t *vm, crypto_test_main_t *tm);
 clib_error_t *test_crypto_async_perf (vlib_main_t *vm, crypto_test_main_t *tm);
 
