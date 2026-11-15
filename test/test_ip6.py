@@ -4584,5 +4584,44 @@ class TestIP6InterfaceRx(VppTestCase):
         self.send_and_expect(self.pg0, pkts_dst, self.pg2)
 
 
+class TestIPv6ExtHeaderWalk(VppTestCase):
+    """IPv6 extension header walk"""
+
+    def test_ext_header_walk_last_header(self):
+        """A negative find type returns the chain's last recorded header
+
+        Callers pass -1, read the terminating header from eh[res] and
+        treat a negative return as a malformed packet.
+        """
+        reply = self.vapi.cli("test ip6 ext-header-walk")
+        self.assertIn("PASS: ip6 extension header walk", reply)
+
+    def test_ext_header_walk_boundary_cases(self):
+        """A negative find type keeps its results at the walk boundaries
+
+        The walk records a later truncated chain header, and a chain
+        header or L4 header that starts at the scan bound. It records the
+        datagram protocol for a non-first fragment that ends at the
+        bound, and stops at the fragment header for one that ends past
+        the bound. A first chain header past the depth limit and a plain
+        truncated L4 header are malformed. The return value and eh[]
+        must stay the same for all of them.
+        """
+        reply = self.vapi.cli("test ip6 ext-header-walk boundary")
+        self.assertIn("PASS: ip6 extension header walk", reply)
+
+    def test_ext_header_walk_bounded(self):
+        """The bounded walk reports how the chain ended
+
+        The status, the fragment kind, the recorded chain headers, and
+        the terminating header must match. The cases cover complete
+        chains, fragments, truncated chain and L4 headers, headers that
+        continue past the walk bound, the entry and depth limits, and a
+        frame shorter than its declared payload.
+        """
+        reply = self.vapi.cli("test ip6 ext-header-walk bounded")
+        self.assertIn("PASS: ip6 extension header walk", reply)
+
+
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
