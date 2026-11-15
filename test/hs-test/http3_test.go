@@ -2445,7 +2445,12 @@ func Http3ServerHeadersPrefixTest(s *Http3Suite) {
 		if len(prefix) < 2 {
 			expected := &quic.ApplicationError{ErrorCode: quic.ApplicationErrorCode(http3.ErrCodeFrameError), Remote: true}
 			AssertMatchError(err, expected)
-			AssertMatchError(context.Cause(conn.Context()), expected)
+			select {
+			case <-conn.Context().Done():
+				AssertMatchError(context.Cause(conn.Context()), expected)
+			case <-time.After(3 * time.Second):
+				Fail("connection context was not cancelled after H3_FRAME_ERROR")
+			}
 		} else {
 			// An empty decoded section lacks mandatory pseudo-headers, but its framing is valid.
 			AssertMatchError(err, &quic.StreamError{StreamID: stream.StreamID(), ErrorCode: quic.StreamErrorCode(http3.ErrCodeMessageError), Remote: true})
