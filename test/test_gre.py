@@ -1107,6 +1107,22 @@ class TestGRE(VppTestCase):
         rx = self.send_and_expect(self.pg0, tx, self.pg0)
         self.verify_tunneled_l2o4(self.pg0, rx, tx, self.pg0.local_ip4, "2.2.2.2")
 
+        #
+        # A TEB tunnel is an Ethernet interface, and its MAC address can
+        # be changed. The tunnel's adjacency is a midchain, which has no
+        # MAC address in its rewrite: the traffic is not affected
+        #
+        self.vapi.sw_interface_set_mac_address(gre_if1.sw_if_index, "00:de:ad:be:ef:01")
+        self.vapi.sw_interface_set_mac_address(gre_if2.sw_if_index, "00:de:ad:be:ef:02")
+
+        tx = self.create_tunnel_stream_l2o4(self.pg0, "2.2.2.2", self.pg0.local_ip4)
+        rx = self.send_and_expect(self.pg0, tx, self.pg0)
+        self.verify_tunneled_l2o4(self.pg0, rx, tx, self.pg0.local_ip4, "2.2.2.3")
+
+        tx = self.create_tunnel_stream_l2o4(self.pg0, "2.2.2.3", self.pg0.local_ip4)
+        rx = self.send_and_expect(self.pg0, tx, self.pg0)
+        self.verify_tunneled_l2o4(self.pg0, rx, tx, self.pg0.local_ip4, "2.2.2.2")
+
         self.vapi.sw_interface_set_l2_xconnect(
             gre_if1.sw_if_index, gre_if2.sw_if_index, enable=0
         )

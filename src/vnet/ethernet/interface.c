@@ -225,11 +225,18 @@ ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 
 	    break;
 	  }
+	case IP_LOOKUP_NEXT_MCAST_MIDCHAIN:
+	case IP_LOOKUP_NEXT_MIDCHAIN:
+	  /*
+	   * The adjacency of a tunnel that is an Ethernet interface, a
+	   * GRE TEB tunnel for one. Its rewrite is the tunnel's
+	   * encapsulation, which the tunnel maintains and which does not
+	   * hold the interface's MAC address: nothing to update.
+	   */
+	  break;
 	case IP_LOOKUP_NEXT_DROP:
 	case IP_LOOKUP_NEXT_PUNT:
 	case IP_LOOKUP_NEXT_LOCAL:
-	case IP_LOOKUP_NEXT_MCAST_MIDCHAIN:
-	case IP_LOOKUP_NEXT_MIDCHAIN:
 	case IP_LOOKUP_NEXT_ICMP_ERROR:
 	case IP_LOOKUP_N_NEXT:
 	  ASSERT (0);
