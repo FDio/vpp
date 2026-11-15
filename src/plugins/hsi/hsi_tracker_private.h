@@ -58,8 +58,13 @@ typedef struct hsi_tcp_tracker_
   u8 pad_[3];
   u32 next_node_opaque;
   u32 peer_next_node_opaque;
+  /* Idle timer of the pair, only on the side with the lower session handle */
+  u32 idle_timer;
   /* First fin seen, pair is cleaned up if not closed a timeout later */
   f64 half_close_start;
+  /* Last packet forwarded, only kept if the pair has an idle timeout */
+  f64 last_active;
+  u32 idle_timeout;
 } hsi_tcp_tracker_t;
 
 #define HSI_TCP_TRACKER_OFFSET STRUCT_OFFSET_OF (tcp_connection_t, rcv_dupacks)
@@ -170,6 +175,7 @@ typedef enum hsi_tcp_cleanup_reason_
 {
   HSI_TCP_CLEANUP_REASON_FIN,
   HSI_TCP_CLEANUP_REASON_RST,
+  HSI_TCP_CLEANUP_REASON_IDLE,
 } hsi_tcp_cleanup_reason_t;
 
 struct hsi_tcp_drain_
@@ -192,6 +198,8 @@ struct hsi_tcp_drain_
   u32 *cached_buffers;
   hsi_tcp_drain_flags_t flags;
   hsi_tcp_drain_state_t state;
+  /** Pair's idle timeout. Across workers, only the committer's is set */
+  u32 idle_timeout;
   /** Committer only, snapshot the peer reported once drained */
   hsi_tcp_track_snapshot_t peer_snapshot;
 };
@@ -662,7 +670,7 @@ hsi_session_peer_get_if_valid (session_handle_tu_t sh)
 }
 
 int hsi_track_sessions_compatible (session_t *s, session_t *peer_s);
-int hsi_track_tcp (session_t *s, session_t *peer_s, hsi_track_flags_t flags);
+int hsi_track_tcp (session_t *s, session_t *peer_s, hsi_track_flags_t flags, u32 idle_timeout);
 int hsi_track_udp (session_t *s, session_t *peer_s, hsi_track_flags_t flags);
 
 void hsi_session_cleanup_fifos (session_t *s);

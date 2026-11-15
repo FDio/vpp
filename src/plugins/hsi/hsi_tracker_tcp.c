@@ -79,6 +79,8 @@ hsi_tcp_session_cleanup_state (session_t *s)
 {
   tcp_connection_t *tc = hsi_tcp_connection_at_session (s);
 
+  if (hsi_tcp_connection_is_committed (tc))
+    hsi_wheel_disarm (s->thread_index, &hsi_tcp_tracker_from_connection (tc)->idle_timer);
   hsi_tcp_fin_wait_del (tc);
   hsi_tcp_drain_stop (tc);
 }
@@ -331,6 +333,7 @@ hsi_tcp_track_snapshot (session_t *s, tcp_connection_t *tc, hsi_tcp_track_snapsh
   snap->rcv_wscale = tc->rcv_wscale;
   snap->snd_wscale = tc->snd_wscale;
   snap->next_node_opaque = tc->next_node_opaque;
+  snap->idle_timeout = HSI_TCP_IDLE_TIMEOUT_NEVER;
 }
 
 static_always_inline u8
@@ -580,6 +583,7 @@ hsi_tcp_tracker_init (hsi_tcp_tracker_t *trk, tcp_connection_t *tc, hsi_tcp_trac
   clib_memset (trk, 0, sizeof (*trk));
 
   trk->magic = HSI_TCP_TRACKER_MAGIC;
+  trk->idle_timer = HSI_WHEEL_HANDLE_INVALID;
   trk->cc_algo = tcp_cc_algo_get (TCP_CC_NEWRENO);
   trk->peer_session_handle = peer->session_handle;
   trk->peer_conn_index = peer->conn_index;
@@ -721,15 +725,35 @@ hsi_tcp_drain_flush_cached_buffers (tcp_connection_t *tc)
 }
 
 static void
+hsi_tcp_track_idle_arm (tcp_connection_t *tc, hsi_tcp_tracker_t *trk, f64 interval, f64 now)
+{
+  ASSERT (trk->idle_timer == HSI_WHEEL_HANDLE_INVALID);
+  trk->idle_timer =
+    hsi_wheel_arm (tc->c_thread_index, HSI_WHEEL_TIMER_TCP_IDLE, tc->c_c_index, interval, now);
+}
+
+static void
 hsi_tcp_track_commit_connection (tcp_connection_t *tc, hsi_tcp_track_snapshot_t *self,
 				 hsi_tcp_track_snapshot_t *peer)
 {
+  hsi_tcp_tracker_t *trk = hsi_tcp_tracker_from_connection (tc);
+
   hsi_tcp_track_cleanup_tcp_state (tc);
-  hsi_tcp_tracker_init (hsi_tcp_tracker_from_connection (tc), tc, self, peer);
+  hsi_tcp_tracker_init (trk, tc, self, peer);
 
   tc->cfg_flags |= TCP_CFG_F_TRACKED;
   tc->c_flags |= TRANSPORT_CONNECTION_F_SPLICED;
   tcp_connection_set_state (tc, TCP_STATE_CLOSED);
+
+  ASSERT (self->idle_timeout && self->idle_timeout == peer->idle_timeout);
+  trk->idle_timeout = self->idle_timeout;
+  if (trk->idle_timeout == HSI_TCP_IDLE_TIMEOUT_NEVER)
+    return;
+
+  /* One side checks if the pair is idle, see hsi_tcp_idle_expired */
+  trk->last_active = vlib_time_now (vlib_get_main ());
+  if (self->session_handle < peer->session_handle)
+    hsi_tcp_track_idle_arm (tc, trk, trk->idle_timeout, trk->last_active);
 }
 
 /* Replay packets cached while draining. Must be done once the peer, if on the
@@ -978,6 +1002,7 @@ hsi_tcp_drain_try_complete_remote (session_t *s, tcp_connection_t *tc, hsi_tcp_d
   /* Commit frees the drain */
   peer_snap = drain->peer_snapshot;
   hsi_tcp_track_snapshot (s, tc, &snap);
+  snap.idle_timeout = peer_snap.idle_timeout = drain->idle_timeout;
   hsi_tcp_track_send_commit (drain->peer_session_handle, &peer_snap, &snap);
   hsi_tcp_track_commit (s, &snap, &peer_snap);
 
@@ -1055,6 +1080,7 @@ hsi_tcp_drain_try_complete (session_t *s, tcp_connection_t *tc, hsi_tcp_drain_t 
 
   hsi_tcp_track_snapshot (s, tc, &snap);
   hsi_tcp_track_snapshot (peer_s, peer_tc, &peer_snap);
+  snap.idle_timeout = peer_snap.idle_timeout = drain->idle_timeout;
 
   committed = hsi_tcp_track_commit_no_flush (s, &snap, &peer_snap);
   peer_committed = hsi_tcp_track_commit_no_flush (peer_s, &peer_snap, &snap);
@@ -1256,13 +1282,16 @@ hsi_tcp_drain_timer (clib_thread_index_t thread_index, f64 time_now)
 }
 
 int
-hsi_track_tcp (session_t *s, session_t *peer_s, hsi_track_flags_t flags)
+hsi_track_tcp (session_t *s, session_t *peer_s, hsi_track_flags_t flags, u32 idle_timeout)
 {
   tcp_connection_t *tc0, *tc1;
   hsi_tcp_track_snapshot_t snap0, snap1;
   hsi_tcp_drain_t *drain;
   hsi_worker_t *wrk;
   u8 is_same_thread;
+
+  if (!idle_timeout)
+    idle_timeout = hsi_main.tcp_idle_timeout;
 
   tc0 = hsi_tcp_connection_at_session (s);
   tc1 = hsi_tcp_connection_at_session (peer_s);
@@ -1292,6 +1321,7 @@ hsi_track_tcp (session_t *s, session_t *peer_s, hsi_track_flags_t flags)
     {
       drain = hsi_tcp_drain_start (s, peer_s, tc0, tc1);
       drain->flags |= HSI_TCP_DRAIN_F_COMMITTER;
+      drain->idle_timeout = idle_timeout;
       hsi_tcp_track_send_drain_start (s, peer_s, flags);
       return 0;
     }
@@ -1300,13 +1330,14 @@ hsi_track_tcp (session_t *s, session_t *peer_s, hsi_track_flags_t flags)
 
   if (hsi_tcp_track_needs_drain (s, tc0) || hsi_tcp_track_needs_drain (peer_s, tc1))
     {
-      hsi_tcp_drain_start (s, peer_s, tc0, tc1);
-      hsi_tcp_drain_start (peer_s, s, tc1, tc0);
+      hsi_tcp_drain_start (s, peer_s, tc0, tc1)->idle_timeout = idle_timeout;
+      hsi_tcp_drain_start (peer_s, s, tc1, tc0)->idle_timeout = idle_timeout;
       return 0;
     }
 
   hsi_tcp_track_snapshot (s, tc0, &snap0);
   hsi_tcp_track_snapshot (peer_s, tc1, &snap1);
+  snap0.idle_timeout = snap1.idle_timeout = idle_timeout;
 
   hsi_tcp_track_commit (s, &snap0, &snap1);
   hsi_tcp_track_commit (peer_s, &snap1, &snap0);
@@ -1377,6 +1408,8 @@ hsi_tcp_track_schedule_cleanup_pair (tcp_connection_t *tc, hsi_tcp_tracker_t *tr
   hsi_worker_counter_inc (wrk, tcp_cleanup_scheduled);
   if (reason == HSI_TCP_CLEANUP_REASON_RST)
     hsi_worker_counter_inc (wrk, tcp_rst_cleanup);
+  else if (reason == HSI_TCP_CLEANUP_REASON_IDLE)
+    hsi_worker_counter_inc (wrk, tcp_idle_cleanup);
   else
     hsi_worker_counter_inc (wrk, tcp_fin_cleanup);
 
@@ -1590,6 +1623,63 @@ hsi_tcp_fin_wait_timer (clib_thread_index_t thread_index, f64 time_now)
     return HSI_TIMER_NONE;
   elt = clib_fifo_head (wrk->tcp_fin_wait_fifo);
   return elt->start + hsi_main.tcp_fin_wait_timeout;
+}
+
+/*
+ * Pairs whose idle timers expired, see hsi_wheel_run. Timers are armed for
+ * when the pair can first be idle, i.e., the last packet either side forwarded
+ * plus the timeout, so the data path never touches them. Cleanup disarms, so
+ * timers that fire belong to their trackers.
+ */
+void
+hsi_tcp_idle_expired (clib_thread_index_t thread_index, u32 *indices, f64 now)
+{
+  hsi_tcp_tracker_t *trk, *peer_trk;
+  u32 *index, timeout;
+  tcp_connection_t *tc, *peer_tc;
+  session_handle_tu_t peer_sh;
+  session_t *peer_s;
+  f64 idle;
+
+  vec_foreach (index, indices)
+    {
+      tc = hsi_tcp_connection_at_index (thread_index, *index);
+      trk = hsi_tcp_tracker_from_connection (tc);
+      ASSERT ((tc->cfg_flags & TCP_CFG_F_TRACKED) && hsi_tcp_connection_is_committed (tc));
+      ASSERT (trk->magic == HSI_TCP_TRACKER_MAGIC && trk->idle_timer != HSI_WHEEL_HANDLE_INVALID);
+      trk->idle_timer = HSI_WHEEL_HANDLE_INVALID;
+
+      if (trk->flags & HSI_TRACKER_F_CLEANUP_PENDING)
+	continue;
+
+      timeout = trk->idle_timeout;
+
+      peer_sh.handle = trk->peer_session_handle;
+      peer_s = hsi_session_peer_get_if_valid (peer_sh);
+      if (!peer_s)
+	{
+	  hsi_tcp_tracker_cleanup_mark_pending (trk);
+	  hsi_session_cleanup (session_get (tc->c_s_index, thread_index));
+	  continue;
+	}
+
+      peer_tc = hsi_tcp_connection_at_session (peer_s);
+      if (!(peer_tc->cfg_flags & TCP_CFG_F_TRACKED) || !hsi_tcp_connection_is_committed (peer_tc))
+	{
+	  hsi_tcp_track_idle_arm (tc, trk, timeout, now);
+	  continue;
+	}
+
+      peer_trk = hsi_tcp_tracker_from_connection (peer_tc);
+      idle = now - clib_max (trk->last_active, peer_trk->last_active);
+      if (idle < timeout)
+	{
+	  hsi_tcp_track_idle_arm (tc, trk, timeout - idle, now);
+	  continue;
+	}
+
+      hsi_tcp_track_schedule_cleanup_pair (tc, trk, HSI_TCP_CLEANUP_REASON_IDLE);
+    }
 }
 
 static void
@@ -1949,6 +2039,8 @@ hsi_tcp_handle_tracked_connection (vlib_main_t *vm, vlib_buffer_t *b, tcp_connec
 
   trk->packets += 1;
   trk->bytes += vlib_buffer_length_in_chain (vm, b);
+  if (trk->idle_timeout != HSI_TCP_IDLE_TIMEOUT_NEVER)
+    trk->last_active = vlib_time_now (vm);
 
   if (PREDICT_FALSE (rst))
     {
