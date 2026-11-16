@@ -9,6 +9,7 @@
 #define included_vlib_cli_h
 
 #include <vppinfra/format.h>
+#include <vppinfra/cli.h>
 #include <vlib/log.h>
 
 struct vlib_cli_command_t;
@@ -76,6 +77,12 @@ typedef struct vlib_cli_command_t
   /* Known MP-safe? */
   uword is_mp_safe;
 
+  /* Declarative command, see vppinfra/cli.h. A command with a handler is parsed
+     using args and its function is set when the command is registered, a
+     command which has a function is parsed by the function itself. */
+  const cli_arg_t *args;
+  clib_error_t *(*handler) (struct vlib_main_t *vm, cli_ctx_t *ctx);
+
   /* Sub commands for this command. */
   vlib_cli_sub_command_t *sub_commands;
 
@@ -122,12 +129,18 @@ typedef struct vlib_cli_main_t
   void (**perf_counter_cbs_tmp)
     (struct vlib_cli_main_t *, u32 id, int before_or_after);
 
+  /* the error being returned is from a declarative command */
+  u8 error_from_declarative_command;
+
   /* cli log */
   vlib_log_class_t log;
 
 } vlib_cli_main_t;
 
 void vlib_cli_command_registration_helper (vlib_cli_command_t *x);
+
+/* argument type for graph nodes, the value is the node index */
+extern cli_type_t cli_type_node;
 
 #ifndef CLIB_MARCH_VARIANT
 #define VLIB_CLI_COMMAND(x, ...)                                              \
@@ -155,27 +168,32 @@ void vlib_cli_command_registration_helper (vlib_cli_command_t *x);
 static __clib_unused vlib_cli_command_t __clib_unused_##x
 #endif
 
-#define VLIB_CLI_PARSE_RULE(x) \
-  vlib_cli_parse_rule_t x
+#define VLIB_CLI_PARSE_RULE(x) vlib_cli_parse_rule_t x
 /* Output to current CLI connection. */
 void vlib_cli_output (struct vlib_main_t *vm, char *fmt, ...);
 
 /* Process CLI input. */
-int vlib_cli_input (struct vlib_main_t *vm,
-		    unformat_input_t * input,
-		    vlib_cli_output_function_t * function,
-		    uword function_arg);
+int vlib_cli_input (struct vlib_main_t *vm, unformat_input_t *input,
+		    vlib_cli_output_function_t *function, uword function_arg);
 
-clib_error_t *vlib_cli_register (struct vlib_main_t *vm,
-				 vlib_cli_command_t * c);
-clib_error_t *vlib_cli_register_parse_rule (struct vlib_main_t *vm,
-					    vlib_cli_parse_rule_t * c);
+clib_error_t *vlib_cli_register (struct vlib_main_t *vm, vlib_cli_command_t *c);
+clib_error_t *vlib_cli_register_parse_rule (struct vlib_main_t *vm, vlib_cli_parse_rule_t *c);
 
 unformat_function_t unformat_vlib_cli_line;
-uword unformat_vlib_cli_sub_input (unformat_input_t * i, va_list * args);
+uword unformat_vlib_cli_sub_input (unformat_input_t *i, va_list *args);
 
 /* Return an vector of strings consisting of possible auto-completions
  * for a given input string */
-u8 **vlib_cli_get_possible_completions (u8 * input_str);
+u8 **vlib_cli_get_possible_completions (u8 *input_str);
+
+/* Completion candidate: text replaces the last word of the input, help is an
+ * optional description. Both are owned vectors. */
+typedef cli_candidate_t vlib_cli_completion_t;
+
+/* Return a vector of completion candidates for a given input string, this
+ * includes argument completion for commands registered with
+ * VLIB_CLI_COMMAND with a handler. Free with vlib_cli_completions_free (). */
+vlib_cli_completion_t *vlib_cli_get_completions (u8 *input_str);
+void vlib_cli_completions_free (vlib_cli_completion_t *c);
 
 #endif /* included_vlib_cli_h */
