@@ -724,5 +724,52 @@ port is always the listener's port, regardless of ``h3_alt_svc_port``.
 
 Applications that create separate listeners can set ``h3_alt_svc_port`` in
 ``transport_endpt_cfg_http_t`` on the HTTP/1 and HTTP/2 listener. The port is in
-host byte order. A nonzero value advertises the configured UDP port; zero
+host byte order. A nonzero value advertises the configured UDP port. Zero
 disables advertisement for listeners that do not combine TLS and QUIC.
+
+Request methods
+^^^^^^^^^^^^^^^
+
+GET, POST, PUT, HEAD, OPTIONS, DELETE, and PATCH are available to applications
+over HTTP/1, HTTP/2, and HTTP/3. CONNECT and the optional draft CONNECT-UDP
+method use the existing tunnel interfaces. Method names are case sensitive.
+The plugin rejects unsupported methods with 501. Applications decide which
+recognized methods are permitted for each resource and generate their own
+responses, including 405 with an appropriate Allow header.
+
+OPTIONS requests are delivered to the application. An asterisk target is
+represented by a one-byte ``target_path`` containing ``*``. Ordinary request
+paths retain the existing convention of omitting their leading slash. The
+received ``http_msg_data_t.target_form`` identifies the original target form.
+Applications must use ``HTTP_TARGET_ASTERISK_FORM`` to distinguish server-wide
+OPTIONS from a resource path such as ``/*`` or ``/%2A``. For HTTP/2 and HTTP/3,
+this field describes the ``:path`` form, or authority form for CONNECT without
+``:path``. Outgoing targets retain their existing wire-format path contract.
+The plugin does not generate OPTIONS responses or infer application capabilities.
+
+HEAD responses contain no wire body. On reception, ``body_len`` contains the
+representation length advertised by Content-Length, or zero when that header
+is absent. Applications use the request method to distinguish this metadata
+from body bytes. They must not wait for or dequeue ``body_len`` bytes for HEAD.
+The header also remains available through the received header table. HTTP/2
+and HTTP/3 publish a HEAD reply after END_STREAM or FIN, once the application
+session can be reused. Until then, staged headers remain unreadable in the
+application FIFO.
+Content-Length values are validated with the same unsigned 64-bit parser in all
+three versions, even though they do not determine HEAD response framing.
+On transmission, applications set ``body_len`` to the representation length,
+as for the corresponding GET response. The plugin generates Content-Length
+from this value and completes the HEAD reply after its headers. Applications
+enqueue only the reply metadata and headers, without body bytes or a body
+pointer. For ``HTTP_MSG_DATA_PTR``, a header pointer is still required when
+headers are present. No body buffer is accessed or retained by the plugin.
+
+When the representation length is unknown, applications may use
+``HTTP_MSG_DATA_STREAMING``. The plugin omits Content-Length and completes the
+HEAD reply after its headers, without transfer coding, DATA frames, or waiting
+for application EOF.
+
+On reception, informational responses other than HTTP/1 protocol switching are
+consumed internally while the request waits for a final response. They do not
+complete the application request. Automatic Expect/100-continue upload negotiation
+and forwarding informational responses to proxy applications are not provided.

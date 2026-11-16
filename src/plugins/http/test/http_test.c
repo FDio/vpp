@@ -4305,6 +4305,7 @@ typedef struct
   u32 app_session_index, old_stream_index, new_session_index;
   u32 rx_cancellations;
   u64 peer_error_code;
+  u8 initializing;
 } http_test_h3_lifecycle_t;
 
 static http_test_h3_lifecycle_t *http_test_h3_lifecycle;
@@ -4327,6 +4328,11 @@ http_test_h3_connect_stream (transport_endpoint_cfg_t *tep, session_t *s, u32 *c
   };
   /* The stream-opening caller has not attached the transport connection yet. */
   s->session_state = SESSION_STATE_CREATED;
+  if (test->initializing)
+    {
+      *conn_index = 0;
+      return 0;
+    }
   test->retired_contexts = wrk->ctx_pool;
   wrk->ctx_pool = pool_dup_aligned (wrk->ctx_pool, CLIB_CACHE_LINE_BYTES);
   test->retired_sessions = swrk->sessions;
@@ -4624,7 +4630,7 @@ done:
 }
 
 static int
-http_test_h3_streaming_lifecycle_case (vlib_main_t *vm, u8 queue_data, u8 cleanup_first)
+http_test_h3_streaming_lifecycle_case (vlib_main_t *vm, u8 queue_data, u8 cleanup_first, u8 head)
 {
   http_test_h3_lifecycle_t test = { .new_session_index = ~0 };
   session_enable_disable_args_t session_args = { .is_en = 1 };
@@ -4637,7 +4643,7 @@ http_test_h3_streaming_lifecycle_case (vlib_main_t *vm, u8 queue_data, u8 cleanu
   transport_proto_vft_t saved_quic;
   const transport_proto_vft_t *vft;
   fifo_segment_t *fs = 0;
-  svm_fifo_t *app_fifo = 0, *transport_fifo = 0;
+  svm_fifo_t *app_fifo = 0, *transport_fifo = 0, *transport_rx_fifo = 0;
   http_worker_t *wrk = 0;
   session_worker_t *swrk = 0;
   session_tx_context_t saved_tx_ctx = {};
@@ -4653,6 +4659,7 @@ http_test_h3_streaming_lifecycle_case (vlib_main_t *vm, u8 queue_data, u8 cleanu
   http_msg_t msg = { .data.type = HTTP_MSG_DATA_STREAMING };
   clib_error_t *error;
   u32 parent_index = ~0, stream_index = ~0, req_index = ~0, as_index = ~0, ts_index = ~0;
+  u32 parent_session_index = ~0;
   u8 body[] = { 'b', 'o', 'd', 'y' }, frame[6], mocked = 0, tx_scheduled = 0;
   int result = 1, n_tx_packets = 0;
 
@@ -4680,6 +4687,11 @@ http_test_h3_streaming_lifecycle_case (vlib_main_t *vm, u8 queue_data, u8 cleanu
   app_fifo = fifo_segment_alloc_fifo_w_slice (fs, 0, 4096, FIFO_SEGMENT_TX_FIFO);
   transport_fifo = fifo_segment_alloc_fifo_w_slice (fs, 0, 4096, FIFO_SEGMENT_TX_FIFO);
   H3_TEST (app_fifo && transport_fifo, "HTTP/3 lifecycle FIFOs allocated");
+  if (head)
+    {
+      transport_rx_fifo = fifo_segment_alloc_fifo_w_slice (fs, 0, 4096, FIFO_SEGMENT_RX_FIFO);
+      H3_TEST (transport_rx_fifo != 0, "HTTP/3 HEAD receive FIFO allocated");
+    }
   as = session_alloc (vm->thread_index);
   as_index = as->session_index;
   ts = session_alloc (vm->thread_index);
@@ -4732,12 +4744,6 @@ http_test_h3_streaming_lifecycle_case (vlib_main_t *vm, u8 queue_data, u8 cleanu
   req->c_flags = TRANSPORT_CONNECTION_F_NO_LOOKUP;
   req->c_s_index = as_index;
   req->c_thread_index = vm->thread_index;
-  req->req_state = HTTP_REQ_STATE_WAIT_APP_METHOD;
-  req->req_flags = HTTP_REQ_F_RX_HEADERS_RECEIVED | HTTP_REQ_F_RX_EOF | HTTP_REQ_F_PEER_CLOSED |
-		   (queue_data ? HTTP_REQ_F_TX_EOF : 0);
-  init_tx_buffer (req, &msg);
-  H3_TEST (svm_fifo_enqueue (app_fifo, sizeof (body), body) == sizeof (body),
-	   "final upload bytes queued after a completed known-length response");
   test.app_session_index = as_index;
   test.old_stream_index = stream_index;
   vft = &tp_vfts[TRANSPORT_PROTO_HTTP];
@@ -4748,6 +4754,62 @@ http_test_h3_streaming_lifecycle_case (vlib_main_t *vm, u8 queue_data, u8 cleanu
   tp_vfts[TRANSPORT_PROTO_QUIC].attribute = http_test_h3_attribute;
   http_test_h3_lifecycle = &test;
   mocked = 1;
+  if (head)
+    {
+      session_endpoint_cfg_t sep = { .parent_handle = session_handle (as) };
+      http_conn_handle_t stream_handle = { .version = HTTP_VERSION_3 };
+      /* Initialize the real client RX handler without relocating the pools yet. */
+      test.initializing = 1;
+      H3_TEST (!vft->connect_stream ((transport_endpoint_cfg_t *) &sep, 0, &handle.as_u32),
+	       "HTTP/3 HEAD client stream initialized");
+      test.initializing = 0;
+      pool_put_index (wrk->ctx_pool, req_index);
+      pool_put_index (wrk->ctx_pool, stream_index);
+      req_index = handle.req_index;
+      req = pool_elt_at_index (wrk->ctx_pool, req_index);
+      stream_index = req->hr_hc_index;
+      stream = pool_elt_at_index (wrk->ctx_pool, stream_index);
+      parent_session_index = ts_index;
+      ts_index = test.new_session_index;
+      test.new_session_index = ~0;
+      test.old_stream_index = stream_index;
+      ts = session_get (ts_index, vm->thread_index);
+      segment_manager_dealloc_fifos (ts->rx_fifo, ts->tx_fifo);
+      ts->rx_fifo = transport_rx_fifo;
+      ts->tx_fifo = transport_fifo;
+      ts->session_state = SESSION_STATE_TRANSPORT_DELETED;
+      ts->flags = SESSION_F_APP_CLOSED;
+      stream_handle.conn_index = stream_index;
+      ts->opaque = stream_handle.as_u32;
+    }
+  as = pool_elt_at_index (session_main.wrk[vm->thread_index].sessions, as_index);
+  handle.req_index = req_index;
+  as->connection_index = req->hr_req_handle = handle.as_u32;
+  req->hr_hc_index = stream_index;
+  req->c_flags = TRANSPORT_CONNECTION_F_NO_LOOKUP;
+  req->c_s_index = as_index;
+  req->c_thread_index = vm->thread_index;
+  req->req_state = HTTP_REQ_STATE_WAIT_APP_METHOD;
+  req->req_flags = HTTP_REQ_F_RX_HEADERS_RECEIVED | HTTP_REQ_F_RX_EOF | HTTP_REQ_F_PEER_CLOSED |
+		   (queue_data ? HTTP_REQ_F_TX_EOF : 0);
+  init_tx_buffer (req, &msg);
+  H3_TEST (svm_fifo_enqueue (app_fifo, sizeof (body), body) == sizeof (body),
+	   "final upload bytes queued after a completed known-length response");
+  if (head)
+    {
+      req->method = HTTP_REQ_HEAD;
+      req->status_code = HTTP_STATUS_OK;
+      req->req_state = HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA;
+      req->req_flags &= ~(HTTP_REQ_F_RX_EOF | HTTP_REQ_F_PEER_CLOSED);
+      application_get (test.hm->app_index)->cb_fns.session_disconnect_callback (ts);
+      req = pool_elt_at_index (wrk->ctx_pool, req_index);
+      H3_TEST (
+	!test.retired_contexts && !test.retired_sessions && req->hr_hc_index == stream_index &&
+	  req->tx_buf.vft && (req->req_flags & HTTP_REQ_F_RX_EOF) &&
+	  req->req_state == HTTP_REQ_STATE_WAIT_APP_METHOD &&
+	  svm_fifo_max_dequeue (app_fifo) == sizeof (body),
+	"HEAD response FIN preserves the original stream and pending upload, marking RX EOF");
+    }
   swrk = &session_main.wrk[vm->thread_index];
   saved_tx_ctx = swrk->ctx;
   clib_llist_get (swrk->event_elts, elt);
@@ -4914,6 +4976,8 @@ done:
     session_free (session_get (as_index, vm->thread_index));
   if (ts_index != ~0)
     session_free (session_get (ts_index, vm->thread_index));
+  if (parent_session_index != ~0)
+    session_free (session_get (parent_session_index, vm->thread_index));
   if (mocked)
     {
       tp_vfts[TRANSPORT_PROTO_QUIC] = saved_quic;
@@ -4926,6 +4990,8 @@ done:
     fifo_segment_free_fifo (fs, app_fifo);
   if (transport_fifo)
     fifo_segment_free_fifo (fs, transport_fifo);
+  if (transport_rx_fifo)
+    fifo_segment_free_fifo (fs, transport_rx_fifo);
   if (fs)
     fifo_segment_delete (&fsm, fs);
   vec_free (args.new_segment_indices);
@@ -4936,9 +5002,11 @@ done:
 static int
 http_test_h3_streaming_lifecycle (vlib_main_t *vm)
 {
-  return http_test_h3_streaming_lifecycle_case (vm, 0, 0) ||
-	 http_test_h3_streaming_lifecycle_case (vm, 0, 1) ||
-	 http_test_h3_streaming_lifecycle_case (vm, 1, 0);
+  return http_test_h3_streaming_lifecycle_case (vm, 0, 0, 0) ||
+	 http_test_h3_streaming_lifecycle_case (vm, 0, 1, 0) ||
+	 http_test_h3_streaming_lifecycle_case (vm, 1, 0, 0) ||
+	 http_test_h3_streaming_lifecycle_case (vm, 0, 0, 1) ||
+	 http_test_h3_streaming_lifecycle_case (vm, 1, 0, 1);
 }
 
 static int
