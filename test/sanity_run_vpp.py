@@ -9,12 +9,15 @@ from asfframework import (
     VppDiedError,
     VppTestResult,
 )
+from config import available_cpus
 
 
 class SanityTestCase(VppAsfTestCase):
     """Sanity test case - verify whether VPP is able to start"""
 
-    cpus = [0]
+    # CPU 0 may be outside our cpuset (e.g. in a container), so use the
+    # first CPU we are actually allowed to run on.
+    cpus = [available_cpus[0]]
 
     # don't ask to debug SanityTestCase
     @classmethod

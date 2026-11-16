@@ -8,6 +8,7 @@ import sys
 import time
 import signal
 from asfframework import VppAsfTestCase
+from config import available_cpus
 
 
 def set_iperf_affinity(cpus):
@@ -15,7 +16,7 @@ def set_iperf_affinity(cpus):
     if cpus:
         os.sched_setaffinity(0, set(cpus))
     else:
-        os.sched_setaffinity(0, range(os.cpu_count()))
+        os.sched_setaffinity(0, available_cpus)
 
 
 class VppIperf:
