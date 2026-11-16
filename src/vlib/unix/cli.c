@@ -3330,8 +3330,7 @@ vlib_unix_cli_ansi_capable (void)
  *       shutdown VPP also.
  */
 static clib_error_t *
-unix_cli_quit (vlib_main_t * vm,
-	       unformat_input_t * input, vlib_cli_command_t * cmd)
+unix_cli_quit (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   unix_cli_main_t *cm = &unix_cli_main;
   unix_cli_file_t *cf;
@@ -3359,46 +3358,34 @@ unix_cli_quit (vlib_main_t * vm,
 VLIB_CLI_COMMAND (unix_cli_quit_command, static) = {
   .path = "quit",
   .short_help = "Exit CLI",
-  .function = unix_cli_quit,
+  .handler = unix_cli_quit,
 };
 
 VLIB_CLI_COMMAND (unix_cli_q_command, static) = {
   .path = "q",
   .short_help = "Exit CLI",
-  .function = unix_cli_quit,
+  .handler = unix_cli_quit,
 };
 
 VLIB_CLI_COMMAND (unix_cli_exit_command, static) = {
   .path = "exit",
   .short_help = "Exit CLI",
-  .function = unix_cli_quit,
+  .handler = unix_cli_quit,
 };
 
 /** CLI command to execute a VPP command script. */
 static clib_error_t *
-unix_cli_exec (vlib_main_t * vm,
-	       unformat_input_t * input, vlib_cli_command_t * cmd)
+unix_cli_exec (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  char *file_name;
-  int fd, rv = 0;
+  char *file_name = (char *) format (0, "%v%c", cli_get (ctx, "filename")->str, 0);
+  int fd = -1, rv = 0;
   unformat_input_t sub_input, in;
-  clib_error_t *error;
+  clib_error_t *error = 0;
   clib_macro_main_t *mm = 0;
   unix_cli_main_t *cm = &unix_cli_main;
   unix_cli_file_t *cf;
   u8 *file_data = 0;
-  file_name = 0;
-  fd = -1;
-  error = 0;
   struct stat s;
-
-
-  if (!unformat (input, "%s", &file_name))
-    {
-      error = clib_error_return (0, "expecting file name, got `%U'",
-				 format_unformat_error, input);
-      goto done;
-    }
 
   fd = open (file_name, O_RDONLY);
   if (fd < 0)
@@ -3510,33 +3497,23 @@ done:
 VLIB_CLI_COMMAND (cli_exec, static) = {
   .path = "exec",
   .short_help = "exec <filename>",
-  .function = unix_cli_exec,
+  .args =
+    (cli_arg_t[]) {
+      CLI_VALUE ("filename", cli_type_string, .help = "file with CLI commands"),
+      {},
+    },
+  .handler = unix_cli_exec,
   .is_mp_safe = 1,
 };
 
 /** CLI command to show various unix error statistics. */
 static clib_error_t *
-unix_show_errors (vlib_main_t * vm,
-		  unformat_input_t * input, vlib_cli_command_t * cmd)
+unix_show_errors (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   unix_main_t *um = &unix_main;
   clib_error_t *error = 0;
-  int i, n_errors_to_show;
+  int i, n_errors_to_show = cli_u64 (ctx, "count", 1 << 30);
   unix_error_history_t *unix_errors = 0;
-
-  n_errors_to_show = 1 << 30;
-
-  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (!unformat (input, "%d", &n_errors_to_show))
-	{
-	  error =
-	    clib_error_return (0,
-			       "expecting integer number of errors to show, got `%U'",
-			       format_unformat_error, input);
-	  goto done;
-	}
-    }
 
   n_errors_to_show =
     clib_min (ARRAY_LEN (um->error_history), n_errors_to_show);
@@ -3576,7 +3553,6 @@ unix_show_errors (vlib_main_t * vm,
 		       format_time_interval, "h:m:s:u", vlib_time_now (vm));
     }
 
-done:
   vec_free (unix_errors);
   return error;
 }
@@ -3584,13 +3560,18 @@ done:
 VLIB_CLI_COMMAND (cli_unix_show_errors, static) = {
   .path = "show unix errors",
   .short_help = "Show Unix system call error history",
-  .function = unix_show_errors,
+  .args =
+    (cli_arg_t[]) {
+      CLI_VALUE ("count", cli_type_u32, .flags = CLI_F_OPTIONAL,
+		 .help = "number of errors to show"),
+      {},
+    },
+  .handler = unix_show_errors,
 };
 
 /** CLI command to show session command history. */
 static clib_error_t *
-unix_cli_show_history (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cmd)
+unix_cli_show_history (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   unix_cli_main_t *cm = &unix_cli_main;
   unix_cli_file_t *cf;
@@ -3619,13 +3600,12 @@ unix_cli_show_history (vlib_main_t * vm,
 VLIB_CLI_COMMAND (cli_unix_cli_show_history, static) = {
   .path = "history",
   .short_help = "Show current session command history",
-  .function = unix_cli_show_history,
+  .handler = unix_cli_show_history,
 };
 
 /** CLI command to show terminal status. */
 static clib_error_t *
-unix_cli_show_terminal (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+unix_cli_show_terminal (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   unix_main_t *um = &unix_main;
   unix_cli_main_t *cm = &unix_cli_main;
@@ -3690,14 +3670,12 @@ unix_cli_show_terminal (vlib_main_t * vm,
 VLIB_CLI_COMMAND (cli_unix_cli_show_terminal, static) = {
   .path = "show terminal",
   .short_help = "Show current session terminal settings",
-  .function = unix_cli_show_terminal,
+  .handler = unix_cli_show_terminal,
 };
 
 /** CLI command to display a list of CLI sessions. */
 static clib_error_t *
-unix_cli_show_cli_sessions (vlib_main_t * vm,
-			    unformat_input_t * input,
-			    vlib_cli_command_t * cmd)
+unix_cli_show_cli_sessions (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   unix_cli_main_t *cm = &unix_cli_main;
   clib_file_main_t *fm = &file_main;
@@ -3771,49 +3749,30 @@ unix_cli_show_cli_sessions (vlib_main_t * vm,
 VLIB_CLI_COMMAND (cli_unix_cli_show_cli_sessions, static) = {
   .path = "show cli-sessions",
   .short_help = "Show current CLI sessions",
-  .function = unix_cli_show_cli_sessions,
+  .handler = unix_cli_show_cli_sessions,
 };
 
 /** CLI command to set terminal pager settings. */
 static clib_error_t *
-unix_cli_set_terminal_pager (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+unix_cli_set_terminal_pager (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   unix_main_t *um = &unix_main;
   unix_cli_main_t *cm = &unix_cli_main;
   unix_cli_file_t *cf;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  clib_error_t *error = 0;
 
   if (!(cf = unix_cli_file_if_interactive (cm)))
     return clib_error_return (0, "invalid for non-interactive sessions");
 
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+  if (cli_flag (ctx, "state"))
+    cf->no_pager = !cli_index (ctx, "state");
+  if (cli_flag (ctx, "limit"))
     {
-      if (unformat (line_input, "on"))
-	cf->no_pager = 0;
-      else if (unformat (line_input, "off"))
-	cf->no_pager = 1;
-      else if (unformat (line_input, "limit %u", &um->cli_pager_buffer_limit))
-	vlib_cli_output (vm,
-			 "Pager limit set to %u lines; note, this is global.\n",
-			 um->cli_pager_buffer_limit);
-      else
-	{
-	  error = clib_error_return (0, "unknown parameter: `%U`",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
+      um->cli_pager_buffer_limit = cli_u64 (ctx, "limit", 0);
+      vlib_cli_output (vm, "Pager limit set to %u lines; note, this is global.\n",
+		       um->cli_pager_buffer_limit);
     }
 
-done:
-  unformat_free (line_input);
-
-  return error;
+  return 0;
 }
 
 /*?
@@ -3826,43 +3785,31 @@ done:
 VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_pager, static) = {
   .path = "set terminal pager",
   .short_help = "set terminal pager [on|off] [limit <lines>]",
-  .function = unix_cli_set_terminal_pager,
+  .args =
+    (cli_arg_t[]) {
+      CLI_VALUE ("state", cli_type_bool, .flags = CLI_F_OPTIONAL),
+      CLI_KEYWORD ("limit", cli_type_u32, .flags = CLI_F_OPTIONAL,
+		   .help = "number of lines of the pager buffer, for all sessions"),
+      {},
+    },
+  .handler = unix_cli_set_terminal_pager,
 };
 
 /** CLI command to set terminal history settings. */
 static clib_error_t *
-unix_cli_set_terminal_history (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+unix_cli_set_terminal_history (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   unix_cli_main_t *cm = &unix_cli_main;
   unix_cli_file_t *cf;
-  unformat_input_t _line_input, *line_input = &_line_input;
   u32 limit;
-  clib_error_t *error = 0;
 
   if (!(cf = unix_cli_file_if_interactive (cm)))
     return clib_error_return (0, "invalid for non-interactive sessions");
 
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "on"))
-	cf->has_history = 1;
-      else if (unformat (line_input, "off"))
-	cf->has_history = 0;
-      else if (unformat (line_input, "limit %u", &cf->history_limit))
-	;
-      else
-	{
-	  error = clib_error_return (0, "unknown parameter: `%U`",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
-
-    }
+  if (cli_flag (ctx, "state"))
+    cf->has_history = cli_index (ctx, "state");
+  if (cli_flag (ctx, "limit"))
+    cf->history_limit = cli_u64 (ctx, "limit", 0);
 
   /* If we reduced history size, or turned it off, purge the history */
   limit = cf->has_history ? cf->history_limit : 0;
@@ -3879,10 +3826,7 @@ unix_cli_set_terminal_history (vlib_main_t * vm,
       vec_delete (cf->command_history, limit, 0);
     }
 
-done:
-  unformat_free (line_input);
-
-  return error;
+  return 0;
 }
 
 /*?
@@ -3895,14 +3839,19 @@ done:
 VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_history, static) = {
   .path = "set terminal history",
   .short_help = "set terminal history [on|off] [limit <lines>]",
-  .function = unix_cli_set_terminal_history,
+  .args =
+    (cli_arg_t[]) {
+      CLI_VALUE ("state", cli_type_bool, .flags = CLI_F_OPTIONAL),
+      CLI_KEYWORD ("limit", cli_type_u32, .flags = CLI_F_OPTIONAL,
+		   .help = "number of commands kept"),
+      {},
+    },
+  .handler = unix_cli_set_terminal_history,
 };
 
 /** CLI command to set terminal ANSI settings. */
 static clib_error_t *
-unix_cli_set_terminal_ansi (vlib_main_t * vm,
-			    unformat_input_t * input,
-			    vlib_cli_command_t * cmd)
+unix_cli_set_terminal_ansi (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   unix_cli_main_t *cm = &unix_cli_main;
   unix_cli_file_t *cf;
@@ -3910,13 +3859,7 @@ unix_cli_set_terminal_ansi (vlib_main_t * vm,
   if (!(cf = unix_cli_file_if_interactive (cm)))
     return clib_error_return (0, "invalid for non-interactive sessions");
 
-  if (unformat (input, "on"))
-    cf->ansi_capable = 1;
-  else if (unformat (input, "off"))
-    cf->ansi_capable = 0;
-  else
-    return clib_error_return (0, "unknown parameter: `%U`",
-			      format_unformat_error, input);
+  cf->ansi_capable = cli_index (ctx, "state");
 
   return 0;
 }
@@ -3932,30 +3875,20 @@ unix_cli_set_terminal_ansi (vlib_main_t * vm,
 VLIB_CLI_COMMAND (cli_unix_cli_set_terminal_ansi, static) = {
   .path = "set terminal ansi",
   .short_help = "set terminal ansi [on|off]",
-  .function = unix_cli_set_terminal_ansi,
+  .args =
+    (cli_arg_t[]) {
+      CLI_VALUE ("state", cli_type_bool),
+      {},
+    },
+  .handler = unix_cli_set_terminal_ansi,
 };
-
 
 #define MAX_CLI_WAIT 86400
 /** CLI command to wait <sec> seconds. Useful for exec script. */
 static clib_error_t *
-unix_wait_cmd (vlib_main_t * vm,
-	       unformat_input_t * input, vlib_cli_command_t * cmd)
+unix_wait_cmd (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  f64 sec = 1.0;
-
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "%f", &sec))
-	;
-      else
-	return clib_error_return (0, "unknown parameter: `%U`",
-				  format_unformat_error, input);
-    }
+  f64 sec = cli_get (ctx, "seconds")->f64;
 
   if (sec <= 0 || sec > MAX_CLI_WAIT || floor (sec * 1000) / 1000 != sec)
     return clib_error_return (0,
@@ -3964,86 +3897,70 @@ unix_wait_cmd (vlib_main_t * vm,
   vlib_process_wait_for_event_or_clock (vm, sec);
   vlib_cli_output (vm, "waited %.3f sec.", sec);
 
-  unformat_free (line_input);
   return 0;
 }
 VLIB_CLI_COMMAND (cli_unix_wait_cmd, static) = {
   .path = "wait",
   .short_help = "wait <sec>",
-  .function = unix_wait_cmd,
+  .args =
+    (cli_arg_t[]) {
+      CLI_VALUE ("seconds", cli_type_duration, .flags = CLI_F_OPTIONAL, .def = "1"),
+      {},
+    },
+  .handler = unix_wait_cmd,
 };
 
 static clib_error_t *
-echo_cmd (vlib_main_t * vm,
-	  unformat_input_t * input, vlib_cli_command_t * cmd)
+echo_cmd (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
+  cli_value_t *text = cli_get (ctx, "text");
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    {
-      vlib_cli_output (vm, "");
-      return 0;
-    }
+  vlib_cli_output (vm, "%v", text ? text->str : 0);
 
-  vlib_cli_output (vm, "%v", line_input->buffer);
-
-  unformat_free (line_input);
   return 0;
 }
 
 VLIB_CLI_COMMAND (cli_unix_echo_cmd, static) = {
   .path = "echo",
   .short_help = "echo <rest-of-line>",
-  .function = echo_cmd,
+  .args =
+    (cli_arg_t[]) {
+      CLI_VALUE ("text", cli_type_rest, .flags = CLI_F_OPTIONAL),
+      {},
+    },
+  .handler = echo_cmd,
 };
 
 static clib_error_t *
-define_cmd_fn (vlib_main_t * vm,
-	       unformat_input_t * input, vlib_cli_command_t * cmd)
+define_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  u8 *macro_name;
-  unformat_input_t _line_input, *line_input = &_line_input;
+  u8 *macro_name = format (0, "%v%c", cli_get (ctx, "name")->str, 0);
+  u8 *value = format (0, "%v%c", cli_get (ctx, "value")->str, 0);
   clib_macro_main_t *mm = get_macro_main ();
-  clib_error_t *error;
 
-  if (!unformat (input, "%s", &macro_name))
-    return clib_error_return (0, "missing variable name...");
-
-  /* Remove white space */
-  (void) unformat (input, "");
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    {
-      error = clib_error_return (0, "missing value for '%s'...", macro_name);
-      vec_free (macro_name);
-      return error;
-    }
-  /* the macro expander expects c-strings, not vectors... */
-  vec_add1 (line_input->buffer, 0);
-  clib_macro_set_value (mm, (char *) macro_name, (char *) line_input->buffer);
+  clib_macro_set_value (mm, (char *) macro_name, (char *) value);
   vec_free (macro_name);
-  unformat_free (line_input);
+  vec_free (value);
   return 0;
 }
 
 VLIB_CLI_COMMAND (define_cmd, static) = {
   .path = "define",
   .short_help = "define <variable-name> <value>",
-  .function = define_cmd_fn,
+  .args =
+    (cli_arg_t[]) {
+      CLI_VALUE ("name", cli_type_string, .help = "name of the variable"),
+      CLI_VALUE ("value", cli_type_rest, .help = "value, the rest of the line"),
+      {},
+    },
+  .handler = define_cmd_fn,
 };
 
-
 static clib_error_t *
-undefine_cmd_fn (vlib_main_t * vm,
-		 unformat_input_t * input, vlib_cli_command_t * cmd)
+undefine_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  u8 *macro_name;
+  u8 *macro_name = format (0, "%v%c", cli_get (ctx, "name")->str, 0);
   clib_macro_main_t *mm = get_macro_main ();
-
-  if (!unformat (input, "%s", &macro_name))
-    return clib_error_return (0, "missing variable name...");
 
   if (clib_macro_unset (mm, (char *) macro_name))
     vlib_cli_output (vm, "%s wasn't set...", macro_name);
@@ -4055,20 +3972,19 @@ undefine_cmd_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (undefine_cmd, static) = {
   .path = "undefine",
   .short_help = "undefine <variable-name>",
-  .function = undefine_cmd_fn,
+  .args =
+    (cli_arg_t[]) {
+      CLI_VALUE ("name", cli_type_string, .help = "name of the variable"),
+      {},
+    },
+  .handler = undefine_cmd_fn,
 };
 
 static clib_error_t *
-show_macro_cmd_fn (vlib_main_t * vm,
-		   unformat_input_t * input, vlib_cli_command_t * cmd)
+show_macro_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   clib_macro_main_t *mm = get_macro_main ();
-  int evaluate = 1;
-
-  if (unformat (input, "noevaluate %=", &evaluate, 0))
-    ;
-  else if (unformat (input, "noeval %=", &evaluate, 0))
-    ;
+  int evaluate = !cli_flag (ctx, "noevaluate");
 
   vlib_cli_output (vm, "%U", format_clib_macro_main, mm, evaluate);
   return 0;
@@ -4077,7 +3993,12 @@ show_macro_cmd_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (show_macro, static) = {
   .path = "show macro",
   .short_help = "show macro [noevaluate]",
-  .function = show_macro_cmd_fn,
+  .args =
+    (cli_arg_t[]) {
+      CLI_FLAG ("noevaluate", .alias = "noeval", .help = "do not evaluate the macros"),
+      {},
+    },
+  .handler = show_macro_cmd_fn,
 };
 
 static clib_error_t *

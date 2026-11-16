@@ -34,8 +34,7 @@ format_sched_policy_and_priority (u8 * s, va_list * args)
 }
 
 static clib_error_t *
-show_threads_fn (vlib_main_t * vm,
-		 unformat_input_t * input, vlib_cli_command_t * cmd)
+show_threads_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_main_t *thread_vm;
   vlib_worker_thread_t *w;
@@ -78,5 +77,5 @@ show_threads_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (show_threads_command, static) = {
   .path = "show threads",
   .short_help = "Show threads",
-  .function = show_threads_fn,
+  .handler = show_threads_fn,
 };

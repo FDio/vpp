@@ -49,14 +49,9 @@ VLIB_REGISTER_NODE (vlib_time_virtual_input_node) = {
 };
 
 static clib_error_t *
-vlib_time_virtual_adjust_command_fn (vlib_main_t *vm, unformat_input_t *input,
-				     vlib_cli_command_t *cmd)
+vlib_time_virtual_adjust_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  f64 val;
-
-  if (!unformat (input, "%f", &val))
-    return clib_error_create ("unknown input `%U'", format_unformat_error,
-			      input);
+  f64 val = cli_get (ctx, "seconds")->f64;
 
   vlib_time_virtual_stop = vlib_time_now (vm) + val;
 
@@ -79,6 +74,11 @@ vlib_time_virtual_adjust_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (vlib_time_virtual_command) = {
   .path = "set clock adjust",
-  .short_help = "set clock adjust <nn>",
-  .function = vlib_time_virtual_adjust_command_fn,
+  .short_help = "Run the clock faster, until it is ahead by that many seconds",
+  .args =
+    (cli_arg_t[]) {
+      CLI_VALUE ("seconds", cli_type_duration),
+      {},
+    },
+  .handler = vlib_time_virtual_adjust_command_fn,
 };
