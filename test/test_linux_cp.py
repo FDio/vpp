@@ -42,6 +42,8 @@ from vpp_papi import VppEnum
 from vpp_qemu_utils import (
     add_namespace_route,
     add_namespace_multipath_route,
+    add_namespace_nexthop,
+    del_namespace_nexthop,
     del_namespace_route,
     add_namespace_address,
     del_namespace_address,
@@ -875,6 +877,39 @@ class TestLinuxCPRoutes(TestLinuxCPNetNSBase):
         self.verify_paths("192.168.1.1/32", dict(type=FibPathType.FIB_PATH_TYPE_DROP))
         set_interface_up(self.ns_name, "hloop0")
         set_interface_up(self.ns_name, "hloop1")
+
+    def test_linux_cp_nexthop_object_route(self):
+        """Linux CP Route through nexthop objects"""
+        # The kernel repeats the gateway and the device of a nexthop object in
+        # the route message while net.ipv4.nexthop_compat_mode is 1, its default.
+        add_namespace_nexthop(self.ns_name, 1, gw_ip="10.10.1.1", dev="hloop0")
+        add_namespace_nexthop(self.ns_name, 2, gw_ip="10.20.1.1", dev="hloop1")
+        add_namespace_nexthop(self.ns_name, 3, group=(1, 2))
+        add_namespace_route(self.ns_name, "192.168.110.0/24", nh_id=1)
+        add_namespace_route(self.ns_name, "192.168.120.0/24", nh_id=3)
+
+        path0 = dict(
+            type=FibPathType.FIB_PATH_TYPE_NORMAL,
+            sw_if_index=self.lo_interfaces[0].sw_if_index,
+            ip4="10.10.1.1",
+        )
+        path1 = dict(
+            type=FibPathType.FIB_PATH_TYPE_NORMAL,
+            sw_if_index=self.lo_interfaces[1].sw_if_index,
+            ip4="10.20.1.1",
+        )
+        self.verify_paths("192.168.110.1/32", path0)
+        self.verify_paths("192.168.120.1/32", path0, path1)
+
+        # The routes go first: the kernel sends no route message for a route
+        # it removes together with its nexthop object.
+        del_namespace_route(self.ns_name, "192.168.110.0/24")
+        del_namespace_route(self.ns_name, "192.168.120.0/24")
+        for nh_id in (3, 2, 1):
+            del_namespace_nexthop(self.ns_name, nh_id)
+        drop = dict(type=FibPathType.FIB_PATH_TYPE_DROP)
+        self.verify_paths("192.168.110.1/32", drop)
+        self.verify_paths("192.168.120.1/32", drop)
 
 
 ISIS_PROTO = 0x83

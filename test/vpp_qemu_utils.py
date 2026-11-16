@@ -92,7 +92,9 @@ def create_namespace(history_file, ns=None, prefix="vpp_ns"):
         return ns
 
 
-def add_namespace_route(ns, prefix, gw_ip=None, dev=None, route_type=None, check=True):
+def add_namespace_route(
+    ns, prefix, gw_ip=None, dev=None, route_type=None, check=True, nh_id=None
+):
     """Add a route to a namespace.
     arguments:
     ns -- namespace string value
@@ -100,6 +102,7 @@ def add_namespace_route(ns, prefix, gw_ip=None, dev=None, route_type=None, check
     gw_ip -- Gateway IP
     dev -- Output Device
     route_type -- Route type (e.g. "blackhole", "unreachable", "prohibit")
+    nh_id -- id of a nexthop object
     """
     with net_helper_lock():
         try:
@@ -111,6 +114,8 @@ def add_namespace_route(ns, prefix, gw_ip=None, dev=None, route_type=None, check
                 cmd += ["via", gw_ip]
             if dev is not None:
                 cmd += ["dev", dev]
+            if nh_id is not None:
+                cmd += ["nhid", str(nh_id)]
             subprocess.run(cmd, capture_output=True, check=check)
         except subprocess.CalledProcessError as e:
             raise Exception(
@@ -150,6 +155,43 @@ def add_namespace_multipath_route(ns, prefix, *next_hops):
         except subprocess.CalledProcessError as e:
             raise Exception(
                 f"Error adding route to namespace: {e.stderr.decode()}"
+            ) from e
+
+
+def add_namespace_nexthop(ns, nh_id, gw_ip=None, dev=None, group=None):
+    """Add a nexthop object to a namespace.
+    arguments:
+    ns -- namespace string value
+    nh_id -- id of the nexthop object
+    gw_ip -- Gateway IP
+    dev -- Output Device
+    group -- ids of the nexthop objects that make a group
+    """
+    with net_helper_lock():
+        try:
+            cmd = ["ip", "netns", "exec", ns, "ip", "nexthop", "add", "id", str(nh_id)]
+            if group is not None:
+                cmd += ["group", "/".join(str(i) for i in group)]
+            if gw_ip is not None:
+                cmd += ["via", gw_ip]
+            if dev is not None:
+                cmd += ["dev", dev]
+            subprocess.run(cmd, capture_output=True, check=True)
+        except subprocess.CalledProcessError as e:
+            raise Exception(
+                f"Error adding nexthop to namespace: {e.stderr.decode()}"
+            ) from e
+
+
+def del_namespace_nexthop(ns, nh_id):
+    """Delete a nexthop object from a namespace."""
+    with net_helper_lock():
+        try:
+            cmd = ["ip", "netns", "exec", ns, "ip", "nexthop", "del", "id", str(nh_id)]
+            subprocess.run(cmd, capture_output=True, check=True)
+        except subprocess.CalledProcessError as e:
+            raise Exception(
+                f"Error deleting nexthop from namespace: {e.stderr.decode()}"
             ) from e
 
 
