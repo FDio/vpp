@@ -1756,13 +1756,10 @@ threads_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (threads_init);
 
 static clib_error_t *
-show_clock_command_fn (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cmd)
+show_clock_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  int verbose = 0;
+  int verbose = cli_flag (ctx, "verbose");
   clib_timebase_t _tb, *tb = &_tb;
-
-  (void) unformat (input, "verbose %=", &verbose, 1);
 
   clib_timebase_init (tb, 0 /* GMT */ , CLIB_TIMEBASE_DAYLIGHT_NONE,
 		      &vm->clib_time);
@@ -1788,11 +1785,15 @@ show_clock_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-VLIB_CLI_COMMAND (f_command, static) =
-{
+VLIB_CLI_COMMAND (f_command, static) = {
   .path = "show clock",
-  .short_help = "show clock",
-  .function = show_clock_command_fn,
+  .short_help = "Show the clocks of the threads",
+  .args =
+    (cli_arg_t[]) {
+      CLI_FLAG ("verbose", .help = "more details"),
+      {},
+    },
+  .handler = show_clock_command_fn,
 };
 
 vlib_thread_main_t *
