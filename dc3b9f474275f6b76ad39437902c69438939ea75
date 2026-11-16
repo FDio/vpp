@@ -68,6 +68,24 @@
       "message": "Hi Jerome,\nPatchset 2 is rebased",
       "revId": "dc3b9f474275f6b76ad39437902c69438939ea75",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f9a63498_d452ed2f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-11-16T12:34:46Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "95003772_f463c474",
+      "revId": "dc3b9f474275f6b76ad39437902c69438939ea75",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
