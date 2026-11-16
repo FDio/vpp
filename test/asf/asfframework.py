@@ -26,7 +26,7 @@ from enum import Enum
 from abc import ABC, abstractmethod
 from vpp_running import use_running
 
-from config import config, max_vpp_cores
+from config import available_cpus, config, max_vpp_cores
 import hook as hookmodule
 from vpp_lo_interface import VppLoInterface
 from vpp_papi_provider import VppPapiProvider
@@ -1800,11 +1800,12 @@ class Worker(Thread):
             # sharing that core would starve VPP. If the caller passed a
             # helper-CPU mask, pin to it (excludes VPP cores; lets the
             # OS load-balance the helper's threads within the mask).
-            # Otherwise unpin so the child can run on any CPU.
+            # Otherwise unpin so the child can run on any CPU this
+            # process was allowed at startup.
             if cpus:
                 os.sched_setaffinity(0, set(cpus))
             else:
-                os.sched_setaffinity(0, range(os.cpu_count()))
+                os.sched_setaffinity(0, available_cpus)
 
         # stdbuf injects libstdbuf.so via LD_PRELOAD. GNU stdbuf appends it
         # to the caller's LD_PRELOAD; uutils (Rust) stdbuf (Ubuntu 26.04)
