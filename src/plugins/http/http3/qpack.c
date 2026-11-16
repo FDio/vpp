@@ -1207,8 +1207,17 @@ qpack_encode_method (u8 *dst, http_req_method_t method)
     case HTTP_REQ_CONNECT:
       encode_static_entry (15);
       break;
+    case HTTP_REQ_DELETE:
+      encode_static_entry (16);
+      break;
     case HTTP_REQ_GET:
       encode_static_entry (17);
+      break;
+    case HTTP_REQ_HEAD:
+      encode_static_entry (18);
+      break;
+    case HTTP_REQ_OPTIONS:
+      encode_static_entry (19);
       break;
     case HTTP_REQ_POST:
       encode_static_entry (20);
@@ -1216,15 +1225,18 @@ qpack_encode_method (u8 *dst, http_req_method_t method)
     case HTTP_REQ_PUT:
       encode_static_entry (21);
       break;
+    case HTTP_REQ_PATCH:
     case HTTP_REQ_CONNECT_UDP:
       orig_len = vec_len (dst);
       vec_add2 (dst, a, 6 + 2 + HPACK_ENCODED_INT_MAX_LEN);
       *a = 0x50;
       b = hpack_encode_int (a, 15, 4);
-      b = qpack_encode_string (b, (const u8 *) http_token_lit ("CONNECT-UDP"), 8);
+      if (method == HTTP_REQ_PATCH)
+	b = qpack_encode_string (b, (const u8 *) http_token_lit ("PATCH"), 8);
+      else
+	b = qpack_encode_string (b, (const u8 *) http_token_lit ("CONNECT-UDP"), 8);
       actual_size = b - a;
       vec_set_len (dst, orig_len + actual_size);
-      break;
       break;
     default:
       ASSERT (0);
@@ -1434,7 +1446,7 @@ qpack_serialize_response (u8 *app_headers, u32 app_headers_len,
   p = qpack_encode_header (p, HTTP_HEADER_DATE, control_data->date, control_data->date_len, 0);
 
   /* content length if any */
-  if (control_data->content_len != HPACK_ENCODER_SKIP_CONTENT_LEN)
+  if (control_data->send_content_length)
     p = qpack_encode_content_len (p, control_data->content_len);
 
   if (!app_headers_len)

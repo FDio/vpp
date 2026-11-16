@@ -55,6 +55,7 @@ typedef struct
   hc_stats_t stats;
   u64 data_offset;
   u64 body_recv;
+  u64 body_len;
   http_header_table_t resp_headers;
   u8 *http_response;
   u8 *response_status;
@@ -898,6 +899,7 @@ hc_rx_callback (session_t *s)
 	      format_http_status_code, msg.code, msg.data.body_len);
 
       hc_session->sc = msg.code;
+      hc_session->body_len = msg.data.body_len;
       hc_session->body_recv = 0;
       hc_session->session_flags &= ~(HC_S_FLAG_RX_STREAMING | HC_S_FLAG_RX_EOF |
 				     HC_S_FLAG_CHUNKED_BODY | HC_S_FLAG_PRINTABLE_BODY);
@@ -951,7 +953,8 @@ hc_rx_callback (session_t *s)
 	    }
 	}
 
-      if (msg.data.body_len == 0 && !(hc_session->session_flags & HC_S_FLAG_RX_STREAMING))
+      if ((hcm->req_method == HTTP_REQ_HEAD || msg.data.body_len == 0) &&
+	  !(hc_session->session_flags & HC_S_FLAG_RX_STREAMING))
 	{
 	  svm_fifo_dequeue_drop_all (s->rx_fifo);
 	  /* we don't need to print warning about binary content */
@@ -1252,6 +1255,8 @@ hc_get_event (vlib_main_t *vm)
 	  vlib_cli_output (vm, "< %v\n%U\n", hc_session->response_status,
 			   format_http_header_table, &hc_session->resp_headers,
 			   "< ");
+	  if (hcm->req_method == HTTP_REQ_HEAD)
+	    vlib_cli_output (vm, "* representation length: %llu", hc_session->body_len);
 	  /* if the body was read in chunks and not saved to file - that
 	     means we've hit the response body size limit */
 	  if (hc_session->session_flags & HC_S_FLAG_CHUNKED_BODY)
@@ -1453,6 +1458,8 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  new_header.value = value;
 	  vec_add1 (hcm->custom_header, new_header);
 	}
+      else if (unformat (line_input, "head"))
+	hcm->req_method = HTTP_REQ_HEAD;
       else if (unformat (line_input, "verbose"))
 	hcm->verbose = true;
       else if (unformat (line_input, "timeout %f", &hcm->timeout))
@@ -1645,7 +1652,7 @@ done:
 
 VLIB_CLI_COMMAND (hc_command, static) = {
   .path = "http client",
-  .short_help = "[post|put] uri http://<ip-addr>/<origin-form> "
+  .short_help = "[post|put|head] uri http://<ip-addr>/<origin-form> "
 		"[data <form-urlencoded> | file <file-path>] [use-ptr] "
 		"[save-to <filename>] [header <Key:Value>] [verbose] "
 		"[timeout <seconds> (default = 10)] [repeat <count> | duration <seconds>] "
