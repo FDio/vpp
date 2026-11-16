@@ -1564,7 +1564,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 {
   u8 *prev;
   u8 *save = 0;
-  u8 **possible_commands;
+  vlib_cli_completion_t *possible_commands;
   int j, delta;
 
   switch (action)
@@ -1977,11 +1977,10 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	      break;
 	    }
 	}
-      possible_commands =
-	vlib_cli_get_possible_completions (cf->current_command);
+      possible_commands = vlib_cli_get_completions (cf->current_command);
       if (vec_len (possible_commands) == 1)
 	{
-	  u8 *completed = possible_commands[0];
+	  u8 *completed = possible_commands[0].text;
 	  j = cf->cursor;
 
 	  /* find the last word of current_command */
@@ -2012,16 +2011,19 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	}
       else if (vec_len (possible_commands) >= 2)
 	{
-	  u8 **possible_command;
+	  vlib_cli_completion_t *possible_command;
+	  int have_help = 0;
 	  uword max_command_len = 0, min_command_len = ~0;
 	  u32 i;
 
 	  vec_foreach (possible_command, possible_commands)
 	  {
-	    if (vec_len (*possible_command) > max_command_len)
-	      max_command_len = vec_len (*possible_command);
-	    if (vec_len (*possible_command) < min_command_len)
-	      min_command_len = vec_len (*possible_command);
+	    if (vec_len (possible_command->text) > max_command_len)
+	      max_command_len = vec_len (possible_command->text);
+	    if (vec_len (possible_command->text) < min_command_len)
+	      min_command_len = vec_len (possible_command->text);
+	    if (possible_command->help)
+	      have_help = 1;
 	  }
 
 	  unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\n", 1);
@@ -2029,18 +2031,22 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	  i = 0;
 	  vec_foreach (possible_command, possible_commands)
 	  {
-	    if (i + max_command_len >= cf->width)
+	    if ((have_help && i > 0) || i + max_command_len >= cf->width)
 	      {
 		unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\n", 1);
 		i = 0;
 	      }
-	    unix_vlib_cli_output_cooked (cf, uf, *possible_command,
-					 vec_len (*possible_command));
-	    for (j = vec_len (*possible_command); j < max_command_len + 2;
-		 j++)
+	    unix_vlib_cli_output_cooked (cf, uf, possible_command->text,
+					 vec_len (possible_command->text));
+	    for (j = vec_len (possible_command->text); j < max_command_len + 2; j++)
 	      {
 		unix_vlib_cli_output_cooked (cf, uf, (u8 *) " ", 1);
 	      }
+	    /* one candidate per line when there are descriptions, plain text
+	     * only so this works without ANSI support */
+	    if (possible_command->help)
+	      unix_vlib_cli_output_cooked (cf, uf, possible_command->help,
+					   vec_len (possible_command->help));
 	    i += max_command_len + 2;
 	  }
 
@@ -2070,9 +2076,9 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	      {
 		if (common == '\0')
 		  {
-		    common = (*possible_command)[i];
+		    common = possible_command->text[i];
 		  }
-		else if (common != (*possible_command)[i])
+		else if (common != possible_command->text[i])
 		  {
 		    stop = 1;
 		    break;
@@ -2106,7 +2112,7 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	  vec_append (cf->current_command, save);
 	  vec_free (save);
 	}
-      vec_free (possible_commands);
+      vlib_cli_completions_free (possible_commands);
 
       break;
     case UNIX_CLI_PARSE_ACTION_YANK:
