@@ -289,7 +289,7 @@ epoll:
 }
 
 static clib_error_t *
-show_files (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+show_files (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   clib_error_t *error = 0;
   clib_file_main_t *fm = &file_main;
@@ -321,5 +321,5 @@ show_files (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 VLIB_CLI_COMMAND (cli_show_files, static) = {
   .path = "show files",
   .short_help = "Show files in use",
-  .function = show_files,
+  .handler = show_files,
 };
