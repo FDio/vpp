@@ -560,17 +560,23 @@ format_punt_client (u8 * s, va_list * args)
 }
 
 static clib_error_t *
-punt_client_show (vlib_main_t * vm,
-		  unformat_input_t * input, vlib_cli_command_t * cmd)
+punt_client_show (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   u32 pci = ~0;
+  cli_value_t *client = cli_get (ctx, "client");
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  if (client)
     {
-      if (unformat (input, "%U", unformat_punt_client, &pci))
-	;
-      else
-	break;
+      unformat_input_t in;
+
+      unformat_init_vector (&in, vec_dup (client->str));
+      if (!unformat (&in, "%U", unformat_punt_client, &pci) ||
+	  unformat_check_input (&in) != UNFORMAT_END_OF_INPUT)
+	{
+	  unformat_free (&in);
+	  return clib_error_return (0, "unknown punt client '%v'", client->str);
+	}
+      unformat_free (&in);
     }
 
   if (~0 != pci)
@@ -592,16 +598,16 @@ punt_client_show (vlib_main_t * vm,
   return (NULL);
 }
 
-VLIB_CLI_COMMAND (punt_client_show_command, static) =
-{
+VLIB_CLI_COMMAND (punt_client_show_command, static) = {
   .path = "show punt client",
-  .short_help = "show client[s] registered with the punt infra",
-  .function = punt_client_show,
+  .short_help = "Show the clients registered with the punt infra",
+  .args = CLI_ARGS (CLI_VALUE ("client", cli_type_string, .flags = CLI_F_OPTIONAL,
+			       .help = "only this client")),
+  .handler = punt_client_show,
 };
 
 static clib_error_t *
-punt_reason_show (vlib_main_t * vm,
-		  unformat_input_t * input, vlib_cli_command_t * cmd)
+punt_reason_show (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   const punt_reason_data_t *pd;
 
@@ -613,16 +619,14 @@ punt_reason_show (vlib_main_t * vm,
   return (NULL);
 }
 
-VLIB_CLI_COMMAND (punt_reason_show_command, static) =
-{
+VLIB_CLI_COMMAND (punt_reason_show_command, static) = {
   .path = "show punt reasons",
   .short_help = "show all punt reasons",
-  .function = punt_reason_show,
+  .handler = punt_reason_show,
 };
 
 static clib_error_t *
-punt_db_show (vlib_main_t * vm,
-	      unformat_input_t * input, vlib_cli_command_t * cmd)
+punt_db_show (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   u32 pri, ii, jj;
   u64 key;
@@ -652,16 +656,14 @@ punt_db_show (vlib_main_t * vm,
   return (NULL);
 }
 
-VLIB_CLI_COMMAND (punt_db_show_command, static) =
-{
+VLIB_CLI_COMMAND (punt_db_show_command, static) = {
   .path = "show punt db",
   .short_help = "show the punt DB",
-  .function = punt_db_show,
+  .handler = punt_db_show,
 };
 
 static clib_error_t *
-punt_stats_show (vlib_main_t * vm,
-		 unformat_input_t * input, vlib_cli_command_t * cmd)
+punt_stats_show (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_combined_counter_main_t *cm = &punt_counters;
   vlib_counter_t c;
@@ -677,11 +679,10 @@ punt_stats_show (vlib_main_t * vm,
   return (NULL);
 }
 
-VLIB_CLI_COMMAND (punt_stats_show_command, static) =
-{
+VLIB_CLI_COMMAND (punt_stats_show_command, static) = {
   .path = "show punt stats",
   .short_help = "show the punt stats",
-  .function = punt_stats_show,
+  .handler = punt_stats_show,
 };
 
 static clib_error_t *

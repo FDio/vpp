@@ -878,37 +878,16 @@ vl_msg_pop_heap (void *oldheap)
 }
 
 static clib_error_t *
-show_memory_usage (vlib_main_t * vm,
-		   unformat_input_t * input, vlib_cli_command_t * cmd)
+show_memory_usage (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   clib_mem_main_t *mm = &clib_mem_main;
-  int verbose __attribute__ ((unused)) = 0;
-  int api_segment = 0, stats_segment = 0, main_heap = 0;
-  int map = 0;
-  clib_error_t *error;
+  int verbose = cli_flag (ctx, "verbose");
+  int api_segment = cli_flag (ctx, "api-segment");
+  int stats_segment = cli_flag (ctx, "stats-segment");
+  int main_heap = cli_flag (ctx, "main-heap");
+  int map = cli_flag (ctx, "map");
   uword clib_mem_trace_enable_disable (uword enable);
   uword was_enabled;
-
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "verbose"))
-	verbose = 1;
-      else if (unformat (input, "api-segment"))
-	api_segment = 1;
-      else if (unformat (input, "stats-segment"))
-	stats_segment = 1;
-      else if (unformat (input, "main-heap"))
-	main_heap = 1;
-      else if (unformat (input, "map"))
-	map = 1;
-      else
-	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, input);
-	  return error;
-	}
-    }
 
   if ((api_segment + stats_segment + main_heap + map) == 0)
     {
@@ -1017,14 +996,17 @@ show_memory_usage (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (show_memory_usage_command, static) = {
   .path = "show memory",
-  .short_help = "show memory [api-segment][stats-segment][verbose]\n"
-		"            [map][main-heap]",
-  .function = show_memory_usage,
+  .short_help = "Show memory usage of the heaps",
+  .args = CLI_ARGS (CLI_FLAG ("api-segment", .help = "API segment"),
+		    CLI_FLAG ("stats-segment", .help = "stats segment"),
+		    CLI_FLAG ("main-heap", .help = "main heap"),
+		    CLI_FLAG ("map", .help = "memory maps"),
+		    CLI_FLAG ("verbose", .help = "more details")),
+  .handler = show_memory_usage,
 };
 
 static clib_error_t *
-show_cpu (vlib_main_t * vm, unformat_input_t * input,
-	  vlib_cli_command_t * cmd)
+show_cpu (vlib_main_t *vm, cli_ctx_t *ctx)
 {
 #define _(a,b,c) vlib_cli_output (vm, "%-25s " b, a ":", c);
   _("Model name", "%U", format_cpu_model_name);
@@ -1050,41 +1032,17 @@ show_cpu (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (show_cpu_command, static) = {
   .path = "show cpu",
   .short_help = "Show cpu information",
-  .function = show_cpu,
+  .handler = show_cpu,
 };
 
 static clib_error_t *
-enable_disable_memory_trace (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+enable_disable_memory_trace (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  int enable = 1;
-  int api_segment = 0;
-  int stats_segment = 0;
-  int main_heap = 0;
+  int enable = cli_index (ctx, "state") != 0;
+  int api_segment = cli_flag (ctx, "api-segment");
+  int stats_segment = cli_flag (ctx, "stats-segment");
+  int main_heap = cli_flag (ctx, "main-heap");
   void *oldheap;
-
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "%U", unformat_vlib_enable_disable, &enable))
-	;
-      else if (unformat (line_input, "api-segment"))
-	api_segment = 1;
-      else if (unformat (line_input, "stats-segment"))
-	stats_segment = 1;
-      else if (unformat (line_input, "main-heap"))
-	main_heap = 1;
-      else
-	{
-	  unformat_free (line_input);
-	  return clib_error_return (0, "invalid input");
-	}
-    }
-  unformat_free (line_input);
 
   if ((api_segment + stats_segment + main_heap + (enable == 0)) == 0)
     {
@@ -1139,16 +1097,18 @@ enable_disable_memory_trace (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (enable_disable_memory_trace_command, static) = {
   .path = "memory-trace",
-  .short_help = "memory-trace on|off [api-segment][stats-segment][main-heap]\n"
-  "                   [numa-heap <numa-id>]\n",
-  .function = enable_disable_memory_trace,
+  .short_help = "Trace memory allocations of a heap",
+  .args = CLI_ARGS (CLI_VALUE ("state", cli_type_bool, .flags = CLI_F_OPTIONAL),
+		    CLI_FLAG ("api-segment", .help = "trace the API segment"),
+		    CLI_FLAG ("stats-segment", .help = "trace the stats segment"),
+		    CLI_FLAG ("main-heap", .help = "trace the main heap")),
+  .handler = enable_disable_memory_trace,
 };
 
 static clib_error_t *
-save_memory_trace (vlib_main_t *vm, unformat_input_t *input,
-		   vlib_cli_command_t *cmd)
+save_memory_trace (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  char *file, *chroot_file;
+  char *file = (char *) format (0, "%v%c", cli_get (ctx, "filename")->str, 0), *chroot_file;
   uword was_enabled;
   clib_mem_trace_t *t, *mem_traces = 0;
   u8 *tmp;
@@ -1163,13 +1123,6 @@ save_memory_trace (vlib_main_t *vm, unformat_input_t *input,
     .realloc_fn = clib_mem_realloc,
   };
   cJSON_InitHooks (&cjson_hooks);
-
-  if (!unformat (input, "%s", &file))
-    {
-      vlib_cli_output (vm, "expected file name, got `%U'",
-		       format_unformat_error, input);
-      return 0;
-    }
 
   /* It's fairly hard to get "../oopsie" through unformat; just in case */
   if (strstr (file, "..") || strchr (file, '/'))
@@ -1245,13 +1198,13 @@ save_memory_trace (vlib_main_t *vm, unformat_input_t *input,
 ?*/
 VLIB_CLI_COMMAND (save_memory_trace_command, static) = {
   .path = "save memory-trace",
-  .short_help = "save memory-trace <filename>",
-  .function = save_memory_trace,
+  .short_help = "Save the memory traces of the traced heap as JSON to /tmp/<filename>",
+  .args = CLI_ARGS (CLI_VALUE ("filename", cli_type_string)),
+  .handler = save_memory_trace,
 };
 
 static clib_error_t *
-restart_cmd_fn (vlib_main_t * vm, unformat_input_t * input,
-		vlib_cli_command_t * cmd)
+restart_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_global_main_t *vgm = vlib_get_global_main ();
   clib_file_main_t *fm = &file_main;
@@ -1273,10 +1226,10 @@ restart_cmd_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-VLIB_CLI_COMMAND (restart_cmd,static) = {
-    .path = "restart",
-    .short_help = "restart process",
-    .function = restart_cmd_fn,
+VLIB_CLI_COMMAND (restart_cmd, static) = {
+  .path = "restart",
+  .short_help = "restart process",
+  .handler = restart_cmd_fn,
 };
 
 #ifdef TEST_CODE
@@ -1286,8 +1239,7 @@ VLIB_CLI_COMMAND (restart_cmd,static) = {
  */
 
 static clib_error_t *
-sleep_ten_seconds (vlib_main_t * vm,
-		   unformat_input_t * input, vlib_cli_command_t * cmd)
+sleep_ten_seconds (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   u16 i;
   u16 my_id = rand ();
@@ -1305,7 +1257,7 @@ sleep_ten_seconds (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (ping_command, static) = {
   .path = "test sleep",
-  .function = sleep_ten_seconds,
+  .handler = sleep_ten_seconds,
   .short_help = "Sleep for 10 seconds",
 };
 #endif /* ifdef TEST_CODE */
@@ -1678,45 +1630,16 @@ done:
 #endif
 
 static clib_error_t *
-event_logger_trace_command_fn (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+event_logger_trace_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  int enable = 1;
-  int api = 0, cli = 0, barrier = 0, dispatch = 0, circuit = 0, tw_expiration = 0;
-  u32 circuit_node_index;
+  int enable = cli_index (ctx, "state") != 0;
+  int api = cli_flag (ctx, "api"), cli = cli_flag (ctx, "cli"), barrier = cli_flag (ctx, "barrier");
+  int dispatch = cli_flag (ctx, "dispatch"), circuit = cli_flag (ctx, "circuit-node");
+  int tw_expiration = cli_flag (ctx, "timers");
+  u32 circuit_node_index = cli_index (ctx, "circuit-node");
 
-  if (!unformat_user (input, unformat_line_input, line_input))
+  if (vec_len (ctx->values) == 0)
     goto print_status;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "api"))
-	api = 1;
-      else if (unformat (line_input, "dispatch"))
-	dispatch = 1;
-      else if (unformat (line_input, "timers"))
-	tw_expiration = 1;
-      else if (unformat (line_input, "circuit-node %U",
-			 unformat_vlib_node, vm, &circuit_node_index))
-	circuit = 1;
-      else if (unformat (line_input, "cli"))
-	cli = 1;
-      else if (unformat (line_input, "barrier"))
-	barrier = 1;
-      else if (unformat (line_input, "disable"))
-	enable = 0;
-      else if (unformat (line_input, "off"))
-	enable = 0;
-      else if (unformat (line_input, "enable"))
-	enable = 1;
-      else if (unformat (line_input, "on"))
-	enable = 1;
-      else
-	break;
-    }
-  unformat_free (line_input);
 
   vl_api_set_elog_trace_api_messages
     (api ? enable : vl_api_get_elog_trace_api_messages ());
@@ -1786,27 +1709,31 @@ print_status:
 ?*/
 VLIB_CLI_COMMAND (event_logger_trace_command, static) = {
   .path = "event-logger trace",
-  .short_help = "event-logger trace [api][cli][dispatch][tw_timer][barrier][dispatch]\n"
-		"[circuit-node <name> e.g. ethernet-input][disable]",
-  .function = event_logger_trace_command_fn,
+  .short_help = "Control event logging of api, cli, and thread barrier events",
+  .args = CLI_ARGS (CLI_FLAG ("api", .help = "API messages"),
+		    CLI_FLAG ("cli", .help = "CLI commands"),
+		    CLI_FLAG ("barrier", .help = "worker barrier syncs"),
+		    CLI_FLAG ("dispatch", .help = "graph node dispatch"),
+		    CLI_FLAG ("timers", .help = "timing wheel expiration"),
+		    CLI_OPT_KEYWORD ("circuit-node", cli_type_node,
+				     .help = "graph circuit of a node, e.g. ethernet-input"),
+		    CLI_VALUE ("state", cli_type_bool, .flags = CLI_F_OPTIONAL)),
+  .handler = event_logger_trace_command_fn,
 };
 
 static clib_error_t *
-suspend_command_fn (vlib_main_t * vm,
-		    unformat_input_t * input, vlib_cli_command_t * cmd)
+suspend_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_process_suspend (vm, 30e-3);
   return 0;
 }
 
-VLIB_CLI_COMMAND (suspend_command, static) =
-{
+VLIB_CLI_COMMAND (suspend_command, static) = {
   .path = "suspend",
   .short_help = "suspend debug CLI for 30ms",
-  .function = suspend_command_fn,
+  .handler = suspend_command_fn,
   .is_mp_safe = 1,
 };
-
 
 static int
 sort_cmds_by_path (void *a1, void *a2)
@@ -1919,30 +1846,14 @@ format_mp_safe (u8 * s, va_list * args)
   return s;
 }
 
-
 static clib_error_t *
-show_cli_command_fn (vlib_main_t * vm,
-		     unformat_input_t * input, vlib_cli_command_t * cmd)
+show_cli_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_global_main_t *vgm = vlib_get_global_main ();
-  int show_mp_safe = 0;
-  int show_not_mp_safe = 0;
-  int show_hit = 0;
-  int clear_hit = 0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "mp-safe"))
-	show_mp_safe = 1;
-      if (unformat (input, "not-mp-safe"))
-	show_not_mp_safe = 1;
-      else if (unformat (input, "hit"))
-	show_hit = 1;
-      else if (unformat (input, "clear-hit"))
-	clear_hit = 1;
-      else
-	break;
-    }
+  int show_mp_safe = cli_flag (ctx, "mp-safe");
+  int show_not_mp_safe = cli_flag (ctx, "not-mp-safe");
+  int show_hit = cli_flag (ctx, "hit");
+  int clear_hit = cli_flag (ctx, "clear-hit");
 
   /* default set: all cli commands */
   if (clear_hit == 0 && (show_mp_safe + show_not_mp_safe) == 0)
@@ -1996,11 +1907,14 @@ show_cli_command_fn (vlib_main_t * vm,
  * @cliexend
 ?*/
 
-VLIB_CLI_COMMAND (show_cli_command, static) =
-{
+VLIB_CLI_COMMAND (show_cli_command, static) = {
   .path = "show cli",
-  .short_help = "show cli [mp-safe][not-mp-safe][hit][clear-hit]",
-  .function = show_cli_command_fn,
+  .short_help = "Show the CLI commands",
+  .args = CLI_ARGS (CLI_FLAG ("mp-safe", .help = "only commands which are mp-safe"),
+		    CLI_FLAG ("not-mp-safe", .help = "only commands which are not mp-safe"),
+		    CLI_FLAG ("hit", .help = "show the hit counters"),
+		    CLI_FLAG ("clear-hit", .help = "clear the hit counters")),
+  .handler = show_cli_command_fn,
   .is_mp_safe = 1,
 };
 

@@ -362,40 +362,20 @@ pool_cache_format_element (u8 *s, vlib_pool_cache_t *c, u32 index)
 }
 
 static clib_error_t *
-show_pool_cache_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+show_pool_cache_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_pool_cache_main_t *pcm = &pool_cache_main;
   vlib_pool_cache_t *c;
   vlib_pool_cache_t **verbose_caches = 0;
-  char *name = 0, *parsed_name = 0;
+  cli_value_t *parsed_name = cli_get (ctx, "name");
+  char *name = parsed_name ? (char *) format (0, "%v%c", parsed_name->str, 0) : 0;
   clib_error_t *error = 0;
   u8 *s = 0;
-  uword verbose = 0;
+  uword verbose = cli_flag (ctx, "verbose");
   u8 found = 0;
   int row = 0;
   table_t table = {}, *t = &table;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "verbose"))
-	verbose = 1;
-      else if (unformat (input, "name %s", &parsed_name) || unformat (input, "%s", &parsed_name))
-	{
-	  if (name)
-	    {
-	      vec_free (name);
-	      vec_free (parsed_name);
-	      return clib_error_return (0, "pool-cache name specified more than once");
-	    }
-	  name = parsed_name;
-	  parsed_name = 0;
-	}
-      else
-	return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
-    }
-
-  if (verbose && name == 0)
-    return clib_error_return (0, "verbose requires a pool-cache name");
   if (pcm->instances == 0)
     {
       vlib_cli_output (vm, "No pool caches initialized");
@@ -446,7 +426,10 @@ show_pool_cache_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_c
 
 VLIB_CLI_COMMAND (show_pool_cache_command, static) = {
   .path = "show pool-cache",
-  .short_help = "show pool-cache [<name> | name <name>] [verbose]",
-  .function = show_pool_cache_command_fn,
+  .short_help = "Show the pool caches",
+  .args = CLI_ARGS (CLI_VALUE ("name", cli_type_string, .flags = CLI_F_OPTIONAL,
+			       .help = "only this pool cache"),
+		    CLI_FLAG ("verbose", .requires = "name", .help = "per thread details")),
+  .handler = show_pool_cache_command_fn,
   .is_mp_safe = 1,
 };

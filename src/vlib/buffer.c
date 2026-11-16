@@ -655,23 +655,9 @@ format_vlib_buffer_pool_all (u8 *s, va_list *va)
 }
 
 static clib_error_t *
-show_buffers (vlib_main_t *vm, unformat_input_t *input,
-	      vlib_cli_command_t *cmd)
+show_buffers (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  int detail = 0;
-
-  if (unformat_user (input, unformat_line_input, line_input))
-    {
-      while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-	{
-	  if (unformat (line_input, "detail"))
-	    detail = 1;
-	  else
-	    break;
-	}
-      unformat_free (line_input);
-    }
+  int detail = cli_flag (ctx, "detail");
 
   vlib_cli_output (vm, "%U", format_vlib_buffer_pool_all, vm, detail);
   return 0;
@@ -679,8 +665,9 @@ show_buffers (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (show_buffers_command, static) = {
   .path = "show buffers",
-  .short_help = "show buffers [detail] - show packet buffer allocation",
-  .function = show_buffers,
+  .short_help = "Show packet buffer allocation",
+  .args = CLI_ARGS (CLI_FLAG ("detail", .help = "more details")),
+  .handler = show_buffers,
 };
 
 clib_error_t *

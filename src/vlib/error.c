@@ -251,6 +251,32 @@ unformat_vlib_error (unformat_input_t *input, va_list *args)
   return 0;
 }
 
+static u8 *
+parse_error (const cli_arg_t *a, u8 *tok, cli_value_t *v)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_error_t error;
+  unformat_input_t in;
+  int ok;
+
+  unformat_init_vector (&in, vec_dup (tok));
+  ok = unformat (&in, "%U", unformat_vlib_error, vm, &error) &&
+       unformat_check_input (&in) == UNFORMAT_END_OF_INPUT;
+  unformat_free (&in);
+
+  if (!ok)
+    return format (0, "unknown error '%v', expected <node>.<error>", tok);
+
+  v->u64 = error;
+  return 0;
+}
+
+CLIB_CLI_TYPE (cli_type_error) = {
+  .name = "error",
+  .help = "node error, <node>.<error>",
+  .parse = parse_error,
+};
+
 static char *
 sev2str (enum vl_counter_severity_e s)
 {
@@ -268,21 +294,15 @@ sev2str (enum vl_counter_severity_e s)
 }
 
 static clib_error_t *
-show_errors (vlib_main_t * vm,
-	     unformat_input_t * input, vlib_cli_command_t * cmd)
+show_errors (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_error_main_t *em = &vm->error_main;
   vlib_node_t *n;
   u32 code, i, ni;
   u64 c;
   int index = 0;
-  int verbose = 0;
+  int verbose = cli_u64 (ctx, "level", cli_flag (ctx, "verbose"));
   u64 *sums = 0;
-
-  if (unformat (input, "verbose %d", &verbose))
-    ;
-  else if (unformat (input, "verbose"))
-    verbose = 1;
 
   vec_validate (sums, vec_len (em->counters));
 
@@ -354,18 +374,25 @@ show_errors (vlib_main_t * vm,
 VLIB_CLI_COMMAND (vlib_cli_show_errors) = {
   .path = "show errors",
   .short_help = "Show error counts",
-  .function = show_errors,
+  .args = CLI_ARGS (CLI_FLAG ("verbose",
+			      .help = "show the error index and the nodes of every thread"),
+		    CLI_VALUE ("level", cli_type_u32, .flags = CLI_F_OPTIONAL,
+			       .help = "verbosity, 2 also shows the counters which are zero")),
+  .handler = show_errors,
 };
 
 VLIB_CLI_COMMAND (cli_show_node_counters, static) = {
   .path = "show node counters",
   .short_help = "Show node counters",
-  .function = show_errors,
+  .args = CLI_ARGS (CLI_FLAG ("verbose",
+			      .help = "show the error index and the nodes of every thread"),
+		    CLI_VALUE ("level", cli_type_u32, .flags = CLI_F_OPTIONAL,
+			       .help = "verbosity, 2 also shows the counters which are zero")),
+  .handler = show_errors,
 };
 
 static clib_error_t *
-clear_error_counters (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+clear_error_counters (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_error_main_t *em;
   u32 i;
@@ -383,11 +410,11 @@ clear_error_counters (vlib_main_t * vm,
 VLIB_CLI_COMMAND (cli_clear_error_counters, static) = {
   .path = "clear errors",
   .short_help = "Clear error counters",
-  .function = clear_error_counters,
+  .handler = clear_error_counters,
 };
 
 VLIB_CLI_COMMAND (cli_clear_node_counters, static) = {
   .path = "clear node counters",
   .short_help = "Clear node counters",
-  .function = clear_error_counters,
+  .handler = clear_error_counters,
 };

@@ -188,8 +188,7 @@ vlib_frame_free (vlib_main_t *vm, vlib_frame_t *f)
 }
 
 static clib_error_t *
-show_frame_stats (vlib_main_t * vm,
-		  unformat_input_t * input, vlib_cli_command_t * cmd)
+show_frame_stats (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_frame_size_t *fs;
 
@@ -216,7 +215,7 @@ show_frame_stats (vlib_main_t * vm,
 VLIB_CLI_COMMAND (show_frame_stats_cli, static) = {
   .path = "show vlib frame-allocation",
   .short_help = "Show node dispatch frame statistics",
-  .function = show_frame_stats,
+  .handler = show_frame_stats,
 };
 
 /* Change ownership of enqueue rights to given next node. */
@@ -596,8 +595,7 @@ vlib_process_update_stats (vlib_main_t * vm,
 }
 
 static clib_error_t *
-vlib_cli_elog_clear (vlib_main_t * vm,
-		     unformat_input_t * input, vlib_cli_command_t * cmd)
+vlib_cli_elog_clear (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   elog_reset_buffer (vlib_get_elog_main ());
   return 0;
@@ -606,24 +604,16 @@ vlib_cli_elog_clear (vlib_main_t * vm,
 VLIB_CLI_COMMAND (elog_clear_cli, static) = {
   .path = "event-logger clear",
   .short_help = "Clear the event log",
-  .function = vlib_cli_elog_clear,
+  .handler = vlib_cli_elog_clear,
 };
 
 #ifdef CLIB_UNIX
 static clib_error_t *
-elog_save_buffer (vlib_main_t * vm,
-		  unformat_input_t * input, vlib_cli_command_t * cmd)
+elog_save_buffer (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   elog_main_t *em = vlib_get_elog_main ();
-  char *file, *chroot_file;
+  char *file = (char *) format (0, "%v%c", cli_get (ctx, "filename")->str, 0), *chroot_file;
   clib_error_t *error = 0;
-
-  if (!unformat (input, "%s", &file))
-    {
-      vlib_cli_output (vm, "expected file name, got `%U'",
-		       format_unformat_error, input);
-      return 0;
-    }
 
   /* It's fairly hard to get "../oopsie" through unformat; just in case */
   if (strstr (file, "..") || strchr (file, '/'))
@@ -658,13 +648,13 @@ vlib_post_mortem_dump (void)
 
 VLIB_CLI_COMMAND (elog_save_cli, static) = {
   .path = "event-logger save",
-  .short_help = "event-logger save <filename> (saves log in /tmp/<filename>)",
-  .function = elog_save_buffer,
+  .short_help = "Save the event log in /tmp/<filename>",
+  .args = CLI_ARGS (CLI_VALUE ("filename", cli_type_string)),
+  .handler = elog_save_buffer,
 };
 
 static clib_error_t *
-elog_stop (vlib_main_t * vm,
-	   unformat_input_t * input, vlib_cli_command_t * cmd)
+elog_stop (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   elog_main_t *em = vlib_get_elog_main ();
 
@@ -677,12 +667,11 @@ elog_stop (vlib_main_t * vm,
 VLIB_CLI_COMMAND (elog_stop_cli, static) = {
   .path = "event-logger stop",
   .short_help = "Stop the event-logger",
-  .function = elog_stop,
+  .handler = elog_stop,
 };
 
 static clib_error_t *
-elog_restart (vlib_main_t * vm,
-	      unformat_input_t * input, vlib_cli_command_t * cmd)
+elog_restart (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   elog_main_t *em = vlib_get_elog_main ();
 
@@ -695,26 +684,19 @@ elog_restart (vlib_main_t * vm,
 VLIB_CLI_COMMAND (elog_restart_cli, static) = {
   .path = "event-logger restart",
   .short_help = "Restart the event-logger",
-  .function = elog_restart,
+  .handler = elog_restart,
 };
 
 static clib_error_t *
-elog_resize_command_fn (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+elog_resize_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   elog_main_t *em = vlib_get_elog_main ();
-  u32 tmp;
 
   /* Stop the parade */
   elog_reset_buffer (em);
 
-  if (unformat (input, "%d", &tmp))
-    {
-      elog_alloc (em, tmp);
-      em->n_total_events_disable_limit = ~0;
-    }
-  else
-    return clib_error_return (0, "Must specify how many events in the ring");
+  elog_alloc (em, cli_u64 (ctx, "events", 0));
+  em->n_total_events_disable_limit = ~0;
 
   vlib_cli_output (vm, "Resized ring and restarted the event logger...");
   return 0;
@@ -722,8 +704,9 @@ elog_resize_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (elog_resize_cli, static) = {
   .path = "event-logger resize",
-  .short_help = "event-logger resize <nnn>",
-  .function = elog_resize_command_fn,
+  .short_help = "Resize the event log",
+  .args = CLI_ARGS (CLI_VALUE ("events", cli_type_u32, .help = "number of events in the ring")),
+  .handler = elog_resize_command_fn,
 };
 
 #endif /* CLIB_UNIX */
@@ -757,22 +740,15 @@ elog_show_buffer_internal (vlib_main_t * vm, u32 n_events_to_show)
 }
 
 static clib_error_t *
-elog_show_buffer (vlib_main_t * vm,
-		  unformat_input_t * input, vlib_cli_command_t * cmd)
+elog_show_buffer (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  u32 n_events_to_show;
+  u32 n_events_to_show = 250;
   clib_error_t *error = 0;
 
-  n_events_to_show = 250;
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "%d", &n_events_to_show))
-	;
-      else if (unformat (input, "all"))
-	n_events_to_show = ~0;
-      else
-	return unformat_parse_error (input);
-    }
+  if (cli_flag (ctx, "all"))
+    n_events_to_show = ~0;
+  else if (cli_flag (ctx, "events"))
+    n_events_to_show = cli_u64 (ctx, "events", 0);
   elog_show_buffer_internal (vm, n_events_to_show);
   return error;
 }
@@ -780,7 +756,10 @@ elog_show_buffer (vlib_main_t * vm,
 VLIB_CLI_COMMAND (elog_show_cli, static) = {
   .path = "show event-logger",
   .short_help = "Show event logger info",
-  .function = elog_show_buffer,
+  .args = CLI_ARGS (CLI_ONEOF ("count", CLI_F_OPTIONAL, CLI_FLAG ("all", .help = "all events"),
+			       CLI_VALUE ("events", cli_type_u32,
+					  .help = "number of events, default 250"))),
+  .handler = elog_show_buffer,
 };
 
 void

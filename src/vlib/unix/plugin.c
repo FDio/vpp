@@ -1080,16 +1080,13 @@ vlib_get_vat_plugin_name_filter (void)
 }
 
 static clib_error_t *
-vlib_plugins_show_cmd_fn (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
+vlib_plugins_show_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   plugin_main_t *pm = &vlib_plugin_main;
   u8 *s = 0;
   int index = 1;
   plugin_info_t *pi;
-  int verbose = 0;
-
-  (void) unformat (input, "verbose %=", &verbose, 1);
+  int verbose = cli_flag (ctx, "verbose");
 
   s = format (s, " Plugin path is: %s, plugins shown in load order\n\n", pm->plugin_path);
   s = format (s, "     %-41s%-33s%s\n", "Plugin", "Version", "Description");
@@ -1108,11 +1105,11 @@ vlib_plugins_show_cmd_fn (vlib_main_t * vm,
   return 0;
 }
 
-VLIB_CLI_COMMAND (plugins_show_cmd, static) =
-{
+VLIB_CLI_COMMAND (plugins_show_cmd, static) = {
   .path = "show plugins",
-  .short_help = "show loaded plugins",
-  .function = vlib_plugins_show_cmd_fn,
+  .short_help = "Show the loaded plugins",
+  .args = CLI_ARGS (CLI_FLAG ("verbose", .help = "show the load order constraints")),
+  .handler = vlib_plugins_show_cmd_fn,
 };
 
 static clib_error_t *

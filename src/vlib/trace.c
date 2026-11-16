@@ -7,6 +7,7 @@
 
 #include <vlib/vlib.h>
 #include <vlib/threads.h>
+#include <vlib/cli_decl.h>
 
 u8 *vnet_trace_placeholder;
 
@@ -271,30 +272,19 @@ trace_apply_filter (vlib_main_t * vm)
 }
 
 static clib_error_t *
-cli_show_trace_buffer (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cmd)
+cli_show_trace_buffer (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_trace_main_t *tm;
   vlib_trace_header_t **h, **traces;
   u32 i, index = 0;
   char *fmt;
   u8 *s = 0;
-  u32 max;
 
   /*
    * By default display only this many traces. To display more, explicitly
    * specify a max. This prevents unexpectedly huge outputs.
    */
-  max = 50;
-  while (unformat_check_input (input) != (uword) UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "max %d", &max))
-	;
-      else
-	return clib_error_create ("expected 'max COUNT', got `%U'",
-				  format_unformat_error, input);
-    }
-
+  u32 max = cli_u64 (ctx, "max", 50);
 
   /* Get active traces from pool. */
 
@@ -348,10 +338,12 @@ cli_show_trace_buffer (vlib_main_t * vm,
   return 0;
 }
 
-VLIB_CLI_COMMAND (show_trace_cli,static) = {
+VLIB_CLI_COMMAND (show_trace_cli, static) = {
   .path = "show trace",
-  .short_help = "Show trace buffer [max COUNT]",
-  .function = cli_show_trace_buffer,
+  .short_help = "Show trace buffer",
+  .args = CLI_ARGS (CLI_OPT_KEYWORD ("max", cli_type_u32,
+				     .help = "number of traces to show, default 50")),
+  .handler = cli_show_trace_buffer,
 };
 
 int
@@ -406,63 +398,37 @@ trace_update_capture_options (u32 add, u32 node_index, u32 filter, u8 verbose)
 }
 
 static clib_error_t *
-cli_add_trace_buffer (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+cli_add_trace_buffer (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 node_index = cli_index (ctx, "node");
+  u32 add = cli_u64 (ctx, "count", 0);
   vlib_node_t *node;
-  u32 node_index, add;
-  u8 verbose = 0;
-  int filter = 0;
-  clib_error_t *error = 0;
-
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
 
   if (vnet_trace_placeholder == 0)
     vec_validate_aligned (vnet_trace_placeholder, 2048,
 			  CLIB_CACHE_LINE_BYTES);
 
-  while (unformat_check_input (line_input) != (uword) UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "%U %d",
-		    unformat_vlib_node, vm, &node_index, &add))
-	;
-      else if (unformat (line_input, "verbose"))
-	verbose = 1;
-      else if (unformat (line_input, "filter"))
-	filter = 1;
-      else
-	{
-	  error = clib_error_create ("expected NODE COUNT, got `%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
-    }
-
   node = vlib_get_node (vm, node_index);
 
   if ((node->flags & VLIB_NODE_FLAG_TRACE_SUPPORTED) == 0)
-    {
-      error = clib_error_create ("node '%U' doesn't support per-node "
-				 "tracing. There may be another way to "
-				 "initiate trace on this node.",
-				 format_vlib_node_name, vm, node_index);
-      goto done;
-    }
+    return clib_error_create ("node '%U' doesn't support per-node "
+			      "tracing. There may be another way to "
+			      "initiate trace on this node.",
+			      format_vlib_node_name, vm, node_index);
 
-  trace_update_capture_options (add, node_index, filter, verbose);
-
-done:
-  unformat_free (line_input);
-
-  return error;
+  trace_update_capture_options (add, node_index, cli_flag (ctx, "filter"),
+				cli_flag (ctx, "verbose"));
+  return 0;
 }
 
-VLIB_CLI_COMMAND (add_trace_cli,static) = {
+VLIB_CLI_COMMAND (add_trace_cli, static) = {
   .path = "trace add",
-  .short_help = "trace add <input-graph-node> <add'l-pkts-for-node-> [filter] [verbose]",
-  .function = cli_add_trace_buffer,
+  .short_help = "Trace packets entering the graph at an input node",
+  .args = CLI_ARGS (CLI_VALUE ("node", cli_type_node, .help = "input graph node"),
+		    CLI_VALUE ("count", cli_type_u32, .help = "number of packets to trace"),
+		    CLI_FLAG ("filter", .help = "apply the packet trace filter"),
+		    CLI_FLAG ("verbose", .help = "verbose trace records")),
+  .handler = cli_add_trace_buffer,
 };
 
 /*
@@ -524,61 +490,50 @@ trace_filter_set (u32 node_index, u32 flag, u32 count)
     }
 }
 
-
 static clib_error_t *
-cli_filter_trace (vlib_main_t * vm,
-		  unformat_input_t * input, vlib_cli_command_t * cmd)
+cli_filter_trace (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  u32 filter_node_index;
-  u32 filter_flag;
-  u32 filter_count;
+  u32 filter_node_index = 0;
+  u32 filter_flag = FILTER_FLAG_NONE;
+  u32 filter_count = 0;
 
-  if (unformat (input, "include %U %d",
-		unformat_vlib_node, vm, &filter_node_index, &filter_count))
+  if (!cli_flag (ctx, "none"))
     {
-      filter_flag = FILTER_FLAG_INCLUDE;
+      filter_flag = cli_index (ctx, "mode");
+      filter_node_index = cli_index (ctx, "node");
+      filter_count = cli_u64 (ctx, "count", 0);
     }
-  else if (unformat (input, "exclude %U %d",
-		     unformat_vlib_node, vm, &filter_node_index,
-		     &filter_count))
-    {
-      filter_flag = FILTER_FLAG_EXCLUDE;
-    }
-  else if (unformat (input, "none"))
-    {
-      filter_flag = FILTER_FLAG_NONE;
-      filter_node_index = 0;
-      filter_count = 0;
-    }
-  else
-    return
-      clib_error_create
-      ("expected 'include NODE COUNT' or 'exclude NODE COUNT' or 'none', got `%U'",
-       format_unformat_error, input);
 
   trace_filter_set (filter_node_index, filter_flag, filter_count);
 
   return 0;
 }
 
-VLIB_CLI_COMMAND (filter_trace_cli,static) = {
+VLIB_CLI_COMMAND (filter_trace_cli, static) = {
   .path = "trace filter",
-  .short_help = "trace filter none | [include|exclude] NODE COUNT",
-  .function = cli_filter_trace,
+  .short_help = "Filter the traces which are kept",
+  .args = CLI_ARGS (CLI_ONEOF (
+    "filter", 0, CLI_FLAG ("none", .help = "remove the filter"),
+    CLI_SEQ (CLI_ENUM ("mode", 0,
+		       { "include", "keep traces which go through the node", FILTER_FLAG_INCLUDE },
+		       { "exclude", "keep traces which do not go through the node",
+			 FILTER_FLAG_EXCLUDE }),
+	     CLI_VALUE ("node", cli_type_node),
+	     CLI_VALUE ("count", cli_type_u32, .help = "number of traces to keep")))),
+  .handler = cli_filter_trace,
 };
 
 static clib_error_t *
-cli_clear_trace_buffer (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+cli_clear_trace_buffer (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_trace_stop_and_clear ();
   return 0;
 }
 
-VLIB_CLI_COMMAND (clear_trace_cli,static) = {
+VLIB_CLI_COMMAND (clear_trace_cli, static) = {
   .path = "clear trace",
   .short_help = "Clear trace buffer and free memory",
-  .function = cli_clear_trace_buffer,
+  .handler = cli_clear_trace_buffer,
 };
 
 /* Placeholder function to get us linked in. */
@@ -643,8 +598,7 @@ vlib_trace_filter_main_t vlib_trace_filter_main;
 VLIB_INIT_FUNCTION (vlib_trace_filter_function_init);
 
 static clib_error_t *
-show_trace_filter_function (vlib_main_t *vm, unformat_input_t *input,
-			    vlib_cli_command_t *cmd)
+show_trace_filter_function (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_trace_filter_main_t *tfm = &vlib_trace_filter_main;
   vlib_trace_main_t *tm = &vm->trace_main;
@@ -666,18 +620,16 @@ show_trace_filter_function (vlib_main_t *vm, unformat_input_t *input,
 VLIB_CLI_COMMAND (show_trace_filter_function_cli, static) = {
   .path = "show trace filter function",
   .short_help = "show trace filter function",
-  .function = show_trace_filter_function,
+  .handler = show_trace_filter_function,
 };
 
 uword
 unformat_vlib_trace_filter_function (unformat_input_t *input, va_list *args)
 {
-  vlib_is_packet_traced_fn_t **res =
-    va_arg (*args, vlib_is_packet_traced_fn_t **);
+  vlib_is_packet_traced_fn_t **res = va_arg (*args, vlib_is_packet_traced_fn_t **);
   vlib_trace_filter_main_t *tfm = &vlib_trace_filter_main;
 
-  vlib_trace_filter_function_registration_t *reg =
-    tfm->trace_filter_registration;
+  vlib_trace_filter_function_registration_t *reg = tfm->trace_filter_registration;
   while (reg)
     {
       if (unformat (input, reg->name))
@@ -690,6 +642,38 @@ unformat_vlib_trace_filter_function (unformat_input_t *input, va_list *args)
   return 0;
 }
 
+/* trace filter function, the value is the registration */
+static u8 *
+parse_trace_filter_function (const cli_arg_t *a, u8 *tok, cli_value_t *v)
+{
+  vlib_trace_filter_function_registration_t *reg;
+
+  for (reg = vlib_trace_filter_main.trace_filter_registration; reg; reg = reg->next)
+    if (strlen (reg->name) == vec_len (tok) && memcmp (reg->name, tok, vec_len (tok)) == 0)
+      {
+	v->u64 = (uword) reg;
+	return 0;
+      }
+  return format (0, "unknown trace filter function '%v'", tok);
+}
+
+static void
+complete_trace_filter_function (const cli_arg_t *a, u8 *prefix, cli_candidate_t **out)
+{
+  vlib_trace_filter_function_registration_t *reg;
+
+  for (reg = vlib_trace_filter_main.trace_filter_registration; reg; reg = reg->next)
+    if (cli_prefix_match (reg->name, prefix))
+      cli_candidate_add (out, reg->name, reg->description);
+}
+
+CLIB_CLI_TYPE (cli_type_trace_filter_function) = {
+  .name = "trace-filter-function",
+  .help = "packet trace filter function",
+  .parse = parse_trace_filter_function,
+  .complete = complete_trace_filter_function,
+};
+
 void
 vlib_set_trace_filter_function (vlib_is_packet_traced_fn_t *x)
 {
@@ -700,80 +684,41 @@ vlib_set_trace_filter_function (vlib_is_packet_traced_fn_t *x)
 }
 
 static clib_error_t *
-set_trace_filter_function (vlib_main_t *vm, unformat_input_t *input,
-			   vlib_cli_command_t *cmd)
+set_trace_filter_function (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  vlib_is_packet_traced_fn_t *res = 0;
-  clib_error_t *error = 0;
+  vlib_trace_filter_function_registration_t *reg =
+    (vlib_trace_filter_function_registration_t *) (uword) cli_u64 (ctx, "function", 0);
 
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != (uword) UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "%U", unformat_vlib_trace_filter_function,
-		    &res))
-	;
-      else
-	{
-	  error = clib_error_create (
-	    "expected valid trace filter function, got `%U'",
-	    format_unformat_error, line_input);
-	  goto done;
-	}
-    }
-  vlib_set_trace_filter_function (res);
-
-done:
-  unformat_free (line_input);
-
-  return error;
+  vlib_set_trace_filter_function (reg->function);
+  return 0;
 }
 
 VLIB_CLI_COMMAND (set_trace_filter_function_cli, static) = {
   .path = "set trace filter function",
-  .short_help = "set trace filter function <func_name>",
-  .function = set_trace_filter_function,
+  .short_help = "Set the function which selects the packets to trace",
+  .args = CLI_ARGS (CLI_VALUE ("function", cli_type_trace_filter_function)),
+  .handler = set_trace_filter_function,
 };
 
 static clib_error_t *
-set_trace_timestamp_format_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+set_trace_timestamp_format_cli (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  clib_error_t *error = 0;
-
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_create ("expected timestamp format");
-
-  while (unformat_check_input (line_input) != (uword) UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "relative"))
-	vlib_trace_filter_main.timestamp_format = VLIB_TRACE_TIMESTAMP_RELATIVE;
-      else if (unformat (line_input, "unix"))
-	vlib_trace_filter_main.timestamp_format = VLIB_TRACE_TIMESTAMP_UNIX;
-      else if (unformat (line_input, "datetime"))
-	vlib_trace_filter_main.timestamp_format = VLIB_TRACE_TIMESTAMP_DATETIME;
-      else
-	{
-	  error = clib_error_create ("expected 'relative', 'unix', or 'datetime', got `%U'",
-				     format_unformat_error, line_input);
-	  break;
-	}
-    }
-
-  unformat_free (line_input);
-  return error;
+  vlib_trace_filter_main.timestamp_format = cli_index (ctx, "format");
+  return 0;
 }
 
 VLIB_CLI_COMMAND (set_trace_timestamp_format_cli_cmd, static) = {
   .path = "set trace timestamp-format",
-  .short_help = "set trace timestamp-format <relative|unix|datetime>",
-  .function = set_trace_timestamp_format_cli,
+  .short_help = "Set the format of the timestamps of the traces",
+  .args = CLI_ARGS (CLI_ENUM (
+    "format", 0, { "relative", "time since the start of the trace", VLIB_TRACE_TIMESTAMP_RELATIVE },
+    { "unix", "unix time", VLIB_TRACE_TIMESTAMP_UNIX },
+    { "datetime", "date and time", VLIB_TRACE_TIMESTAMP_DATETIME })),
+  .handler = set_trace_timestamp_format_cli,
 };
 
 static clib_error_t *
-show_trace_timestamp_format_cli (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+show_trace_timestamp_format_cli (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   char *fmt_str;
   switch (vlib_trace_filter_main.timestamp_format)
@@ -796,7 +741,7 @@ show_trace_timestamp_format_cli (vlib_main_t *vm, unformat_input_t *input, vlib_
 VLIB_CLI_COMMAND (show_trace_timestamp_format_cli_cmd, static) = {
   .path = "show trace timestamp-format",
   .short_help = "show trace timestamp-format",
-  .function = show_trace_timestamp_format_cli,
+  .handler = show_trace_timestamp_format_cli,
 };
 
 /*

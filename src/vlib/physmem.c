@@ -117,32 +117,11 @@ vlib_physmem_init (vlib_main_t * vm)
 }
 
 static clib_error_t *
-show_physmem (vlib_main_t * vm,
-	      unformat_input_t * input, vlib_cli_command_t * cmd)
+show_physmem (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_physmem_main_t *vpm = &vm->physmem_main;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  u32 verbose = 0, map = 0;
-
-  if (unformat_user (input, unformat_line_input, line_input))
-    {
-      while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-	{
-	  if (unformat (line_input, "verbose"))
-	    verbose = 1;
-	  else if (unformat (line_input, "v"))
-	    verbose = 1;
-	  else if (unformat (line_input, "detail"))
-	    verbose = 2;
-	  else if (unformat (line_input, "d"))
-	    verbose = 2;
-	  else if (unformat (line_input, "map"))
-	    map = 1;
-	  else
-	    break;
-	}
-      unformat_free (line_input);
-    }
+  u32 verbose = cli_flag (ctx, "detail") ? 2 : cli_flag (ctx, "verbose"),
+      map = cli_flag (ctx, "map");
 
   if (map)
     vlib_cli_output (vm, " %U", format_pmalloc_map, vpm->pmalloc_main);
@@ -154,8 +133,11 @@ show_physmem (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (show_physmem_command, static) = {
   .path = "show physmem",
-  .short_help = "show physmem [verbose | detail | map]",
-  .function = show_physmem,
+  .short_help = "Show the physical memory",
+  .args = CLI_ARGS (CLI_FLAG ("verbose", .alias = "v", .help = "more details"),
+		    CLI_FLAG ("detail", .alias = "d", .help = "even more details"),
+		    CLI_FLAG ("map", .help = "show the memory map")),
+  .handler = show_physmem,
 };
 
 static clib_error_t *

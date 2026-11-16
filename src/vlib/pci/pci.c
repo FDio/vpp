@@ -175,21 +175,11 @@ vlib_pci_function_level_reset (vlib_main_t *vm, vlib_pci_dev_handle_t h)
 }
 
 static clib_error_t *
-show_pci_fn (vlib_main_t * vm,
-	     unformat_input_t * input, vlib_cli_command_t * cmd)
+show_pci_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_pci_addr_t *addr = 0, *addrs;
-  int show_all = 0;
+  int show_all = cli_flag (ctx, "all");
   u8 *s = 0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "all"))
-	show_all = 1;
-      else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
-    }
 
   vlib_cli_output (vm, "%-13s%-5s%-12s%-14s%-16s%-32s%s",
 		   "Address", "Sock", "VID:PID", "Link Speed", "Driver",
@@ -377,6 +367,7 @@ format_vlib_pci_vpd (u8 * s, va_list * args)
 
 VLIB_CLI_COMMAND (show_pci_command, static) = {
   .path = "show pci",
-  .short_help = "show pci [all]",
-  .function = show_pci_fn,
+  .short_help = "Show the PCI devices",
+  .args = CLI_ARGS (CLI_FLAG ("all", .help = "all devices, not only the network devices")),
+  .handler = show_pci_fn,
 };

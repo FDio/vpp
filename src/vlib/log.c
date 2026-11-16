@@ -489,9 +489,59 @@ vlib_log_init (vlib_main_t *vm)
   return 0;
 }
 
+static const cli_choice_t log_level_choices[] = {
+#define _(uc, lc) { #lc, 0, VLIB_LOG_LEVEL_##uc },
+  foreach_vlib_log_level
+#undef _
+  {},
+};
+
+static const cli_choice_t log_timestamp_choices[] = {
+#define _(uc, lc) { #lc, 0, VLIB_LOG_TIMESTAMP_##uc },
+  foreach_vlib_log_timestamp_format
+#undef _
+  {},
+};
+
+/* log class, the value is the index of the class */
+static u8 *
+parse_log_class (const cli_arg_t *a, u8 *tok, cli_value_t *v)
+{
+  vlib_log_class_data_t *c;
+
+  vec_foreach (c, log_main.classes)
+    if (vec_is_equal (c->name, tok))
+      {
+	v->index = c - log_main.classes;
+	return 0;
+      }
+  return format (0, "unknown log class '%v'", tok);
+}
+
+static void
+complete_log_class (const cli_arg_t *a, u8 *prefix, cli_candidate_t **out)
+{
+  vlib_log_class_data_t *c;
+
+  vec_foreach (c, log_main.classes)
+    if (vec_len (c->name) >= vec_len (prefix) && memcmp (c->name, prefix, vec_len (prefix)) == 0)
+      {
+	cli_candidate_t *cand;
+
+	vec_add2 (*out, cand, 1);
+	cand->text = vec_dup (c->name);
+      }
+}
+
+CLIB_CLI_TYPE (cli_type_log_class) = {
+  .name = "log-class",
+  .help = "logging class",
+  .parse = parse_log_class,
+  .complete = complete_log_class,
+};
+
 static clib_error_t *
-show_log (vlib_main_t * vm,
-	  unformat_input_t * input, vlib_cli_command_t * cmd)
+show_log (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   clib_error_t *error = 0;
   vlib_log_main_t *lm = &log_main;
@@ -499,24 +549,7 @@ show_log (vlib_main_t * vm,
   int i = last_log_entry ();
   int count;
   f64 prev = lm->time_zero;
-  vlib_log_timestamp_format_t tf = lm->timestamp_format;
-  unformat_input_t _line_input, *line_input = &_line_input;
-
-  if (unformat_user (input, unformat_line_input, line_input))
-    {
-      while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-	{
-	  if (unformat (line_input, "time-format %U", unformat_vlib_log_timestamp_format, &tf))
-	    ;
-	  else
-	    {
-	      error = unformat_parse_error (line_input);
-	      unformat_free (line_input);
-	      return error;
-	    }
-	}
-      unformat_free (line_input);
-    }
+  vlib_log_timestamp_format_t tf = cli_u64 (ctx, "time-format", lm->timestamp_format);
 
   CLIB_SPINLOCK_LOCK (lm->lock);
   count = lm->count;
@@ -541,37 +574,34 @@ show_log (vlib_main_t * vm,
 }
 
 static clib_error_t *
-set_log_timestamp (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+set_log_timestamp (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  vlib_log_main_t *lm = &log_main;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  clib_error_t *err = 0;
-
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, "expected timestamp format");
-
-  if (!unformat (line_input, "%U", unformat_vlib_log_timestamp_format, &lm->timestamp_format))
-    err = clib_error_return (0, "unknown timestamp format '%U'", format_unformat_error, line_input);
-
-  unformat_free (line_input);
-  return err;
+  log_main.timestamp_format = cli_index (ctx, "format");
+  return 0;
 }
 
 VLIB_CLI_COMMAND (cli_set_log_timestamp, static) = {
   .path = "set logging timestamp",
-  .short_help = "set logging timestamp none|local|utc|delta|uptime",
-  .function = set_log_timestamp,
+  .short_help = "Set the format of the timestamps of the log",
+  .args = CLI_ARGS (CLI_ENUM ("format", 0, { "none", "no timestamps", VLIB_LOG_TIMESTAMP_NONE },
+			      { "local", "local time", VLIB_LOG_TIMESTAMP_LOCAL },
+			      { "utc", "UTC time", VLIB_LOG_TIMESTAMP_UTC },
+			      { "delta", "time since the previous entry",
+				VLIB_LOG_TIMESTAMP_DELTA },
+			      { "uptime", "time since start", VLIB_LOG_TIMESTAMP_UPTIME })),
+  .handler = set_log_timestamp,
 };
 
 VLIB_CLI_COMMAND (cli_show_log, static) = {
   .path = "show logging",
-  .short_help = "show logging [time-format none|local|utc|delta|uptime]",
-  .function = show_log,
+  .short_help = "Show the log",
+  .args = CLI_ARGS (CLI_OPT_KEYWORD ("time-format", cli_type_enum, .choices = log_timestamp_choices,
+				     .help = "format of the timestamps")),
+  .handler = show_log,
 };
 
 static clib_error_t *
-show_log_config (vlib_main_t * vm,
-		 unformat_input_t * input, vlib_cli_command_t * cmd)
+show_log_config (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   clib_error_t *error = 0;
   vlib_log_main_t *lm = &log_main;
@@ -612,12 +642,11 @@ show_log_config (vlib_main_t * vm,
 VLIB_CLI_COMMAND (cli_show_log_config, static) = {
   .path = "show logging configuration",
   .short_help = "show logging configuration",
-  .function = show_log_config,
+  .handler = show_log_config,
 };
 
 static clib_error_t *
-clear_log (vlib_main_t * vm,
-	   unformat_input_t * input, vlib_cli_command_t * cmd)
+clear_log (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   clib_error_t *error = 0;
   vlib_log_main_t *lm = &log_main;
@@ -645,7 +674,7 @@ clear_log (vlib_main_t * vm,
 VLIB_CLI_COMMAND (cli_clear_log, static) = {
   .path = "clear logging",
   .short_help = "clear logging",
-  .function = clear_log,
+  .handler = clear_log,
 };
 
 static uword
@@ -673,84 +702,19 @@ done:
   return rv;
 }
 
-static uword
-unformat_vlib_log_class (unformat_input_t * input, va_list * args)
-{
-  vlib_log_class_data_t **class = va_arg (*args, vlib_log_class_data_t **);
-  uword rv = 0;
-  u8 *class_str = NULL;
-  vlib_log_main_t *lm = &log_main;
-  if (unformat (input, "%v", &class_str))
-    {
-      vlib_log_class_data_t *cdata;
-      vec_foreach (cdata, lm->classes)
-      {
-	if (vec_is_equal (cdata->name, class_str))
-	  {
-	    *class = cdata;
-	    rv = 1;
-	    break;
-	  }
-      }
-    }
-  vec_free (class_str);
-  return rv;
-}
-
 static clib_error_t *
-set_log_class (vlib_main_t * vm,
-	       unformat_input_t * input, vlib_cli_command_t * cmd)
+set_log_class (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *rv = NULL;
-  int rate_limit;
-  bool set_rate_limit = false;
-  bool set_level = false;
-  bool set_syslog_level = false;
-  bool set_kmsg_level = false;
-  vlib_log_level_t level;
-  vlib_log_level_t syslog_level;
-  vlib_log_level_t kmsg_level;
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  vlib_log_class_data_t *class = NULL;
-  if (!unformat (line_input, "%U", unformat_vlib_log_class, &class))
-    {
-      return clib_error_return (0, "unknown log class `%U'",
-				format_unformat_error, line_input);
-    }
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "rate-limit %d", &rate_limit))
-	{
-	  set_rate_limit = true;
-	}
-      else
-	if (unformat
-	    (line_input, "level %U", unformat_vlib_log_level, &level))
-	{
-	  set_level = true;
-	}
-      else
-	if (unformat
-	    (line_input, "syslog-level %U", unformat_vlib_log_level,
-	     &syslog_level))
-	{
-	  set_syslog_level = true;
-	}
-      else if (unformat (line_input, "kmsg-level %U", unformat_vlib_log_level, &kmsg_level))
-	{
-	  set_kmsg_level = true;
-	}
-      else
-	{
-	  return clib_error_return (0, "unknown input `%U'",
-				    format_unformat_error, line_input);
-	}
-    }
+  vlib_log_class_data_t *class = vec_elt_at_index (log_main.classes, cli_index (ctx, "class"));
+  int rate_limit = cli_u64 (ctx, "rate-limit", 0);
+  bool set_rate_limit = cli_flag (ctx, "rate-limit");
+  bool set_level = cli_flag (ctx, "level");
+  bool set_syslog_level = cli_flag (ctx, "syslog-level");
+  bool set_kmsg_level = cli_flag (ctx, "kmsg-level");
+  vlib_log_level_t level = cli_index (ctx, "level");
+  vlib_log_level_t syslog_level = cli_index (ctx, "syslog-level");
+  vlib_log_level_t kmsg_level = cli_index (ctx, "kmsg-level");
 
   if (set_level)
     {
@@ -790,151 +754,76 @@ set_log_class (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (cli_set_log, static) = {
   .path = "set logging class",
-  .short_help = "set logging class <class> [rate-limit <int>] "
-		"[level <level>] [syslog-level <level>] [kmsg-level <level>]",
-  .function = set_log_class,
+  .short_help = "Set the rate limit and the levels of a logging class",
+  .args = CLI_ARGS (CLI_VALUE ("class", cli_type_log_class),
+		    CLI_OPT_KEYWORD ("rate-limit", cli_type_u32, .help = "messages per second"),
+		    CLI_OPT_KEYWORD ("level", cli_type_enum, .choices = log_level_choices),
+		    CLI_OPT_KEYWORD ("syslog-level", cli_type_enum, .choices = log_level_choices),
+		    CLI_OPT_KEYWORD ("kmsg-level", cli_type_enum, .choices = log_level_choices)),
+  .handler = set_log_class,
 };
 
 static clib_error_t *
-set_log_unth_time (vlib_main_t * vm,
-		   unformat_input_t * input, vlib_cli_command_t * cmd)
+set_log_unth_time (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  clib_error_t *rv = NULL;
-  int unthrottle_time;
-  vlib_log_main_t *lm = &log_main;
+  log_main.unthrottle_time = cli_get (ctx, "time")->f64 + 0.5;
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "%d", &unthrottle_time))
-	lm->unthrottle_time = unthrottle_time;
-      else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, line_input);
-    }
-
-  return rv;
+  return 0;
 }
 
 VLIB_CLI_COMMAND (cli_set_log_params, static) = {
   .path = "set logging unthrottle-time",
-  .short_help = "set logging unthrottle-time <int>",
-  .function = set_log_unth_time,
+  .short_help = "Set the time after which a rate limited class logs again",
+  .args = CLI_ARGS (CLI_VALUE ("time", cli_type_duration, .help = "whole seconds, rounded")),
+  .handler = set_log_unth_time,
 };
 
 static clib_error_t *
-set_log_size (vlib_main_t * vm,
-	      unformat_input_t * input, vlib_cli_command_t * cmd)
+set_log_size (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  clib_error_t *rv = NULL;
-  int size;
   vlib_log_main_t *lm = &log_main;
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+  lm->size = cli_u64 (ctx, "size", 0);
+  log_size_validate (lm);
 
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "%d", &size))
-	{
-	  lm->size = size;
-	  log_size_validate (lm);
-	}
-      else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, line_input);
-    }
-
-  return rv;
+  return 0;
 }
 
 VLIB_CLI_COMMAND (cli_set_log_size, static) = {
   .path = "set logging size",
-  .short_help = "set logging size <int>",
-  .function = set_log_size,
+  .short_help = "Set the number of entries of the log",
+  .args = CLI_ARGS (CLI_VALUE ("size", cli_type_u32, .help = "number of entries")),
+  .handler = set_log_size,
 };
 
-static uword
-unformat_vlib_log_subclass (unformat_input_t * input, va_list * args)
-{
-  vlib_log_class_data_t *class = va_arg (*args, vlib_log_class_data_t *);
-  vlib_log_subclass_data_t **subclass =
-    va_arg (*args, vlib_log_subclass_data_t **);
-  uword rv = 0;
-  u8 *subclass_str = NULL;
-  if (unformat (input, "%v", &subclass_str))
-    {
-      vlib_log_subclass_data_t *scdata;
-      vec_foreach (scdata, class->subclasses)
-      {
-	if (vec_is_equal (scdata->name, subclass_str))
-	  {
-	    rv = 1;
-	    *subclass = scdata;
-	    break;
-	  }
-      }
-    }
-  vec_free (subclass_str);
-  return rv;
-}
-
 static clib_error_t *
-test_log_class_subclass (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
+test_log_class_subclass (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+  vlib_log_class_data_t *class = vec_elt_at_index (log_main.classes, cli_index (ctx, "class"));
+  vlib_log_subclass_data_t *subclass = 0, *sc;
+  vlib_log_level_t level = cli_index (ctx, "level");
+  cli_value_t *message = cli_get (ctx, "message");
+  u8 *name = cli_get (ctx, "subclass")->str;
 
-  vlib_log_class_data_t *class = NULL;
-  vlib_log_subclass_data_t *subclass = NULL;
-  vlib_log_level_t level;
-  if (unformat (line_input, "%U", unformat_vlib_log_level, &level))
-    {
-      if (unformat (line_input, "%U", unformat_vlib_log_class, &class))
-	{
-	  if (unformat
-	      (line_input, "%U", unformat_vlib_log_subclass, class,
-	       &subclass))
-	    {
-	      vlib_log (level,
-			(class->index << 16) | (subclass->index), "%U",
-			format_unformat_input, line_input);
-	    }
-	  else
-	    {
-	      return clib_error_return (0,
-					"unknown log subclass near beginning of `%U'",
-					format_unformat_error, line_input);
-	    }
-	}
-      else
-	{
-	  return clib_error_return (0,
-				    "unknown log class near beginning of `%U'",
-				    format_unformat_error, line_input);
-	}
-    }
-  else
-    {
-      return clib_error_return (0, "unknown log level near beginning of `%U'",
-				format_unformat_error, line_input);
-    }
+  vec_foreach (sc, class->subclasses)
+    if (vec_is_equal (sc->name, name))
+      subclass = sc;
+
+  if (!subclass)
+    return clib_error_return (0, "unknown log subclass '%v'", name);
+
+  vlib_log (level, (class->index << 16) | (subclass->index), "%v", message ? message->str : 0);
   return 0;
 }
 
 VLIB_CLI_COMMAND (cli_test_log, static) = {
   .path = "test log",
-  .short_help = "test log <level> <class> <subclass> <message>",
-  .function = test_log_class_subclass,
+  .short_help = "Log a message",
+  .args = CLI_ARGS (CLI_VALUE ("level", cli_type_enum, .choices = log_level_choices),
+		    CLI_VALUE ("class", cli_type_log_class),
+		    CLI_VALUE ("subclass", cli_type_string),
+		    CLI_VALUE ("message", cli_type_rest, .flags = CLI_F_OPTIONAL)),
+  .handler = test_log_class_subclass,
 };
 
 static clib_error_t *

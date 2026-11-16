@@ -140,7 +140,13 @@ typedef struct vlib_cli_main_t
 void vlib_cli_command_registration_helper (vlib_cli_command_t *x);
 
 /* argument type for graph nodes, the value is the node index */
-extern cli_type_t cli_type_node;
+__clib_export extern cli_type_t cli_type_node;
+/* v->u64 is the vlib_trace_filter_function_registration_t */
+__clib_export extern cli_type_t cli_type_trace_filter_function;
+/* v->u64 is the error index, <node>.<error> */
+__clib_export extern cli_type_t cli_type_error;
+/* v->str is /tmp/<name>, the name has no directories */
+__clib_export extern cli_type_t cli_type_tmpfile;
 
 #ifndef CLIB_MARCH_VARIANT
 #define VLIB_CLI_COMMAND(x, ...)                                              \

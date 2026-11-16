@@ -133,25 +133,14 @@ format_stat_dir_entry_detail (u8 *s, va_list *args)
 }
 
 static clib_error_t *
-show_stat_segment_command_fn (vlib_main_t *vm, unformat_input_t *input,
-			      vlib_cli_command_t *cmd)
+show_stat_segment_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_stats_segment_t *sm = vlib_stats_get_segment ();
   vlib_stats_entry_t *show_data;
   int i;
-  int verbose = 0;
-  u8 *counter_name = 0;
-
-  // Parse both 'verbose' and counter name in any order
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "verbose"))
-	verbose = 1;
-      else if (unformat (input, "%s", &counter_name))
-	;
-      else
-	break;
-    }
+  int verbose = cli_flag (ctx, "verbose");
+  cli_value_t *name = cli_get (ctx, "counter-name");
+  u8 *counter_name = name ? format (0, "%v%c", name->str, 0) : 0;
 
   if (counter_name)
     {
@@ -206,8 +195,7 @@ show_stat_segment_command_fn (vlib_main_t *vm, unformat_input_t *input,
 }
 
 static clib_error_t *
-show_stat_segment_hash_command_fn (vlib_main_t *vm, unformat_input_t *input,
-				   vlib_cli_command_t *cmd)
+show_stat_segment_hash_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_stats_segment_t *sm = vlib_stats_get_segment ();
   char *name;
@@ -220,11 +208,14 @@ show_stat_segment_hash_command_fn (vlib_main_t *vm, unformat_input_t *input,
 VLIB_CLI_COMMAND (show_stat_segment_hash_command, static) = {
   .path = "show statistics hash",
   .short_help = "show statistics hash",
-  .function = show_stat_segment_hash_command_fn,
+  .handler = show_stat_segment_hash_command_fn,
 };
 
 VLIB_CLI_COMMAND (show_stat_segment_command, static) = {
   .path = "show statistics segment",
-  .short_help = "show statistics segment [counter-name] [verbose]",
-  .function = show_stat_segment_command_fn,
+  .short_help = "Show the statistics segment",
+  .args = CLI_ARGS (CLI_VALUE ("counter-name", cli_type_string, .flags = CLI_F_OPTIONAL,
+			       .help = "only this counter"),
+		    CLI_FLAG ("verbose", .help = "more details")),
+  .handler = show_stat_segment_command_fn,
 };
