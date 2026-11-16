@@ -26,31 +26,35 @@ static http_header_name_token_t http_header_names[] = {
 
 #define http_header_name_flags(e) http_header_names[e].flags
 
-static u8
+static __clib_noinline u8
 _http_memcmp_case (const char *actual, const char *expected, uword len)
 {
-  uword i, last_a = 0, last_e = 0;
-  uword *a, *e;
   ASSERT (actual != 0);
-
-  i = len;
-  a = (uword *) actual;
-  e = (uword *) expected;
-  while (i >= sizeof (uword))
+#ifdef CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE
+  /* Bounded partial loads also handle short names at the end of a buffer. */
+  while (len)
     {
-      if (http_tolower_word (*a) != *e)
+      uword n = clib_min (len, 16);
+      u8x16 a = u8x16_load_partial ((u8 *) actual, n);
+      u8x16 e = u8x16_load_partial ((u8 *) expected, n);
+      a |= ((a >= u8x16_splat ('A')) & (a <= u8x16_splat ('Z'))) & u8x16_splat (0x20);
+      if (!u8x16_is_equal (a, e))
 	return 1;
-      a++;
-      e++;
-      i -= sizeof (uword);
+      actual += n;
+      expected += n;
+      len -= n;
     }
-  if (i > 0)
+#else
+  /* Keep the fallback small on targets without the vector load helpers. */
+  for (uword i = 0; i < len; i++)
     {
-      clib_memcpy_fast (&last_a, a, i);
-      clib_memcpy_fast (&last_e, e, i);
-      if (http_tolower_word (last_a) != last_e)
+      u8 a = actual[i];
+      if (a >= 'A' && a <= 'Z')
+	a |= 0x20;
+      if (a != (u8) expected[i])
 	return 1;
     }
+#endif
   return 0;
 }
 
@@ -64,7 +68,7 @@ http_lookup_header_name (const char *name, uword name_len)
 	return HTTP_HEADER_TE;
       break;
     case 3:
-      switch (tolower (name[0]))
+      switch ((u8) name[0] | 0x20)
 	{
 	case 'a':
 	  if (!_http_memcmp_case (name + 1, "ge", 2))
@@ -77,7 +81,7 @@ http_lookup_header_name (const char *name, uword name_len)
 	}
       break;
     case 4:
-      switch (tolower (name[3]))
+      switch ((u8) name[3] | 0x20)
 	{
 	case 'n':
 	  if (!_http_memcmp_case (name, "alp", 3))
@@ -114,7 +118,7 @@ http_lookup_header_name (const char *name, uword name_len)
 	}
       break;
     case 5:
-      switch (tolower (name[0]))
+      switch ((u8) name[0] | 0x20)
 	{
 	case 'a':
 	  if (!_http_memcmp_case (name + 1, "llow", 4))
@@ -131,7 +135,7 @@ http_lookup_header_name (const char *name, uword name_len)
 	}
       break;
     case 6:
-      switch (tolower (name[0]))
+      switch ((u8) name[0] | 0x20)
 	{
 	case 'a':
 	  if (!_http_memcmp_case (name + 1, "ccept", 5))
@@ -160,7 +164,7 @@ http_lookup_header_name (const char *name, uword name_len)
 	}
       break;
     case 7:
-      switch (tolower (name[0]))
+      switch ((u8) name[0] | 0x20)
 	{
 	case 'a':
 	  if (!_http_memcmp_case (name + 1, "lt-svc", 6))
@@ -191,7 +195,7 @@ http_lookup_header_name (const char *name, uword name_len)
 	}
       break;
     case 8:
-      switch (tolower (name[7]))
+      switch ((u8) name[7] | 0x20)
 	{
 	case 'd':
 	  if (!_http_memcmp_case (name, "alt-use", 7))
@@ -220,7 +224,7 @@ http_lookup_header_name (const char *name, uword name_len)
 	}
       break;
     case 9:
-      switch (tolower (name[0]))
+      switch ((u8) name[0] | 0x20)
 	{
 	case 'e':
 	  if (!_http_memcmp_case (name + 1, "xpect-ct", 8))
@@ -237,7 +241,7 @@ http_lookup_header_name (const char *name, uword name_len)
 	}
       break;
     case 10:
-      switch (tolower (name[0]))
+      switch ((u8) name[0] | 0x20)
 	{
 	case 'a':
 	  if (!_http_memcmp_case (name + 1, "lternates", 9))
@@ -270,7 +274,7 @@ http_lookup_header_name (const char *name, uword name_len)
 	}
       break;
     case 11:
-      switch (tolower (name[0]))
+      switch ((u8) name[0] | 0x20)
 	{
 	case 'c':
 	  if (!_http_memcmp_case (name + 1, "lient-cert", 10))
@@ -285,7 +289,7 @@ http_lookup_header_name (const char *name, uword name_len)
 	}
       break;
     case 12:
-      switch (tolower (name[0]))
+      switch ((u8) name[0] | 0x20)
 	{
 	case 'c':
 	  if (!_http_memcmp_case (name + 1, "ache-status", 11))
@@ -304,7 +308,7 @@ http_lookup_header_name (const char *name, uword name_len)
 	}
       break;
     case 13:
-      switch (tolower (name[12]))
+      switch ((u8) name[12] | 0x20)
 	{
 	case 's':
 	  if (!_http_memcmp_case (name, "accept-range", 12))
@@ -333,7 +337,7 @@ http_lookup_header_name (const char *name, uword name_len)
 	}
       break;
     case 14:
-      switch (tolower (name[0]))
+      switch ((u8) name[0] | 0x20)
 	{
 	case 'a':
 	  if (!_http_memcmp_case (name + 1, "ccept-charset", 13))
@@ -348,7 +352,7 @@ http_lookup_header_name (const char *name, uword name_len)
 	}
       break;
     case 15:
-      switch (tolower (name[14]))
+      switch ((u8) name[14] | 0x20)
 	{
 	case 'g':
 	  if (!_http_memcmp_case (name, "accept-encodin", 14))
@@ -373,7 +377,7 @@ http_lookup_header_name (const char *name, uword name_len)
 	}
       break;
     case 16:
-      switch (tolower (name[0]))
+      switch ((u8) name[0] | 0x20)
 	{
 	case 'c':
 	  if (!_http_memcmp_case (name + 1, "apsule-protocol", 15))
@@ -402,7 +406,7 @@ http_lookup_header_name (const char *name, uword name_len)
 	}
       break;
     case 17:
-      switch (tolower (name[16]))
+      switch ((u8) name[16] | 0x20)
 	{
 	case 'l':
 	  if (!_http_memcmp_case (name, "cdn-cache-contro", 16))
@@ -427,7 +431,7 @@ http_lookup_header_name (const char *name, uword name_len)
 	return HTTP_HEADER_PROXY_AUTHENTICATE;
       break;
     case 19:
-      switch (tolower (name[0]))
+      switch ((u8) name[0] | 0x20)
 	{
 	case 'a':
 	  if (!_http_memcmp_case (name + 1, "uthentication-info", 18))
@@ -456,7 +460,7 @@ http_lookup_header_name (const char *name, uword name_len)
 	}
       break;
     case 22:
-      switch (tolower (name[21]))
+      switch ((u8) name[21] | 0x20)
 	{
 	case 'e':
 	  if (!_http_memcmp_case (name, "access-control-max-ag", 21))
@@ -477,7 +481,7 @@ http_lookup_header_name (const char *name, uword name_len)
 	return HTTP_HEADER_CONTENT_SECURITY_POLICY;
       break;
     case 25:
-      switch (tolower (name[0]))
+      switch ((u8) name[0] | 0x20)
 	{
 	case 'p':
 	  if (!_http_memcmp_case (name + 1, "roxy-authentication-info", 24))
@@ -504,7 +508,7 @@ http_lookup_header_name (const char *name, uword name_len)
 	return HTTP_HEADER_ACCESS_CONTROL_ALLOW_METHODS;
       break;
     case 29:
-      switch (tolower (name[28]))
+      switch ((u8) name[28] | 0x20)
 	{
 	case 's':
 	  if (!_http_memcmp_case (name, "access-control-expose-header", 28))
@@ -528,12 +532,152 @@ http_lookup_header_name (const char *name, uword name_len)
   return HTTP_HEADER_UNKNOWN;
 }
 
+static inline http_token_t *
+_http_connection_option_add (char *start, char *end, uword *known, http_token_t *custom)
+{
+  if (start)
+    {
+      http_token_t option = { start, end - start };
+      http_header_name_t name = http_lookup_header_name (option.base, option.len);
+      if (name != HTTP_HEADER_UNKNOWN)
+	clib_bitmap_set_no_check (known, name, 1);
+      else
+	vec_add1 (custom, option);
+    }
+  return custom;
+}
+
+static __clib_noinline http_token_t *
+_http_connection_options_parse (char *p, char *end, uword *known, http_token_t *custom)
+{
+#ifdef CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE
+  /* Keep token bounds across vector chunks, whitespace trims element, comma ends it, so embedded
+   * whitespace cannot create extra names */
+  char *start = 0, *last = 0;
+  while (p < end)
+    {
+      uword n = clib_min (end - p, 16);
+      u8x16 v = u8x16_load_partial ((u8 *) p, n);
+      u32 valid = pow2_mask (n);
+      u8x16 comma_lanes = v == u8x16_splat (',');
+      u32 special =
+	u8x16_msb_mask (comma_lanes | (v == u8x16_splat (' ')) | (v == u8x16_splat ('\t'))) & valid;
+      if (!special)
+	{
+	  if (!start)
+	    start = p;
+	  last = p + n;
+	  p += n;
+	  continue;
+	}
+      u32 commas = u8x16_msb_mask (comma_lanes) & valid;
+      u32 nonspace = valid & ~special;
+      while (start || nonspace)
+	{
+	  if (!start)
+	    {
+	      start = p + count_trailing_zeros (nonspace);
+	      commas &= ~pow2_mask (count_trailing_zeros (nonspace));
+	    }
+	  if (!commas)
+	    {
+	      if (nonspace)
+		last = p + min_log2 (nonspace) + 1;
+	      break;
+	    }
+	  u32 comma = count_trailing_zeros (commas);
+	  u32 segment = nonspace & pow2_mask (comma);
+	  if (segment)
+	    last = p + min_log2 (segment) + 1;
+	  custom = _http_connection_option_add (start, last, known, custom);
+	  start = last = 0;
+	  u32 tail = ~pow2_mask (comma + 1);
+	  commas &= tail;
+	  nonspace &= tail;
+	}
+      p += n;
+    }
+  custom = _http_connection_option_add (start, last, known, custom);
+#else
+  while (p < end)
+    {
+      while (p < end && (*p == ' ' || *p == '\t' || *p == ','))
+	p++;
+      char *start = p;
+      while (p < end && *p != ',')
+	p++;
+      char *last = p;
+      while (last > start && (last[-1] == ' ' || last[-1] == '\t'))
+	last--;
+      if (last > start)
+	custom = _http_connection_option_add (start, last, known, custom);
+    }
+#endif
+  return custom;
+}
+
+static __clib_noinline void
+_http_copy_header_name_lowercase (u8 *dst, const u8 *src, uword len)
+{
+#ifdef CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE
+  /* Overlap the final accesses to keep every load and store within the name. */
+  if (len >= 16)
+    {
+      for (;;)
+	{
+	  u8x16 v = u8x16_load_unaligned ((void *) src);
+	  v |= ((v >= u8x16_splat ('A')) & (v <= u8x16_splat ('Z'))) & u8x16_splat (0x20);
+	  u8x16_store_unaligned (v, dst);
+	  if (len == 16)
+	    break;
+	  uword step = clib_min (len - 16, 16);
+	  src += step;
+	  dst += step;
+	  len -= step;
+	}
+    }
+  else if (len >= 8)
+    {
+      u8x16 v = (u8x16) (u64x2) { *(u64u *) src, *(u64u *) (src + len - 8) };
+      v |= ((v >= u8x16_splat ('A')) & (v <= u8x16_splat ('Z'))) & u8x16_splat (0x20);
+      *(u64u *) dst = ((u64x2) v)[0];
+      *(u64u *) (dst + len - 8) = ((u64x2) v)[1];
+    }
+  else if (len >= 4)
+    {
+      u8x16 v = (u8x16) (u32x4) { *(u32u *) src, *(u32u *) (src + len - 4), 0, 0 };
+      v |= ((v >= u8x16_splat ('A')) & (v <= u8x16_splat ('Z'))) & u8x16_splat (0x20);
+      *(u32u *) dst = ((u32x4) v)[0];
+      *(u32u *) (dst + len - 4) = ((u32x4) v)[1];
+    }
+  else if (len >= 2)
+    {
+      u8x16 v = (u8x16) (u16x8) { *(u16u *) src, *(u16u *) (src + len - 2), 0, 0, 0, 0, 0, 0 };
+      v |= ((v >= u8x16_splat ('A')) & (v <= u8x16_splat ('Z'))) & u8x16_splat (0x20);
+      *(u16u *) dst = ((u16x8) v)[0];
+      *(u16u *) (dst + len - 2) = ((u16x8) v)[1];
+    }
+  else if (len)
+    {
+      u8 c = src[0];
+      dst[0] = c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c;
+    }
+#else
+  for (uword i = 0; i < len; i++)
+    {
+      u8 c = src[i];
+      dst[i] = c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c;
+    }
+#endif
+}
+
 /**
  * Headers processing for intermediary app.
  *
- * Conver format used on receive side to format ready for sending, headers used in http transport
- * layer and hop-by-hop headers are excluded. If needed additional headers can be added by
- * @c http_add_header and @c http_add_custom_header.
+ * Convert format used on receive side to format ready for sending. Headers used in http transport
+ * layer, hop-by-hop headers and headers named by Connection fields are excluded. If needed
+ * additional headers can be added by @c http_add_header and @c http_add_custom_header.
+ * Copied custom field names are normalized to lowercase for HTTP/2 and HTTP/3.
  *
  * @param msg    HTTP transport message metadata.
  * @param rx_buf Buffer which store rx headers received from http transport.
@@ -546,11 +690,29 @@ http_headers_rx_to_tx (http_msg_t msg, const u8 *rx_buf, http_headers_ctx_t *tx_
 {
   http_field_line_t *field_lines, *field_line;
   http_token_t name, value;
+  http_token_t *connection_options = 0;
+  uword connection_headers[(HTTP_HEADER_UNKNOWN + uword_bits - 1) / uword_bits] = {};
   http_header_name_t header_name;
   http_field_line_flags_t flags;
-  int rv;
+  u32 i;
+  int rv = 0;
 
   field_lines = uword_to_pointer (msg.data.headers_ctx, http_field_line_t *);
+  /* Collect all options first, nominated fields may precede Connection. */
+  vec_foreach (field_line, field_lines)
+    {
+      char *p, *end;
+
+      if (!http_token_is_case ((const char *) rx_buf + field_line->name_offset,
+			       field_line->name_len, http_token_lit ("connection")))
+	continue;
+
+      p = (char *) rx_buf + field_line->value_offset;
+      end = p + field_line->value_len;
+      connection_options =
+	_http_connection_options_parse (p, end, connection_headers, connection_options);
+    }
+
   vec_foreach (field_line, field_lines)
     {
       name.base = (char *) (rx_buf + field_line->name_offset);
@@ -561,20 +723,36 @@ http_headers_rx_to_tx (http_msg_t msg, const u8 *rx_buf, http_headers_ctx_t *tx_
       if (header_name != HTTP_HEADER_UNKNOWN)
 	{
 	  flags = http_header_name_flags (header_name);
-	  if (flags & (HTTP_FIELD_LINE_F_INTERNAL | HTTP_FIELD_LINE_F_HOP_BY_HOP))
+	  if ((flags & (HTTP_FIELD_LINE_F_INTERNAL | HTTP_FIELD_LINE_F_HOP_BY_HOP)) ||
+	      clib_bitmap_get_no_check (connection_headers, header_name))
 	    continue;
 	  rv = http_add_header2 (tx_ctx, header_name, value.base, value.len,
 				 field_line->flags & HTTP_FIELD_LINE_F_NEVER_INDEX);
 	}
       else
 	{
+	  for (i = 0; i < vec_len (connection_options); i++)
+	    if (http_token_is_case (name.base, name.len, connection_options[i].base,
+				    connection_options[i].len))
+	      break;
+	  if (i < vec_len (connection_options))
+	    continue;
+
+	  u32 name_offset = tx_ctx->tail_offset;
 	  rv = http_add_custom_header2 (tx_ctx, name.base, name.len, value.base, value.len,
 					field_line->flags & HTTP_FIELD_LINE_F_NEVER_INDEX);
+	  if (!rv)
+	    {
+	      u8 *tx_name = tx_ctx->buf + name_offset + sizeof (http_app_header_name_t);
+	      /* Read RX rather than reloading the freshly copied, unaligned TX name. */
+	      _http_copy_header_name_lowercase (tx_name, (const u8 *) name.base, name.len);
+	    }
 	}
       if (rv)
-	return rv;
+	break;
     }
-  return 0;
+  vec_free (connection_options);
+  return rv;
 }
 
 #endif /* SRC_PLUGINS_HTTP_HTTP_HEADER_NAMES_H_ */
