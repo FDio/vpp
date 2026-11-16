@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7f025b52_2932fefe",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3397
+      },
+      "writtenOn": "2026-11-16T18:05:23Z",
+      "side": 1,
+      "message": "Hi Dave, Damjan,\n\nAfter moving to clang 22, \"trace add dpdk-input N\" started crashing\nworkers with SIGSEGV in dpdk_device_class_tx_fn.\nDetails are in the commit message.\n\nThanks!",
+      "revId": "d183425e247e5a4dfcd582c6be7353bfb53b33b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
