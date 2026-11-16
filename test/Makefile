@@ -333,6 +333,11 @@ ifneq ($(NET_HELPER_LOCK_TIMEOUT),)
 ARG24=--net-helper-lock-timeout=$(NET_HELPER_LOCK_TIMEOUT)
 endif
 
+ARG25=
+ifneq ($(findstring $(TOLERATE_NO_TEST_MATCH),1 y yes),)
+ARG25=--tolerate-no-test-match
+endif
+
 EXC_PLUGINS_ARG=
 ifneq ($(VPP_EXCLUDED_PLUGINS),)
 # convert the comma-separated list into N invocations of the argument to exclude a plugin
@@ -341,7 +346,7 @@ endif
 
 
 
-EXTRA_ARGS=$(ARG0) $(ARG1) $(ARG2) $(ARG3) $(ARG4) $(ARG5) $(ARG6) $(ARG7) $(ARG8) $(ARG9) $(ARG10) $(ARG11) $(ARG12) $(ARG13) $(ARG14) $(ARG15) $(ARG16) $(ARG17) $(ARG18) $(ARG19) $(ARG20) $(ARG21) $(ARG22) $(ARG23) $(ARG24)
+EXTRA_ARGS=$(ARG0) $(ARG1) $(ARG2) $(ARG3) $(ARG4) $(ARG5) $(ARG6) $(ARG7) $(ARG8) $(ARG9) $(ARG10) $(ARG11) $(ARG12) $(ARG13) $(ARG14) $(ARG15) $(ARG16) $(ARG17) $(ARG18) $(ARG19) $(ARG20) $(ARG21) $(ARG22) $(ARG23) $(ARG24) $(ARG25)
 
 RUN_TESTS_ARGS=--failed-dir=$(FAILED_DIR) --verbose=$(V) --jobs=$(TEST_JOBS) --filter=$(TEST) --skip-filter=$(SKIP_TESTS) --retries=$(RETRIES) --venv-dir=$(VENV_PATH) --vpp-ws-dir=$(WS_ROOT) --vpp-tag=$(TAG) --rnd-seed=$(RND_SEED) --vpp-worker-count="$(VPP_WORKER_COUNT)" --keep-pcaps $(PLUGIN_PATH_ARGS) $(EXC_PLUGINS_ARG) $(TEST_PLUGIN_PATH_ARGS) $(EXTRA_ARGS)
 RUN_SCRIPT_ARGS=--python-opts=$(PYTHON_OPTS)
@@ -724,6 +729,12 @@ help:
 	@echo "       filter expressions, even if they were selected by TEST"
 	@echo ""
 	@echo "       (default: '')"
+	@echo ""
+	@echo "   TOLERATE_NO_TEST_MATCH=[1|y|yes]"
+	@echo "       exit successfully when TEST selects no tests instead of"
+	@echo "       failing. Use this when bisecting a commit chain where the"
+	@echo "       test does not exist yet in every commit"
+	@echo "       (default: no)"
 	@echo ""
 	@echo "   VARIANT=<variant>"
 	@echo "       specify which march node variant to unit test"

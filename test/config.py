@@ -196,6 +196,15 @@ parser.add_argument(
     "then exit without building or running anything",
 )
 
+parser.add_argument(
+    "--tolerate-no-test-match",
+    action="store_true",
+    default=False,
+    help="exit successfully when the --filter expression matches no tests "
+    "instead of failing. Use this when bisecting a commit chain where the "
+    "test does not exist yet in every commit.",
+)
+
 default_retries = 0
 
 parser.add_argument(

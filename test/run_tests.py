@@ -1465,6 +1465,12 @@ if __name__ == "__main__":
     )
 
     if not suites:
+        if config.tolerate_no_test_match:
+            print(
+                "No tests matched the specified filter, exiting successfully "
+                "because --tolerate-no-test-match is set."
+            )
+            sys.exit(0)
         print("No tests matched the specified filter, exiting with failure.")
         sys.exit(1)
 
