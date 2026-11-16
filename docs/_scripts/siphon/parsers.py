@@ -11,6 +11,7 @@
 # limitations under the License.
 
 import html
+import re
 import pyparsing as pp
 
 # Some useful primitives
@@ -149,6 +150,41 @@ class MacroInitializer(ParserFunctionMacro):
         mi.ignore(pp.cppStyleComment)
 
         return mi
+
+    @staticmethod
+    def strip_args(block):
+        """Remove the .args member, the argument grammar is not documentation
+        and is not an initializer this parser understands."""
+        m = re.search(r"\.args\s*=", block)
+        if not m:
+            return block
+        i = block.find("{", m.end())
+        if i < 0:
+            return block
+        depth = 0
+        in_str = False
+        while i < len(block):
+            c = block[i]
+            if in_str:
+                if c == "\\":
+                    i += 1
+                elif c == '"':
+                    in_str = False
+            elif c == '"':
+                in_str = True
+            elif c == "{":
+                depth += 1
+            elif c == "}":
+                depth -= 1
+                if depth == 0:
+                    break
+            i += 1
+        end = block.find(",", i)
+        end = i + 1 if end < 0 else end + 1
+        return block[: m.start()] + block[end:]
+
+    def parse(self, input):
+        return super(MacroInitializer, self).parse(self.strip_args(input))
 
     def item(self, item):
         r = {
