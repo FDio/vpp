@@ -328,6 +328,11 @@ if(VPP_BUILD_VPPINFRA_TESTS)
       LINK_LIBRARIES vppinfra Threads::Threads
       )
   endforeach()
+
+  add_vpp_test(cli_hello
+    SOURCES ../examples/cli-hello/cli_hello.c
+    LINK_LIBRARIES vppinfra
+    )
 endif(VPP_BUILD_VPPINFRA_TESTS)
 
 set(test_files
