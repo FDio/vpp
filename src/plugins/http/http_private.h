@@ -104,14 +104,6 @@ typedef enum http_req_state_ : u8
     HTTP_REQ_N_STATES
 } http_req_state_t;
 
-typedef enum http_target_form_ : u8
-{
-  HTTP_TARGET_ORIGIN_FORM,
-  HTTP_TARGET_ABSOLUTE_FORM,
-  HTTP_TARGET_AUTHORITY_FORM,
-  HTTP_TARGET_ASTERISK_FORM
-} http_target_form_t;
-
 #define foreach_http_req_flags                                                                     \
   _ (APP_CLOSED, "app-closed")                                                                     \
   _ (SHUTDOWN_TUNNEL, "shutdown-tunnel")                                                           \
@@ -128,7 +120,9 @@ typedef enum http_target_form_ : u8
   _ (RX_PROCESSING, "rx-processing")                                                               \
   _ (RX_HEADERS_RECEIVED, "rx-headers-received")                                                   \
   _ (RX_TRAILERS, "rx-trailers")                                                                   \
-  _ (TX_CANCELLED, "tx-cancelled")
+  _ (TX_CANCELLED, "tx-cancelled")                                                                 \
+  _ (HEAD, "head")                                                                                 \
+  _ (RX_REPLY_PENDING, "rx-reply-pending")
 
 typedef enum http_req_flags_bit_
 {
@@ -138,7 +132,7 @@ typedef enum http_req_flags_bit_
     HTTP_REQ_N_F_BITS
 } http_req_flags_bit_t;
 
-typedef enum http_req_flags_ : u16
+typedef enum http_req_flags_ : u32
 {
 #define _(sym, str) HTTP_REQ_F_##sym = 1 << HTTP_REQ_F_BIT_##sym,
   foreach_http_req_flags
@@ -1076,6 +1070,54 @@ http_io_as_rx_publish (http_ctx_t *req, const http_msg_t *msg, u32 len)
 	}
     }
   svm_fifo_enqueue_nocopy (as->rx_fifo, sizeof (*msg) + len);
+  return 0;
+}
+
+/* A bodyless reply is complete only after END_STREAM/FIN. Keep its headers
+ * unpublished until the application session is ready for its next request. */
+always_inline int
+http_stage_bodyless_reply (http_ctx_t *req, const u8 *headers)
+{
+  svm_fifo_seg_t segs[2];
+  u32 copied = 0;
+  int n_segs;
+
+  if (http_io_as_max_write (req) < sizeof (http_msg_t) + req->control_data_len)
+    return -1;
+  while (copied < req->control_data_len)
+    {
+      n_segs = http_io_as_rx_provision (req, sizeof (http_msg_t) + copied, segs, ARRAY_LEN (segs),
+					req->control_data_len - copied);
+      if (n_segs <= 0)
+	return -1;
+      for (int i = 0; i < n_segs; i++)
+	{
+	  clib_memcpy_fast (segs[i].data, headers + copied, segs[i].len);
+	  copied += segs[i].len;
+	}
+    }
+  req->req_flags |= HTTP_REQ_F_RX_REPLY_PENDING;
+  return 0;
+}
+
+always_inline int
+http_publish_bodyless_reply (http_ctx_t *req)
+{
+  http_msg_t msg = {};
+
+  ASSERT (req->req_flags & HTTP_REQ_F_RX_REPLY_PENDING);
+  msg.type = HTTP_MSG_REPLY;
+  msg.code = req->status_code;
+  msg.data.type = HTTP_MSG_DATA_INLINE;
+  msg.data.len = req->control_data_len;
+  msg.data.headers_offset = req->headers_offset;
+  msg.data.headers_len = req->headers_len;
+  msg.data.headers_ctx = pointer_to_uword (req->headers);
+  msg.data.body_offset = req->control_data_len;
+  msg.data.body_len = req->body_len;
+  if (http_io_as_rx_publish (req, &msg, req->control_data_len))
+    return -1;
+  req->req_flags &= ~HTTP_REQ_F_RX_REPLY_PENDING;
   return 0;
 }
 

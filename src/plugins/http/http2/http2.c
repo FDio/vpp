@@ -1336,7 +1336,13 @@ http2_sched_dispatch_resp_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissi
 
   stream_id = req->stream_id;
 
-  /* END_STREAM flag need to be set in HEADERS frame */
+  /* HEAD body_len describes the representation; no body buffer is supplied. */
+  if (req->req_flags & HTTP_REQ_F_HEAD)
+    {
+      msg.data.body_len = 0;
+      if (msg.data.type == HTTP_MSG_DATA_STREAMING)
+	msg.data.type = HTTP_MSG_DATA_INLINE;
+    }
   if (msg.data.body_len || msg.data.type == HTTP_MSG_DATA_STREAMING)
     {
       ASSERT (!(req->req_flags & HTTP_REQ_F_IS_TUNNEL));
@@ -1443,6 +1449,9 @@ http2_sched_dispatch_req_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissio
   vec_reset_length (http_tx_buf (hc));
 
   control_data.method = msg.method_type;
+  req->req_flags &= ~HTTP_REQ_F_HEAD;
+  if (msg.method_type == HTTP_REQ_HEAD)
+    req->req_flags |= HTTP_REQ_F_HEAD;
   control_data.parsed_bitmap = HPACK_PSEUDO_HEADER_AUTHORITY_PARSED;
   if (msg.method_type == HTTP_REQ_CONNECT || msg.method_type == HTTP_REQ_CONNECT_UDP)
     {
@@ -1844,6 +1853,35 @@ http2_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
       /* cleanup some stuff we don't need anymore in tunnel mode */
       vec_free (req->headers);
     }
+  else if (req->req_flags & HTTP_REQ_F_HEAD)
+    {
+      /* Content-Length describes the GET representation, never HEAD content. */
+      req->content_len_header_index = control_data.content_len_header_index;
+      if (req->content_len_header_index != ~0 && http_parse_content_length (req, wrk->header_list))
+	{
+	  http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR);
+	  return HTTP_SM_STOP;
+	}
+      req->to_recv = 0;
+      if (http_stage_bodyless_reply (req, wrk->header_list))
+	{
+	  http2_stream_error (hc, req, HTTP2_ERROR_INTERNAL_ERROR);
+	  return HTTP_SM_STOP;
+	}
+      http_req_state_change (req, HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA);
+      if (req->req_flags & HTTP_REQ_F_PEER_CLOSED)
+	{
+	  if (transport_connection_is_descheduled (&req->connection))
+	    transport_connection_reschedule (&req->connection);
+	  http2_conn_reset_req (hc, req, hc->c_thread_index);
+	  http_req_state_change (req, HTTP_REQ_STATE_WAIT_APP_METHOD);
+	  if (http_publish_bodyless_reply (req))
+	    http2_stream_error (hc, req, HTTP2_ERROR_INTERNAL_ERROR);
+	  else
+	    http_app_worker_rx_notify (req);
+	}
+      return HTTP_SM_STOP;
+    }
   else
     {
       /* failed CONNECT is ordinary HTTP response */
@@ -2053,14 +2091,18 @@ http2_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
   req->to_recv = req->body_len;
 
   req->target_query_offset = 0;
+  if (control_data.method == HTTP_REQ_HEAD)
+    req->req_flags |= HTTP_REQ_F_HEAD;
   req->target_query_len = 0;
   if (control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PATH_PARSED)
     {
       req->target_path_len = control_data.path_len;
       req->target_path_offset = control_data.path - wrk->header_list;
-      /* drop leading slash */
-      req->target_path_offset++;
-      req->target_path_len--;
+      if (control_data.path[0] == '/')
+	{
+	  req->target_path_offset++;
+	  req->target_path_len--;
+	}
       http_identify_optional_query (req, wrk->header_list);
     }
   else
@@ -2075,6 +2117,11 @@ http2_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
     req->req_flags & HTTP_REQ_F_RX_STREAMING ? HTTP_MSG_DATA_STREAMING : HTTP_MSG_DATA_INLINE;
   msg.data.len = req->control_data_len;
   msg.data.scheme = control_data.scheme;
+  msg.data.target_form =
+    !(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PATH_PARSED) ?
+      HTTP_TARGET_AUTHORITY_FORM :
+      (control_data.path_len == 1 && control_data.path[0] == '*' ? HTTP_TARGET_ASTERISK_FORM :
+								   HTTP_TARGET_ORIGIN_FORM);
   msg.data.target_authority_offset = control_data.authority - wrk->header_list;
   msg.data.target_authority_len = control_data.authority_len;
   msg.data.target_path_offset = req->target_path_offset;
@@ -2149,6 +2196,9 @@ http2_req_state_transport_io_more_data (http_ctx_t *hc, http_ctx_t *req,
       http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR);
       return HTTP_SM_STOP;
     }
+  if (!(hc->flags & HTTP_CONN_F_IS_SERVER) && (req->req_flags & HTTP_REQ_F_HEAD) &&
+      !(req->req_flags & HTTP_REQ_F_PEER_CLOSED))
+    return HTTP_SM_STOP;
   req->to_recv -= req->payload_len;
   if ((req->req_flags & HTTP_REQ_F_PEER_CLOSED) && req->to_recv != 0)
     {
@@ -2181,6 +2231,14 @@ http2_req_state_transport_io_more_data (http_ctx_t *hc, http_ctx_t *req,
 	    http2_conn_reset_req (hc, req, hc->c_thread_index);
 	  http_io_as_del_want_read_ntf (req);
 	}
+    }
+  if (req->req_flags & HTTP_REQ_F_RX_REPLY_PENDING)
+    {
+      if (http_publish_bodyless_reply (req))
+	http2_stream_error (hc, req, HTTP2_ERROR_INTERNAL_ERROR);
+      else
+	http_app_worker_rx_notify (req);
+      return HTTP_SM_STOP;
     }
   if (req->payload_len)
     {
