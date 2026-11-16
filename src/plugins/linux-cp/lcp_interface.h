@@ -192,7 +192,7 @@ void lcp_itf_set_interface_addr (const lcp_itf_pair_t *lip);
  * the VPP interface, for example if its MTU is greater than its parent.
  * See the function for rationale.
  */
-void lcp_itf_pair_sync_state (lcp_itf_pair_t *lip);
+void lcp_itf_pair_sync_state (const lcp_itf_pair_t *lip);
 void lcp_itf_pair_sync_state_hw (vnet_hw_interface_t *hi);
 void lcp_itf_pair_sync_state_all ();
 

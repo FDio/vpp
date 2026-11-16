@@ -15,7 +15,7 @@
  * This is called upon MTU changes and state changes.
  */
 void
-lcp_itf_pair_sync_state (lcp_itf_pair_t *lip)
+lcp_itf_pair_sync_state (const lcp_itf_pair_t *lip)
 {
   vnet_sw_interface_t *sw;
   vnet_sw_interface_t *sup_sw;
