@@ -8,6 +8,7 @@
 #ifndef included_vlib_trace_h
 #define included_vlib_trace_h
 
+#include <vppinfra/cache.h>
 #include <vppinfra/pool.h>
 
 typedef struct
@@ -21,9 +22,14 @@ typedef struct
   /* Number of data words in this trace. */
   u32 n_data;
 
-  /* Trace data follows. */
-  u8 data[0];
+  /* Trace data follows, cache line aligned: node trace structs may embed
+     cache line aligned types (vlib_buffer_t, struct rte_mbuf) and the
+     compiler is free to use aligned vector stores for them. */
+  CLIB_ALIGN_MARK (data, CLIB_CACHE_LINE_BYTES);
 } vlib_trace_header_t;
+
+STATIC_ASSERT (STRUCT_OFFSET_OF (vlib_trace_header_t, data) == sizeof (vlib_trace_header_t),
+	       "trace data must start right after the header");
 
 typedef struct
 {
