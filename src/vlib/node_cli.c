@@ -23,16 +23,15 @@ node_cmp (void *a1, void *a2)
 }
 
 static clib_error_t *
-show_node_graph (vlib_main_t * vm,
-		 unformat_input_t * input, vlib_cli_command_t * cmd)
+show_node_graph (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_t *n;
-  u32 node_index;
+  u32 node_index = cli_index (ctx, "node");
 
   vlib_cli_output (vm, "%U\n", format_vlib_node_graph, nm, 0);
 
-  if (unformat (input, "%U", unformat_vlib_node, vm, &node_index))
+  if (node_index != ~0)
     {
       n = vlib_get_node (vm, node_index);
       vlib_cli_output (vm, "%U\n", format_vlib_node_graph, nm, n);
@@ -56,46 +55,39 @@ show_node_graph (vlib_main_t * vm,
 VLIB_CLI_COMMAND (show_node_graph_command, static) = {
   .path = "show vlib graph",
   .short_help = "Show packet processing node graph",
-  .function = show_node_graph,
+  .args =
+    (cli_arg_t[]) {
+      CLI_VALUE ("node", cli_type_node, .flags = CLI_F_OPTIONAL, .help = "only this node"),
+      {},
+    },
+  .handler = show_node_graph,
 };
 
 static clib_error_t *
-show_node_graphviz (vlib_main_t * vm,
-		    unformat_input_t * input, vlib_cli_command_t * cmd)
+show_node_graphviz (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   clib_error_t *error = 0;
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_t **nodes = nm->nodes;
   u8 *chroot_filename = 0;
-  int fd;
+  int fd = -1;
   uword *active = 0;
   u32 i, j;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  u8 filter = 0, calls_filter = 0, vectors_filter = 0, both = 0;
+  u8 filter = cli_flag (ctx, "filter"), calls_filter = cli_flag (ctx, "calls");
+  u8 vectors_filter = cli_flag (ctx, "vectors"), both = 0;
+  cli_value_t *file = cli_get (ctx, "file");
 
-  fd = -1;
-  /* Get a line of input. */
-  if (unformat_user (input, unformat_line_input, line_input))
+  if (file)
     {
-      while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-	{
-	  if (unformat (line_input, "filter"))
-	    filter = 1;
-	  else if (unformat (line_input, "calls") && filter)
-	    calls_filter = 1;
-	  else if (unformat (line_input, "vectors") && filter)
-	    vectors_filter = 1;
-	  else if (unformat (line_input, "file %U", unformat_vlib_tmpfile,
-			     &chroot_filename))
-	    {
-	      fd = open ((char *) chroot_filename,
-			 O_CREAT | O_TRUNC | O_WRONLY, 0664);
-	    }
-	  else
-	    return clib_error_return (0, "unknown input `%U'",
-				      format_unformat_error, input);
-	}
-      unformat_free (line_input);
+      unformat_input_t in;
+
+      unformat_init_vector (&in, vec_dup (file->str));
+      if (!unformat (&in, "%U", unformat_vlib_tmpfile, &chroot_filename))
+	error = clib_error_return (0, "illegal characters in filename '%v'", file->str);
+      unformat_free (&in);
+      if (error)
+	return error;
+      fd = open ((char *) chroot_filename, O_CREAT | O_TRUNC | O_WRONLY, 0664);
     }
 
   /*both is set to true if calls_filter and vectors_filter are, or neither */
@@ -293,7 +285,16 @@ show_node_graphviz (vlib_main_t * vm,
 VLIB_CLI_COMMAND (show_node_graphviz_command, static) = {
   .path = "show vlib graphviz",
   .short_help = "Dump packet processing node graph as a graphviz dotfile",
-  .function = show_node_graphviz,
+  .args =
+    (cli_arg_t[]) {
+      CLI_GROUP ("filter", "show only the nodes with calls or vectors",
+		 CLI_FLAG ("calls", .help = "nodes with calls"),
+		 CLI_FLAG ("vectors", .help = "nodes with vectors")),
+      CLI_KEYWORD ("file", cli_type_string, .flags = CLI_F_OPTIONAL,
+		   .help = "write the dot file to /tmp/<file>"),
+      {},
+    },
+  .handler = show_node_graphviz,
   .is_mp_safe = 1,
 };
 
@@ -435,19 +436,18 @@ format_vlib_node_stats (u8 * s, va_list * va)
 }
 
 static clib_error_t *
-show_node_runtime (vlib_main_t * vm,
-		   unformat_input_t * input, vlib_cli_command_t * cmd)
+show_node_runtime (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_t *n;
   f64 time_now;
-  u32 node_index;
+  u32 node_index = cli_index (ctx, "node");
   vlib_node_t ***node_dups = 0;
   f64 *internal_node_vector_rates = 0;
 
   time_now = vlib_time_now (vm);
 
-  if (unformat (input, "%U", unformat_vlib_node, vm, &node_index))
+  if (node_index != ~0)
     {
       n = vlib_get_node (vm, node_index);
       vlib_node_sync_stats (vm, n);
@@ -461,24 +461,11 @@ show_node_runtime (vlib_main_t * vm,
       f64 dt;
       u64 n_input, n_output, n_drop, n_punt;
       u64 n_clocks, l, v, c, d;
-      int brief = 1;
-      int summary = 0;
-      int max = 0;
-      int use_time = 0;
+      int brief = !cli_flag (ctx, "verbose");
+      int summary = cli_flag (ctx, "summary");
+      int max = cli_flag (ctx, "max");
+      int use_time = cli_flag (ctx, "time");
       vlib_main_t **stat_vms = 0, *stat_vm;
-
-      if (unformat (input, "time") || unformat (input, "t"))
-	use_time = 1;
-      /* Suppress nodes with zero calls since last clear */
-      if (unformat (input, "brief") || unformat (input, "b"))
-	brief = 1;
-      if (unformat (input, "verbose") || unformat (input, "v"))
-	brief = 0;
-      if (unformat (input, "max") || unformat (input, "m"))
-	max = 1;
-      if (unformat (input, "summary") || unformat (input, "sum")
-	  || unformat (input, "su"))
-	summary = 1;
 
       for (i = 0; i < vlib_get_n_threads (); i++)
 	{
@@ -603,14 +590,23 @@ show_node_runtime (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (show_node_runtime_command, static) = {
   .path = "show runtime",
-  .short_help = "show runtime [time] [verbose] [max] [summary]",
-  .function = show_node_runtime,
+  .short_help = "Show the runtime statistics of the nodes",
+  .args =
+    (cli_arg_t[]) {
+      CLI_VALUE ("node", cli_type_node, .flags = CLI_F_OPTIONAL, .help = "only this node"),
+      CLI_FLAG ("time", .alias = "t", .help = "show the time instead of the clocks"),
+      CLI_FLAG ("brief", .alias = "b", .help = "hide the nodes without calls (default)"),
+      CLI_FLAG ("verbose", .alias = "v", .help = "show the nodes without calls too"),
+      CLI_FLAG ("max", .alias = "m", .help = "show the maximum instead of the average"),
+      CLI_FLAG ("summary", .alias = "sum", .help = "show only the summary"),
+      {},
+    },
+  .handler = show_node_runtime,
   .is_mp_safe = 1,
 };
 
 static clib_error_t *
-clear_node_runtime (vlib_main_t * vm,
-		    unformat_input_t * input, vlib_cli_command_t * cmd)
+clear_node_runtime (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_node_main_t *nm;
   vlib_node_t *n;
@@ -657,50 +653,23 @@ clear_node_runtime (vlib_main_t * vm,
 VLIB_CLI_COMMAND (clear_node_runtime_command, static) = {
   .path = "clear runtime",
   .short_help = "Clear packet processing runtime statistics",
-  .function = clear_node_runtime,
+  .handler = clear_node_runtime,
 };
 
 static clib_error_t *
-show_node (vlib_main_t * vm, unformat_input_t * input,
-	   vlib_cli_command_t * cmd)
+show_node (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  clib_error_t *error = 0;
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_t *n;
   u8 *s = 0, *s2 = 0;
-  u32 i, node_index = ~0, verbose = 0;
+  u32 i, node_index = ~0, verbose = cli_flag (ctx, "verbose");
   char *type_str;
-  u8 valid_node_name = 0;
   u64 cl, ca, v;
 
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "index %u", &node_index))
-	;
-      else if (unformat (line_input, "verbose"))
-	verbose = 1;
-      else
-	if (unformat (line_input, "%U", unformat_vlib_node, vm, &node_index))
-	valid_node_name = 1;
-      else if (!valid_node_name)
-	error = clib_error_return (0, "unknown node name: '%U'",
-				   format_unformat_error, line_input);
-      else
-	error = clib_error_return (0, "unknown input '%U'",
-				   format_unformat_error, line_input);
-
-      if (error)
-	break;
-    }
-
-  unformat_free (line_input);
-
-  if (error)
-    return error;
+  if (cli_flag (ctx, "index"))
+    node_index = cli_u64 (ctx, "index", ~0);
+  else
+    node_index = cli_index (ctx, "node");
 
   if (node_index >= vec_len (vm->node_main.nodes))
     return clib_error_return (0, "please specify valid node");
@@ -825,32 +794,33 @@ done:
 
 VLIB_CLI_COMMAND (show_node_command, static) = {
   .path = "show node",
-  .short_help = "show node [index] <node-name | node-index>",
-  .function = show_node,
+  .short_help = "Show a node",
+  .args =
+    (cli_arg_t[]) {
+      CLI_ONEOF ("which", 0, CLI_VALUE ("node", cli_type_node, .help = "node name"),
+		 CLI_KEYWORD ("index", cli_type_u32, .help = "node index")),
+      CLI_FLAG ("verbose", .help = "more details"),
+      {},
+    },
+  .handler = show_node,
 };
 
 static clib_error_t *
-set_node_fn(vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
+set_node_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  u32 node_index, march_variant;
+  u32 node_index = cli_index (ctx, "node"), march_variant;
+  unformat_input_t in;
   vlib_node_t *n;
   clib_error_t *err = 0;
+  int ok;
 
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  if (!unformat (line_input, "%U", unformat_vlib_node, vm, &node_index))
-    {
-      err = clib_error_return (0, "please specify valid node name");
-      goto done;
-    }
-
-  if (!unformat (line_input, "%U", unformat_vlib_node_variant, &march_variant))
-    {
-      err = clib_error_return (0, "please specify node function variant");
-      goto done;
-    }
+  unformat_init_vector (&in, vec_dup (cli_get (ctx, "variant")->str));
+  ok = unformat (&in, "%U", unformat_vlib_node_variant, &march_variant) &&
+       unformat_check_input (&in) == UNFORMAT_END_OF_INPUT;
+  unformat_free (&in);
+  if (!ok)
+    return clib_error_return (0, "unknown node function variant '%v'",
+			      cli_get (ctx, "variant")->str);
 
   n = vlib_get_node (vm, node_index);
 
@@ -871,14 +841,19 @@ set_node_fn(vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd
 
 
 done:
-  unformat_free (line_input);
   return err;
 }
 
 VLIB_CLI_COMMAND (set_node_fn_command, static) = {
   .path = "set node function",
-  .short_help = "set node function <node-name> <variant-name>",
-  .function = set_node_fn,
+  .short_help = "Set the function variant of a node",
+  .args =
+    (cli_arg_t[]) {
+      CLI_VALUE ("node", cli_type_node),
+      CLI_VALUE ("variant", cli_type_string, .help = "name of the function variant"),
+      {},
+    },
+  .handler = set_node_fn,
 };
 
 /* Dummy function to get us linked in. */

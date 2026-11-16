@@ -473,13 +473,11 @@ vlib_init_dump (void)
 }
 
 static clib_error_t *
-show_init_function_command_fn (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+show_init_function_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_global_main_t *vgm = vlib_get_global_main ();
-  int which = 1;
-  int verbose = 0;
+  int which = cli_index (ctx, "list") == ~0 ? 1 : cli_index (ctx, "list");
+  int verbose = cli_u64 (ctx, "level", cli_flag (ctx, "verbose"));
   int i, n_init_fns;
   _vlib_init_function_list_elt_t *head, *this;
   uword *index_by_name;
@@ -490,22 +488,6 @@ show_init_function_command_fn (vlib_main_t * vm,
   _vlib_init_function_list_elt_t *this_reg = 0;
   hash_pair_t *hp;
   u8 **keys_to_delete = 0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "init"))
-	which = 1;
-      else if (unformat (input, "enter"))
-	which = 2;
-      else if (unformat (input, "exit"))
-	which = 3;
-      else if (unformat (input, "verbose %d", &verbose))
-	;
-      else if (unformat (input, "verbose"))
-	verbose = 1;
-      else
-	break;
-    }
 
   switch (which)
     {
@@ -645,6 +627,15 @@ show_init_function_command_fn (vlib_main_t * vm,
  ?*/
 VLIB_CLI_COMMAND (show_init_function, static) = {
   .path = "show init-function",
-  .short_help = "show init-function [init | enter | exit][verbose [nn]]",
-  .function = show_init_function_command_fn,
+  .short_help = "Show the init functions",
+  .args =
+    (cli_arg_t[]) {
+      CLI_ENUM ("list", CLI_F_OPTIONAL, { "init", "init functions (default)", 1 },
+		{ "enter", "main loop enter functions", 2 },
+		{ "exit", "main loop exit functions", 3 }),
+      CLI_FLAG ("verbose", .help = "more details"),
+      CLI_VALUE ("level", cli_type_u32, .flags = CLI_F_OPTIONAL, .help = "verbosity"),
+      {},
+    },
+  .handler = show_init_function_command_fn,
 };

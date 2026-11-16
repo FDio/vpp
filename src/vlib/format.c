@@ -178,6 +178,27 @@ unformat_vlib_tmpfile (unformat_input_t * input, va_list * args)
   return 1;
 }
 
+static u8 *
+parse_tmpfile (const cli_arg_t *a, u8 *tok, cli_value_t *v)
+{
+  u8 *z = format (0, "%v%c", tok, 0);
+  int bad = vec_len (tok) == 0 || strstr ((char *) z, "..") || strchr ((char *) z, '/');
+
+  vec_free (z);
+  if (bad)
+    return format (0, "'%v' is not a file name without directories", tok);
+
+  v->str = format (0, "/tmp/%v%c", tok, 0);
+  return 0;
+}
+
+CLIB_CLI_TYPE (cli_type_tmpfile) = {
+  .name = "file",
+  .help = "name of a file in /tmp",
+  .owns_str = 1,
+  .parse = parse_tmpfile,
+};
+
 u8 *
 format_vlib_thread_name (u8 * s, va_list * args)
 {

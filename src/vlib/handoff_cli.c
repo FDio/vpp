@@ -20,22 +20,12 @@ vlib_handoff_queue_slot_n_buffers (vlib_handoff_queue_slot_t *slot)
 }
 
 static clib_error_t *
-show_handoff_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+show_handoff_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_handoff_queue_main_t *hqm;
   table_t table = {};
-  u32 index = ~0;
+  u32 index = cli_u64 (ctx, "index", ~0);
   u32 row = 0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "index %u", &index))
-	;
-      else if (unformat (input, "all"))
-	index = ~0;
-      else
-	return clib_error_return (0, "unknown input '%U'", format_unformat_error, input);
-    }
 
   if (vec_len (vm->handoff_queue_mains) == 0)
     {
@@ -140,25 +130,21 @@ show_handoff_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *c
 
 VLIB_CLI_COMMAND (show_handoff_command, static) = {
   .path = "show handoff",
-  .short_help = "show handoff [index <index>]",
-  .function = show_handoff_fn,
+  .short_help = "Show the handoff queues",
+  .args =
+    (cli_arg_t[]) {
+      CLI_ONEOF ("which", CLI_F_OPTIONAL, CLI_FLAG ("all", .help = "all queues (default)"),
+		 CLI_KEYWORD ("index", cli_type_u32, .help = "queue index")),
+      {},
+    },
+  .handler = show_handoff_fn,
 };
 
 static clib_error_t *
-clear_handoff_counters_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+clear_handoff_counters_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_handoff_queue_main_t *hqm;
-  u32 index = ~0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "index %u", &index))
-	;
-      else if (unformat (input, "all"))
-	index = ~0;
-      else
-	return clib_error_return (0, "unknown input '%U'", format_unformat_error, input);
-    }
+  u32 index = cli_u64 (ctx, "index", ~0);
 
   if (index != ~0 && index >= vec_len (vm->handoff_queue_mains))
     return clib_error_return (0, "expecting valid handoff queue index");
@@ -185,28 +171,21 @@ clear_handoff_counters_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
 
 VLIB_CLI_COMMAND (clear_handoff_counters_command, static) = {
   .path = "clear handoff counters",
-  .short_help = "clear handoff counters [all | index <index>]",
-  .function = clear_handoff_counters_fn,
+  .short_help = "Clear the counters of the handoff queues",
+  .args =
+    (cli_arg_t[]) {
+      CLI_ONEOF ("which", CLI_F_OPTIONAL, CLI_FLAG ("all", .help = "all queues (default)"),
+		 CLI_KEYWORD ("index", cli_type_u32, .help = "queue index")),
+      {},
+    },
+  .handler = clear_handoff_counters_fn,
 };
 
 static clib_error_t *
-set_handoff_queue_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+set_handoff_queue_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  u32 index = ~0;
-  u32 size = 0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "index %u", &index))
-	;
-      else if (unformat (input, "size %u", &size))
-	;
-      else
-	return clib_error_return (0, "unknown input '%U'", format_unformat_error, input);
-    }
-
-  if (index == ~0)
-    return clib_error_return (0, "missing index");
+  u32 index = cli_u64 (ctx, "index", ~0);
+  u32 size = cli_u64 (ctx, "size", 0);
 
   if (size == 0)
     return clib_error_return (0, "missing size");
@@ -220,6 +199,12 @@ set_handoff_queue_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command
 
 VLIB_CLI_COMMAND (set_handoff_queue_command, static) = {
   .path = "set handoff queue",
-  .short_help = "set handoff queue index <index> size <size>",
-  .function = set_handoff_queue_fn,
+  .short_help = "Resize a handoff queue",
+  .args =
+    (cli_arg_t[]) {
+      CLI_KEYWORD ("index", cli_type_u32, .help = "queue index"),
+      CLI_KEYWORD ("size", cli_type_u32, .help = "number of slots, a power of 2"),
+      {},
+    },
+  .handler = set_handoff_queue_fn,
 };
