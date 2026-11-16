@@ -12,6 +12,7 @@ Core Architecture
     vlib
     vnet
     featurearcs
+    cli
     buffer_metadata
     multiarch/index
     bihash
