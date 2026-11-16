@@ -91,6 +91,7 @@ add_vpp_library(vlib
   buffer.c
   buffer_funcs.c
   cli.c
+  cli_decl.c
   counter.c
   drop.c
   error.c
@@ -144,6 +145,7 @@ add_vpp_library(vlib
   buffer.h
   buffer_node.h
   cli.h
+  cli_decl.h
   counter.h
   counter_types.h
   defs.h
