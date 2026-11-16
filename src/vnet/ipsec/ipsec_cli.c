@@ -738,7 +738,8 @@ VLIB_CLI_COMMAND (ipsec_tun_protect_cmd_node, static) =
 {
   .path = "ipsec tunnel protect",
   .function = ipsec_tun_protect_cmd,
-  .short_help = "ipsec tunnel protect <interface> input-sa <SA> output-sa <SA> [add|del]",
+  .short_help = "ipsec tunnel protect <interface> [<peer>] sa-in <SA> [sa-in <SA> ...] "
+		"sa-out <SA> [add|del]",
     // this is not MP safe
 };
 
