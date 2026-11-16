@@ -775,7 +775,7 @@ hpack_serialize_response (u8 *app_headers, u32 app_headers_len,
   p = hpack_encode_header (p, HTTP_HEADER_DATE, control_data->date, control_data->date_len, 0);
 
   /* content length if any */
-  if (control_data->content_len != HPACK_ENCODER_SKIP_CONTENT_LEN)
+  if (control_data->send_content_length)
     p = hpack_encode_content_len (p, control_data->content_len);
 
   /* ALT-SVC */

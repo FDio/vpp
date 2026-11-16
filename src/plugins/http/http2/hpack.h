@@ -54,6 +54,7 @@ typedef struct
 typedef struct
 {
   http_status_code_t sc;
+  u8 send_content_length;
   u64 content_len;
   u8 *server_name;
   u32 server_name_len;

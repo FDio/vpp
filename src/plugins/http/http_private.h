@@ -104,14 +104,6 @@ typedef enum http_req_state_ : u8
     HTTP_REQ_N_STATES
 } http_req_state_t;
 
-typedef enum http_target_form_ : u8
-{
-  HTTP_TARGET_ORIGIN_FORM,
-  HTTP_TARGET_ABSOLUTE_FORM,
-  HTTP_TARGET_AUTHORITY_FORM,
-  HTTP_TARGET_ASTERISK_FORM
-} http_target_form_t;
-
 #define foreach_http_req_flags                                                                     \
   _ (APP_CLOSED, "app-closed")                                                                     \
   _ (SHUTDOWN_TUNNEL, "shutdown-tunnel")                                                           \
@@ -128,7 +120,8 @@ typedef enum http_target_form_ : u8
   _ (RX_PROCESSING, "rx-processing")                                                               \
   _ (RX_HEADERS_RECEIVED, "rx-headers-received")                                                   \
   _ (RX_TRAILERS, "rx-trailers")                                                                   \
-  _ (TX_CANCELLED, "tx-cancelled")
+  _ (TX_CANCELLED, "tx-cancelled")                                                                 \
+  _ (RX_REPLY_PENDING, "rx-reply-pending")
 
 typedef enum http_req_flags_bit_
 {
@@ -138,7 +131,7 @@ typedef enum http_req_flags_bit_
     HTTP_REQ_N_F_BITS
 } http_req_flags_bit_t;
 
-typedef enum http_req_flags_ : u16
+typedef enum http_req_flags_ : u32
 {
 #define _(sym, str) HTTP_REQ_F_##sym = 1 << HTTP_REQ_F_BIT_##sym,
   foreach_http_req_flags
@@ -426,11 +419,8 @@ typedef struct http_ctx_
 	u64 to_recv; /* remaining bytes of body to receive from transport */
 	http_capsule_rx_ctx_t capsule_ctx_rx;
       };
-      union
-      {
-	http_status_code_t status_code;
-	http_req_method_t method;
-      };
+      http_status_code_t status_code;
+      http_req_method_t method;
       http_req_state_t req_state; /* state-machine state */
       http_req_flags_t req_flags;
       http_upgrade_proto_t upgrade_proto;
@@ -501,6 +491,44 @@ typedef struct http_ctx_
     };
   };
 } http_ctx_t;
+
+typedef struct
+{
+  u8 has_body;
+  u8 streaming;
+  u8 send_content_length;
+} http_reply_framing_t;
+
+/* Representation length is independent of payload buffering and EOF handling. */
+always_inline int
+http_reply_get_framing (const http_ctx_t *req, const http_msg_t *msg, http_reply_framing_t *f)
+{
+  const u8 head = req->method == HTTP_REQ_HEAD;
+  const u8 unknown_length = msg->data.type == HTTP_MSG_DATA_STREAMING;
+  const u8 informational = msg->code < HTTP_STATUS_OK;
+  const u8 no_content = msg->code == HTTP_STATUS_NO_CONTENT;
+  const u8 reset_content = msg->code == HTTP_STATUS_RESET_CONTENT;
+  const u8 not_modified = msg->code == HTTP_STATUS_NOT_MODIFIED;
+  const u8 bodyless_status = informational || no_content || reset_content || not_modified;
+  const u8 tunnel = (req->req_flags & HTTP_REQ_F_IS_TUNNEL) &&
+		    ((msg->code >= HTTP_STATUS_OK && msg->code < HTTP_STATUS_MULTIPLE_CHOICES) ||
+		     msg->code == HTTP_STATUS_SWITCHING_PROTOCOLS);
+
+  *f = (http_reply_framing_t) {};
+  if (tunnel)
+    return unknown_length || msg->data.body_len ? -1 : 0;
+
+  if ((unknown_length || informational || no_content || reset_content) && msg->data.body_len)
+    return -1;
+  /* Unknown-length HEAD responses carry no payload, including status 304. */
+  if (unknown_length && bodyless_status && (!head || informational))
+    return -1;
+
+  f->streaming = unknown_length && !head;
+  f->has_body = !head && !bodyless_status && (f->streaming || msg->data.body_len);
+  f->send_content_length = !unknown_length && !informational && !no_content;
+  return 0;
+}
 
 #define http_ctx_is_stream(_hc)                                                                    \
   ((_hc)->flags & (HTTP_CONN_F_UNIDIRECTIONAL_STREAM | HTTP_CONN_F_BIDIRECTIONAL_STREAM))
@@ -1077,6 +1105,53 @@ http_io_as_rx_publish (http_ctx_t *req, const http_msg_t *msg, u32 len)
 	}
     }
   svm_fifo_enqueue_nocopy (as->rx_fifo, sizeof (*msg) + len);
+  return 0;
+}
+
+/* Stage bodyless reply headers until END_STREAM/FIN has been handled. */
+always_inline int
+http_stage_bodyless_reply (http_ctx_t *req, const u8 *headers)
+{
+  svm_fifo_seg_t segs[2];
+  u32 copied = 0;
+  int n_segs;
+
+  if (http_io_as_max_write (req) < sizeof (http_msg_t) + req->control_data_len)
+    return -1;
+  while (copied < req->control_data_len)
+    {
+      n_segs = http_io_as_rx_provision (req, sizeof (http_msg_t) + copied, segs, ARRAY_LEN (segs),
+					req->control_data_len - copied);
+      if (n_segs <= 0)
+	return -1;
+      for (int i = 0; i < n_segs; i++)
+	{
+	  clib_memcpy_fast (segs[i].data, headers + copied, segs[i].len);
+	  copied += segs[i].len;
+	}
+    }
+  req->req_flags |= HTTP_REQ_F_RX_REPLY_PENDING;
+  return 0;
+}
+
+always_inline int
+http_publish_bodyless_reply (http_ctx_t *req)
+{
+  http_msg_t msg = {};
+
+  ASSERT (req->req_flags & HTTP_REQ_F_RX_REPLY_PENDING);
+  msg.type = HTTP_MSG_REPLY;
+  msg.code = req->status_code;
+  msg.data.type = HTTP_MSG_DATA_INLINE;
+  msg.data.len = req->control_data_len;
+  msg.data.headers_offset = req->headers_offset;
+  msg.data.headers_len = req->headers_len;
+  msg.data.headers_ctx = pointer_to_uword (req->headers);
+  msg.data.body_offset = req->control_data_len;
+  msg.data.body_len = req->body_len;
+  if (http_io_as_rx_publish (req, &msg, req->control_data_len))
+    return -1;
+  req->req_flags &= ~HTTP_REQ_F_RX_REPLY_PENDING;
   return 0;
 }
 

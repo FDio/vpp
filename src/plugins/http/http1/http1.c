@@ -3,7 +3,6 @@
  */
 
 #include <vnet/session/application.h>
-#include <vnet/tcp/tcp.h>
 
 #include <http/http.h>
 #include <http/http_header_names.h>
@@ -124,6 +123,23 @@ http1_conn_free_req (http_ctx_t *hc)
   http_buffer_free (&req->tx_buf);
   http_ctx_free (req);
   hc->flags &= ~HTTP_CONN_F_HAS_REQUEST;
+}
+
+static_always_inline int
+http1_req_state_is_body_tx (http_ctx_t *req)
+{
+  return req->req_state == HTTP_REQ_STATE_APP_IO_MORE_DATA ||
+	 req->req_state == HTTP_REQ_STATE_APP_IO_MORE_STREAMING_DATA;
+}
+
+static_always_inline void
+http1_cancel_request_upload (http_ctx_t *hc, http_ctx_t *req)
+{
+  http_io_as_drain_all (req);
+  hc->flags &= ~HTTP_CONN_F_PENDING_LAST_CHUNK;
+  req->req_flags |= HTTP_REQ_F_TX_EOF;
+  http_buffer_free (&req->tx_buf);
+  http_req_state_change (req, HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY);
 }
 
 /* Deschedule http session and wait for deq notification if underlying ts tx
@@ -312,8 +328,7 @@ http1_parse_non_origin_target (http_ctx_t *req, u8 *rx_buf)
   if ((rx_buf[req->target_path_offset] == '*') && (req->target_path_len == 1))
     {
       req->target_form = HTTP_TARGET_ASTERISK_FORM;
-      /* we do not support OPTIONS request */
-      return HTTP1_PARSE_ERROR;
+      return req->method == HTTP_REQ_OPTIONS ? HTTP1_PARSE_OK : HTTP1_PARSE_ERROR;
     }
 
   /* absolute-form =
@@ -438,6 +453,10 @@ http1_parse_request_line (http_ctx_t *hc, http_ctx_t *req, http_status_code_t *e
     [HTTP_REQ_PUT] = { http_token_lit ("PUT ") },
     [HTTP_REQ_CONNECT] = { http_token_lit ("CONNECT ") },
     [HTTP_REQ_CONNECT_UDP] = { http_token_lit ("CONNECT-UDP ") },
+    [HTTP_REQ_HEAD] = { http_token_lit ("HEAD ") },
+    [HTTP_REQ_OPTIONS] = { http_token_lit ("OPTIONS ") },
+    [HTTP_REQ_DELETE] = { http_token_lit ("DELETE ") },
+    [HTTP_REQ_PATCH] = { http_token_lit ("PATCH ") },
     [HTTP_REQ_UNKNOWN] = { http_token_lit ("PRI ") },
   };
   u32 available =
@@ -492,6 +511,15 @@ http1_parse_request_line (http_ctx_t *hc, http_ctx_t *req, http_status_code_t *e
 		case 'C':
 		  req->method = HTTP_REQ_CONNECT;
 		  break;
+		case 'H':
+		  req->method = HTTP_REQ_HEAD;
+		  break;
+		case 'O':
+		  req->method = HTTP_REQ_OPTIONS;
+		  break;
+		case 'D':
+		  req->method = HTTP_REQ_DELETE;
+		  break;
 		default:
 		  *ec =
 		    c >= 'A' && c <= 'Z' ? HTTP_STATUS_NOT_IMPLEMENTED : HTTP_STATUS_BAD_REQUEST;
@@ -504,6 +532,8 @@ http1_parse_request_line (http_ctx_t *hc, http_ctx_t *req, http_status_code_t *e
 		req->method = HTTP_REQ_POST;
 	      else if (c == 'R')
 		req->method = HTTP_REQ_UNKNOWN;
+	      else if (c == 'A')
+		req->method = HTTP_REQ_PATCH;
 	    }
 	  else if (pos == 7 && req->method == HTTP_REQ_CONNECT && c == '-' &&
 		   (hc->flags & HTTP_CONN_F_CONNECT_UDP_DRAFT03))
@@ -935,11 +965,21 @@ http1_identify_message_body (http_ctx_t *hc, http_ctx_t *req, u8 *rx_buf, http_s
   req->body_len = 0;
   req->body_offset = req->control_data_len;
 
-  if (!is_server &&
-      ((req->req_flags & HTTP_REQ_F_IS_TUNNEL) ||
-       http_status_code_str[req->status_code][0] == '1' ||
-       req->status_code == HTTP_STATUS_NO_CONTENT || req->status_code == HTTP_STATUS_NOT_MODIFIED))
-    return HTTP1_PARSE_OK;
+  if (!is_server)
+    {
+      if (req->method == HTTP_REQ_HEAD && req->content_len_header_index != ~0 &&
+	  http_parse_content_length (req, rx_buf))
+	{
+	  *ec = HTTP_STATUS_BAD_REQUEST;
+	  return HTTP1_PARSE_ERROR;
+	}
+
+      if ((req->req_flags & HTTP_REQ_F_IS_TUNNEL) || req->method == HTTP_REQ_HEAD ||
+	  http_status_code_str[req->status_code][0] == '1' ||
+	  req->status_code == HTTP_STATUS_NO_CONTENT ||
+	  req->status_code == HTTP_STATUS_NOT_MODIFIED)
+	return HTTP1_PARSE_OK;
+    }
 
   if (req->headers_len == 0)
     {
@@ -1145,6 +1185,10 @@ http1_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
       rv = http1_parse_status_line (req, rx_buf, line_end);
       if (rv != HTTP1_PARSE_OK)
 	goto error;
+      /* Interim responses leave the request producer and its TX buffer active. */
+      if (http1_req_state_is_body_tx (req) && (http_status_code_str[req->status_code][0] != '1' ||
+					       req->status_code == HTTP_STATUS_SWITCHING_PROTOCOLS))
+	http1_cancel_request_upload (hc, req);
       http1_parse_headers_start (req);
     }
 
@@ -1166,6 +1210,16 @@ http1_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
   if (rv != HTTP1_PARSE_OK)
     goto error;
 
+  if (http_status_code_str[req->status_code][0] == '1' &&
+      req->status_code != HTTP_STATUS_SWITCHING_PROTOCOLS)
+    {
+      /* Consume only this response, preserving a buffered final response. */
+      http_io_ts_drain (hc, req->control_data_len - req->http1_rx_staged_len);
+      http1_parse_state_reset (req);
+      http_io_ts_after_read (hc, !http_io_ts_max_read (hc));
+      return http_io_ts_max_read (hc) ? HTTP_SM_CONTINUE : HTTP_SM_STOP;
+    }
+
   /* send at least "control data" which is necessary minimum,
    * if there is some space send also portion of body */
   if (http1_stage_to_length (hc, req, req->control_data_len))
@@ -1173,7 +1227,8 @@ http1_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
       clib_warning ("not enough room for control data in app's rx fifo");
       goto error;
     }
-  body_available = clib_min (req->body_len, http_io_ts_max_read (hc));
+  body_available =
+    req->method == HTTP_REQ_HEAD ? 0 : clib_min (req->body_len, http_io_ts_max_read (hc));
   body_sent = clib_min (body_available, http1_rx_max_write (req));
   if (http1_stage_rx_data (hc, req, body_sent) != body_sent)
     goto error;
@@ -1200,7 +1255,7 @@ http1_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
       return HTTP_SM_CONTINUE;
     }
 
-  req->to_recv = req->body_len - body_sent;
+  req->to_recv = req->method == HTTP_REQ_HEAD ? 0 : req->body_len - body_sent;
   if (req->to_recv == 0)
     {
       /* all sent, we are done */
@@ -1235,6 +1290,8 @@ incomplete:
   return HTTP_SM_STOP;
 
 error:
+  if (http1_req_state_is_body_tx (req))
+    http1_cancel_request_upload (hc, req);
   http_io_ts_drain_all (hc);
   http1_parse_state_reset (req);
   http_io_ts_after_read (hc, 1);
@@ -1347,6 +1404,7 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
     req->req_flags & HTTP_REQ_F_RX_STREAMING ? HTTP_MSG_DATA_STREAMING : HTTP_MSG_DATA_INLINE;
   msg.data.len = req->control_data_len + body_sent;
   msg.data.scheme = req->scheme;
+  msg.data.target_form = req->target_form;
   msg.data.target_authority_offset = req->target_authority_offset;
   msg.data.target_authority_len = req->target_authority_len;
   msg.data.target_path_offset = req->target_path_offset;
@@ -1775,6 +1833,7 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
   u32 max_enq;
   http_status_code_t sc;
   http_msg_t msg;
+  http_reply_framing_t framing;
   http_sm_result_t sm_result = HTTP_SM_ERROR;
   http_req_state_t next_state = HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD;
 
@@ -1796,6 +1855,12 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
     }
 
   http_io_as_drain (req, sizeof (msg));
+
+  if (http_reply_get_framing (req, &msg, &framing))
+    {
+      sc = HTTP_STATUS_INTERNAL_ERROR;
+      goto error;
+    }
 
   vec_reset_length (http_tx_buf (hc));
   /*
@@ -1837,20 +1902,15 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
       req->capsule_ctx_rx.state = HTTP_CAPSULE_STATE_HEADER;
       req->capsule_ctx_rx.len = 0;
     }
-  else if (msg.data.type == HTTP_MSG_DATA_STREAMING)
+  else if (framing.streaming)
     {
-      if (http_status_code_str[msg.code][0] == '1' || msg.code == HTTP_STATUS_NO_CONTENT ||
-	  msg.code == HTTP_STATUS_NOT_MODIFIED)
-	{
-	  sc = HTTP_STATUS_INTERNAL_ERROR;
-	  goto error;
-	}
       req->req_flags |= HTTP_REQ_F_TX_STREAMING;
       http_tx_buf (hc) = format (http_tx_buf (hc), "%sConnection: close\r\n", chunked_header.base);
     }
   else
     {
-      http_tx_buf (hc) = format (http_tx_buf (hc), content_len_template, msg.data.body_len);
+      if (framing.send_content_length)
+	http_tx_buf (hc) = format (http_tx_buf (hc), content_len_template, msg.data.body_len);
       if (req->req_flags & HTTP_REQ_F_RX_STREAMING)
 	http_tx_buf (hc) = format (http_tx_buf (hc), "Connection: close\r\n");
     }
@@ -1876,17 +1936,11 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
   ASSERT ((HTTP1_MESSAGE_OVERHEAD + (msg.data.headers_len << 1)) > vec_len (http_tx_buf (hc)));
   http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), sp, 0);
 
-  if (req->req_flags & HTTP_REQ_F_TX_STREAMING)
+  if (framing.has_body)
     {
       http_req_tx_buffer_init (req, &msg);
-      next_state = HTTP_REQ_STATE_APP_IO_MORE_STREAMING_DATA;
-      sm_result = HTTP_SM_CONTINUE;
-    }
-  else if (msg.data.body_len)
-    {
-      /* Start sending the actual data */
-      http_req_tx_buffer_init (req, &msg);
-      next_state = HTTP_REQ_STATE_APP_IO_MORE_DATA;
+      next_state = framing.streaming ? HTTP_REQ_STATE_APP_IO_MORE_STREAMING_DATA :
+				       HTTP_REQ_STATE_APP_IO_MORE_DATA;
       sm_result = HTTP_SM_CONTINUE;
     }
   else
@@ -1918,6 +1972,10 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
     [HTTP_REQ_GET] = { http_token_lit ("GET ") },
     [HTTP_REQ_POST] = { http_token_lit ("POST ") },
     [HTTP_REQ_PUT] = { http_token_lit ("PUT ") },
+    [HTTP_REQ_HEAD] = { http_token_lit ("HEAD ") },
+    [HTTP_REQ_OPTIONS] = { http_token_lit ("OPTIONS ") },
+    [HTTP_REQ_DELETE] = { http_token_lit ("DELETE ") },
+    [HTTP_REQ_PATCH] = { http_token_lit ("PATCH ") },
   };
   http_msg_t msg;
   u8 *target;
@@ -1956,6 +2014,7 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
     }
 
   chunked = msg.data.type == HTTP_MSG_DATA_STREAMING;
+  req->method = msg.method_type;
   if (PREDICT_FALSE (msg.method_type == HTTP_REQ_PUT && !chunked && !msg.data.body_len))
     {
       clib_warning ("PUT request should include data");
@@ -2312,11 +2371,11 @@ static http_sm_handler rx_state_funcs[HTTP_REQ_N_STATES] = {
   http1_req_state_transport_io_more_data,
   http1_req_state_wait_transport_method,
   0, /* wait app reply */
-  0, /* app io more data */
+  http1_req_state_wait_transport_reply,
   http1_req_state_tunnel_rx,
   http1_req_state_udp_tunnel_rx,
   http1_req_state_udp_tunnel_draft03_rx,
-  0, /* app io more streaming data */
+  http1_req_state_wait_transport_reply,
   0, /* transport io drop */
   http1_req_state_transport_io_more_streaming_data,
 };
@@ -2328,9 +2387,10 @@ http1_req_state_is_tx_valid (http_ctx_t *req)
 }
 
 static_always_inline int
-http1_req_state_is_rx_valid (http_ctx_t *req)
+http1_req_state_is_rx_valid (http_ctx_t *hc, http_ctx_t *req)
 {
-  return rx_state_funcs[req->req_state] ? 1 : 0;
+  return rx_state_funcs[req->req_state] &&
+	 (!(hc->flags & HTTP_CONN_F_IS_SERVER) || !http1_req_state_is_body_tx (req));
 }
 
 static_always_inline void
@@ -2460,7 +2520,7 @@ http1_app_rx_evt_callback (http_ctx_t *hc, u32 req_index, clib_thread_index_t th
 
   req = http_ctx_get_w_thread (req_index, thread_index);
 
-  if (http1_req_state_is_rx_valid (req))
+  if (http1_req_state_is_rx_valid (hc, req))
     http1_req_run_state_machine (hc, req, 0, 0);
 }
 
@@ -2545,25 +2605,10 @@ http1_transport_rx_callback (http_ctx_t *hc)
   else
     req = http1_conn_get_req (hc);
 
-  if (!http1_req_state_is_rx_valid (req))
+  if (!http1_req_state_is_rx_valid (hc, req))
     {
       if (http_io_ts_max_read (hc))
 	{
-	  if ((req->req_state == HTTP_REQ_STATE_APP_IO_MORE_DATA ||
-	       req->req_state == HTTP_REQ_STATE_APP_IO_MORE_STREAMING_DATA) &&
-	      !(hc->flags & HTTP_CONN_F_IS_SERVER))
-	    {
-	      /* client can receive error response from server when still
-	       * sending content */
-	      /* TODO: 100 continue support */
-	      HTTP_DBG (1, "server send response while client sending data");
-	      http_io_as_drain_all (req);
-	      hc->flags &= ~HTTP_CONN_F_PENDING_LAST_CHUNK;
-	      req->req_flags |= HTTP_REQ_F_TX_EOF;
-	      http_buffer_free (&req->tx_buf);
-	      http_req_state_change (req, HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY);
-	      goto run_sm;
-	    }
 	  clib_warning ("hc [%u]%x invalid rx state: http req state "
 			"'%U', session state '%U'",
 			hc->c_thread_index, hc->hc_hc_index, format_http_req_state, req->req_state,
@@ -2573,7 +2618,6 @@ http1_transport_rx_callback (http_ctx_t *hc)
       return;
     }
 
-run_sm:
   HTTP_DBG (1, "run state machine");
   http1_req_run_state_machine (hc, req, 0, 0);
 }
@@ -2628,6 +2672,8 @@ http1_transport_close_callback (http_ctx_t *hc)
   /* Nothing more to rx, propagate to app */
   if (!http_io_ts_max_read (hc))
     {
+      if (!(hc->flags & HTTP_CONN_F_IS_SERVER) && http1_req_state_is_body_tx (req))
+	http1_cancel_request_upload (hc, req);
       if (hc->state == HTTP_CONN_STATE_TRANSPORT_CLOSED &&
 	  req->req_state == HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY &&
 	  req->http1_parse_state != HTTP1_PARSE_STATE_IDLE)
@@ -2654,6 +2700,8 @@ http1_transport_reset_callback (http_ctx_t *hc)
   if (!(hc->flags & HTTP_CONN_F_HAS_REQUEST))
     return;
   http_ctx_t *req = http1_conn_get_req (hc);
+  if (!(hc->flags & HTTP_CONN_F_IS_SERVER) && http1_req_state_is_body_tx (req))
+    http1_cancel_request_upload (hc, req);
   hc->flags &= ~HTTP_CONN_F_PENDING_LAST_CHUNK;
   if (req->c_s_index != SESSION_INVALID_INDEX && !(hc->flags & HTTP_CONN_F_NO_APP_SESSION))
     {
