@@ -136,9 +136,13 @@ scoreboard_update_loss (sack_scoreboard_t *sb, u32 ack, u32 snd_mss, u8 clear_lo
 
   sb->lost_bytes = 0;
 
+  /* Without holes, bytes above ack are sacked only while reneging. Otherwise high_sacked can be
+   * stale, never set or left by an earlier sack episode, and may read above ack */
   right = scoreboard_last_hole (sb);
   if (!right)
-    return seq_gt (sb->high_sacked, ack) ? sb->high_sacked - ack : 0;
+    return tcp_scoreboard_is_reneging (sb) && seq_gt (sb->high_sacked, ack) ?
+	     sb->high_sacked - ack :
+	     0;
 
   if (seq_gt (sb->high_sacked, right->end))
     {
