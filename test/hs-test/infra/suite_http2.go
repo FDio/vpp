@@ -241,6 +241,7 @@ var _ = DescribeMWSuite("Http2MWSuite", []string{"HTTP", "HTTP2", "MW"}, func() 
 type h2specTest struct {
 	desc      string
 	cliServer bool
+	fifoSize  int // KiB; defaults to 16
 }
 
 var genericTests = []h2specTest{
@@ -303,7 +304,8 @@ var http2Tests = []h2specTest{
 	{desc: "http2/4.1/1"},
 	{desc: "http2/4.1/2"},
 	{desc: "http2/4.1/3"},
-	{desc: "http2/4.2/1", cliServer: true},
+	// The initial stream window must fit a 16 KiB DATA frame after reserving room for headers.
+	{desc: "http2/4.2/1", cliServer: true, fifoSize: 64},
 	{desc: "http2/4.2/2"},
 	{desc: "http2/4.2/3"},
 	{desc: "http2/4.3/1"},
@@ -441,11 +443,15 @@ var _ = Describe("H2SpecSuite", Ordered, ContinueOnFailure, Label("HTTP", "HTTP2
 				vpp := s.Containers.Vpp.VppInstance
 				serverAddress := s.VppAddr()
 				path := "/test1"
+				fifoSize := test.fifoSize
+				if fifoSize == 0 {
+					fifoSize = 16
+				}
 				if test.cliServer {
-					Log(vpp.Vppctl("http cli server fifo-size 16 uri https://" + serverAddress + ":" + s.Ports.Port1))
+					Log(vpp.Vppctl(fmt.Sprintf("http cli server fifo-size %d uri https://%s:%s", fifoSize, serverAddress, s.Ports.Port1)))
 					path = "/echo"
 				} else {
-					Log(vpp.Vppctl("http static server uri tls://" + serverAddress + "/" + s.Ports.Port1 + " url-handlers debug 2 fifo-size 16k"))
+					Log(vpp.Vppctl(fmt.Sprintf("http static server uri tls://%s/%s url-handlers debug 2 fifo-size %dk", serverAddress, s.Ports.Port1, fifoSize)))
 					Log(vpp.Vppctl("test-url-handler enable"))
 				}
 				conf := &config.Config{
@@ -535,7 +541,9 @@ var _ = Describe("H2SpecClientSuite", Ordered, Serial, Label("HTTP", "HTTP2", "H
 		{desc: "client/4.1/1", portOffset: 1},
 		{desc: "client/4.1/2", portOffset: 2},
 		{desc: "client/4.1/3", portOffset: 3},
-		{desc: "client/4.2/1", portOffset: 4},
+		// Leave room for a 16 KiB DATA frame and keep a second stream open
+		// while h2spec checks the PING ACK after the first response ends.
+		{desc: "client/4.2/1", portOffset: 4, clientExtraArgs: "fifo-size 64k streams 2 repeat 2 "},
 		{desc: "client/4.2/2", portOffset: 5},
 		{desc: "client/4.2/3", portOffset: 6},
 		{desc: "client/4.3/1", portOffset: 7},
