@@ -10,3 +10,7 @@
 
 /* value->prefix, a.b.c.d/len or an IPv6 prefix */
 __clib_export extern cli_type_t cli_type_ip_prefix;
+/* value->prefix.addr / is_ip6, IPv4 or IPv6 address */
+__clib_export extern cli_type_t cli_type_ip_address;
+/* value->ip_range, <first>-<last>, both of the same family */
+__clib_export extern cli_type_t cli_type_ip_range;

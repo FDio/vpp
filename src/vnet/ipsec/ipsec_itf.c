@@ -4,6 +4,7 @@
 
 /* ipsec_itf.c: IPSec dedicated interface type */
 
+#include <vnet/interface/cli_types.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ipsec/ipsec_itf.h>
 #include <vnet/ipsec/ipsec_tun.h>
@@ -366,49 +367,15 @@ ipsec_itf_walk (ipsec_itf_walk_cb_t cb, void *ctx)
 }
 
 static clib_error_t *
-ipsec_itf_create_cli (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+ipsec_itf_create_cli (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  tunnel_mode_t mode = TUNNEL_MODE_P2P;
-  u32 instance, sw_if_index;
-  clib_error_t *error;
-  mac_address_t mac;
-  int rv;
+  tunnel_mode_t mode = cli_flag (ctx, "p2mp") ? TUNNEL_MODE_MP : TUNNEL_MODE_P2P;
+  u32 sw_if_index = ~0;
 
-  error = NULL;
-  instance = sw_if_index = ~0;
-  mac_address_set_zero (&mac);
-
-  if (unformat_user (input, unformat_line_input, line_input))
-    {
-      while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-	{
-	  if (unformat (line_input, "instance %d", &instance))
-	    ;
-	  else if (unformat (line_input, "p2mp"))
-	    mode = TUNNEL_MODE_MP;
-	  else
-	    {
-	      error = clib_error_return (0, "unknown input: %U",
-					 format_unformat_error, line_input);
-	      break;
-	    }
-	}
-
-      unformat_free (line_input);
-
-      if (error)
-	return error;
-    }
-
-  rv = ipsec_itf_create (instance, mode, &sw_if_index);
-
-  if (rv)
+  if (ipsec_itf_create (cli_u64 (ctx, "instance", ~0), mode, &sw_if_index))
     return clib_error_return (0, "iPSec interface create failed");
 
-  vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main (),
-		   sw_if_index);
+  vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main (), sw_if_index);
   return 0;
 }
 
@@ -423,40 +390,17 @@ ipsec_itf_create_cli (vlib_main_t * vm,
 ?*/
 VLIB_CLI_COMMAND (ipsec_itf_create_command, static) = {
   .path = "ipsec itf create",
-  .short_help = "ipsec itf create [instance <instance>] [p2mp]",
-  .function = ipsec_itf_create_cli,
+  .short_help = "Create an IPsec interface",
+  .args = CLI_ARGS (CLI_OPT_KEYWORD ("instance", cli_type_u32, .help = "interface instance number"),
+		    CLI_FLAG ("p2mp", .help = "multipoint interface")),
+  .handler = ipsec_itf_create_cli,
 };
 
 static clib_error_t *
-ipsec_itf_delete_cli (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+ipsec_itf_delete_cli (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  vnet_main_t *vnm;
-  u32 sw_if_index;
-  int rv;
-
-  vnm = vnet_get_main ();
-  sw_if_index = ~0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat
-	  (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
-	;
-      else
-	break;
-    }
-
-  if (~0 != sw_if_index)
-    {
-      rv = ipsec_itf_delete (sw_if_index);
-
-      if (rv)
-	return clib_error_return (0, "ipsec interface delete failed");
-    }
-  else
-    return clib_error_return (0, "no such interface: %U",
-			      format_unformat_error, input);
+  if (ipsec_itf_delete (cli_index (ctx, "interface")))
+    return clib_error_return (0, "ipsec interface delete failed");
 
   return 0;
 }
@@ -472,29 +416,24 @@ ipsec_itf_delete_cli (vlib_main_t * vm,
 ?*/
 VLIB_CLI_COMMAND (ipsec_itf_delete_command, static) = {
   .path = "ipsec itf delete",
-  .short_help = "ipsec itf delete <interface>",
-  .function = ipsec_itf_delete_cli,
+  .short_help = "Delete an IPsec interface",
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_sw_interface)),
+  .handler = ipsec_itf_delete_cli,
 };
 
 static clib_error_t *
-ipsec_interface_show (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+ipsec_interface_show (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   index_t ii;
 
   pool_foreach_index (ii, ipsec_itf_pool)
-   {
     vlib_cli_output (vm, "%U", format_ipsec_itf, ii);
-  }
 
-  return NULL;
+  return 0;
 }
 
-/**
- * show IPSEC tunnel protection hash tables
- */
 VLIB_CLI_COMMAND (ipsec_interface_show_node, static) = {
   .path = "show ipsec interface",
-  .function = ipsec_interface_show,
-  .short_help = "show ipsec interface",
+  .short_help = "Show IPsec interfaces",
+  .handler = ipsec_interface_show,
 };
