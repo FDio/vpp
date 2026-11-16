@@ -71,6 +71,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "fb846372_b480ff47",
+        "filename": "src/plugins/dpdk/device/flow.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 1693,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-16T16:38:25Z",
+      "side": 1,
+      "message": "Thanks, current approach looks good to me.",
+      "parentUuid": "037b54bb_b1dd214f",
+      "revId": "9a6a1f1b728ebe10b2ee052d460337f74fe10950",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "02edea1a_f762b44b",
@@ -84,6 +102,24 @@
       "writtenOn": "2026-07-03T09:01:33Z",
       "side": 1,
       "message": "Same comment as `rte_flow_async_create`, could we set non-null \u0027user_data` ?",
+      "revId": "9a6a1f1b728ebe10b2ee052d460337f74fe10950",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c7c86d7d_08f1674b",
+        "filename": "src/plugins/dpdk/device/flow.c",
+        "patchSetId": 22
+      },
+      "lineNbr": 1762,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-16T16:38:25Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "02edea1a_f762b44b",
       "revId": "9a6a1f1b728ebe10b2ee052d460337f74fe10950",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
