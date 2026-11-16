@@ -773,6 +773,14 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	hcm->method = HTTP_REQ_POST;
       else if (unformat (line_input, "method put"))
 	hcm->method = HTTP_REQ_PUT;
+      else if (unformat (line_input, "method head"))
+	hcm->method = HTTP_REQ_HEAD;
+      else if (unformat (line_input, "method options"))
+	hcm->method = HTTP_REQ_OPTIONS;
+      else if (unformat (line_input, "method delete"))
+	hcm->method = HTTP_REQ_DELETE;
+      else if (unformat (line_input, "method patch"))
+	hcm->method = HTTP_REQ_PATCH;
       else if (unformat (line_input, "data %v", &hcm->body))
 	;
       else if (unformat (line_input, "file %s", &path))
@@ -894,10 +902,11 @@ done:
 
 VLIB_CLI_COMMAND (hcc_command, static) = {
   .path = "http cli client",
-  .short_help = "[appns <app-ns> secret <appns-secret>] uri http[s]://<ip-addr>/<target> "
-		"[method get|post|put] [data <payload> | file <path>] [use-ptr] "
-		"[stream [close-after-tx] [eof-after-drain] [tx-delay <seconds>]] "
-		"[header <Name:Value>] [no-headers] [fifo-size <KiB>] [no-output] [http2|http3]",
+  .short_help =
+    "[appns <app-ns> secret <appns-secret>] uri http[s]://<ip-addr>/<target> "
+    "[method get|post|put|head|options|delete|patch] [data <payload> | file <path>] [use-ptr] "
+    "[stream [close-after-tx] [eof-after-drain] [tx-delay <seconds>]] "
+    "[header <Name:Value>] [no-headers] [fifo-size <KiB>] [no-output] [http2|http3]",
   .function = hcc_command_fn,
   .is_mp_safe = 1,
 };

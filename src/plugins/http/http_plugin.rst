@@ -726,3 +726,48 @@ Applications that create separate listeners can set ``h3_alt_svc_port`` in
 ``transport_endpt_cfg_http_t`` on the HTTP/1 and HTTP/2 listener. The port is in
 host byte order. A nonzero value advertises the configured UDP port; zero
 disables advertisement for listeners that do not combine TLS and QUIC.
+
+Request methods
+^^^^^^^^^^^^^^^
+
+GET, POST, PUT, HEAD, OPTIONS, DELETE, and PATCH are available to applications
+over HTTP/1, HTTP/2, and HTTP/3. CONNECT and the optional draft CONNECT-UDP
+method use the existing tunnel interfaces. Method names are case sensitive.
+The plugin rejects unsupported methods with 501; applications decide which
+recognized methods are permitted for each resource and generate their own
+responses, including 405 with an appropriate Allow header.
+
+OPTIONS requests are delivered to the application. An asterisk target is
+represented by a one-byte ``target_path`` containing ``*``; ordinary request
+paths retain the existing convention of omitting their leading slash. The
+received ``http_msg_data_t.target_form`` identifies the original target form;
+applications must use ``HTTP_TARGET_ASTERISK_FORM`` to distinguish server-wide
+OPTIONS from a resource path such as ``/*`` or ``/%2A``. For HTTP/2 and HTTP/3,
+this field describes the ``:path`` form, or authority form for CONNECT without
+``:path``. Outgoing targets retain their existing wire-format path contract.
+The plugin does not generate OPTIONS responses or infer application capabilities.
+
+HEAD responses contain no wire body. On reception, ``body_len`` is zero even
+when a Content-Length header describes a nonempty GET representation; that
+header remains available through the received header table. HTTP/2 and HTTP/3
+publish a HEAD reply after END_STREAM or FIN, once the application session can
+be reused. Until then, staged headers remain unreadable in the application FIFO.
+Content-Length values are validated with the same unsigned 64-bit parser in all
+three versions, even though they do not determine HEAD response framing.
+On transmission,
+applications should supply ``body_len = 0`` and may supply the representation's
+Content-Length explicitly through the application header list. The plugin
+does not add an automatic Content-Length to HEAD replies.
+
+For compatibility with applications that generate an ordinary finite reply,
+the plugin consumes and discards any supplied HEAD reply body, including
+pointer-backed data, without transmitting it. The usual ownership and FIFO
+notification rules still apply: a nonzero ``body_len`` promises that much
+application data, not just representation metadata. HTTP/1 streaming HEAD
+replies are rejected with an empty 500 response and connection close; use a
+finite reply with an empty body instead.
+
+On reception, informational responses other than HTTP/1 protocol switching are
+consumed internally while the request waits for a final response. They do not
+complete the application request. Automatic Expect/100-continue upload negotiation
+and forwarding informational responses to proxy applications are not provided.

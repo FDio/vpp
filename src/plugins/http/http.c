@@ -614,6 +614,26 @@ http_req_tx_buffer_init (http_ctx_t *req, const http_msg_t *msg)
   http_buffer_init (&req->tx_buf, msg_to_buf_type[msg->data.type], as->tx_fifo, len);
 }
 
+int
+http_req_tx_buffer_discard (http_ctx_t *req)
+{
+  http_buffer_t *hb = &req->tx_buf;
+  u64 left;
+  u32 n, available;
+
+  while ((left = http_buffer_bytes_left (hb)))
+    {
+      available = hb->type == HTTP_BUFFER_PTR ? UINT32_MAX : http_io_as_max_read (req);
+      n = clib_min (left, (u64) available);
+      if (!n)
+	return 0;
+      n = http_buffer_drain (hb, n);
+      http_io_as_dequeue_notify (req, n);
+    }
+  http_buffer_free (hb);
+  return 1;
+}
+
 static void
 http_conn_invalidate_timer_cb (u32 hs_handle)
 {
