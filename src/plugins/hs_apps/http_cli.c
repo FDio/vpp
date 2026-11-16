@@ -29,6 +29,7 @@ typedef struct
   clib_thread_index_t thread_index;
   u64 node_index;
   u8 plain_text;
+  u8 head;
   u8 *buf;
 } hcs_cli_args_t;
 
@@ -42,6 +43,8 @@ typedef struct
   hcs_cli_args_t *pending_cli;
   u64 rx_left;
   u8 echo_rx;
+  u8 options;
+  u8 head;
   u8 rx_streaming;
   u8 stream;
   u8 close_after_tx;
@@ -266,6 +269,17 @@ done:
 }
 
 static void
+hcs_add_content_length (hcs_session_t *hs, u64 length)
+{
+  u8 buf[HTTP_U64_MAX_DECIMAL_DIGITS];
+  u8 *end = buf + sizeof (buf);
+  u8 *digits = http_encode_u64_decimal (end, length);
+
+  http_add_header (&hs->resp_headers, HTTP_HEADER_CONTENT_LENGTH, (const char *) digits,
+		   end - digits);
+}
+
+static void
 send_data_to_http (void *rpc_args)
 {
   hcs_cli_args_t *args = (hcs_cli_args_t *) rpc_args;
@@ -285,6 +299,12 @@ send_data_to_http (void *rpc_args)
 
   http_add_header (&hs->resp_headers, HTTP_HEADER_CONTENT_TYPE,
 		   http_content_type_token (type));
+
+  if (args->head)
+    {
+      hcs_add_content_length (hs, vec_len (hs->tx_buf));
+      vec_free (hs->tx_buf);
+    }
 
   start_send_data (hs, HTTP_STATUS_OK);
 
@@ -411,8 +431,15 @@ static void
 hcs_echo_complete (hcs_session_t *hs)
 {
   hs->echo_rx = 0;
+  if (hs->options)
+    {
+      start_send_data (hs, HTTP_STATUS_OK);
+      return;
+    }
   hs->tx_buf = hs->rx_buf;
   hs->rx_buf = 0;
+  if (hs->head)
+    hcs_add_content_length (hs, vec_len (hs->tx_buf));
   http_add_header (&hs->resp_headers, HTTP_HEADER_CONTENT_TYPE,
 		   http_content_type_token (HTTP_CONTENT_APP_OCTET_STREAM));
   start_send_data (hs, HTTP_STATUS_OK);
@@ -429,9 +456,14 @@ hcs_echo_rx (session_t *ts, hcs_session_t *hs, u32 control_len)
     n_deq = clib_min (hs->rx_left, n_deq);
   if (n_deq)
     {
-      vec_add2 (hs->rx_buf, data, n_deq);
-      rv = svm_fifo_dequeue (ts->rx_fifo, n_deq, data);
-      ASSERT (rv == n_deq);
+      if (hs->options)
+	svm_fifo_dequeue_drop (ts->rx_fifo, n_deq);
+      else
+	{
+	  vec_add2 (hs->rx_buf, data, n_deq);
+	  rv = svm_fifo_dequeue (ts->rx_fifo, n_deq, data);
+	  ASSERT (rv == n_deq);
+	}
       if (!hs->rx_streaming)
 	hs->rx_left -= n_deq;
     }
@@ -464,6 +496,7 @@ hcs_ts_rx_callback (session_t *ts)
   hcs_session_t *hs;
   http_msg_t msg;
   int rv, is_encoded = 0;
+  u8 is_echo;
 
   hs = hcs_session_get (ts->thread_index, ts->opaque);
   if (hs->echo_rx)
@@ -482,26 +515,34 @@ hcs_ts_rx_callback (session_t *ts)
   rv = svm_fifo_dequeue (ts->rx_fifo, sizeof (msg), (u8 *) &msg);
   ASSERT (rv == sizeof (msg));
   hs->rx_streaming = msg.data.type == HTTP_MSG_DATA_STREAMING;
+  hs->options = msg.method_type == HTTP_REQ_OPTIONS;
+  hs->head = msg.method_type == HTTP_REQ_HEAD;
 
   if (msg.type != HTTP_MSG_REQUEST ||
       (msg.method_type != HTTP_REQ_GET && msg.method_type != HTTP_REQ_POST &&
-       msg.method_type != HTTP_REQ_PUT))
+       msg.method_type != HTTP_REQ_PUT && msg.method_type != HTTP_REQ_HEAD &&
+       msg.method_type != HTTP_REQ_OPTIONS && msg.method_type != HTTP_REQ_DELETE &&
+       msg.method_type != HTTP_REQ_PATCH))
     {
-      http_add_header (&hs->resp_headers, HTTP_HEADER_ALLOW, http_token_lit ("GET"));
+      http_add_header (&hs->resp_headers, HTTP_HEADER_ALLOW, http_token_lit ("GET, HEAD, OPTIONS"));
       start_send_data (hs, HTTP_STATUS_METHOD_NOT_ALLOWED);
       goto done;
     }
 
-  if (msg.data.target_path_len == 0)
+  if (msg.data.target_path_len == 0 && !hs->options)
     {
       start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
       goto done;
     }
 
   /* send the command to a new/recycled vlib process */
-  vec_validate (args.buf, msg.data.target_path_len - 1);
-  rv = svm_fifo_peek (ts->rx_fifo, msg.data.target_path_offset, msg.data.target_path_len, args.buf);
-  ASSERT (rv == msg.data.target_path_len);
+  if (msg.data.target_path_len)
+    {
+      vec_validate (args.buf, msg.data.target_path_len - 1);
+      rv = svm_fifo_peek (ts->rx_fifo, msg.data.target_path_offset, msg.data.target_path_len,
+			  args.buf);
+      ASSERT (rv == msg.data.target_path_len);
+    }
   HCS_DBG ("%v", args.buf);
   if (http_validate_abs_path_syntax (args.buf, &is_encoded))
     {
@@ -516,15 +557,37 @@ hcs_ts_rx_callback (session_t *ts)
       args.buf = decoded;
     }
 
-  if (http_token_is ((char *) args.buf, vec_len (args.buf), http_token_lit ("echo")) ||
-      http_token_is ((char *) args.buf, vec_len (args.buf), http_token_lit ("echo-stream")) ||
-      http_token_is ((char *) args.buf, vec_len (args.buf), http_token_lit ("echo-stream-close")) ||
-      http_token_is ((char *) args.buf, vec_len (args.buf), http_token_lit ("echo-stream-drain")))
+  is_echo =
+    vec_len (args.buf) &&
+    (http_token_is ((char *) args.buf, vec_len (args.buf), http_token_lit ("echo")) ||
+     http_token_is ((char *) args.buf, vec_len (args.buf), http_token_lit ("echo-stream")) ||
+     http_token_is ((char *) args.buf, vec_len (args.buf), http_token_lit ("echo-stream-close")) ||
+     http_token_is ((char *) args.buf, vec_len (args.buf), http_token_lit ("echo-stream-drain")));
+
+  if (hs->options)
+    {
+      if (is_echo || msg.data.target_form == HTTP_TARGET_ASTERISK_FORM)
+	http_add_header (&hs->resp_headers, HTTP_HEADER_ALLOW,
+			 http_token_lit ("GET, HEAD, POST, PUT, DELETE, PATCH, OPTIONS"));
+      else
+	http_add_header (&hs->resp_headers, HTTP_HEADER_ALLOW,
+			 http_token_lit ("GET, HEAD, OPTIONS"));
+      u32 control_len =
+	(hs->rx_streaming || msg.data.body_len) ? msg.data.body_offset : msg.data.len;
+      vec_free (args.buf);
+      hs->stream = 0;
+      hs->echo_rx = 1;
+      hs->rx_left = msg.data.body_len;
+      svm_fifo_dequeue_drop (ts->rx_fifo, control_len);
+      return hcs_echo_rx (ts, hs, control_len);
+    }
+
+  if (is_echo)
     {
       u32 control_len = (msg.data.type == HTTP_MSG_DATA_STREAMING || msg.data.body_len) ?
 			  msg.data.body_offset :
 			  msg.data.len;
-      hs->stream = vec_len (args.buf) > 4;
+      hs->stream = vec_len (args.buf) > 4 && !hs->head;
       hs->close_after_tx =
 	http_token_is ((char *) args.buf, vec_len (args.buf), http_token_lit ("echo-stream-close"));
       hs->eof_after_drain =
@@ -536,10 +599,10 @@ hcs_ts_rx_callback (session_t *ts)
       return hcs_echo_rx (ts, hs, control_len);
     }
 
-  if (msg.method_type != HTTP_REQ_GET)
+  if (msg.method_type != HTTP_REQ_GET && msg.method_type != HTTP_REQ_HEAD)
     {
       vec_free (args.buf);
-      http_add_header (&hs->resp_headers, HTTP_HEADER_ALLOW, http_token_lit ("GET"));
+      http_add_header (&hs->resp_headers, HTTP_HEADER_ALLOW, http_token_lit ("GET, HEAD, OPTIONS"));
       start_send_data (hs, HTTP_STATUS_METHOD_NOT_ALLOWED);
       goto done;
     }
@@ -565,6 +628,7 @@ hcs_ts_rx_callback (session_t *ts)
 
   args.hs_index = hs->session_index;
   args.thread_index = ts->thread_index;
+  args.head = msg.method_type == HTTP_REQ_HEAD;
 
   /* Wait for request EOF before executing a streamed CLI command. */
   if (hs->rx_streaming)
