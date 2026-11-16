@@ -312,8 +312,7 @@ http1_parse_non_origin_target (http_ctx_t *req, u8 *rx_buf)
   if ((rx_buf[req->target_path_offset] == '*') && (req->target_path_len == 1))
     {
       req->target_form = HTTP_TARGET_ASTERISK_FORM;
-      /* we do not support OPTIONS request */
-      return HTTP1_PARSE_ERROR;
+      return req->method == HTTP_REQ_OPTIONS ? HTTP1_PARSE_OK : HTTP1_PARSE_ERROR;
     }
 
   /* absolute-form =
@@ -438,6 +437,10 @@ http1_parse_request_line (http_ctx_t *hc, http_ctx_t *req, http_status_code_t *e
     [HTTP_REQ_PUT] = { http_token_lit ("PUT ") },
     [HTTP_REQ_CONNECT] = { http_token_lit ("CONNECT ") },
     [HTTP_REQ_CONNECT_UDP] = { http_token_lit ("CONNECT-UDP ") },
+    [HTTP_REQ_HEAD] = { http_token_lit ("HEAD ") },
+    [HTTP_REQ_OPTIONS] = { http_token_lit ("OPTIONS ") },
+    [HTTP_REQ_DELETE] = { http_token_lit ("DELETE ") },
+    [HTTP_REQ_PATCH] = { http_token_lit ("PATCH ") },
     [HTTP_REQ_UNKNOWN] = { http_token_lit ("PRI ") },
   };
   u32 available =
@@ -460,6 +463,7 @@ http1_parse_request_line (http_ctx_t *hc, http_ctx_t *req, http_status_code_t *e
       switch (req->http1_parse_state)
 	{
 	case HTTP1_PARSE_STATE_REQUEST_START:
+	  req->req_flags &= ~HTTP_REQ_F_HEAD;
 	  req->http1_parse_state = HTTP1_PARSE_STATE_REQUEST_METHOD;
 	  req->control_data_len = req->rx_buf_offset;
 	  if (c == '\r')
@@ -492,6 +496,15 @@ http1_parse_request_line (http_ctx_t *hc, http_ctx_t *req, http_status_code_t *e
 		case 'C':
 		  req->method = HTTP_REQ_CONNECT;
 		  break;
+		case 'H':
+		  req->method = HTTP_REQ_HEAD;
+		  break;
+		case 'O':
+		  req->method = HTTP_REQ_OPTIONS;
+		  break;
+		case 'D':
+		  req->method = HTTP_REQ_DELETE;
+		  break;
 		default:
 		  *ec =
 		    c >= 'A' && c <= 'Z' ? HTTP_STATUS_NOT_IMPLEMENTED : HTTP_STATUS_BAD_REQUEST;
@@ -504,6 +517,8 @@ http1_parse_request_line (http_ctx_t *hc, http_ctx_t *req, http_status_code_t *e
 		req->method = HTTP_REQ_POST;
 	      else if (c == 'R')
 		req->method = HTTP_REQ_UNKNOWN;
+	      else if (c == 'A')
+		req->method = HTTP_REQ_PATCH;
 	    }
 	  else if (pos == 7 && req->method == HTTP_REQ_CONNECT && c == '-' &&
 		   (hc->flags & HTTP_CONN_F_CONNECT_UDP_DRAFT03))
@@ -518,6 +533,8 @@ http1_parse_request_line (http_ctx_t *hc, http_ctx_t *req, http_status_code_t *e
 	  req->rx_buf_offset++;
 	  if (c != ' ')
 	    break;
+	  if (req->method == HTTP_REQ_HEAD)
+	    req->req_flags |= HTTP_REQ_F_HEAD;
 	  if (req->method == HTTP_REQ_UNKNOWN)
 	    {
 	      req->http1_parse_state = HTTP1_PARSE_STATE_REQUEST_HTTP2_PREFACE;
@@ -935,8 +952,18 @@ http1_identify_message_body (http_ctx_t *hc, http_ctx_t *req, u8 *rx_buf, http_s
   req->body_len = 0;
   req->body_offset = req->control_data_len;
 
+  if (!is_server && (req->req_flags & HTTP_REQ_F_HEAD) && req->content_len_header_index != ~0)
+    {
+      if (http_parse_content_length (req, rx_buf))
+	{
+	  *ec = HTTP_STATUS_BAD_REQUEST;
+	  return HTTP1_PARSE_ERROR;
+	}
+      req->body_len = 0;
+    }
+
   if (!is_server &&
-      ((req->req_flags & HTTP_REQ_F_IS_TUNNEL) ||
+      ((req->req_flags & (HTTP_REQ_F_IS_TUNNEL | HTTP_REQ_F_HEAD)) ||
        http_status_code_str[req->status_code][0] == '1' ||
        req->status_code == HTTP_STATUS_NO_CONTENT || req->status_code == HTTP_STATUS_NOT_MODIFIED))
     return HTTP1_PARSE_OK;
@@ -1166,6 +1193,16 @@ http1_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
   if (rv != HTTP1_PARSE_OK)
     goto error;
 
+  if (http_status_code_str[req->status_code][0] == '1' &&
+      req->status_code != HTTP_STATUS_SWITCHING_PROTOCOLS)
+    {
+      /* Consume only this response, preserving a buffered final response. */
+      http_io_ts_drain (hc, req->control_data_len - req->http1_rx_staged_len);
+      http1_parse_state_reset (req);
+      http_io_ts_after_read (hc, !http_io_ts_max_read (hc));
+      return http_io_ts_max_read (hc) ? HTTP_SM_CONTINUE : HTTP_SM_STOP;
+    }
+
   /* send at least "control data" which is necessary minimum,
    * if there is some space send also portion of body */
   if (http1_stage_to_length (hc, req, req->control_data_len))
@@ -1347,6 +1384,7 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
     req->req_flags & HTTP_REQ_F_RX_STREAMING ? HTTP_MSG_DATA_STREAMING : HTTP_MSG_DATA_INLINE;
   msg.data.len = req->control_data_len + body_sent;
   msg.data.scheme = req->scheme;
+  msg.data.target_form = req->target_form;
   msg.data.target_authority_offset = req->target_authority_offset;
   msg.data.target_authority_len = req->target_authority_len;
   msg.data.target_path_offset = req->target_path_offset;
@@ -1798,6 +1836,12 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
   http_io_as_drain (req, sizeof (msg));
 
   vec_reset_length (http_tx_buf (hc));
+  /* Streaming replies have no finite body to discard for HEAD. */
+  if ((req->req_flags & HTTP_REQ_F_HEAD) && msg.data.type == HTTP_MSG_DATA_STREAMING)
+    {
+      sc = HTTP_STATUS_INTERNAL_ERROR;
+      goto error;
+    }
   /*
    * Add "protocol layer" headers:
    * - current time
@@ -1850,7 +1894,9 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
     }
   else
     {
-      http_tx_buf (hc) = format (http_tx_buf (hc), content_len_template, msg.data.body_len);
+      /* A HEAD representation length, if known, is supplied in app headers. */
+      if (!(req->req_flags & HTTP_REQ_F_HEAD))
+	http_tx_buf (hc) = format (http_tx_buf (hc), content_len_template, msg.data.body_len);
       if (req->req_flags & HTTP_REQ_F_RX_STREAMING)
 	http_tx_buf (hc) = format (http_tx_buf (hc), "Connection: close\r\n");
     }
@@ -1918,6 +1964,10 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
     [HTTP_REQ_GET] = { http_token_lit ("GET ") },
     [HTTP_REQ_POST] = { http_token_lit ("POST ") },
     [HTTP_REQ_PUT] = { http_token_lit ("PUT ") },
+    [HTTP_REQ_HEAD] = { http_token_lit ("HEAD ") },
+    [HTTP_REQ_OPTIONS] = { http_token_lit ("OPTIONS ") },
+    [HTTP_REQ_DELETE] = { http_token_lit ("DELETE ") },
+    [HTTP_REQ_PATCH] = { http_token_lit ("PATCH ") },
   };
   http_msg_t msg;
   u8 *target;
@@ -1956,6 +2006,9 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
     }
 
   chunked = msg.data.type == HTTP_MSG_DATA_STREAMING;
+  req->req_flags &= ~HTTP_REQ_F_HEAD;
+  if (msg.method_type == HTTP_REQ_HEAD)
+    req->req_flags |= HTTP_REQ_F_HEAD;
   if (PREDICT_FALSE (msg.method_type == HTTP_REQ_PUT && !chunked && !msg.data.body_len))
     {
       clib_warning ("PUT request should include data");
@@ -2053,6 +2106,15 @@ http1_req_state_app_io_more_data (http_ctx_t *hc, http_ctx_t *req, transport_sen
   u8 finished = 0;
 
   ASSERT (http_buffer_bytes_left (hb) > 0);
+  if ((hc->flags & HTTP_CONN_F_IS_SERVER) && (req->req_flags & HTTP_REQ_F_HEAD))
+    {
+      if (http_req_tx_buffer_discard (req))
+	{
+	  http_req_state_change (req, HTTP_REQ_STATE_WAIT_TRANSPORT_METHOD);
+	  http1_response_tx_complete (hc, req);
+	}
+      return HTTP_SM_STOP;
+    }
   max_write = http_io_ts_max_write (hc, sp);
   if (max_write == 0)
     {

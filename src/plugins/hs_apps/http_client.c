@@ -873,6 +873,7 @@ hc_rx_callback (session_t *s)
       return -1;
     }
 
+read_reply:
   max_deq = svm_fifo_max_dequeue_cons (s->rx_fifo);
   if (PREDICT_FALSE (max_deq == 0))
     {
@@ -892,6 +893,13 @@ hc_rx_callback (session_t *s)
 	  vlib_process_signal_event_mt (wrk->vlib_main, hcm->cli_node_index,
 					HC_GENERIC_ERR, 0);
 	  return -1;
+	}
+
+      /* Interim replies do not complete a request or advance repeat mode. */
+      if (http_status_code_str[msg.code][0] == '1' && msg.code != HTTP_STATUS_SWITCHING_PROTOCOLS)
+	{
+	  svm_fifo_dequeue_drop (s->rx_fifo, msg.data.len);
+	  goto read_reply;
 	}
 
       HC_DBG ("hc_session_index[%u]%u %U content-length: %lu", s->thread_index, s->opaque,
@@ -1453,6 +1461,8 @@ hc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  new_header.value = value;
 	  vec_add1 (hcm->custom_header, new_header);
 	}
+      else if (unformat (line_input, "head"))
+	hcm->req_method = HTTP_REQ_HEAD;
       else if (unformat (line_input, "verbose"))
 	hcm->verbose = true;
       else if (unformat (line_input, "timeout %f", &hcm->timeout))
@@ -1645,7 +1655,7 @@ done:
 
 VLIB_CLI_COMMAND (hc_command, static) = {
   .path = "http client",
-  .short_help = "[post|put] uri http://<ip-addr>/<origin-form> "
+  .short_help = "[post|put|head] uri http://<ip-addr>/<origin-form> "
 		"[data <form-urlencoded> | file <file-path>] [use-ptr] "
 		"[save-to <filename>] [header <Key:Value>] [verbose] "
 		"[timeout <seconds> (default = 10)] [repeat <count> | duration <seconds>] "
