@@ -2841,6 +2841,61 @@ static int
 http_test_http_lookup_header_name (vlib_main_t *vm)
 {
   http_header_name_t name;
+  char actual[80], expected[80];
+
+  /* Exercise short loads, vector boundaries and unaligned input. Different
+   * padding also checks that bytes outside the token do not affect equality. */
+  for (u32 len = 0; len <= 64; len++)
+    for (u32 offset = 0; offset < 16; offset++)
+      {
+	clib_memset (actual, '!', sizeof (actual));
+	clib_memset (expected, '?', sizeof (expected));
+	for (u32 i = 0; i < len; i++)
+	  {
+	    actual[offset + i] = (i & 1 ? 'a' : 'A') + i % 26;
+	    expected[offset + i] = 'a' + i % 26;
+	  }
+	if (_http_memcmp_case (actual + offset, expected + offset, len))
+	  HTTP_TEST (0, "case-insensitive comparison len %u offset %u", len, offset);
+	for (u32 i = 0; i < len; i++)
+	  {
+	    expected[offset + i] ^= 1;
+	    if (!_http_memcmp_case (actual + offset, expected + offset, len))
+	      HTTP_TEST (0, "mismatch at byte %u len %u offset %u", i, len, offset);
+	    expected[offset + i] ^= 1;
+	  }
+      }
+
+  /* Folding must preserve punctuation and bytes outside ASCII A..Z. */
+  for (u32 a = 0; a < 256; a++)
+    for (u32 e = 0; e < 256; e++)
+      {
+	u8 folded = a >= 'A' && a <= 'Z' ? a + ('a' - 'A') : a;
+	actual[0] = a;
+	expected[0] = e;
+	if (_http_memcmp_case (actual, expected, 1) != (folded != e))
+	  HTTP_TEST (0, "case folding byte 0x%02x compared with 0x%02x", a, e);
+      }
+
+  for (u32 h = 0; h < ARRAY_LEN (http_header_names); h++)
+    {
+      uword len = http_header_names[h].buf.len;
+      HTTP_TEST (len <= sizeof (actual), "header name %u fits test buffer", h);
+      for (u32 upper = 0; upper < 2; upper++)
+	{
+	  for (u32 i = 0; i < len; i++)
+	    {
+	      u8 c = http_header_names[h].buf.base[i];
+	      if (upper && c >= 'a' && c <= 'z')
+		c -= 'a' - 'A';
+	      else if (!upper && c >= 'A' && c <= 'Z')
+		c += 'a' - 'A';
+	      actual[i] = c;
+	    }
+	  if (http_lookup_header_name (actual, len) != h)
+	    HTTP_TEST (0, "%s header name %u lookup", upper ? "uppercase" : "lowercase", h);
+	}
+    }
 
 #define _(sym, str_canonical, str_lower, hpack_index, flags)                                       \
   name = http_lookup_header_name (http_token_lit (str_canonical));                                 \
@@ -2918,16 +2973,16 @@ http_test_http_headers_rx_to_tx (vlib_main_t *vm)
   msg.data.headers_ctx = pointer_to_uword (headers);
   msg.data.headers_len = strlen (buf);
 
-  vec_validate (headers_buf, 255);
+  vec_validate (headers_buf, 511);
   http_init_headers_ctx (&headers_ctx, headers_buf, vec_len (headers_buf));
 
-  vec_validate (expected_buf, 255);
+  vec_validate (expected_buf, 511);
   http_init_headers_ctx (&expected_ctx, expected_buf, vec_len (expected_buf));
   http_add_header (&expected_ctx, HTTP_HEADER_CONTENT_TYPE,
 		   http_token_lit ("text/html; charset=utf-8"));
   http_add_header (&expected_ctx, HTTP_HEADER_STRICT_TRANSPORT_SECURITY,
 		   http_token_lit ("max-age=31536000"));
-  http_add_custom_header (&expected_ctx, http_token_lit ("Sandwich"), http_token_lit ("Eggs"));
+  http_add_custom_header (&expected_ctx, http_token_lit ("sandwich"), http_token_lit ("Eggs"));
   http_add_header (&expected_ctx, HTTP_HEADER_CONTENT_ENCODING, http_token_lit ("GZIP"));
 
   rv = http_headers_rx_to_tx (msg, (const u8 *) buf, &headers_ctx);
@@ -2936,6 +2991,153 @@ http_test_http_headers_rx_to_tx (vlib_main_t *vm)
 	     "rx headers converted to tx headers as: %U", format_hex_bytes, headers_buf,
 	     headers_ctx.tail_offset);
 
+  vec_free (headers);
+
+  const struct
+  {
+    http_token_t name, value;
+    u8 never_index;
+  } fields[] = {
+    { { http_token_lit ("conTent-tYpE") }, { http_token_lit ("text/html") }, 0 },
+    { { http_token_lit ("X-Private") }, { http_token_lit ("first private value") }, 0 },
+    { { http_token_lit ("x-pRIVATE") }, { http_token_lit ("second private value") }, 1 },
+    { { http_token_lit ("Content-Type") }, { http_token_lit ("text/plain") }, 1 },
+    { { http_token_lit ("CONTENT-ENCODING") }, { http_token_lit ("gzip") }, 0 },
+    { { http_token_lit ("X-XSS-Protection") }, { http_token_lit ("1; mode=block") }, 0 },
+    { { http_token_lit ("Close") }, { http_token_lit ("private") }, 0 },
+    { { http_token_lit ("X-Second") }, { http_token_lit ("also private") }, 0 },
+    { { http_token_lit ("X-Privat") }, { http_token_lit ("shorter name") }, 0 },
+    { { http_token_lit ("X-Private-Extra") }, { http_token_lit ("longer name") }, 0 },
+    { { http_token_lit ("X-Keep") }, { http_token_lit ("First") }, 0 },
+    { { http_token_lit ("x-kEeP") }, { http_token_lit ("sEcOnD, Third") }, 1 },
+    { { http_token_lit ("Set-Cookie") }, { http_token_lit ("a=1") }, 0 },
+    { { http_token_lit ("Set-Cookie") }, { http_token_lit ("b=2") }, 1 },
+    { { http_token_lit ("X-Request-Id") }, { http_token_lit ("AbC123-XyZ") }, 0 },
+    { { http_token_lit ("x-request-id") }, { http_token_lit ("Second-ID") }, 1 },
+    { { http_token_lit ("X-MTP-PROBE") }, { http_token_lit ("MiXeD-Value") }, 1 },
+    { { http_token_lit ("X^Tag_9-With-A-Long-Custom-Name") },
+      { http_token_lit ("Keep^Value_9") },
+      0 },
+    { { http_token_lit ("X-Name-123456789") }, { http_token_lit ("Sixteen-Bytes") }, 0 },
+    { { http_token_lit ("X-Name-1234567890") }, { http_token_lit ("Seventeen-Bytes") }, 1 },
+    { { http_token_lit ("Keep-Alive") }, { http_token_lit ("timeout=5") }, 0 },
+    { { http_token_lit ("Transfer-Encoding") }, { http_token_lit ("chunked") }, 0 },
+    { { http_token_lit ("Host") }, { http_token_lit ("example.com") }, 0 },
+  };
+  const struct
+  {
+    const char *description;
+    http_token_t connection[3];
+  } cases[] = {
+    { "comma-separated options",
+      { { http_token_lit ("keep-alive, X-Private, Content-Type, X-Second, Content-Encoding, "
+			  "X-XSS-Protection, close") },
+	{ http_token_lit ("") },
+	{ http_token_lit (" \t ") } } },
+    { "whitespace and case-insensitive options",
+      { { http_token_lit (" \tKeEp-AlIvE\t, \tx-pRIVATE \t,\tCONTENT-type, x-SECOND\t, "
+			  "CoNtEnT-EnCoDiNg \t, X-Xss-Protection, CLOSE") },
+	{ http_token_lit ("") },
+	{ http_token_lit ("") } } },
+    { "repeated Connection fields",
+      { { http_token_lit ("keep-alive, X-Private") },
+	{ http_token_lit ("\tcontent-TYPE, X-Second\t") },
+	{ http_token_lit ("CONTENT-encoding, X-XSS-Protection, close") } } },
+    { "empty list elements",
+      { { http_token_lit (", ,\t,X-Private,, Content-Type, ") },
+	{ http_token_lit (", X-Second, ,") },
+	{ http_token_lit (" ,Content-Encoding, X-XSS-Protection, close, \t") } } },
+    { "names and whitespace split across vector chunks",
+      { { http_token_lit ("               X-Private, Content-Type") },
+	{ http_token_lit ("    X-Second                 ,CONTENT-encoding, X-XSS-Protection, close") },
+	{ http_token_lit ("                                \t                                ") } } },
+    { "commas at vector boundaries",
+      { { http_token_lit ("       X-Private,Content-Type") },
+	{ http_token_lit ("       X-Second,Content-Encoding") },
+	{ http_token_lit ("               X-XSS-Protection,close,   ") } } },
+    { "embedded whitespace does not split names",
+      { { http_token_lit ("X-Keep \t X-Private, keep-alive, X-Private") },
+	{ http_token_lit ("Content-Type, X-Second") },
+	{ http_token_lit ("Content-Encoding, X-XSS-Protection, close") } } },
+    { "chunks containing only empty elements",
+      { { http_token_lit (" ,\t, , ,\t, , ,\t, , ,\t, , ,\t, , ,\t, , ,\t, , ,\t, ") },
+	{ http_token_lit ("X-Private, Content-Type, X-Second") },
+	{ http_token_lit ("Content-Encoding, X-XSS-Protection, close") } } },
+  };
+  const char *connection_names[] = { "cOnNeCtIoN", "CONNECTION", "connection" };
+  u8 *rx_buf = 0, *rx_copy = 0;
+
+  for (u32 i = 0; i < ARRAY_LEN (fields); i++)
+    {
+      vec_add2 (headers, field_line, 1);
+      *field_line = (http_field_line_t){
+	.name_offset = vec_len (rx_buf),
+	.name_len = fields[i].name.len,
+	.value_offset = vec_len (rx_buf) + fields[i].name.len,
+	.value_len = fields[i].value.len,
+	.flags = fields[i].never_index ? HTTP_FIELD_LINE_F_NEVER_INDEX : 0,
+      };
+      vec_add (rx_buf, fields[i].name.base, fields[i].name.len);
+      vec_add (rx_buf, fields[i].value.base, fields[i].value.len);
+    }
+
+  http_init_headers_ctx (&expected_ctx, expected_buf, vec_len (expected_buf));
+  http_add_custom_header (&expected_ctx, http_token_lit ("x-privat"),
+			  http_token_lit ("shorter name"));
+  http_add_custom_header (&expected_ctx, http_token_lit ("x-private-extra"),
+			  http_token_lit ("longer name"));
+  http_add_custom_header (&expected_ctx, http_token_lit ("x-keep"), http_token_lit ("First"));
+  http_add_custom_header2 (&expected_ctx, http_token_lit ("x-keep"),
+			   http_token_lit ("sEcOnD, Third"), 1);
+  http_add_header (&expected_ctx, HTTP_HEADER_SET_COOKIE, http_token_lit ("a=1"));
+  http_add_header2 (&expected_ctx, HTTP_HEADER_SET_COOKIE, http_token_lit ("b=2"), 1);
+  http_add_custom_header (&expected_ctx, http_token_lit ("x-request-id"),
+			  http_token_lit ("AbC123-XyZ"));
+  http_add_custom_header2 (&expected_ctx, http_token_lit ("x-request-id"),
+			   http_token_lit ("Second-ID"), 1);
+  http_add_custom_header2 (&expected_ctx, http_token_lit ("x-mtp-probe"),
+			   http_token_lit ("MiXeD-Value"), 1);
+  http_add_custom_header (&expected_ctx, http_token_lit ("x^tag_9-with-a-long-custom-name"),
+			  http_token_lit ("Keep^Value_9"));
+  http_add_custom_header (&expected_ctx, http_token_lit ("x-name-123456789"),
+			  http_token_lit ("Sixteen-Bytes"));
+  http_add_custom_header2 (&expected_ctx, http_token_lit ("x-name-1234567890"),
+			   http_token_lit ("Seventeen-Bytes"), 1);
+
+  u32 fields_len = vec_len (headers), rx_len = vec_len (rx_buf);
+  for (u32 i = 0; i < ARRAY_LEN (cases); i++)
+    {
+      vec_set_len (headers, fields_len);
+      vec_set_len (rx_buf, rx_len);
+      for (u32 j = 0; j < ARRAY_LEN (connection_names); j++)
+	{
+	  vec_add2 (headers, field_line, 1);
+	  *field_line = (http_field_line_t){
+	    .name_offset = vec_len (rx_buf),
+	    .name_len = strlen (connection_names[j]),
+	    .value_offset = vec_len (rx_buf) + strlen (connection_names[j]),
+	    .value_len = cases[i].connection[j].len,
+	  };
+	  vec_add (rx_buf, connection_names[j], strlen (connection_names[j]));
+	  vec_add (rx_buf, cases[i].connection[j].base, cases[i].connection[j].len);
+	}
+
+      http_init_headers_ctx (&headers_ctx, headers_buf, vec_len (headers_buf));
+      msg.data.headers_ctx = pointer_to_uword (headers);
+      msg.data.headers_len = vec_len (rx_buf);
+      rx_copy = vec_dup (rx_buf);
+      rv = http_headers_rx_to_tx (msg, rx_buf, &headers_ctx);
+      HTTP_TEST ((rv == 0 && headers_ctx.tail_offset == expected_ctx.tail_offset &&
+		  !memcmp (headers_buf, expected_buf, headers_ctx.tail_offset)),
+		 "Connection filtering with %s preserves unrelated repeated values and flags",
+		 cases[i].description);
+      HTTP_TEST (!memcmp (rx_buf, rx_copy, vec_len (rx_buf)),
+		 "custom name normalization preserves RX bytes with %s", cases[i].description);
+      vec_free (rx_copy);
+    }
+
+  vec_free (rx_buf);
+  vec_free (headers);
   vec_free (headers_buf);
   vec_free (expected_buf);
   return 0;
