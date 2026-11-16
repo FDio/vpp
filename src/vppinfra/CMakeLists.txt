@@ -70,6 +70,9 @@ set_source_files_properties( cJSON.c PROPERTIES
 set(VPPINFRA_SRCS
   bitmap.c
   bihash_all_vector.c
+  cli.c
+  cli_output.c
+  cli_types.c
   cpu.c
   devicetree.c
   dlmalloc.c
@@ -154,6 +157,7 @@ set(VPPINFRA_HEADERS
   cJSON.h
   clib_error.h
   clib.h
+  cli.h
   cpu.h
   crc32.h
   crypto/sha2.h
@@ -290,6 +294,7 @@ if(VPP_BUILD_VPPINFRA_TESTS)
     hash
     heap
     interrupt
+    cli
     json
     longjmp
     macros
