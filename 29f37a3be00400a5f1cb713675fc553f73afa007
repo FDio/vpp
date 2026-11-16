@@ -16,6 +16,24 @@
       "message": "Yet another filelock implementation 😊\n\nhttps://gerrit.fd.io/r/c/vpp/+/47690\nhttps://gerrit.fd.io/r/c/vpp/+/47702\n\nAritra\u0027s change has been reviewed and it\u0027s a solid base for the filelock introduction. It looks like you and Maxime both introduce bounding for the subprocess. I\u0027d rebase on top of Aritra\u0027s change and maybe you could sync so that only one change is in flight since you\u0027re both tackling the same issue?",
       "revId": "29f37a3be00400a5f1cb713675fc553f73afa007",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "db0e8fb2_f8bf6a77",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-16T13:41:11Z",
+      "side": 1,
+      "message": "Coordination complete: 47690 merged the FileLock base, and Maxime confirmed that 47702 PS2 is rebased on it and retains bounded network-helper commands (Verified+1). I checked its diff. Retiring this duplicate; the remaining subprocess-timeout work continues in 47702, which is not merged yet.",
+      "parentUuid": "c734c09d_0827a773",
+      "revId": "29f37a3be00400a5f1cb713675fc553f73afa007",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
