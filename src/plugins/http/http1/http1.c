@@ -312,8 +312,7 @@ http1_parse_non_origin_target (http_ctx_t *req, u8 *rx_buf)
   if ((rx_buf[req->target_path_offset] == '*') && (req->target_path_len == 1))
     {
       req->target_form = HTTP_TARGET_ASTERISK_FORM;
-      /* we do not support OPTIONS request */
-      return HTTP1_PARSE_ERROR;
+      return req->method == HTTP_REQ_OPTIONS ? HTTP1_PARSE_OK : HTTP1_PARSE_ERROR;
     }
 
   /* absolute-form =
@@ -438,6 +437,10 @@ http1_parse_request_line (http_ctx_t *hc, http_ctx_t *req, http_status_code_t *e
     [HTTP_REQ_PUT] = { http_token_lit ("PUT ") },
     [HTTP_REQ_CONNECT] = { http_token_lit ("CONNECT ") },
     [HTTP_REQ_CONNECT_UDP] = { http_token_lit ("CONNECT-UDP ") },
+    [HTTP_REQ_HEAD] = { http_token_lit ("HEAD ") },
+    [HTTP_REQ_OPTIONS] = { http_token_lit ("OPTIONS ") },
+    [HTTP_REQ_DELETE] = { http_token_lit ("DELETE ") },
+    [HTTP_REQ_PATCH] = { http_token_lit ("PATCH ") },
     [HTTP_REQ_UNKNOWN] = { http_token_lit ("PRI ") },
   };
   u32 available =
@@ -492,6 +495,15 @@ http1_parse_request_line (http_ctx_t *hc, http_ctx_t *req, http_status_code_t *e
 		case 'C':
 		  req->method = HTTP_REQ_CONNECT;
 		  break;
+		case 'H':
+		  req->method = HTTP_REQ_HEAD;
+		  break;
+		case 'O':
+		  req->method = HTTP_REQ_OPTIONS;
+		  break;
+		case 'D':
+		  req->method = HTTP_REQ_DELETE;
+		  break;
 		default:
 		  *ec =
 		    c >= 'A' && c <= 'Z' ? HTTP_STATUS_NOT_IMPLEMENTED : HTTP_STATUS_BAD_REQUEST;
@@ -504,6 +516,8 @@ http1_parse_request_line (http_ctx_t *hc, http_ctx_t *req, http_status_code_t *e
 		req->method = HTTP_REQ_POST;
 	      else if (c == 'R')
 		req->method = HTTP_REQ_UNKNOWN;
+	      else if (c == 'A')
+		req->method = HTTP_REQ_PATCH;
 	    }
 	  else if (pos == 7 && req->method == HTTP_REQ_CONNECT && c == '-' &&
 		   (hc->flags & HTTP_CONN_F_CONNECT_UDP_DRAFT03))
@@ -935,11 +949,21 @@ http1_identify_message_body (http_ctx_t *hc, http_ctx_t *req, u8 *rx_buf, http_s
   req->body_len = 0;
   req->body_offset = req->control_data_len;
 
-  if (!is_server &&
-      ((req->req_flags & HTTP_REQ_F_IS_TUNNEL) ||
-       http_status_code_str[req->status_code][0] == '1' ||
-       req->status_code == HTTP_STATUS_NO_CONTENT || req->status_code == HTTP_STATUS_NOT_MODIFIED))
-    return HTTP1_PARSE_OK;
+  if (!is_server)
+    {
+      if (req->method == HTTP_REQ_HEAD && req->content_len_header_index != ~0 &&
+	  http_parse_content_length (req, rx_buf))
+	{
+	  *ec = HTTP_STATUS_BAD_REQUEST;
+	  return HTTP1_PARSE_ERROR;
+	}
+
+      if ((req->req_flags & HTTP_REQ_F_IS_TUNNEL) || req->method == HTTP_REQ_HEAD ||
+	  http_status_code_str[req->status_code][0] == '1' ||
+	  req->status_code == HTTP_STATUS_NO_CONTENT ||
+	  req->status_code == HTTP_STATUS_NOT_MODIFIED)
+	return HTTP1_PARSE_OK;
+    }
 
   if (req->headers_len == 0)
     {
@@ -1166,6 +1190,16 @@ http1_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
   if (rv != HTTP1_PARSE_OK)
     goto error;
 
+  if (http_status_code_str[req->status_code][0] == '1' &&
+      req->status_code != HTTP_STATUS_SWITCHING_PROTOCOLS)
+    {
+      /* Consume only this response, preserving a buffered final response. */
+      http_io_ts_drain (hc, req->control_data_len - req->http1_rx_staged_len);
+      http1_parse_state_reset (req);
+      http_io_ts_after_read (hc, !http_io_ts_max_read (hc));
+      return http_io_ts_max_read (hc) ? HTTP_SM_CONTINUE : HTTP_SM_STOP;
+    }
+
   /* send at least "control data" which is necessary minimum,
    * if there is some space send also portion of body */
   if (http1_stage_to_length (hc, req, req->control_data_len))
@@ -1173,7 +1207,8 @@ http1_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
       clib_warning ("not enough room for control data in app's rx fifo");
       goto error;
     }
-  body_available = clib_min (req->body_len, http_io_ts_max_read (hc));
+  body_available =
+    req->method == HTTP_REQ_HEAD ? 0 : clib_min (req->body_len, http_io_ts_max_read (hc));
   body_sent = clib_min (body_available, http1_rx_max_write (req));
   if (http1_stage_rx_data (hc, req, body_sent) != body_sent)
     goto error;
@@ -1200,7 +1235,7 @@ http1_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
       return HTTP_SM_CONTINUE;
     }
 
-  req->to_recv = req->body_len - body_sent;
+  req->to_recv = req->method == HTTP_REQ_HEAD ? 0 : req->body_len - body_sent;
   if (req->to_recv == 0)
     {
       /* all sent, we are done */
@@ -1347,6 +1382,7 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
     req->req_flags & HTTP_REQ_F_RX_STREAMING ? HTTP_MSG_DATA_STREAMING : HTTP_MSG_DATA_INLINE;
   msg.data.len = req->control_data_len + body_sent;
   msg.data.scheme = req->scheme;
+  msg.data.target_form = req->target_form;
   msg.data.target_authority_offset = req->target_authority_offset;
   msg.data.target_authority_len = req->target_authority_len;
   msg.data.target_path_offset = req->target_path_offset;
@@ -1845,8 +1881,14 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
 	  sc = HTTP_STATUS_INTERNAL_ERROR;
 	  goto error;
 	}
-      req->req_flags |= HTTP_REQ_F_TX_STREAMING;
-      http_tx_buf (hc) = format (http_tx_buf (hc), "%sConnection: close\r\n", chunked_header.base);
+      if (req->method != HTTP_REQ_HEAD)
+	{
+	  req->req_flags |= HTTP_REQ_F_TX_STREAMING;
+	  http_tx_buf (hc) =
+	    format (http_tx_buf (hc), "%sConnection: close\r\n", chunked_header.base);
+	}
+      else if (req->req_flags & HTTP_REQ_F_RX_STREAMING)
+	http_tx_buf (hc) = format (http_tx_buf (hc), "Connection: close\r\n");
     }
   else
     {
@@ -1875,6 +1917,10 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
   /* if this assert adjust formula in the beginning where we try to provision ts fifo chunks */
   ASSERT ((HTTP1_MESSAGE_OVERHEAD + (msg.data.headers_len << 1)) > vec_len (http_tx_buf (hc)));
   http_io_ts_write (hc, http_tx_buf (hc), vec_len (http_tx_buf (hc)), sp, 0);
+
+  /* HEAD body_len describes the representation, not bytes in the app FIFO. */
+  if (req->method == HTTP_REQ_HEAD)
+    msg.data.body_len = 0;
 
   if (req->req_flags & HTTP_REQ_F_TX_STREAMING)
     {
@@ -1918,6 +1964,10 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
     [HTTP_REQ_GET] = { http_token_lit ("GET ") },
     [HTTP_REQ_POST] = { http_token_lit ("POST ") },
     [HTTP_REQ_PUT] = { http_token_lit ("PUT ") },
+    [HTTP_REQ_HEAD] = { http_token_lit ("HEAD ") },
+    [HTTP_REQ_OPTIONS] = { http_token_lit ("OPTIONS ") },
+    [HTTP_REQ_DELETE] = { http_token_lit ("DELETE ") },
+    [HTTP_REQ_PATCH] = { http_token_lit ("PATCH ") },
   };
   http_msg_t msg;
   u8 *target;
@@ -1956,6 +2006,7 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
     }
 
   chunked = msg.data.type == HTTP_MSG_DATA_STREAMING;
+  req->method = msg.method_type;
   if (PREDICT_FALSE (msg.method_type == HTTP_REQ_PUT && !chunked && !msg.data.body_len))
     {
       clib_warning ("PUT request should include data");
