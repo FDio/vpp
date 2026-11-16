@@ -77,6 +77,10 @@ typedef struct
   _ (PUT, "PUT")                                                                                   \
   _ (CONNECT, "CONNECT")                                                                           \
   _ (CONNECT_UDP, "CONNECT-UDP")                                                                   \
+  _ (HEAD, "HEAD")                                                                                 \
+  _ (OPTIONS, "OPTIONS")                                                                           \
+  _ (DELETE, "DELETE")                                                                             \
+  _ (PATCH, "PATCH")                                                                               \
   _ (UNKNOWN, "UNKNOWN") /* for internal use */
 
 typedef enum http_req_method_ : u8
@@ -425,11 +429,20 @@ typedef enum http_uri_type_
   HTTP_URI_TYPE_ABSOLUTE,
 } http_uri_type_t;
 
+typedef enum http_target_form_ : u8
+{
+  HTTP_TARGET_ORIGIN_FORM,
+  HTTP_TARGET_ABSOLUTE_FORM,
+  HTTP_TARGET_AUTHORITY_FORM,
+  HTTP_TARGET_ASTERISK_FORM
+} http_target_form_t;
+
 typedef struct http_msg_data_
 {
   http_msg_data_type_t type;
   u64 len;
   http_url_scheme_t scheme;
+  http_target_form_t target_form;
   u32 target_authority_offset;
   u32 target_authority_len;
   u32 target_path_offset;

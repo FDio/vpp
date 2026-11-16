@@ -1114,7 +1114,6 @@ http_sched_dispatch_early_response (http_ctx_t *req, http_ctx_t *hc, u8 *n_emiss
 
   vec_reset_length (http_tx_buf (hc));
   date = format (0, "%U", format_http_time_now, hc);
-  control_data.content_len = HPACK_ENCODER_SKIP_CONTENT_LEN;
   control_data.server_name = hc->app_name;
   control_data.server_name_len = vec_len (hc->app_name);
   control_data.date = date;
@@ -1268,6 +1267,7 @@ http2_sched_dispatch_resp_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissi
 {
   http_worker_t *wrk = http_worker_get (hc->c_thread_index);
   http_msg_t msg;
+  http_reply_framing_t framing;
   u8 *date, *app_headers = 0;
   u8 fh[HTTP2_FRAME_HEADER_SIZE];
   hpack_response_control_data_t control_data = {};
@@ -1280,8 +1280,6 @@ http2_sched_dispatch_resp_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissi
   vec_reset_length (http_tx_buf (hc));
   date = format (0, "%U", format_http_time_now, hc);
 
-  control_data.content_len =
-    msg.data.type == HTTP_MSG_DATA_STREAMING ? HPACK_ENCODER_SKIP_CONTENT_LEN : msg.data.body_len;
   control_data.server_name = hc->app_name;
   control_data.server_name_len = vec_len (hc->app_name);
   control_data.date = date;
@@ -1298,7 +1296,6 @@ http2_sched_dispatch_resp_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissi
 	case HTTP_STATUS_CREATED:
 	case HTTP_STATUS_ACCEPTED:
 	  /* tunnel established if 2xx (Successful) response to CONNECT */
-	  control_data.content_len = HPACK_ENCODER_SKIP_CONTENT_LEN;
 	  break;
 	default:
 	  /* tunnel not established */
@@ -1307,15 +1304,15 @@ http2_sched_dispatch_resp_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissi
 	}
     }
   control_data.sc = msg.code;
-  if (msg.data.type == HTTP_MSG_DATA_STREAMING &&
-      ((req->req_flags & HTTP_REQ_F_IS_TUNNEL) || http_status_code_str[msg.code][0] == '1' ||
-       msg.code == HTTP_STATUS_NO_CONTENT || msg.code == HTTP_STATUS_NOT_MODIFIED))
+  if (http_reply_get_framing (req, &msg, &framing))
     {
       *next_ri = clib_llist_next_index (req, stream_sched_list);
       vec_free (date);
       http2_stream_error (hc, req, HTTP2_ERROR_INTERNAL_ERROR);
       return 0;
     }
+  control_data.content_len = msg.data.body_len;
+  control_data.send_content_length = framing.send_content_length;
   control_data.alt_svc = hc->hc_h3_alt_svc_port;
   control_data.alt_svc_len = vec_len (hc->hc_h3_alt_svc_port);
 
@@ -1336,15 +1333,13 @@ http2_sched_dispatch_resp_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissi
 
   stream_id = req->stream_id;
 
-  /* END_STREAM flag need to be set in HEADERS frame */
-  if (msg.data.body_len || msg.data.type == HTTP_MSG_DATA_STREAMING)
+  if (framing.has_body)
     {
       ASSERT (!(req->req_flags & HTTP_REQ_F_IS_TUNNEL));
       http_req_tx_buffer_init (req, &msg);
-      req->dispatch_data_cb = msg.data.type == HTTP_MSG_DATA_STREAMING ?
-				http2_sched_dispatch_streaming_data :
-				http2_sched_dispatch_data;
-      if (msg.data.type == HTTP_MSG_DATA_STREAMING)
+      req->dispatch_data_cb =
+	framing.streaming ? http2_sched_dispatch_streaming_data : http2_sched_dispatch_data;
+      if (framing.streaming)
 	http_req_state_change (req, HTTP_REQ_STATE_APP_IO_MORE_STREAMING_DATA);
     }
   else
@@ -1374,7 +1369,7 @@ http2_sched_dispatch_resp_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissi
       *next_ri = clib_llist_next_index (req, stream_sched_list);
       clib_llist_remove (wrk->ctx_pool, stream_sched_list, req);
       flags |= HTTP2_FRAME_FLAG_END_HEADERS;
-      if (msg.data.body_len || msg.data.type == HTTP_MSG_DATA_STREAMING)
+      if (framing.has_body)
 	{
 	  /* start sending the actual data */
 	  HTTP_DBG (1, "adding to data queue req_index %x",
@@ -1442,7 +1437,8 @@ http2_sched_dispatch_req_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissio
   n_deq = sizeof (msg);
   vec_reset_length (http_tx_buf (hc));
 
-  control_data.method = msg.method_type;
+  req->method = msg.method_type;
+  control_data.method = req->method;
   control_data.parsed_bitmap = HPACK_PSEUDO_HEADER_AUTHORITY_PARSED;
   if (msg.method_type == HTTP_REQ_CONNECT || msg.method_type == HTTP_REQ_CONNECT_UDP)
     {
@@ -1771,7 +1767,6 @@ http2_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
 {
   hpack_response_control_data_t control_data = {};
   http_msg_t msg;
-  int rv;
   http_worker_t *wrk = http_worker_get (hc->c_thread_index);
   http_req_state_t new_state = HTTP_REQ_STATE_WAIT_APP_METHOD;
 
@@ -1848,14 +1843,25 @@ http2_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
     {
       /* failed CONNECT is ordinary HTTP response */
       req->req_flags &= ~HTTP_REQ_F_IS_TUNNEL;
-      if (req->content_len_header_index != ~0)
+      if (req->content_len_header_index != ~0 && http_parse_content_length (req, wrk->header_list))
 	{
-	  rv = http_parse_content_length (req, wrk->header_list);
-	  if (rv)
+	  http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR);
+	  return HTTP_SM_STOP;
+	}
+      if (req->method == HTTP_REQ_HEAD)
+	{
+	  req->to_recv = 0;
+	  if (http_stage_bodyless_reply (req, wrk->header_list))
 	    {
-	      http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR);
+	      http2_stream_error (hc, req, HTTP2_ERROR_INTERNAL_ERROR);
 	      return HTTP_SM_STOP;
 	    }
+	  req->req_flags |= HTTP_REQ_F_RX_HEADERS_RECEIVED;
+	  http_req_state_change (req, HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA);
+	  /* Share DATA completion and pending-upload handling for HEADERS END_STREAM. */
+	  req->payload = 0;
+	  req->payload_len = 0;
+	  return req->req_flags & HTTP_REQ_F_PEER_CLOSED ? HTTP_SM_CONTINUE : HTTP_SM_STOP;
 	}
       if (req->status_code == HTTP_STATUS_NO_CONTENT ||
 	  req->status_code == HTTP_STATUS_NOT_MODIFIED)
@@ -1960,6 +1966,7 @@ http2_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
       http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR);
       return HTTP_SM_STOP;
     }
+  req->method = control_data.method;
   if (req->content_len_header_index != ~0)
     {
       if (http_parse_content_length (req, wrk->header_list))
@@ -2058,9 +2065,11 @@ http2_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
     {
       req->target_path_len = control_data.path_len;
       req->target_path_offset = control_data.path - wrk->header_list;
-      /* drop leading slash */
-      req->target_path_offset++;
-      req->target_path_len--;
+      if (control_data.path[0] == '/')
+	{
+	  req->target_path_offset++;
+	  req->target_path_len--;
+	}
       http_identify_optional_query (req, wrk->header_list);
     }
   else
@@ -2070,11 +2079,16 @@ http2_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
     }
 
   msg.type = HTTP_MSG_REQUEST;
-  msg.method_type = control_data.method;
+  msg.method_type = req->method;
   msg.data.type =
     req->req_flags & HTTP_REQ_F_RX_STREAMING ? HTTP_MSG_DATA_STREAMING : HTTP_MSG_DATA_INLINE;
   msg.data.len = req->control_data_len;
   msg.data.scheme = control_data.scheme;
+  msg.data.target_form =
+    !(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PATH_PARSED) ?
+      HTTP_TARGET_AUTHORITY_FORM :
+      (control_data.path_len == 1 && control_data.path[0] == '*' ? HTTP_TARGET_ASTERISK_FORM :
+								   HTTP_TARGET_ORIGIN_FORM);
   msg.data.target_authority_offset = control_data.authority - wrk->header_list;
   msg.data.target_authority_len = control_data.authority_len;
   msg.data.target_path_offset = req->target_path_offset;
@@ -2149,6 +2163,9 @@ http2_req_state_transport_io_more_data (http_ctx_t *hc, http_ctx_t *req,
       http2_stream_error (hc, req, HTTP2_ERROR_PROTOCOL_ERROR);
       return HTTP_SM_STOP;
     }
+  if (!(hc->flags & HTTP_CONN_F_IS_SERVER) && req->method == HTTP_REQ_HEAD &&
+      !(req->req_flags & HTTP_REQ_F_PEER_CLOSED))
+    return HTTP_SM_STOP;
   req->to_recv -= req->payload_len;
   if ((req->req_flags & HTTP_REQ_F_PEER_CLOSED) && req->to_recv != 0)
     {
@@ -2181,6 +2198,14 @@ http2_req_state_transport_io_more_data (http_ctx_t *hc, http_ctx_t *req,
 	    http2_conn_reset_req (hc, req, hc->c_thread_index);
 	  http_io_as_del_want_read_ntf (req);
 	}
+    }
+  if (req->req_flags & HTTP_REQ_F_RX_REPLY_PENDING)
+    {
+      if (http_publish_bodyless_reply (req))
+	http2_stream_error (hc, req, HTTP2_ERROR_INTERNAL_ERROR);
+      else
+	http_app_worker_rx_notify (req);
+      return HTTP_SM_STOP;
     }
   if (req->payload_len)
     {

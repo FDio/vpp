@@ -379,10 +379,22 @@ hpack_parse_method (u8 *value, u32 value_len)
     case 4:
       if (!memcmp (value, "POST", 4))
 	return HTTP_REQ_POST;
+      if (!memcmp (value, "HEAD", 4))
+	return HTTP_REQ_HEAD;
+      break;
+    case 5:
+      if (!memcmp (value, "PATCH", 5))
+	return HTTP_REQ_PATCH;
+      break;
+    case 6:
+      if (!memcmp (value, "DELETE", 6))
+	return HTTP_REQ_DELETE;
       break;
     case 7:
       if (!memcmp (value, "CONNECT", 7))
 	return HTTP_REQ_CONNECT;
+      if (!memcmp (value, "OPTIONS", 7))
+	return HTTP_REQ_OPTIONS;
       break;
     case 11:
       if (!memcmp (value, "CONNECT-UDP", 11))
