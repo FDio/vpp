@@ -1548,6 +1548,14 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((sb->sacked_bytes == 0), "empty scoreboard has no sacked bytes %u", sb->sacked_bytes);
   TCP_TEST ((sb->lost_bytes == 0), "empty scoreboard has no lost bytes %u", sb->lost_bytes);
 
+  /* Nor may a stale high_sacked that reads above the ACK, e.g., one never set
+   * on a connection whose snd_una is more than half the sequence space away */
+  sb->high_sacked = 0;
+  tc->snd_una = 3U << 30;
+  tcp_sack_recompute_loss (tc);
+  TCP_TEST ((sb->sacked_bytes == 0), "stale high_sacked above the ack is not sacked %u",
+	    sb->sacked_bytes);
+
   sb->flags |= TCP_DSACK_RXT_SEEN;
   tcp_scoreboard_set_reneging (sb, 1, 0);
   scoreboard_clear (sb);
