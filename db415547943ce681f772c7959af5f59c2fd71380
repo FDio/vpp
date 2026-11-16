@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "216e4c23_ff61f16f",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-16T16:32:51Z",
+      "side": 1,
+      "message": "The two prose paragraphs are 254 and 212 characters on single lines. Could we wrap both paragraphs at 78 columns?",
+      "tag": "prview:23051633734b8b591393af9184b301ec:db415547943ce681f772c7959af5f59c2fd71380",
+      "revId": "db415547943ce681f772c7959af5f59c2fd71380",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
