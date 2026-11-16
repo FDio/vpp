@@ -6,6 +6,7 @@
 /* cli.c: command line interface */
 
 #include <vlib/vlib.h>
+#include <vlib/cli_decl.h>
 #include <vlib/stats/stats.h>
 #include <vlib/file.h>
 #include <vlib/unix/unix.h>
@@ -255,8 +256,13 @@ vlib_cli_cmp_strings (void *a1, void *a2)
   return vec_cmp (c1, c2);
 }
 
-u8 **
-vlib_cli_get_possible_completions (u8 * str)
+/* Walks the command tree following the words of str. Returns the names
+ * which complete the last word (not owned). If a v2 command is reached and
+ * its name is terminated by white space, *leaf is set to it and *rest to the
+ * remaining text (owned), the caller completes the arguments. parent is set
+ * to the command whose sub-commands are returned. */
+static u8 **
+vlib_cli_complete_path (u8 *str, vlib_cli_command_t **parent, vlib_cli_command_t **leaf, u8 **rest)
 {
   vlib_cli_command_t *c;
   vlib_cli_sub_command_t *sc;
@@ -268,6 +274,9 @@ vlib_cli_get_possible_completions (u8 * str)
   unformat_input_t input;
   unformat_init_vector (&input, vec_dup (str));
   c = vec_elt_at_index (vcm->commands, 0);
+  *parent = c;
+  *leaf = 0;
+  *rest = 0;
 
   /* remove trailing whitespace, except for one of them */
   while (vec_len (input.buffer) >= 2 &&
@@ -304,13 +313,29 @@ vlib_cli_get_possible_completions (u8 * str)
       /* unique match: try to step one subcommand level further */
       if (is_unique)
 	{
+	  index = clib_bitmap_first_set (match_bitmap);
+
+	  /* v2 command followed by white space: complete its arguments */
+	  if (input.index > 0 && isspace (input.buffer[input.index - 1]))
+	    {
+	      vlib_cli_command_t *next = get_sub_command (vcm, c, index);
+
+	      if (next->handler)
+		{
+		  u32 n = vec_len (input.buffer) - 1 - input.index;
+
+		  *leaf = next;
+		  vec_add (*rest, input.buffer + input.index, n);
+		  goto done;
+		}
+	    }
+
 	  /* stop if no more input */
 	  if (input.index >= vec_len (input.buffer) - 1)
 	    {
 	      break;
 	    }
 
-	  index = clib_bitmap_first_set (match_bitmap);
 	  c = get_sub_command (vcm, c, index);
 	  clib_bitmap_free (match_bitmap);
 	  continue;
@@ -338,6 +363,7 @@ vlib_cli_get_possible_completions (u8 * str)
   }
 
 done:
+  *parent = c;
   clib_bitmap_free (match_bitmap);
   unformat_free (&input);
 
@@ -346,12 +372,85 @@ done:
   return result;
 }
 
+u8 **
+vlib_cli_get_possible_completions (u8 *str)
+{
+  vlib_cli_command_t *parent, *leaf;
+  u8 **result, *rest;
+
+  result = vlib_cli_complete_path (str, &parent, &leaf, &rest);
+  vec_free (rest);
+  return result;
+}
+
+vlib_cli_completion_t *
+vlib_cli_get_completions (u8 *str)
+{
+  vlib_cli_command_t *parent, *leaf;
+  vlib_cli_completion_t *out = 0, *o;
+  u8 **names, **n, *rest;
+
+  names = vlib_cli_complete_path (str, &parent, &leaf, &rest);
+  if (leaf)
+    {
+      vlib_cli_sub_command_t *sc;
+      u32 start = 0, n = vec_len (rest);
+
+      cli_complete_args (((vlib_cli_command_t *) leaf->function_arg)->args, rest, &out);
+
+      /* a v2 command can have v1 sub-commands, e.g. "ipsec sa bind" */
+      while (start < n && isspace (rest[start]))
+	start++;
+      for (u32 i = start; i < n; i++)
+	if (isspace (rest[i]))
+	  goto no_sub_commands;
+
+      vec_foreach (sc, leaf->sub_commands)
+	{
+	  vlib_cli_command_t *sub =
+	    vec_elt_at_index (vlib_get_global_main ()->cli_main.commands, sc->index);
+
+	  if (strlen ((char *) sc->name) < n - start || memcmp (sc->name, rest + start, n - start))
+	    continue;
+	  vec_add2 (out, o, 1);
+	  o->text = format (0, "%s", sc->name);
+	  if (sub->short_help)
+	    o->help = format (0, "%s", sub->short_help);
+	}
+    no_sub_commands:;
+    }
+  vec_free (rest);
+
+  vec_foreach (n, names)
+    {
+      vlib_cli_sub_command_t *sc;
+      vlib_cli_command_t *sub = 0;
+
+      vec_foreach (sc, parent->sub_commands)
+	if (sc->name == *n)
+	  sub = vec_elt_at_index (vlib_get_global_main ()->cli_main.commands, sc->index);
+
+      vec_add2 (out, o, 1);
+      o->text = format (0, "%s", *n);
+      if (sub && sub->short_help)
+	o->help = format (0, "%s", sub->short_help);
+    }
+  vec_free (names);
+  return out;
+}
+
 static u8 *
 format_vlib_cli_command_help (u8 * s, va_list * args)
 {
   vlib_cli_command_t *c = va_arg (*args, vlib_cli_command_t *);
   int is_long = va_arg (*args, int);
-  if (is_long && c->long_help)
+  if (is_long && c->handler)
+    {
+      vlib_cli_command_t *cmd = (vlib_cli_command_t *) c->function_arg;
+
+      s = format (s, "%U", format_cli_help, cmd->path, cmd->short_help, cmd->long_help, cmd->args);
+    }
+  else if (is_long && c->long_help)
     s = format (s, "%s", c->long_help);
   else if (c->short_help)
     s = format (s, "%s", c->short_help);
@@ -566,7 +665,9 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
       if (has_sub_commands)
 	error = vlib_cli_dispatch_sub_commands (vm, cm, si, c - cm->commands);
 
-      if (has_sub_commands && !error)
+      /* An error of a declarative sub-command is its own, it does not mean that
+       * the function of the parent command should handle the line instead. */
+      if (has_sub_commands && (!error || cm->error_from_declarative_command))
 	/* Found valid sub-command. */ ;
 
       else if (c->function)
@@ -578,8 +679,13 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 
 	  if (unformat (si, "?"))
 	    {
-	      vlib_cli_output (vm, "  %-40U %U", format_vlib_cli_path, c->path, format_vlib_cli_command_help, c,	/* is_long */
-			       0);
+	      if (c->handler)
+		vlib_cli_output (vm, "%U", format_vlib_cli_command_help, c,
+				 /* is_long */ 1);
+	      else
+		vlib_cli_output (vm, "  %-40U %U", format_vlib_cli_path, c->path,
+				 format_vlib_cli_command_help, c, /* is_long */
+				 0);
 	    }
 	  else
 	    {
@@ -605,7 +711,8 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 				     c - cm->commands, 0 /* before */ );
 
 	      c->hit_counter++;
-	      c_error = c->function (vm, si, c);
+	      c_error = vlib_cli_call_function (vm, si, c);
+	      cm->error_from_declarative_command = c->handler && c_error;
 
 	      if (PREDICT_FALSE (vec_len (cm->perf_counter_cbs) != 0))
 		clib_call_callbacks (cm->perf_counter_cbs, cm,
@@ -703,6 +810,8 @@ vlib_cli_input (vlib_main_t * vm,
 
   cp->output_function = function;
   cp->output_function_arg = function_arg;
+
+  vgm->cli_main.error_from_declarative_command = 0;
 
   do
     {
@@ -1410,6 +1519,13 @@ vlib_cli_command_registration_helper (vlib_cli_command_t *x)
 {
   vlib_global_main_t *vgm = vlib_get_global_main ();
   vlib_cli_main_t *cm = &vgm->cli_main;
+
+  if (x->handler)
+    {
+      ASSERT (x->function == 0);
+      x->function = cli_dispatch;
+      x->function_arg = (uword) x;
+    }
   x->next_cli_command = cm->cli_command_registrations;
   cm->cli_command_registrations = x;
   if (cm->command_index_by_path)
