@@ -5,6 +5,7 @@
 
 /* ip/ip4_cli.c: ip4 commands */
 
+#include <vnet/cli_types.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip/reass/ip4_full_reass.h>
 #include <vnet/ip/reass/ip6_full_reass.h>
@@ -84,46 +85,26 @@ ip_address_delete_cleanup (vnet_main_t * vnm, u32 hw_if_index, u32 is_create)
 VNET_HW_INTERFACE_ADD_DEL_FUNCTION (ip_address_delete_cleanup);
 
 static clib_error_t *
-add_del_ip_address (vlib_main_t * vm,
-		    unformat_input_t * input, vlib_cli_command_t * cmd)
+add_del_ip_address (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  vnet_main_t *vnm = vnet_get_main ();
-  ip4_address_t a4;
-  ip6_address_t a6;
-  clib_error_t *error = 0;
-  u32 sw_if_index, length, is_del;
+  u32 sw_if_index = cli_index (ctx, "interface");
+  u32 is_del = cli_flag (ctx, "del");
+  cli_value_t *p = cli_get (ctx, "prefix");
 
-  sw_if_index = ~0;
-  is_del = 0;
-
-  if (unformat (input, "del"))
-    is_del = 1;
-
-  if (!unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
+  if (cli_flag (ctx, "all"))
     {
-      error = clib_error_return (0, "unknown interface `%U'",
-				 format_unformat_error, input);
-      goto done;
+      if (!is_del)
+	return clib_error_return (0, "'all' can only be used with 'del'");
+      ip_del_all_interface_addresses (vm, sw_if_index);
+      return 0;
     }
 
-  if (is_del && unformat (input, "all"))
-    ip_del_all_interface_addresses (vm, sw_if_index);
-  else if (unformat (input, "%U/%d", unformat_ip4_address, &a4, &length))
-    error = ip4_add_del_interface_address (vm, sw_if_index, &a4, length,
-					   is_del);
-  else if (unformat (input, "%U/%d", unformat_ip6_address, &a6, &length))
-    error = ip6_add_del_interface_address (vm, sw_if_index, &a6, length,
-					   is_del);
-  else
-    {
-      error = clib_error_return (0, "expected IP4/IP6 address/length `%U'",
-				 format_unformat_error, input);
-      goto done;
-    }
+  if (p->prefix.is_ip6)
+    return ip6_add_del_interface_address (vm, sw_if_index, (ip6_address_t *) p->prefix.addr,
+					  p->prefix.len, is_del);
 
-
-done:
-  return error;
+  return ip4_add_del_interface_address (vm, sw_if_index, (ip4_address_t *) p->prefix.addr,
+					p->prefix.len, is_del);
 }
 
 /*?
@@ -155,8 +136,18 @@ done:
  ?*/
 VLIB_CLI_COMMAND (set_interface_ip_address_command, static) = {
   .path = "set interface ip address",
-  .function = add_del_ip_address,
-  .short_help = "set interface ip address [del] <interface> <ip-addr>/<mask> | [all]",
+  .short_help = "Add or delete an IPv4/IPv6 address of an interface",
+  .args =
+    (cli_arg_t[]) {
+      CLI_FLAG ("del", .help = "delete instead of add"),
+      CLI_VALUE ("interface", cli_type_sw_interface),
+      CLI_ONEOF ("address", 0,
+		 CLI_VALUE ("prefix", cli_type_ip_prefix,
+			    .help = "IPv4/IPv6 address and prefix length"),
+		 CLI_FLAG ("all", .help = "all addresses (with del)")),
+      {},
+    },
+  .handler = add_del_ip_address,
 };
 
 static clib_error_t *

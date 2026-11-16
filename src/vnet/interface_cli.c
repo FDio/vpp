@@ -23,6 +23,7 @@
 #include <vnet/interface/rx_queue_funcs.h>
 #include <vnet/interface/tx_queue_funcs.h>
 #include <vnet/hash/hash.h>
+#include <vnet/cli_types.h>
 #include <vnet/dev/dev.h>
 #include <vnet/dev/dev_funcs.h>
 #include <vnet/ethernet/sfp.h>
@@ -254,72 +255,32 @@ sw_interface_name_compare (void *a1, void *a2)
 				    si1->sw_if_index, si2->sw_if_index);
 }
 
+static const cli_column_t show_sw_interfaces_columns[] = {
+  { "name", "Name" }, { "sw_if_index", "Idx" },	    { "state", "State" },
+  { "mtu", "MTU" },   { "addresses", "Addresses" }, {},
+};
+
 static clib_error_t *
-show_sw_interfaces (vlib_main_t * vm,
-		    unformat_input_t * input, vlib_cli_command_t * cmd)
+show_sw_interfaces (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  clib_error_t *error = 0;
   vnet_main_t *vnm = vnet_get_main ();
-  unformat_input_t _linput, *linput = &_linput;
   vnet_interface_main_t *im = &vnm->interface_main;
   vnet_sw_interface_t *si, *sorted_sis = 0;
+  cli_value_t *v;
   u32 sw_if_index = ~(u32) 0;
-  u8 show_addresses = 0;
-  u8 show_features = 0;
-  u8 show_tag = 0;
-  u8 show_vtr = 0;
-  int verbose = 0;
+  u8 show_addresses = cli_flag (ctx, "address");
+  u8 show_features = cli_flag (ctx, "features");
+  u8 show_tag = cli_flag (ctx, "tag");
+  u8 show_vtr = cli_flag (ctx, "vtr");
+  int verbose = cli_flag (ctx, "verbose");
 
-  /*
-   * Get a line of input. Won't work if the user typed
-   * "show interface" and nothing more.
-   */
-  if (unformat_user (input, unformat_line_input, linput))
-    {
-      while (unformat_check_input (linput) != UNFORMAT_END_OF_INPUT)
-	{
-	  /* See if user wants to show specific interface */
-	  if (unformat
-	      (linput, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
-	    {
-	      si = pool_elt_at_index (im->sw_interfaces, sw_if_index);
-	      vec_add1 (sorted_sis, si[0]);
-	    }
-	  else if (unformat (linput, "address") || unformat (linput, "addr"))
-	    show_addresses = 1;
-	  else if (unformat (linput, "features") || unformat (linput, "feat"))
-	    show_features = 1;
-	  else if (unformat (linput, "tag"))
-	    show_tag = 1;
-	  else if (unformat (linput, "vtr"))
-	    show_vtr = 1;
-	  else if (unformat (linput, "verbose"))
-	    verbose = 1;
-	  else if (unformat (linput, "%d", &sw_if_index))
-	    {
-	      if (!pool_is_free_index (im->sw_interfaces, sw_if_index))
-		{
-		  si = pool_elt_at_index (im->sw_interfaces, sw_if_index);
-		  vec_add1 (sorted_sis, si[0]);
-		}
-	      else
-		{
-		  vec_free (sorted_sis);
-		  error = clib_error_return (0, "unknown interface index `%d'",
-					     sw_if_index);
-		  goto done;
-		}
-	    }
-	  else
-	    {
-	      vec_free (sorted_sis);
-	      error = clib_error_return (0, "unknown input `%U'",
-					 format_unformat_error, linput);
-	      goto done;
-	    }
-	}
-      unformat_free (linput);
-    }
+  cli_foreach (v, ctx, "interface")
+  {
+    sw_if_index = v->index;
+    si = pool_elt_at_index (im->sw_interfaces, sw_if_index);
+    vec_add1 (sorted_sis, si[0]);
+  }
+
   if (show_features || show_tag || show_vtr)
     {
       if (sw_if_index == ~(u32) 0)
@@ -375,7 +336,7 @@ show_sw_interfaces (vlib_main_t * vm,
       return 0;
     }
 
-  if (!show_addresses)
+  if (!show_addresses && !cli_is_structured (ctx))
     vlib_cli_output (vm, "%U\n", format_vnet_sw_interface, vnm, 0);
 
   if (vec_len (sorted_sis) == 0)	/* Get all interfaces */
@@ -392,6 +353,45 @@ show_sw_interfaces (vlib_main_t * vm,
         }
       /* Sort by name. */
       vec_sort_with_function (sorted_sis, sw_interface_name_compare);
+    }
+
+  if (cli_is_structured (ctx))
+    {
+      clib_json_text_t j;
+
+      clib_json_init (&j);
+      clib_json_add_array (&j, 0);
+      vec_foreach (si, sorted_sis)
+	{
+	  ip_lookup_main_t *lm4 = &ip4_main.lookup_main;
+	  ip_lookup_main_t *lm6 = &ip6_main.lookup_main;
+	  ip_interface_address_t *ia = 0;
+
+	  clib_json_add_object (&j, 0);
+	  clib_json_add_string (&j, "name", "%U", format_vnet_sw_if_index_name, vnm,
+				si->sw_if_index);
+	  clib_json_add_number (&j, "sw_if_index", si->sw_if_index);
+	  clib_json_add_string (&j, "state", "%s",
+				(si->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ? "up" : "down");
+	  clib_json_add_number (&j, "mtu", si->mtu[VNET_MTU_L3]);
+	  clib_json_add_array (&j, "addresses");
+
+	  foreach_ip_interface_address (
+	    lm4, ia, si->sw_if_index, 1 /* honor unnumbered */, ({
+	      clib_json_add_string (&j, 0, "%U/%d", format_ip4_address,
+				    ip_interface_address_get_address (lm4, ia), ia->address_length);
+	    }));
+	  foreach_ip_interface_address (
+	    lm6, ia, si->sw_if_index, 1 /* honor unnumbered */, ({
+	      clib_json_add_string (&j, 0, "%U/%d", format_ip6_address,
+				    ip_interface_address_get_address (lm6, ia), ia->address_length);
+	    }));
+	  clib_json_parent (&j);
+	  clib_json_parent (&j);
+	}
+      clib_json_parent (&j);
+      vec_free (sorted_sis);
+      return cli_emit_table (ctx, &j, show_sw_interfaces_columns);
     }
 
   if (show_addresses)
@@ -470,16 +470,24 @@ show_sw_interfaces (vlib_main_t * vm,
       }
     }
 
-done:
   vec_free (sorted_sis);
-  return error;
+  return 0;
 }
 
 VLIB_CLI_COMMAND (show_sw_interfaces_command, static) = {
   .path = "show interface",
-  .short_help = "show interface [address|addr|features|feat|vtr|tag] "
-		"[<interface> [<interface> [..]]] [verbose]",
-  .function = show_sw_interfaces,
+  .short_help = "Show interfaces, their addresses, features, tag or VTR",
+  .args =
+    (cli_arg_t[]) {
+      CLI_VALUE ("interface", cli_type_sw_interface, .flags = CLI_F_OPTIONAL | CLI_F_REPEAT),
+      CLI_FLAG ("address", .alias = "addr", .help = "show IP addresses"),
+      CLI_FLAG ("features", .alias = "feat", .help = "show enabled features"),
+      CLI_FLAG ("vtr", .help = "show VLAN tag rewrite"),
+      CLI_FLAG ("tag", .help = "show interface tag"),
+      CLI_FLAG ("verbose", .help = "more details"),
+      {},
+    },
+  .handler = show_sw_interfaces,
   .is_mp_safe = 1,
 };
 
@@ -872,34 +880,11 @@ VLIB_CLI_COMMAND (create_sub_interfaces_command, static) = {
 };
 
 static clib_error_t *
-set_state (vlib_main_t * vm,
-	   unformat_input_t * input, vlib_cli_command_t * cmd)
+set_state (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  clib_error_t *error;
-  u32 sw_if_index, flags;
 
-  sw_if_index = ~0;
-  if (!unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
-    {
-      error = clib_error_return (0, "unknown interface `%U'",
-				 format_unformat_error, input);
-      goto done;
-    }
-
-  if (!unformat (input, "%U", unformat_vnet_sw_interface_flags, &flags))
-    {
-      error = clib_error_return (0, "unknown flags `%U'",
-				 format_unformat_error, input);
-      goto done;
-    }
-
-  error = vnet_sw_interface_set_flags (vnm, sw_if_index, flags);
-  if (error)
-    goto done;
-
-done:
-  return error;
+  return vnet_sw_interface_set_flags (vnm, cli_index (ctx, "interface"), cli_index (ctx, "state"));
 }
 
 /*?
@@ -920,8 +905,17 @@ done:
  ?*/
 VLIB_CLI_COMMAND (set_state_command, static) = {
   .path = "set interface state",
-  .short_help = "set interface state <interface> [up|down|punt|enable]",
-  .function = set_state,
+  .short_help = "Set the admin state of an interface",
+  .args =
+    (cli_arg_t[]) {
+      CLI_VALUE ("interface", cli_type_sw_interface),
+      CLI_ENUM ("state", 0, { "up", "admin up", VNET_SW_INTERFACE_FLAG_ADMIN_UP },
+		{ "down", "admin down", 0 },
+		{ "punt", "admin down, punt traffic to slow path", VNET_SW_INTERFACE_FLAG_PUNT },
+		{ "enable", "admin down, clear punt", 0 }),
+      {},
+    },
+  .handler = set_state,
 };
 
 static clib_error_t *
@@ -1102,58 +1096,50 @@ VLIB_CLI_COMMAND (set_interface_promiscuous_cmd, static) = {
 };
 
 static clib_error_t *
-mtu_cmd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
+mtu_cmd (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  u32 hw_if_index, sw_if_index, mtu;
-  ethernet_main_t *em = &ethernet_main;
+  u32 mtu = cli_u64 (ctx, "mtu", 0);
   u32 mtus[VNET_N_MTU] = { 0, 0, 0, 0 };
-  clib_error_t *err;
+  u32 hw_if_index = cli_index (ctx, "hw-interface");
+  u32 sw_if_index = cli_index (ctx, "interface");
+  u32 proto = cli_index (ctx, "protocol");
 
-  if (unformat (input, "%d %U", &mtu,
-		unformat_vnet_hw_interface, vnm, &hw_if_index))
+  if (hw_if_index != ~0)
     {
       /*
        * Change physical MTU on interface. Only supported for Ethernet
        * interfaces
        */
-      ethernet_interface_t *eif = ethernet_get_interface (em, hw_if_index);
-
-      if (!eif)
+      if (!ethernet_get_interface (&ethernet_main, hw_if_index))
 	return clib_error_return (0, "not supported");
 
-      err = vnet_hw_interface_set_mtu (vnm, hw_if_index, mtu);
-      if (err)
-	return err;
-      goto done;
+      return vnet_hw_interface_set_mtu (vnm, hw_if_index, mtu);
     }
-  else if (unformat (input, "packet %d %U", &mtu,
-		     unformat_vnet_sw_interface, vnm, &sw_if_index))
-    /* Set default packet MTU (including L3 header */
-    mtus[VNET_MTU_L3] = mtu;
-  else if (unformat (input, "ip4 %d %U", &mtu,
-		     unformat_vnet_sw_interface, vnm, &sw_if_index))
-    mtus[VNET_MTU_IP4] = mtu;
-  else if (unformat (input, "ip6 %d %U", &mtu,
-		     unformat_vnet_sw_interface, vnm, &sw_if_index))
-    mtus[VNET_MTU_IP6] = mtu;
-  else if (unformat (input, "mpls %d %U", &mtu,
-		     unformat_vnet_sw_interface, vnm, &sw_if_index))
-    mtus[VNET_MTU_MPLS] = mtu;
-  else
-    return clib_error_return (0, "unknown input `%U'",
-			      format_unformat_error, input);
 
+  /* Set default packet MTU (including L3 header) or a per protocol one */
+  mtus[proto] = mtu;
   vnet_sw_interface_set_protocol_mtu (vnm, sw_if_index, mtus);
-
-done:
   return 0;
 }
 
 VLIB_CLI_COMMAND (set_interface_mtu_cmd, static) = {
   .path = "set interface mtu",
-  .short_help = "set interface mtu [packet|ip4|ip6|mpls] <value> <interface>",
-  .function = mtu_cmd,
+  .short_help = "Set the physical or the protocol MTU of an interface",
+  .args =
+    (cli_arg_t[]) {
+      CLI_ONEOF (
+	"scope", 0,
+	CLI_SEQ (CLI_VALUE ("mtu", cli_type_u32, .min = 64, .max = 65535, .help = "physical MTU"),
+		 CLI_VALUE ("hw-interface", cli_type_hw_interface)),
+	CLI_SEQ (CLI_ENUM ("protocol", 0, { "packet", "L3 packet MTU", VNET_MTU_L3 },
+			   { "ip4", "IPv4 MTU", VNET_MTU_IP4 }, { "ip6", "IPv6 MTU", VNET_MTU_IP6 },
+			   { "mpls", "MPLS MTU", VNET_MTU_MPLS }),
+		 CLI_VALUE ("mtu", cli_type_u32, .help = "protocol MTU"),
+		 CLI_VALUE ("interface", cli_type_sw_interface))),
+      {},
+    },
+  .handler = mtu_cmd,
 };
 
 static clib_error_t *
