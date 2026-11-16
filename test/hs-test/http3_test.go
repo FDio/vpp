@@ -28,6 +28,8 @@ import (
 
 func init() {
 	RegisterH3Tests(Http3GetTest, Http3AltSvcCompoundListenerTest, Http3DownloadTest, Http3PostTest, Http3UploadTest, Http3ClientGetRepeatTest,
+		Http3MethodsClientTest, Http3HeadResponseCloseTest,
+		Http3HeadClientReuseTest, Http3InterimResponsesTest, Http3HeadContentLengthTest,
 		Http3ClientGetMultiplexingTest, Http3PeerResetStream, Http3ClientRequestIncompleteTest,
 		Http3RequestFinCompleteTest, Http3RequestFinErrorsTest,
 		Http3ServerHeadersPrefixTest, Http3ClientHeadersPrefixTest,
@@ -1190,6 +1192,7 @@ func Http3CliTest(s *VethsSuite) {
 	Log(o)
 	AssertContains(o, "<html>", "<html> not found in the result!")
 	AssertContains(o, "</html>", "</html> not found in the result!")
+	httpCliMethodsEndToEnd(clientVpp, uri, "http3")
 }
 
 func Http3ClientFailedConnectMWTest(s *Http3Suite) {
@@ -1394,7 +1397,7 @@ func http3EarlyHeaders(fields []qpack.HeaderField) []byte {
 	return append(frame, headers.Bytes()...)
 }
 
-func http3ReadEarlyResponse(stream *quic.Stream, status string) []byte {
+func http3ReadEarlyResponseHeaders(stream *quic.Stream, status string, expectedAllow ...string) []qpack.HeaderField {
 	reader := quicvarint.NewReader(stream)
 	frameType, err := quicvarint.Read(reader)
 	AssertNil(err)
@@ -1406,18 +1409,31 @@ func http3ReadEarlyResponse(stream *quic.Stream, status string) []byte {
 	_, err = io.ReadFull(stream, headers)
 	AssertNil(err)
 	decode := qpack.NewDecoder().Decode(headers)
-	actual := ""
+	actual, allow := "", ""
+	var fields []qpack.HeaderField
 	for {
 		field, err := decode()
 		if err == io.EOF {
 			break
 		}
 		AssertNil(err)
+		fields = append(fields, field)
 		if field.Name == ":status" {
 			actual = field.Value
 		}
+		if field.Name == "allow" {
+			allow = field.Value
+		}
 	}
 	AssertEqual(status, actual)
+	if len(expectedAllow) != 0 {
+		AssertEqual(expectedAllow[0], allow)
+	}
+	return fields
+}
+
+func http3ReadEarlyResponse(stream *quic.Stream, status string, expectedAllow ...string) []byte {
+	http3ReadEarlyResponseHeaders(stream, status, expectedAllow...)
 	body, err := io.ReadAll(stream)
 	AssertNil(err, "response must finish with FIN, without RESET_STREAM")
 	return body
@@ -1615,7 +1631,7 @@ func Http3UnsupportedMethodTest(s *Http3Suite) {
 	AssertNil(err)
 	_, err = control.Write([]byte{0x00, 0x04, 0x00})
 	AssertNil(err)
-	for _, method := range []string{"X-EXTENSION", "HEAD", "DELETE", "PATCH", "OPTIONS", "CONNECT-UDP", "get", "!#$%&'*+-.^_`|~0123456789"} {
+	for _, method := range []string{"X-EXTENSION", "CONNECT-UDP", "get", "!#$%&'*+-.^_`|~0123456789"} {
 		By("valid unsupported method " + method)
 		stream, err := conn.OpenStream()
 		AssertNil(err)
@@ -1762,6 +1778,303 @@ func Http3EmptyAuthorityTest(s *Http3Suite) {
 	}
 }
 
+func Http3HeadResponseCloseTest(s *Http3Suite) {
+	address := net.JoinHostPort(s.HostAddr(), s.Ports.Port1)
+	certificate, err := tls.LoadX509KeyPair("resources/cert/localhost.crt", "resources/cert/localhost.key")
+	AssertNil(err)
+	listener, err := quic.ListenAddr(address,
+		&tls.Config{Certificates: []tls.Certificate{certificate}, NextProtos: []string{"h3"}}, &quic.Config{})
+	AssertNil(err)
+	defer listener.Close()
+	for _, mode := range []string{"empty FIN", "partial HEADERS FIN", "reset"} {
+		By(mode)
+		done, release := make(chan struct{}), make(chan struct{})
+		go func() {
+			defer GinkgoRecover()
+			defer close(done)
+			ctx, cancel := context.WithTimeout(context.Background(), defaultHttpTimeout)
+			defer cancel()
+			conn, err := listener.Accept(ctx)
+			AssertNil(err)
+			defer conn.CloseWithError(0, "")
+			control, err := conn.OpenUniStream()
+			AssertNil(err)
+			_, err = control.Write([]byte{0x00, 0x04, 0x00})
+			AssertNil(err)
+			stream, err := conn.AcceptStream(ctx)
+			AssertNil(err)
+			AssertNil(stream.SetDeadline(time.Now().Add(defaultHttpTimeout)))
+			reader := quicvarint.NewReader(stream)
+			frame, err := quicvarint.Read(reader)
+			AssertNil(err)
+			AssertEqual(uint64(0x01), frame)
+			length, err := quicvarint.Read(reader)
+			AssertNil(err)
+			_, err = io.CopyN(io.Discard, stream, int64(length))
+			AssertNil(err)
+			if mode == "reset" {
+				stream.CancelWrite(quic.StreamErrorCode(http3.ErrCodeMessageError))
+			} else {
+				if mode == "partial HEADERS FIN" {
+					_, err = stream.Write([]byte{0x01, 0x03, 0x00})
+					AssertNil(err)
+				}
+				AssertNil(stream.Close())
+			}
+			<-release
+		}()
+		started := time.Now()
+		output := s.Containers.Vpp.VppInstance.Vppctl("http cli client http3 method head uri https://%s/echo", address)
+		close(release)
+		<-done
+		AssertContains(output, "transport closed")
+		AssertEqual(true, time.Since(started) < defaultHttpTimeout/2, "incomplete HEAD must fail before inactivity timeout")
+	}
+}
+
+func http3ResponseTestListener(address string) (*quic.Listener, error) {
+	certificate, err := tls.LoadX509KeyPair("resources/cert/localhost.crt", "resources/cert/localhost.key")
+	if err != nil {
+		return nil, err
+	}
+	return quic.ListenAddr(address,
+		&tls.Config{Certificates: []tls.Certificate{certificate}, NextProtos: []string{"h3"}}, &quic.Config{})
+}
+
+func http3ResponseTestConnect(ctx context.Context, listener *quic.Listener) (*quic.Conn, error) {
+	conn, err := listener.Accept(ctx)
+	if err != nil {
+		return nil, err
+	}
+	control, err := conn.OpenUniStream()
+	if err == nil {
+		_, err = control.Write([]byte{0x00, 0x04, 0x00})
+	}
+	if err != nil {
+		conn.CloseWithError(0, "")
+		return nil, err
+	}
+	return conn, nil
+}
+
+func http3ReadRequestHeaders(ctx context.Context, conn *quic.Conn, method string) (*quic.Stream, error) {
+	stream, err := conn.AcceptStream(ctx)
+	if err != nil {
+		return nil, err
+	}
+	deadline, _ := ctx.Deadline()
+	if err = stream.SetDeadline(deadline); err != nil {
+		return nil, err
+	}
+	reader := quicvarint.NewReader(stream)
+	frameType, err := quicvarint.Read(reader)
+	if err != nil {
+		return nil, err
+	}
+	if frameType != 0x01 {
+		return nil, fmt.Errorf("expected HEADERS, got %d", frameType)
+	}
+	length, err := quicvarint.Read(reader)
+	if err != nil || length > 65536 {
+		return nil, fmt.Errorf("invalid request HEADERS length %d: %v", length, err)
+	}
+	payload := make([]byte, int(length))
+	if _, err = io.ReadFull(stream, payload); err != nil {
+		return nil, err
+	}
+	decode := qpack.NewDecoder().Decode(payload)
+	actual := ""
+	for {
+		field, err := decode()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if field.Name == ":method" {
+			actual = field.Value
+		}
+	}
+	if actual != method {
+		return nil, fmt.Errorf("expected %s, got %s", method, actual)
+	}
+	return stream, nil
+}
+
+func http3ResponseTestHeaders(status string, fields [][2]string) ([]byte, error) {
+	var payload bytes.Buffer
+	encoder := qpack.NewEncoder(&payload)
+	if err := encoder.WriteField(qpack.HeaderField{Name: ":status", Value: status}); err != nil {
+		return nil, err
+	}
+	for _, field := range fields {
+		if err := encoder.WriteField(qpack.HeaderField{Name: field[0], Value: field[1]}); err != nil {
+			return nil, err
+		}
+	}
+	if err := encoder.Close(); err != nil {
+		return nil, err
+	}
+	return http3FinFrame(0x01, payload.Bytes()), nil
+}
+
+func http3ResponseTests(s *Http3Suite, group string) {
+	address := net.JoinHostPort(s.HostAddr(), s.Ports.Port1)
+	listener, err := http3ResponseTestListener(address)
+	AssertNil(err)
+	defer listener.Close()
+	http3ResponseTestCases(s, group, listener)
+}
+
+func http3ResponseTestCases(s *Http3Suite, group string, listener *quic.Listener) {
+	address := listener.Addr().String()
+	var failures []string
+	for _, tc := range httpResponseTestCases(group) {
+		done, release := make(chan error, 1), make(chan struct{})
+		go func() {
+			done <- func() error {
+				ctx, cancel := context.WithTimeout(context.Background(), defaultHttpTimeout)
+				defer cancel()
+				conn, err := http3ResponseTestConnect(ctx, listener)
+				if err != nil {
+					return err
+				}
+				defer conn.CloseWithError(0, "")
+				stream, err := http3ReadRequestHeaders(ctx, conn, tc.method)
+				if err != nil {
+					return err
+				}
+				var wire []byte
+				if tc.interim != "" {
+					wire, err = http3ResponseTestHeaders(tc.interim, nil)
+					if err != nil {
+						return err
+					}
+				}
+				if tc.fragmented {
+					if _, err = stream.Write(wire); err != nil {
+						return err
+					}
+					wire = nil
+					time.Sleep(100 * time.Millisecond)
+				}
+				final, err := http3ResponseTestHeaders("200", tc.headers)
+				if err != nil {
+					return err
+				}
+				wire = append(wire, final...)
+				if tc.body != "" {
+					wire = append(wire, http3FinFrame(0x00, []byte(tc.body))...)
+				}
+				if _, err = stream.Write(wire); err != nil {
+					return err
+				}
+				if tc.finish == "reset" {
+					time.Sleep(100 * time.Millisecond)
+					stream.CancelWrite(quic.StreamErrorCode(0x10c))
+				} else if tc.finish == "" {
+					if err = stream.Close(); err != nil {
+						return err
+					}
+				}
+				<-release
+				return nil
+			}()
+		}()
+		method := ""
+		if tc.method == "HEAD" {
+			method = "head"
+		}
+		started := time.Now()
+		output := s.Containers.Vpp.VppInstance.Vppctl("http client %s http3 verbose timeout 1 uri https://%s/test", method, address)
+		close(release)
+		if tc.finish == "timeout" && time.Since(started) < 500*time.Millisecond {
+			failures = append(failures, "HEAD timeout completed prematurely")
+		}
+		if !httpResponseTestPassed(tc, output, <-done) {
+			failures = append(failures, tc.name)
+		}
+	}
+	AssertEmpty(failures, "all response cases must satisfy framing and validation invariants")
+}
+
+func Http3InterimResponsesTest(s *Http3Suite) { http3ResponseTests(s, "interim") }
+
+func Http3HeadContentLengthTest(s *Http3Suite) { http3ResponseTests(s, "length") }
+
+func Http3HeadClientReuseTest(s *Http3Suite) {
+	address := net.JoinHostPort(s.HostAddr(), s.Ports.Port1)
+	listener, err := http3ResponseTestListener(address)
+	AssertNil(err)
+	defer listener.Close()
+	var failures []string
+	for _, delayed := range []bool{false, true} {
+		done, release := make(chan error, 1), make(chan struct{})
+		go func() {
+			done <- func() error {
+				ctx, cancel := context.WithTimeout(context.Background(), defaultHttpTimeout)
+				defer cancel()
+				conn, err := http3ResponseTestConnect(ctx, listener)
+				if err != nil {
+					return err
+				}
+				defer conn.CloseWithError(0, "")
+				for i := 0; i < 2; i++ {
+					stream, err := http3ReadRequestHeaders(ctx, conn, "HEAD")
+					if err != nil {
+						return err
+					}
+					frame, err := http3ResponseTestHeaders("200", [][2]string{{"content-length", "42"}})
+					if err != nil {
+						return err
+					}
+					if _, err = stream.Write(frame); err != nil {
+						return err
+					}
+					if delayed {
+						time.Sleep(100 * time.Millisecond)
+					}
+					if err = stream.Close(); err != nil {
+						return err
+					}
+				}
+				<-release
+				return nil
+			}()
+		}()
+		output := s.Containers.Vpp.VppInstance.Vppctl("http client head http3 repeat 2 timeout 1 uri https://%s/test", address)
+		close(release)
+		wireErr := <-done
+		Log("HEAD reuse delayed_FIN=%t output=%q wire_error=%v", delayed, output, wireErr)
+		if wireErr != nil || !strings.Contains(output, "2 request(s)") || strings.Contains(output, "transport closed") {
+			failures = append(failures, fmt.Sprintf("delayed FIN=%t", delayed))
+		}
+	}
+	AssertEmpty(failures, "HEAD replies must permit the next request without an internal error")
+	// Keep the same UDP socket: closing a QUIC listener need not release its
+	// transport socket before a subsequent listener attempts to bind it.
+	http3ResponseTestCases(s, "head-end", listener)
+}
+
+func Http3MethodsClientTest(s *Http3Suite) {
+	address := net.JoinHostPort(s.HostAddr(), s.Ports.Port1)
+	certificate, err := tls.LoadX509KeyPair("resources/cert/localhost.crt", "resources/cert/localhost.key")
+	AssertNil(err)
+	listener, err := quic.ListenAddr(address,
+		&tls.Config{Certificates: []tls.Certificate{certificate}, NextProtos: []string{"h3"}}, &quic.Config{})
+	AssertNil(err)
+	observed := make(chan string, 8)
+	server := &http3.Server{Handler: httpMethodsClientHandler(3, observed)}
+	defer server.Close()
+	defer listener.Close()
+	go func() {
+		defer GinkgoRecover()
+		_ = server.ServeListener(listener)
+	}()
+	httpMethodsClientRun(s.Containers.Vpp.VppInstance, address, "http3", observed)
+}
+
 func Http3SupportedMethodsTest(s *Http3Suite) {
 	vpp := s.Containers.Vpp.VppInstance
 	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
@@ -1769,6 +2082,71 @@ func Http3SupportedMethodsTest(s *Http3Suite) {
 	transport := &http3.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 	defer transport.Close()
 	client := &http.Client{Transport: transport, Timeout: 5 * time.Second}
+	httpMethodsServerTest(client, "https://"+address)
+	conn := H3ClientConnect(address)
+	defer conn.CloseWithError(0, "")
+	control, err := conn.OpenUniStream()
+	AssertNil(err)
+	_, err = control.Write([]byte{0x00, 0x04, 0x00})
+	AssertNil(err)
+	for _, tc := range []struct{ method, path, body, status string }{
+		{"HEAD", "/head-304", "", "304"},
+		{"HEAD", "/head-304-known", "", "304"},
+		{"HEAD", "/echo", "ping", "200"},
+		{"HEAD", "/echo-stream", "ping", "200"},
+		{"HEAD", "/show/version", "", "200"},
+		{"HEAD", "/", "", "400"},
+		{"OPTIONS", "*", "", "200"},
+		{"OPTIONS", "/*", "", "200"},
+		{"OPTIONS", "/%2A", "", "200"},
+	} {
+		By(fmt.Sprintf("%s %s, expected status %s", tc.method, tc.path, tc.status))
+		stream, err := conn.OpenStream()
+		AssertNil(err)
+		AssertNil(stream.SetDeadline(time.Now().Add(defaultHttpTimeout)))
+		frame := http3EarlyHeaders([]qpack.HeaderField{
+			{Name: ":method", Value: tc.method}, {Name: ":scheme", Value: "https"},
+			{Name: ":authority", Value: address}, {Name: ":path", Value: tc.path},
+			{Name: "content-length", Value: strconv.Itoa(len(tc.body))},
+		})
+		for _, part := range [][]byte{frame[:1], frame[1:]} {
+			_, err = stream.Write(part)
+			AssertNil(err)
+			time.Sleep(10 * time.Millisecond)
+		}
+		if tc.body != "" {
+			_, err = stream.Write(append([]byte{0x00, byte(len(tc.body))}, []byte(tc.body)...))
+			AssertNil(err)
+		}
+		AssertNil(stream.Close())
+		var allow []string
+		if tc.method == "OPTIONS" {
+			allow = []string{"GET, HEAD, OPTIONS"}
+			if tc.path == "*" {
+				allow[0] = "GET, HEAD, POST, PUT, DELETE, PATCH, OPTIONS"
+			}
+		}
+		if tc.status == "304" {
+			fields := http3ReadEarlyResponseHeaders(stream, tc.status)
+			var lengths []string
+			for _, field := range fields {
+				if field.Name == "content-length" {
+					lengths = append(lengths, field.Value)
+				}
+				AssertNotEqual("transfer-encoding", field.Name)
+			}
+			if tc.path == "/head-304-known" {
+				AssertEqual([]string{"42"}, lengths)
+			} else {
+				AssertEmpty(lengths)
+			}
+			body, err := io.ReadAll(stream)
+			AssertNil(err, "HEAD 304 must finish with FIN without application EOF or stream reset")
+			AssertEmpty(body, "HEAD 304 must not produce DATA frames")
+		} else {
+			AssertEmpty(http3ReadEarlyResponse(stream, tc.status, allow...), "bodyless response must have no DATA frames")
+		}
+	}
 	for _, method := range []string{"GET", "POST", "PUT"} {
 		request, err := http.NewRequest(method, "https://"+address+"/echo", strings.NewReader("method body"))
 		AssertNil(err)
@@ -1786,7 +2164,7 @@ func Http3SupportedMethodsTest(s *Http3Suite) {
 	AssertNil(err)
 	defer response.Body.Close()
 	AssertHttpStatus(response, http.StatusMethodNotAllowed)
-	AssertHttpHeaderWithValue(response, "Allow", "GET")
+	AssertHttpHeaderWithValue(response, "Allow", "GET, HEAD, OPTIONS")
 }
 
 func Http3MaxHeaderListSizeTest(s *Http3Suite) {

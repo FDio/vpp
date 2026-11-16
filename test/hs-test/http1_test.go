@@ -32,6 +32,9 @@ func init() {
 		HttpCliListenTcpPortInUseTest, HttpCliTlsTest, HttpCliEchoTest)
 	RegisterSoloVethTests(HttpClientGetMemLeakTest)
 	RegisterHttp1Tests(HeaderServerTest, HttpPersistentConnectionTest, HttpPipeliningTest,
+		HttpMethodsTest, HttpMethodsFragmentedTest, HttpMethodsClientTest, HttpHeadResponseFramingTest, HttpCliOptionsStreamTest,
+		HttpCliHeadStreamCleanupTest,
+		HttpHeadClientReuseTest, HttpInterimResponsesTest, HttpHeadContentLengthTest,
 		HttpCliMethodNotAllowedTest, HttpAbsoluteFormUriTest, HttpCliBadRequestTest,
 		HttpInvalidRequestLineTest, HttpIncrementalRequestLineTest, HttpFragmentedH2PrefaceTest, HttpMethodNotImplementedTest, HttpInvalidHeadersTest, HttpMissingHostHeaderTest,
 		HttpContentLengthTest, HttpVersionNotSupportedTest, HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpUriDecodeTest,
@@ -468,6 +471,7 @@ func HttpCliTlsTest(s *VethsSuite) {
 	Log(o)
 	AssertContains(o, "<html>", "<html> not found in the result!")
 	AssertContains(o, "</html>", "</html> not found in the result!")
+	httpCliMethodsEndToEnd(s.Containers.ClientVpp.VppInstance, uri, "")
 }
 
 func HttpCliConnectErrorTest(s *VethsSuite) {
@@ -667,7 +671,7 @@ func HttpCliServerEchoTest(s *Http1Suite) {
 	vpp.Vppctl("http cli server fifo-size 4 uri http://" + address)
 	client := NewHttpClient(defaultHttpTimeout, false)
 	defer client.CloseIdleConnections()
-	for _, method := range []string{"GET", "POST", "PUT"} {
+	for _, method := range []string{"GET", "POST", "PUT", "DELETE", "PATCH"} {
 		for _, body := range []string{"", strings.Repeat("0123456789AbCdEf", 8*1024)} {
 			request, err := http.NewRequest(method, "http://"+address+"/echo", bytes.NewBufferString(body))
 			AssertNil(err)
@@ -679,6 +683,650 @@ func HttpCliServerEchoTest(s *Http1Suite) {
 			AssertNil(err)
 			AssertNil(response.Body.Close())
 			AssertEqual(body, string(data))
+		}
+	}
+}
+
+// Exercise the CLI server's echo routes and command policy through each HTTP version.
+func httpMethodsServerTest(client *http.Client, address string) {
+	defer client.CloseIdleConnections()
+	for _, method := range []string{"HEAD", "OPTIONS", "DELETE", "PATCH", "GET"} {
+		for _, body := range []string{"", strings.Repeat("method-body!", 12000)} {
+			request, err := http.NewRequest(method, address+"/echo", strings.NewReader(body))
+			AssertNil(err)
+			response, err := client.Do(request)
+			AssertNil(err)
+			AssertHttpStatus(response, http.StatusOK)
+			data, err := io.ReadAll(response.Body)
+			AssertNil(err)
+			AssertNil(response.Body.Close())
+			if method == "HEAD" {
+				AssertEmpty(data)
+				AssertHttpContentLength(response, int64(len(body)))
+				AssertEqual(1, len(response.Header.Values("Content-Length")))
+			} else if method == "OPTIONS" {
+				AssertEmpty(data)
+				AssertEqual("GET, HEAD, POST, PUT, DELETE, PATCH, OPTIONS", response.Header.Get("Allow"))
+			} else {
+				AssertEqual(body, string(data))
+			}
+		}
+	}
+
+	// Count unknown-length HEAD uploads across FIFO boundaries, including empty and large bodies.
+	for _, size := range []int{4095, 4096, 4097, 144000, 0} {
+		request, err := http.NewRequest("HEAD", address+"/echo",
+			io.NopCloser(strings.NewReader(strings.Repeat("x", size))))
+		AssertNil(err)
+		response, err := client.Do(request)
+		AssertNil(err)
+		AssertHttpStatus(response, http.StatusOK)
+		AssertHttpContentLength(response, int64(size))
+		AssertEqual(1, len(response.Header.Values("Content-Length")))
+		data, err := io.ReadAll(response.Body)
+		AssertNil(err)
+		AssertEmpty(data)
+		AssertNil(response.Body.Close())
+	}
+
+	request, err := http.NewRequest("GET", address+"/show/version", nil)
+	AssertNil(err)
+	request.Header.Set("Accept", "text/plain")
+	get, err := client.Do(request)
+	AssertNil(err)
+	AssertHttpStatus(get, http.StatusOK)
+	body, err := io.ReadAll(get.Body)
+	AssertNil(err)
+	AssertNil(get.Body.Close())
+	AssertNotEmpty(body)
+	request, err = http.NewRequest("HEAD", address+"/show/version", nil)
+	AssertNil(err)
+	request.Header.Set("Accept", "text/plain")
+	head, err := client.Do(request)
+	AssertNil(err)
+	AssertHttpStatus(head, http.StatusOK)
+	AssertHttpContentLength(head, int64(len(body)))
+	AssertEqual(1, len(head.Header.Values("Content-Length")))
+	AssertEqual(get.Header.Get("Content-Type"), head.Header.Get("Content-Type"))
+	body, err = io.ReadAll(head.Body)
+	AssertNil(err)
+	AssertEmpty(body)
+	AssertNil(head.Body.Close())
+	// HEAD of a streaming representation must finish without waiting for body bytes or EOF.
+	for _, path := range []string{"/echo-stream", "/echo-stream-close", "/echo-stream-drain"} {
+		request, err := http.NewRequest("HEAD", address+path, strings.NewReader("representation"))
+		AssertNil(err)
+		response, err := client.Do(request)
+		AssertNil(err)
+		AssertHttpStatus(response, http.StatusOK)
+		AssertHttpHeaderNotPresent(response, "Content-Length")
+		AssertEmpty(response.TransferEncoding)
+		data, err := io.ReadAll(response.Body)
+		AssertNil(err)
+		AssertEmpty(data)
+		AssertNil(response.Body.Close())
+	}
+	for _, path := range []string{"/", "/*", "/%2A", "/show/version", "/not-a-cli-command", "/echo", "/echo-stream", "/echo-stream-close", "/echo-stream-drain"} {
+		request, err := http.NewRequest("OPTIONS", address+path, strings.NewReader("options body"))
+		AssertNil(err)
+		response, err := client.Do(request)
+		AssertNil(err)
+		AssertHttpStatus(response, http.StatusOK)
+		allow := "GET, HEAD, OPTIONS"
+		if strings.HasPrefix(path, "/echo") {
+			allow = "GET, HEAD, POST, PUT, DELETE, PATCH, OPTIONS"
+		}
+		AssertEqual(allow, response.Header.Get("Allow"))
+		body, err := io.ReadAll(response.Body)
+		AssertNil(err)
+		AssertEmpty(body)
+		AssertHttpContentLength(response, 0)
+		AssertNil(response.Body.Close())
+	}
+	for _, method := range []string{"POST", "PUT", "DELETE", "PATCH"} {
+		request, err := http.NewRequest(method, address+"/show/version", nil)
+		AssertNil(err)
+		response, err := client.Do(request)
+		AssertNil(err)
+		AssertHttpStatus(response, http.StatusMethodNotAllowed)
+		AssertEqual("GET, HEAD, OPTIONS", response.Header.Get("Allow"))
+		AssertNil(response.Body.Close())
+	}
+}
+
+func HttpCliOptionsStreamTest(s *Http1Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address)
+	client := NewHttpClient(defaultHttpTimeout, false)
+	defer client.CloseIdleConnections()
+	for _, path := range []string{"/show/version", "/echo", "/echo-stream"} {
+		request, err := http.NewRequest("OPTIONS", "http://"+address+path,
+			io.NopCloser(strings.NewReader(strings.Repeat("options-body", 12000))))
+		AssertNil(err)
+		response, err := client.Do(request)
+		AssertNil(err)
+		AssertHttpStatus(response, http.StatusOK)
+		allow := "GET, HEAD, OPTIONS"
+		if strings.HasPrefix(path, "/echo") {
+			allow = "GET, HEAD, POST, PUT, DELETE, PATCH, OPTIONS"
+		}
+		AssertEqual(allow, response.Header.Get("Allow"))
+		AssertEqual(true, response.Close)
+		AssertEmpty(response.TransferEncoding)
+		body, err := io.ReadAll(response.Body)
+		AssertNil(err)
+		AssertEmpty(body)
+		AssertNil(response.Body.Close())
+	}
+}
+
+func HttpCliHeadStreamCleanupTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	vpp.Vppctl("http cli server fifo-size 4 uri http://" + address)
+	activeFifos := func() int {
+		total := 0
+		for _, line := range strings.Split(vpp.Vppctl("show segment-manager segments"), "\n") {
+			if _, count, found := strings.Cut(line, "active fifos:"); found {
+				value, err := strconv.Atoi(strings.TrimSpace(count))
+				AssertNil(err)
+				total += value
+			}
+		}
+		return total
+	}
+	baselineSessions := vpp.Vppctl("show session")
+	baselineFifos := activeFifos()
+	for _, path := range []string{"/echo", "/echo-stream", "/echo-stream-close", "/echo-stream-drain", "/show/version"} {
+		for _, body := range []string{"", strings.Repeat("head-stream!", 12000)} {
+			By(fmt.Sprintf("chunked HEAD %s, upload bytes=%d", path, len(body)))
+			func() {
+				conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+				AssertNil(err)
+				defer conn.Close()
+				AssertNil(conn.SetDeadline(time.Now().Add(defaultHttpTimeout)))
+				_, err = fmt.Fprintf(conn, "HEAD %s HTTP/1.1\r\nHost: example.com\r\nTransfer-Encoding: chunked\r\n\r\n", path)
+				AssertNil(err)
+				_, err = io.WriteString(conn, httpCliChunkedBody(body))
+				AssertNil(err)
+				reader := bufio.NewReader(conn)
+				response, err := http.ReadResponse(reader, &http.Request{Method: "HEAD"})
+				AssertNil(err)
+				AssertHttpStatus(response, http.StatusOK)
+				AssertEmpty(response.TransferEncoding)
+				if path == "/echo" {
+					AssertHttpContentLength(response, int64(len(body)))
+				} else if strings.HasPrefix(path, "/echo-stream") {
+					AssertHttpHeaderNotPresent(response, "Content-Length")
+				} else {
+					AssertEqual(true, response.ContentLength > 0)
+				}
+				AssertNil(response.Body.Close())
+				_, err = reader.ReadByte()
+				AssertEqual(io.EOF, err, "streamed HEAD must close without body bytes")
+			}()
+		}
+	}
+	var sessions string
+	var fifos int
+	for deadline := time.Now().Add(20 * time.Second); time.Now().Before(deadline); {
+		sessions = vpp.Vppctl("show session")
+		fifos = activeFifos()
+		if sessions == baselineSessions && fifos == baselineFifos {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	AssertEqual(baselineSessions, sessions, "application and transport sessions must be released")
+	AssertEqual(baselineFifos, fifos, "application and transport FIFOs must be released")
+}
+
+func HttpMethodsTest(s *Http1Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address)
+	httpMethodsServerTest(NewHttpClient(defaultHttpTimeout, false), "http://"+address)
+}
+
+func HttpMethodsFragmentedTest(s *Http1Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address)
+	conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+	AssertNil(err)
+	defer conn.Close()
+	reader := bufio.NewReader(conn)
+	for _, method := range []string{"HEAD", "OPTIONS", "DELETE", "PATCH", "GET"} {
+		line := method + " /echo HTTP/1.1\r\n"
+		check := func(parts []string) {
+			for _, part := range parts {
+				_, err := io.WriteString(conn, part)
+				AssertNil(err)
+				time.Sleep(10 * time.Millisecond)
+			}
+			_, err := io.WriteString(conn, "Host: example.com\r\nContent-Length: 4\r\n\r\nping")
+			AssertNil(err)
+			AssertNil(conn.SetReadDeadline(time.Now().Add(defaultHttpTimeout)))
+			response, err := http.ReadResponse(reader, &http.Request{Method: method})
+			AssertNil(err)
+			AssertHttpStatus(response, http.StatusOK)
+			body, err := io.ReadAll(response.Body)
+			AssertNil(err)
+			AssertNil(response.Body.Close())
+			if method == "HEAD" || method == "OPTIONS" {
+				AssertEmpty(body)
+			} else {
+				AssertEqual("ping", string(body))
+			}
+		}
+		check([]string{line})
+		for split := 1; split < len(line); split++ {
+			check([]string{line[:split], line[split:]})
+		}
+		parts := make([]string, len(line))
+		for i := range line {
+			parts[i] = line[i : i+1]
+		}
+		check(parts)
+	}
+	// A preserved '*' reaches the CLI application's server-wide OPTIONS handler.
+	_, err = io.WriteString(conn, "OPTIONS * HTTP/1.1\r\nHost: example.com\r\n\r\n")
+	AssertNil(err)
+	response, err := http.ReadResponse(reader, nil)
+	AssertNil(err)
+	AssertHttpStatus(response, http.StatusOK)
+	AssertEqual("GET, HEAD, POST, PUT, DELETE, PATCH, OPTIONS", response.Header.Get("Allow"))
+	AssertNil(response.Body.Close())
+}
+
+func HttpMethodsClientTest(s *Http1Suite) {
+	address := net.JoinHostPort(s.HostAddr(), s.Ports.Http)
+	server := golangServer(address, "http")
+	defer server.Close()
+	for _, method := range []string{"HEAD", "OPTIONS", "DELETE", "PATCH"} {
+		for i := 0; i < 2; i++ {
+			expected := method
+			server.AppendHandlers(func(w http.ResponseWriter, r *http.Request) {
+				AssertEqual(expected, r.Method)
+				AssertEqual("/echo", r.URL.Path)
+				body, err := io.ReadAll(r.Body)
+				AssertNil(err)
+				AssertEmpty(body)
+				// A HEAD length describes GET data and must not cause a body wait.
+				w.Header().Set("Content-Length", "4")
+				if r.Method != "HEAD" {
+					_, err = io.WriteString(w, "done")
+					AssertNil(err)
+				}
+			})
+		}
+	}
+	server.Start()
+	for _, method := range []string{"HEAD", "OPTIONS", "DELETE", "PATCH"} {
+		for _, options := range []string{"", "use-ptr"} {
+			output := s.Containers.Vpp.VppInstance.Vppctl("http cli client method %s %s uri http://%s/echo",
+				strings.ToLower(method), options, address)
+			if method == "HEAD" {
+				AssertEmpty(strings.TrimSpace(output))
+			} else {
+				AssertEqual("done", strings.TrimSpace(output))
+			}
+		}
+	}
+	AssertEqual(8, len(server.ReceivedRequests()))
+}
+
+type httpResponseTestCase struct {
+	name, method, interim string
+	finish                string
+	headers               [][2]string
+	body                  string
+	fragmented, reject    bool
+}
+
+func httpResponseTestCases(group string) []httpResponseTestCase {
+	var cases []httpResponseTestCase
+	if group == "head-end" {
+		for _, finish := range []string{"reset", "timeout", "data"} {
+			item := httpResponseTestCase{name: "HEAD before " + finish,
+				method: "HEAD", finish: finish, headers: [][2]string{{"content-length", "42"}}}
+			if finish == "data" {
+				item.body = "bad"
+			}
+			cases = append(cases, item)
+		}
+		return cases
+	}
+	if group == "interim" {
+		for _, method := range []string{"HEAD", "GET"} {
+			for _, interim := range []string{"100", "103"} {
+				for _, fragmented := range []bool{false, true} {
+					body := ""
+					if method == "GET" {
+						body = "final"
+					}
+					cases = append(cases, httpResponseTestCase{
+						name:   fmt.Sprintf("%s interim=%s fragmented=%t", method, interim, fragmented),
+						method: method, interim: interim, fragmented: fragmented, body: body,
+						headers: [][2]string{{"content-length", "5"}, {"content-type", "text/plain"}},
+					})
+				}
+			}
+		}
+		return cases
+	}
+	// Apply the same numeric validation across versions, including decimal u64 overflow.
+	for _, value := range []string{"absent", "0", "1", "4294967295", "4294967296", "18446744073709551614", "18446744073709551615", "", "x", "-1", "18446744073709551616"} {
+		item := httpResponseTestCase{name: fmt.Sprintf("HEAD Content-Length=%q", value), method: "HEAD",
+			reject:  value == "" || value == "x" || value == "-1" || value == "18446744073709551616",
+			headers: [][2]string{{"content-type", "text/plain"}}}
+		if value != "absent" {
+			item.headers = append(item.headers, [2]string{"content-length", value})
+		}
+		cases = append(cases, item)
+	}
+	return cases
+}
+
+func httpResponseTestPassed(tc httpResponseTestCase, output string, wireErr error) bool {
+	Log("case=%s reject=%t output=%q wire_error=%v", tc.name, tc.reject, output, wireErr)
+	if wireErr != nil {
+		return false
+	}
+	if tc.finish != "" {
+		// HTTP inactivity and the CLI wait timer can expire in either order.
+		failed := strings.Contains(output, "transport closed") ||
+			(tc.finish == "timeout" && strings.Contains(output, "timeout"))
+		return failed && !strings.Contains(output, "200 OK")
+	}
+	if tc.reject {
+		return strings.Contains(output, "transport closed")
+	}
+	if tc.method == "HEAD" {
+		length := "0"
+		for _, header := range tc.headers {
+			if header[0] == "content-length" {
+				length = header[1]
+			}
+		}
+		matched := false
+		for _, line := range strings.Split(output, "\n") {
+			if strings.TrimSpace(line) == "* representation length: "+length {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+	return strings.Contains(output, "200 OK") && !strings.Contains(output, "transport closed") &&
+		!strings.Contains(output, "timeout") && (tc.body == "" || strings.Contains(output, tc.body))
+}
+
+func httpResponseTests(s *Http1Suite, group string) {
+	listener, err := net.Listen("tcp", net.JoinHostPort(s.HostAddr(), s.Ports.Http))
+	AssertNil(err)
+	defer listener.Close()
+	var failures []string
+	for _, tc := range httpResponseTestCases(group) {
+		done, release := make(chan error, 1), make(chan struct{})
+		go func() {
+			done <- func() error {
+				conn, err := listener.Accept()
+				if err != nil {
+					return err
+				}
+				defer conn.Close()
+				if err = conn.SetDeadline(time.Now().Add(defaultHttpTimeout)); err != nil {
+					return err
+				}
+				request, err := http.ReadRequest(bufio.NewReader(conn))
+				if err != nil {
+					return err
+				}
+				if request.Method != tc.method {
+					return fmt.Errorf("method %s, expected %s", request.Method, tc.method)
+				}
+				final := "HTTP/1.1 200 OK\r\n"
+				for _, header := range tc.headers {
+					final += header[0] + ": " + header[1] + "\r\n"
+				}
+				final += "\r\n" + tc.body
+				interim := ""
+				if tc.interim != "" {
+					interim = "HTTP/1.1 " + tc.interim + " Interim\r\n\r\n"
+				}
+				if tc.fragmented {
+					if _, err = io.WriteString(conn, interim); err != nil {
+						return err
+					}
+					time.Sleep(100 * time.Millisecond)
+					interim = ""
+				}
+				if _, err = io.WriteString(conn, interim+final); err != nil {
+					return err
+				}
+				<-release
+				return nil
+			}()
+		}()
+		method := ""
+		if tc.method == "HEAD" {
+			method = "head"
+		}
+		output := s.Containers.Vpp.VppInstance.Vppctl("http client %s http1 verbose timeout 1 uri http://%s/test", method, listener.Addr().String())
+		close(release)
+		if !httpResponseTestPassed(tc, output, <-done) {
+			failures = append(failures, tc.name)
+		}
+	}
+	AssertEmpty(failures, "all response cases must satisfy framing and validation invariants")
+}
+
+func HttpInterimResponsesTest(s *Http1Suite) { httpResponseTests(s, "interim") }
+
+func HttpHeadContentLengthTest(s *Http1Suite) { httpResponseTests(s, "length") }
+
+func HttpHeadClientReuseTest(s *Http1Suite) {
+	listener, err := net.Listen("tcp", net.JoinHostPort(s.HostAddr(), s.Ports.Http))
+	AssertNil(err)
+	defer listener.Close()
+	done := make(chan error, 1)
+	go func() {
+		done <- func() error {
+			conn, err := listener.Accept()
+			if err != nil {
+				return err
+			}
+			defer conn.Close()
+			if err = conn.SetDeadline(time.Now().Add(defaultHttpTimeout)); err != nil {
+				return err
+			}
+			reader := bufio.NewReader(conn)
+			for i := 0; i < 2; i++ {
+				request, err := http.ReadRequest(reader)
+				if err != nil {
+					return err
+				}
+				if request.Method != "HEAD" {
+					return fmt.Errorf("expected HEAD, got %s", request.Method)
+				}
+				if _, err = io.WriteString(conn, "HTTP/1.1 200 OK\r\nContent-Length: 42\r\n\r\n"); err != nil {
+					return err
+				}
+			}
+			return nil
+		}()
+	}()
+	output := s.Containers.Vpp.VppInstance.Vppctl("http client head http1 repeat 2 timeout 1 uri http://%s/test", listener.Addr().String())
+	Log(output)
+	AssertNil(<-done)
+	AssertContains(output, "2 request(s)")
+}
+
+func HttpHeadResponseFramingTest(s *Http1Suite) {
+	for _, metadata := range []string{"", "Content-Length: 0\r\n", "Content-Length: 1\r\n",
+		"Content-Length: 18446744073709551615\r\n", "Transfer-Encoding: chunked\r\n"} {
+		for _, fin := range []bool{false, true} {
+			output := httpCliClientRawReply(s, "http cli client method head", func(conn *net.TCPConn) error {
+				headers := "HTTP/1.1 200 OK\r\n" + metadata + "\r\n"
+				if _, err := io.WriteString(conn, headers[:len(headers)-1]); err != nil {
+					return err
+				}
+				time.Sleep(10 * time.Millisecond)
+				if _, err := io.WriteString(conn, headers[len(headers)-1:]); err != nil {
+					return err
+				}
+				if fin {
+					return conn.CloseWrite()
+				}
+				return nil
+			})
+			AssertEmpty(strings.TrimSpace(output))
+		}
+	}
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address)
+	conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+	AssertNil(err)
+	defer conn.Close()
+	AssertNil(conn.SetDeadline(time.Now().Add(defaultHttpTimeout)))
+	reader := bufio.NewReader(conn)
+	for _, path := range []string{"/head-304", "/head-304-known"} {
+		By("HEAD 304 " + path)
+		_, err = fmt.Fprintf(conn, "HEAD %s HTTP/1.1\r\nHost: example.com\r\n\r\n", path)
+		AssertNil(err)
+		response, err := http.ReadResponse(reader, &http.Request{Method: "HEAD"})
+		AssertNil(err)
+		AssertHttpStatus(response, http.StatusNotModified)
+		if path == "/head-304-known" {
+			AssertEqual([]string{"42"}, response.Header.Values("Content-Length"))
+		} else {
+			AssertHttpHeaderNotPresent(response, "Content-Length")
+		}
+		AssertEmpty(response.TransferEncoding)
+		AssertEqual(false, response.Close)
+		AssertNil(response.Body.Close())
+		_, err = io.WriteString(conn, "GET /echo HTTP/1.1\r\nHost: example.com\r\nContent-Length: 4\r\n\r\nping")
+		AssertNil(err)
+		response, err = http.ReadResponse(reader, nil)
+		AssertNil(err)
+		AssertHttpStatus(response, http.StatusOK)
+		body, err := io.ReadAll(response.Body)
+		AssertNil(err)
+		AssertEqual("ping", string(body), "a reused connection must have no HEAD body or chunk terminator")
+		AssertNil(response.Body.Close())
+	}
+	_, err = io.WriteString(conn, "HEAD /echo-stream HTTP/1.1\r\nHost: example.com\r\n\r\n")
+	AssertNil(err)
+	response, err := http.ReadResponse(reader, &http.Request{Method: "HEAD"})
+	AssertNil(err)
+	AssertHttpStatus(response, http.StatusOK)
+	AssertHttpHeaderNotPresent(response, "Content-Length")
+	AssertEmpty(response.TransferEncoding)
+	AssertNil(response.Body.Close())
+	// A following response also proves there was no HEAD body or chunk terminator.
+	_, err = io.WriteString(conn, "GET /echo HTTP/1.1\r\nHost: example.com\r\nContent-Length: 4\r\n\r\nping")
+	AssertNil(err)
+	response, err = http.ReadResponse(reader, nil)
+	AssertNil(err)
+	AssertHttpStatus(response, http.StatusOK)
+	body, err := io.ReadAll(response.Body)
+	AssertNil(err)
+	AssertEqual("ping", string(body))
+	AssertNil(response.Body.Close())
+	for _, representation := range []string{"", "x", strings.Repeat("metadata-only", 10000)} {
+		_, err = fmt.Fprintf(conn, "HEAD /echo HTTP/1.1\r\nHost: example.com\r\nContent-Length: %d\r\n\r\n%s", len(representation), representation)
+		AssertNil(err)
+		response, err = http.ReadResponse(reader, &http.Request{Method: "HEAD"})
+		AssertNil(err)
+		AssertHttpStatus(response, http.StatusOK)
+		AssertHttpContentLength(response, int64(len(representation)))
+		AssertNil(response.Body.Close())
+		_, err = io.WriteString(conn, "GET /echo HTTP/1.1\r\nHost: example.com\r\nContent-Length: 4\r\n\r\nping")
+		AssertNil(err)
+		response, err = http.ReadResponse(reader, nil)
+		AssertNil(err)
+		AssertHttpStatus(response, http.StatusOK)
+		body, err = io.ReadAll(response.Body)
+		AssertNil(err)
+		AssertEqual("ping", string(body))
+		AssertNil(response.Body.Close())
+	}
+	var commandLength int64
+	for _, method := range []string{"GET", "HEAD"} {
+		for _, path := range []string{"/echo-stream", "/echo-stream-close", "/echo-stream-drain"} {
+			By(fmt.Sprintf("reuse after HEAD %s for %s /show/version", path, method))
+			_, err = fmt.Fprintf(conn, "HEAD %s HTTP/1.1\r\nHost: example.com\r\nContent-Length: 4\r\n\r\nping", path)
+			AssertNil(err)
+			response, err = http.ReadResponse(reader, &http.Request{Method: "HEAD"})
+			AssertNil(err)
+			AssertHttpStatus(response, http.StatusOK)
+			AssertHttpHeaderNotPresent(response, "Content-Length")
+			AssertEmpty(response.TransferEncoding)
+			AssertEqual(false, response.Close)
+			AssertNil(response.Body.Close())
+			_, err = fmt.Fprintf(conn, "%s /show/version HTTP/1.1\r\nHost: example.com\r\nAccept: text/plain\r\n\r\n", method)
+			AssertNil(err)
+			response, err = http.ReadResponse(reader, &http.Request{Method: method})
+			AssertNil(err)
+			AssertHttpStatus(response, http.StatusOK)
+			AssertEmpty(response.TransferEncoding)
+			AssertEqual(false, response.Close)
+			body, err = io.ReadAll(response.Body)
+			AssertNil(err)
+			AssertNil(response.Body.Close())
+			if method == "GET" {
+				AssertNotEmpty(body)
+				commandLength = int64(len(body))
+			} else {
+				AssertEmpty(body)
+			}
+			AssertHttpContentLength(response, commandLength)
+		}
+	}
+}
+
+func httpMethodsClientHandler(version int, observed chan<- string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer GinkgoRecover()
+		AssertEqual(version, r.ProtoMajor)
+		AssertEqual("/echo", r.URL.Path)
+		body, err := io.ReadAll(r.Body)
+		AssertNil(err)
+		observed <- r.Method + ":" + string(body)
+		w.Header().Set("Content-Length", "4")
+		if r.Method != "HEAD" {
+			_, err = io.WriteString(w, "done")
+			AssertNil(err)
+		}
+	})
+}
+
+func httpMethodsClientRun(vpp *VppInstance, address, options string, observed <-chan string) {
+	for _, method := range []string{"HEAD", "OPTIONS", "DELETE", "PATCH"} {
+		for _, body := range []string{"", "payload"} {
+			if method == "HEAD" && body != "" {
+				continue
+			}
+			for _, dataType := range []string{"", "use-ptr"} {
+				data := ""
+				if body != "" {
+					data = "data " + body
+				}
+				output := vpp.Vppctl("http cli client method %s %s %s %s uri https://%s/echo",
+					strings.ToLower(method), dataType, options, data, address)
+				if method == "HEAD" {
+					AssertEmpty(strings.TrimSpace(output))
+				} else {
+					AssertEqual("done", strings.TrimSpace(output))
+				}
+				select {
+				case received := <-observed:
+					AssertEqual(method+":"+body, received)
+				case <-time.After(defaultHttpTimeout):
+					Fail("server did not receive method " + method)
+				}
+			}
 		}
 	}
 }
@@ -1581,6 +2229,29 @@ func HttpCliServerChunkedCliTest(s *Http1Suite) {
 	}
 }
 
+func httpCliMethodsEndToEnd(client *VppInstance, uri, transportOptions string) {
+	for _, method := range []string{"head", "options", "delete", "patch"} {
+		for _, dataType := range []string{"", "use-ptr"} {
+			output := client.Vppctl("http cli client %s method %s %s data method-payload fifo-size 4 uri %s/echo",
+				transportOptions, method, dataType, uri)
+			if method == "head" || method == "options" {
+				AssertEmpty(strings.TrimSpace(output))
+			} else {
+				AssertEqual("method-payload", strings.TrimSpace(output))
+			}
+			output = client.Vppctl("http cli client %s method %s %s uri %s/show/version",
+				transportOptions, method, dataType, uri)
+			if method == "head" || method == "options" {
+				AssertEmpty(strings.TrimSpace(output))
+			} else {
+				AssertContains(output, "405 Method Not Allowed")
+			}
+		}
+	}
+	output := client.Vppctl("http cli client %s uri %s/show/version", transportOptions, uri)
+	AssertContains(output, "<html>")
+}
+
 func HttpCliEchoTest(s *VethsSuite) {
 	server := s.Containers.ServerVpp.VppInstance
 	client := s.Containers.ClientVpp.VppInstance
@@ -1588,7 +2259,7 @@ func HttpCliEchoTest(s *VethsSuite) {
 	server.Vppctl("http cli server fifo-size 4 uri http://" + address)
 	body := strings.Repeat("0123456789AbCdEf", 8*1024)
 	AssertNil(client.Container.CreateFile("/tmp/http-cli-echo.txt", body))
-	for _, method := range []string{"get", "post", "put"} {
+	for _, method := range []string{"get", "post", "put", "delete", "patch"} {
 		for _, options := range []string{"", "use-ptr", "stream"} {
 			for _, target := range []string{"/echo", "/echo-stream", "/echo-stream-close", "/echo-stream-drain"} {
 				output := client.Vppctl("http cli client method %s file /tmp/http-cli-echo.txt fifo-size 4 %s uri http://%s%s",
@@ -1597,6 +2268,7 @@ func HttpCliEchoTest(s *VethsSuite) {
 			}
 		}
 	}
+	httpCliMethodsEndToEnd(client, "http://"+address, "")
 }
 
 func HttpClientTest(s *Http1Suite) {
@@ -2641,7 +3313,7 @@ func HttpCliMethodNotAllowedTest(s *Http1Suite) {
 	defer resp.Body.Close()
 	Log(DumpHttpResp(resp, true))
 	AssertHttpStatus(resp, 405)
-	AssertHttpHeaderWithValue(resp, "Allow", "GET", "server MUST generate an Allow header")
+	AssertHttpHeaderWithValue(resp, "Allow", "GET, HEAD, OPTIONS", "server MUST generate an Allow header")
 	AssertHttpHeaderNotPresent(resp, "Content-Type")
 	AssertHttpContentLength(resp, int64(0))
 }
@@ -3146,7 +3818,7 @@ func HttpMethodNotImplementedTest(s *Http1Suite) {
 	vpp.Vppctl("http cli server uri http://" + serverAddress)
 
 	client := NewHttpClient(defaultHttpTimeout, false)
-	req, err := http.NewRequest("OPTIONS", "http://"+serverAddress+"/show/version", nil)
+	req, err := http.NewRequest("X-EXTENSION", "http://"+serverAddress+"/show/version", nil)
 	AssertNil(err, fmt.Sprint(err))
 	resp, err := client.Do(req)
 	AssertNil(err, fmt.Sprint(err))

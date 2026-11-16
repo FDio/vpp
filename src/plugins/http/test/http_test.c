@@ -4305,6 +4305,7 @@ typedef struct
   u32 app_session_index, old_stream_index, new_session_index;
   u32 rx_cancellations;
   u64 peer_error_code;
+  u8 initializing;
 } http_test_h3_lifecycle_t;
 
 static http_test_h3_lifecycle_t *http_test_h3_lifecycle;
@@ -4327,6 +4328,11 @@ http_test_h3_connect_stream (transport_endpoint_cfg_t *tep, session_t *s, u32 *c
   };
   /* The stream-opening caller has not attached the transport connection yet. */
   s->session_state = SESSION_STATE_CREATED;
+  if (test->initializing)
+    {
+      *conn_index = 0;
+      return 0;
+    }
   test->retired_contexts = wrk->ctx_pool;
   wrk->ctx_pool = pool_dup_aligned (wrk->ctx_pool, CLIB_CACHE_LINE_BYTES);
   test->retired_sessions = swrk->sessions;
@@ -4624,7 +4630,7 @@ done:
 }
 
 static int
-http_test_h3_streaming_lifecycle_case (vlib_main_t *vm, u8 queue_data, u8 cleanup_first)
+http_test_h3_streaming_lifecycle_case (vlib_main_t *vm, u8 queue_data, u8 cleanup_first, u8 head)
 {
   http_test_h3_lifecycle_t test = { .new_session_index = ~0 };
   session_enable_disable_args_t session_args = { .is_en = 1 };
@@ -4637,7 +4643,7 @@ http_test_h3_streaming_lifecycle_case (vlib_main_t *vm, u8 queue_data, u8 cleanu
   transport_proto_vft_t saved_quic;
   const transport_proto_vft_t *vft;
   fifo_segment_t *fs = 0;
-  svm_fifo_t *app_fifo = 0, *transport_fifo = 0;
+  svm_fifo_t *app_fifo = 0, *transport_fifo = 0, *transport_rx_fifo = 0;
   http_worker_t *wrk = 0;
   session_worker_t *swrk = 0;
   session_tx_context_t saved_tx_ctx = {};
@@ -4653,6 +4659,7 @@ http_test_h3_streaming_lifecycle_case (vlib_main_t *vm, u8 queue_data, u8 cleanu
   http_msg_t msg = { .data.type = HTTP_MSG_DATA_STREAMING };
   clib_error_t *error;
   u32 parent_index = ~0, stream_index = ~0, req_index = ~0, as_index = ~0, ts_index = ~0;
+  u32 parent_session_index = ~0;
   u8 body[] = { 'b', 'o', 'd', 'y' }, frame[6], mocked = 0, tx_scheduled = 0;
   int result = 1, n_tx_packets = 0;
 
@@ -4680,6 +4687,11 @@ http_test_h3_streaming_lifecycle_case (vlib_main_t *vm, u8 queue_data, u8 cleanu
   app_fifo = fifo_segment_alloc_fifo_w_slice (fs, 0, 4096, FIFO_SEGMENT_TX_FIFO);
   transport_fifo = fifo_segment_alloc_fifo_w_slice (fs, 0, 4096, FIFO_SEGMENT_TX_FIFO);
   H3_TEST (app_fifo && transport_fifo, "HTTP/3 lifecycle FIFOs allocated");
+  if (head)
+    {
+      transport_rx_fifo = fifo_segment_alloc_fifo_w_slice (fs, 0, 4096, FIFO_SEGMENT_RX_FIFO);
+      H3_TEST (transport_rx_fifo != 0, "HTTP/3 HEAD receive FIFO allocated");
+    }
   as = session_alloc (vm->thread_index);
   as_index = as->session_index;
   ts = session_alloc (vm->thread_index);
@@ -4732,12 +4744,6 @@ http_test_h3_streaming_lifecycle_case (vlib_main_t *vm, u8 queue_data, u8 cleanu
   req->c_flags = TRANSPORT_CONNECTION_F_NO_LOOKUP;
   req->c_s_index = as_index;
   req->c_thread_index = vm->thread_index;
-  req->req_state = HTTP_REQ_STATE_WAIT_APP_METHOD;
-  req->req_flags = HTTP_REQ_F_RX_HEADERS_RECEIVED | HTTP_REQ_F_RX_EOF | HTTP_REQ_F_PEER_CLOSED |
-		   (queue_data ? HTTP_REQ_F_TX_EOF : 0);
-  init_tx_buffer (req, &msg);
-  H3_TEST (svm_fifo_enqueue (app_fifo, sizeof (body), body) == sizeof (body),
-	   "final upload bytes queued after a completed known-length response");
   test.app_session_index = as_index;
   test.old_stream_index = stream_index;
   vft = &tp_vfts[TRANSPORT_PROTO_HTTP];
@@ -4748,6 +4754,62 @@ http_test_h3_streaming_lifecycle_case (vlib_main_t *vm, u8 queue_data, u8 cleanu
   tp_vfts[TRANSPORT_PROTO_QUIC].attribute = http_test_h3_attribute;
   http_test_h3_lifecycle = &test;
   mocked = 1;
+  if (head)
+    {
+      session_endpoint_cfg_t sep = { .parent_handle = session_handle (as) };
+      http_conn_handle_t stream_handle = { .version = HTTP_VERSION_3 };
+      /* Initialize the real client RX handler without relocating the pools yet. */
+      test.initializing = 1;
+      H3_TEST (!vft->connect_stream ((transport_endpoint_cfg_t *) &sep, 0, &handle.as_u32),
+	       "HTTP/3 HEAD client stream initialized");
+      test.initializing = 0;
+      pool_put_index (wrk->ctx_pool, req_index);
+      pool_put_index (wrk->ctx_pool, stream_index);
+      req_index = handle.req_index;
+      req = pool_elt_at_index (wrk->ctx_pool, req_index);
+      stream_index = req->hr_hc_index;
+      stream = pool_elt_at_index (wrk->ctx_pool, stream_index);
+      parent_session_index = ts_index;
+      ts_index = test.new_session_index;
+      test.new_session_index = ~0;
+      test.old_stream_index = stream_index;
+      ts = session_get (ts_index, vm->thread_index);
+      segment_manager_dealloc_fifos (ts->rx_fifo, ts->tx_fifo);
+      ts->rx_fifo = transport_rx_fifo;
+      ts->tx_fifo = transport_fifo;
+      ts->session_state = SESSION_STATE_TRANSPORT_DELETED;
+      ts->flags = SESSION_F_APP_CLOSED;
+      stream_handle.conn_index = stream_index;
+      ts->opaque = stream_handle.as_u32;
+    }
+  as = pool_elt_at_index (session_main.wrk[vm->thread_index].sessions, as_index);
+  handle.req_index = req_index;
+  as->connection_index = req->hr_req_handle = handle.as_u32;
+  req->hr_hc_index = stream_index;
+  req->c_flags = TRANSPORT_CONNECTION_F_NO_LOOKUP;
+  req->c_s_index = as_index;
+  req->c_thread_index = vm->thread_index;
+  req->req_state = HTTP_REQ_STATE_WAIT_APP_METHOD;
+  req->req_flags = HTTP_REQ_F_RX_HEADERS_RECEIVED | HTTP_REQ_F_RX_EOF | HTTP_REQ_F_PEER_CLOSED |
+		   (queue_data ? HTTP_REQ_F_TX_EOF : 0);
+  init_tx_buffer (req, &msg);
+  H3_TEST (svm_fifo_enqueue (app_fifo, sizeof (body), body) == sizeof (body),
+	   "final upload bytes queued after a completed known-length response");
+  if (head)
+    {
+      req->method = HTTP_REQ_HEAD;
+      req->status_code = HTTP_STATUS_OK;
+      req->req_state = HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA;
+      req->req_flags &= ~(HTTP_REQ_F_RX_EOF | HTTP_REQ_F_PEER_CLOSED);
+      application_get (test.hm->app_index)->cb_fns.session_disconnect_callback (ts);
+      req = pool_elt_at_index (wrk->ctx_pool, req_index);
+      H3_TEST (
+	!test.retired_contexts && !test.retired_sessions && req->hr_hc_index == stream_index &&
+	  req->tx_buf.vft && (req->req_flags & HTTP_REQ_F_RX_EOF) &&
+	  req->req_state == HTTP_REQ_STATE_WAIT_APP_METHOD &&
+	  svm_fifo_max_dequeue (app_fifo) == sizeof (body),
+	"HEAD response FIN preserves the original stream and pending upload, marking RX EOF");
+    }
   swrk = &session_main.wrk[vm->thread_index];
   saved_tx_ctx = swrk->ctx;
   clib_llist_get (swrk->event_elts, elt);
@@ -4914,6 +4976,8 @@ done:
     session_free (session_get (as_index, vm->thread_index));
   if (ts_index != ~0)
     session_free (session_get (ts_index, vm->thread_index));
+  if (parent_session_index != ~0)
+    session_free (session_get (parent_session_index, vm->thread_index));
   if (mocked)
     {
       tp_vfts[TRANSPORT_PROTO_QUIC] = saved_quic;
@@ -4926,6 +4990,8 @@ done:
     fifo_segment_free_fifo (fs, app_fifo);
   if (transport_fifo)
     fifo_segment_free_fifo (fs, transport_fifo);
+  if (transport_rx_fifo)
+    fifo_segment_free_fifo (fs, transport_rx_fifo);
   if (fs)
     fifo_segment_delete (&fsm, fs);
   vec_free (args.new_segment_indices);
@@ -4936,9 +5002,11 @@ done:
 static int
 http_test_h3_streaming_lifecycle (vlib_main_t *vm)
 {
-  return http_test_h3_streaming_lifecycle_case (vm, 0, 0) ||
-	 http_test_h3_streaming_lifecycle_case (vm, 0, 1) ||
-	 http_test_h3_streaming_lifecycle_case (vm, 1, 0);
+  return http_test_h3_streaming_lifecycle_case (vm, 0, 0, 0) ||
+	 http_test_h3_streaming_lifecycle_case (vm, 0, 1, 0) ||
+	 http_test_h3_streaming_lifecycle_case (vm, 1, 0, 0) ||
+	 http_test_h3_streaming_lifecycle_case (vm, 0, 0, 1) ||
+	 http_test_h3_streaming_lifecycle_case (vm, 1, 0, 1);
 }
 
 static int
@@ -5352,6 +5420,262 @@ done:
 #undef METADATA_TEST
 }
 
+static int
+http_test_reply_framing (vlib_main_t *vm)
+{
+  const struct
+  {
+    const char *name;
+    http_req_method_t method;
+    http_status_code_t status;
+    http_msg_data_type_t type;
+    u64 body_len;
+    http_req_flags_t flags;
+    u8 valid;
+    http_reply_framing_t expected;
+  } cases[] = {
+    { "fixed GET", HTTP_REQ_GET, HTTP_STATUS_OK, HTTP_MSG_DATA_INLINE, 42, 0, 1, { 1, 0, 1 } },
+    { "empty GET", HTTP_REQ_GET, HTTP_STATUS_OK, HTTP_MSG_DATA_INLINE, 0, 0, 1, { 0, 0, 1 } },
+    { "streamed GET", HTTP_REQ_GET, HTTP_STATUS_OK, HTTP_MSG_DATA_STREAMING, 0, 0, 1, { 1, 1, 0 } },
+    { "pointer GET", HTTP_REQ_GET, HTTP_STATUS_OK, HTTP_MSG_DATA_PTR, 42, 0, 1, { 1, 0, 1 } },
+    { "fixed HEAD", HTTP_REQ_HEAD, HTTP_STATUS_OK, HTTP_MSG_DATA_INLINE, 42, 0, 1, { 0, 0, 1 } },
+    { "empty HEAD", HTTP_REQ_HEAD, HTTP_STATUS_OK, HTTP_MSG_DATA_INLINE, 0, 0, 1, { 0, 0, 1 } },
+    { "pointer HEAD", HTTP_REQ_HEAD, HTTP_STATUS_OK, HTTP_MSG_DATA_PTR, 42, 0, 1, { 0, 0, 1 } },
+    { "large HEAD",
+      HTTP_REQ_HEAD,
+      HTTP_STATUS_OK,
+      HTTP_MSG_DATA_PTR,
+      CLIB_U64_MAX - 1,
+      0,
+      1,
+      { 0, 0, 1 } },
+    { "unknown HEAD",
+      HTTP_REQ_HEAD,
+      HTTP_STATUS_OK,
+      HTTP_MSG_DATA_STREAMING,
+      0,
+      0,
+      1,
+      { 0, 0, 0 } },
+    { "unknown HEAD 304",
+      HTTP_REQ_HEAD,
+      HTTP_STATUS_NOT_MODIFIED,
+      HTTP_MSG_DATA_STREAMING,
+      0,
+      0,
+      1,
+      { 0, 0, 0 } },
+    { "fixed HEAD 304",
+      HTTP_REQ_HEAD,
+      HTTP_STATUS_NOT_MODIFIED,
+      HTTP_MSG_DATA_INLINE,
+      42,
+      0,
+      1,
+      { 0, 0, 1 } },
+    { "pointer HEAD 304",
+      HTTP_REQ_HEAD,
+      HTTP_STATUS_NOT_MODIFIED,
+      HTTP_MSG_DATA_PTR,
+      42,
+      0,
+      1,
+      { 0, 0, 1 } },
+    { "fixed GET 304",
+      HTTP_REQ_GET,
+      HTTP_STATUS_NOT_MODIFIED,
+      HTTP_MSG_DATA_INLINE,
+      42,
+      0,
+      1,
+      { 0, 0, 1 } },
+    { "streamed GET 304",
+      HTTP_REQ_GET,
+      HTTP_STATUS_NOT_MODIFIED,
+      HTTP_MSG_DATA_STREAMING,
+      0,
+      0,
+      0,
+      {} },
+    { "HEAD 204",
+      HTTP_REQ_HEAD,
+      HTTP_STATUS_NO_CONTENT,
+      HTTP_MSG_DATA_INLINE,
+      0,
+      0,
+      1,
+      { 0, 0, 0 } },
+    { "unknown HEAD 204",
+      HTTP_REQ_HEAD,
+      HTTP_STATUS_NO_CONTENT,
+      HTTP_MSG_DATA_STREAMING,
+      0,
+      0,
+      1,
+      { 0, 0, 0 } },
+    { "GET 204", HTTP_REQ_GET, HTTP_STATUS_NO_CONTENT, HTTP_MSG_DATA_INLINE, 0, 0, 1, { 0, 0, 0 } },
+    { "nonempty GET 204",
+      HTTP_REQ_GET,
+      HTTP_STATUS_NO_CONTENT,
+      HTTP_MSG_DATA_INLINE,
+      42,
+      0,
+      0,
+      {} },
+    { "nonempty HEAD 204",
+      HTTP_REQ_HEAD,
+      HTTP_STATUS_NO_CONTENT,
+      HTTP_MSG_DATA_INLINE,
+      42,
+      0,
+      0,
+      {} },
+    { "streamed GET 204",
+      HTTP_REQ_GET,
+      HTTP_STATUS_NO_CONTENT,
+      HTTP_MSG_DATA_STREAMING,
+      0,
+      0,
+      0,
+      {} },
+    { "GET 205",
+      HTTP_REQ_GET,
+      HTTP_STATUS_RESET_CONTENT,
+      HTTP_MSG_DATA_INLINE,
+      0,
+      0,
+      1,
+      { 0, 0, 1 } },
+    { "nonempty GET 205",
+      HTTP_REQ_GET,
+      HTTP_STATUS_RESET_CONTENT,
+      HTTP_MSG_DATA_INLINE,
+      42,
+      0,
+      0,
+      {} },
+    { "streamed GET 205",
+      HTTP_REQ_GET,
+      HTTP_STATUS_RESET_CONTENT,
+      HTTP_MSG_DATA_STREAMING,
+      0,
+      0,
+      0,
+      {} },
+    { "informational",
+      HTTP_REQ_GET,
+      HTTP_STATUS_EARLY_HINTS,
+      HTTP_MSG_DATA_INLINE,
+      0,
+      0,
+      1,
+      { 0, 0, 0 } },
+    { "nonempty informational",
+      HTTP_REQ_HEAD,
+      HTTP_STATUS_EARLY_HINTS,
+      HTTP_MSG_DATA_INLINE,
+      42,
+      0,
+      0,
+      {} },
+    { "streamed informational",
+      HTTP_REQ_HEAD,
+      HTTP_STATUS_EARLY_HINTS,
+      HTTP_MSG_DATA_STREAMING,
+      0,
+      0,
+      0,
+      {} },
+    { "nonzero unknown length",
+      HTTP_REQ_HEAD,
+      HTTP_STATUS_OK,
+      HTTP_MSG_DATA_STREAMING,
+      42,
+      0,
+      0,
+      {} },
+    { "CONNECT",
+      HTTP_REQ_CONNECT,
+      HTTP_STATUS_OK,
+      HTTP_MSG_DATA_INLINE,
+      0,
+      HTTP_REQ_F_IS_TUNNEL,
+      1,
+      { 0, 0, 0 } },
+    { "CONNECT 201",
+      HTTP_REQ_CONNECT,
+      HTTP_STATUS_CREATED,
+      HTTP_MSG_DATA_PTR,
+      0,
+      HTTP_REQ_F_IS_TUNNEL,
+      1,
+      { 0, 0, 0 } },
+    { "CONNECT-UDP",
+      HTTP_REQ_CONNECT_UDP,
+      HTTP_STATUS_SWITCHING_PROTOCOLS,
+      HTTP_MSG_DATA_INLINE,
+      0,
+      HTTP_REQ_F_IS_TUNNEL,
+      1,
+      { 0, 0, 0 } },
+    { "streamed CONNECT",
+      HTTP_REQ_CONNECT,
+      HTTP_STATUS_OK,
+      HTTP_MSG_DATA_STREAMING,
+      0,
+      HTTP_REQ_F_IS_TUNNEL,
+      0,
+      {} },
+    { "nonempty CONNECT",
+      HTTP_REQ_CONNECT,
+      HTTP_STATUS_OK,
+      HTTP_MSG_DATA_INLINE,
+      42,
+      HTTP_REQ_F_IS_TUNNEL,
+      0,
+      {} },
+    { "failed CONNECT",
+      HTTP_REQ_CONNECT,
+      HTTP_STATUS_BAD_GATEWAY,
+      HTTP_MSG_DATA_INLINE,
+      42,
+      HTTP_REQ_F_IS_TUNNEL,
+      1,
+      { 1, 0, 1 } },
+    { "streamed failed CONNECT",
+      HTTP_REQ_CONNECT,
+      HTTP_STATUS_BAD_GATEWAY,
+      HTTP_MSG_DATA_STREAMING,
+      0,
+      HTTP_REQ_F_IS_TUNNEL,
+      1,
+      { 1, 1, 0 } },
+  };
+
+  for (u32 i = 0; i < ARRAY_LEN (cases); i++)
+    {
+      http_ctx_t req = { .method = cases[i].method, .req_flags = cases[i].flags };
+      http_msg_t msg = {
+	.type = HTTP_MSG_REPLY,
+	.code = cases[i].status,
+	.data = { .type = cases[i].type, .body_len = cases[i].body_len },
+      };
+      http_reply_framing_t framing;
+      int rv = http_reply_get_framing (&req, &msg, &framing);
+
+      HTTP_TEST ((rv == 0) == cases[i].valid, "%s: validity", cases[i].name);
+      if (cases[i].valid)
+	HTTP_TEST (framing.has_body == cases[i].expected.has_body &&
+		     framing.streaming == cases[i].expected.streaming &&
+		     framing.send_content_length == cases[i].expected.send_content_length,
+		   "%s: payload and Content-Length framing", cases[i].name);
+      HTTP_TEST (msg.data.body_len == cases[i].body_len && msg.data.type == cases[i].type &&
+		   msg.code == cases[i].status,
+		 "%s: message metadata preserved", cases[i].name);
+    }
+  return 0;
+}
+
 static clib_error_t *
 test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 		      vlib_cli_command_t *cmd)
@@ -5359,7 +5683,9 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
   int res = 0;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "parse-authority"))
+      if (unformat (input, "reply-framing"))
+	res = http_test_reply_framing (vm);
+      else if (unformat (input, "parse-authority"))
 	res = http_test_parse_authority (vm);
       else if (unformat (input, "parse-masque-host-port"))
 	res = http_test_parse_masque_host_port (vm);
@@ -5407,6 +5733,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_listener_metadata (vm);
       else if (unformat (input, "all"))
 	{
+	  if ((res = http_test_reply_framing (vm)))
+	    goto done;
 	  if ((res = http_test_listener_metadata (vm)))
 	    goto done;
 	  if ((res = http_test_rx_publication (vm)))
