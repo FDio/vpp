@@ -67,7 +67,7 @@ ige_rx_deq_64_desc (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queu
   u32 bc[64], *buffer_indices = iq->buffer_indices,
 	      *bi = buffer_indices + slot;
   vlib_buffer_t *buffers[64];
-  u32 n_descs = 0, n_pkts = 0, n_err = 0, n_drop = 0, n_drop_pkts = 0;
+  u32 n_descs = 0, n_complete = 0, n_pkts = 0, n_err = 0, n_drop = 0, n_drop_pkts = 0;
   u32 drop[ARRAY_LEN (dc)];
 
   while (d->dd && n_descs < ARRAY_LEN (dc) && n_pkts < max_pkts)
@@ -76,6 +76,7 @@ ige_rx_deq_64_desc (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queu
       bc[n_descs] = *bi;
       n_pkts += d->eop;
       n_descs++;
+      n_complete = d->eop ? n_descs : n_complete;
       slot = (slot + 1) & mask;
       d = descs + slot;
       bi = buffer_indices + slot;
@@ -85,8 +86,7 @@ ige_rx_deq_64_desc (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queu
     return 0;
 
   /* remove descriptors from incomplete packets */
-  while (n_descs && dc[n_descs - 1].eop == 0)
-    n_descs--;
+  n_descs = n_complete;
 
   /* advance head */
   iq->head += n_descs;
