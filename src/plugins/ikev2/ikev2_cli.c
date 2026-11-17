@@ -370,6 +370,12 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 				    0);
 	  goto done;
 	}
+      else if (unformat (line_input, "set %U auth digital-signature cert-file %v",
+			 unformat_ikev2_token, &name, &data))
+	{
+	  r = ikev2_set_profile_auth (vm, name, IKEV2_AUTH_METHOD_DIGITAL_SIGNATURE, data, 0);
+	  goto done;
+	}
       else if (unformat (line_input, "set %U id local %U %U",
 			 unformat_ikev2_token, &name,
 			 unformat_ikev2_id_type, &id_type,
@@ -566,10 +572,10 @@ done:
 }
 
 VLIB_CLI_COMMAND (ikev2_profile_add_del_command, static) = {
-    .path = "ikev2 profile",
-    .short_help =
+  .path = "ikev2 profile",
+  .short_help =
     "ikev2 profile [add|del] <id>\n"
-    "ikev2 profile set <id> auth [rsa-sig|shared-key-mic] [cert-file|string|hex]"
+    "ikev2 profile set <id> auth [rsa-sig|digital-signature|shared-key-mic] [cert-file|string|hex]"
     " <data>\n"
     "ikev2 profile set <id> id <local|remote> <type> <data>\n"
     "ikev2 profile set <id> tunnel <interface>\n"
@@ -578,12 +584,13 @@ VLIB_CLI_COMMAND (ikev2_profile_add_del_command, static) = {
     "<start-addr> - <end-addr> port-range <start-port> - <end-port> "
     "protocol <protocol-number>\n"
     "ikev2 profile set <id> responder <interface> <addr>\n"
-    "ikev2 profile set <id> ike-crypto-alg <crypto alg> <key size> ike-integ-alg <integ alg> ike-dh <dh type>\n"
+    "ikev2 profile set <id> ike-crypto-alg <crypto alg> <key size> ike-integ-alg <integ alg> "
+    "ike-dh <dh type>\n"
     "ikev2 profile set <id> esp-crypto-alg <crypto alg> <key size> "
-      "[esp-integ-alg <integ alg>]\n"
+    "[esp-integ-alg <integ alg>]\n"
     "ikev2 profile set <id> sa-lifetime <seconds> <jitter> <handover> <max bytes>"
     "ikev2 profile set <id> disable natt\n",
-    .function = ikev2_profile_add_del_command_fn,
+  .function = ikev2_profile_add_del_command_fn,
 };
 
 static clib_error_t *

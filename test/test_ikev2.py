@@ -6,7 +6,7 @@ from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.cmac import CMAC
 from cryptography.hazmat.primitives import hashes, hmac
-from cryptography.hazmat.primitives.asymmetric import dh, ec, padding
+from cryptography.hazmat.primitives.asymmetric import dh, ec, padding, rsa
 from cryptography.hazmat.primitives.asymmetric.x25519 import (
     X25519PrivateKey,
     X25519PublicKey,
@@ -38,6 +38,7 @@ from framework import VppTestCase
 from asfframework import (
     VppTestRunner,
 )
+from vpp_pg_interface import CaptureTimeoutError
 from vpp_ikev2 import Profile, IDType, AuthMethod
 from vpp_ipip_tun_interface import VppIpIpTunInterface
 from vpp_ipsec import VppIpsecSA
@@ -49,6 +50,44 @@ try:
     text_type = unicode
 except NameError:
     text_type = str
+
+# DER AlgorithmIdentifier, RFC 7427 appendix A.1.2: sha256WithRSAEncryption
+SHA256_WITH_RSA = bytes.fromhex("300d06092a864886f70d01010b0500")
+
+# RFC 7427 appendix A.4.3: RSASSA-PSS with SHA-256, salt length 32
+PSS_SHA256 = bytes.fromhex(
+    "304606092a864886f70d01010a3039a00f300d06096086480165030402010500"
+    "a11c301a06092a864886f70d010108300d06096086480165030402010500"
+    "a203020120a303020101"
+)
+# the same parameters without the default trailerField, as a DER encoder writes them
+PSS_SHA256_DER = bytes.fromhex(
+    "304106092a864886f70d01010a3034a00f300d06096086480165030402010500"
+    "a11c301a06092a864886f70d010108300d06096086480165030402010500"
+    "a203020120"
+)
+# RFC 7427 appendix A.1.1, A.1.3, A.1.4
+SHA1_WITH_RSA = bytes.fromhex("300d06092a864886f70d0101050500")
+SHA384_WITH_RSA = bytes.fromhex("300d06092a864886f70d01010c0500")
+SHA512_WITH_RSA = bytes.fromhex("300d06092a864886f70d01010d0500")
+# the same identifiers without the NULL parameters, RFC 4055 section 5
+SHA256_WITH_RSA_ABSENT = bytes.fromhex("300b06092a864886f70d01010b")
+SHA384_WITH_RSA_ABSENT = bytes.fromhex("300b06092a864886f70d01010c")
+SHA512_WITH_RSA_ABSENT = bytes.fromhex("300b06092a864886f70d01010d")
+
+_PSS = padding.PSS(padding.MGF1(hashes.SHA256()), 32)
+# AlgorithmIdentifier -> (padding, hash)
+SIGNATURE_SCHEMES = {
+    SHA256_WITH_RSA: (padding.PKCS1v15(), hashes.SHA256()),
+    SHA384_WITH_RSA: (padding.PKCS1v15(), hashes.SHA384()),
+    SHA512_WITH_RSA: (padding.PKCS1v15(), hashes.SHA512()),
+    SHA256_WITH_RSA_ABSENT: (padding.PKCS1v15(), hashes.SHA256()),
+    SHA384_WITH_RSA_ABSENT: (padding.PKCS1v15(), hashes.SHA384()),
+    SHA512_WITH_RSA_ABSENT: (padding.PKCS1v15(), hashes.SHA512()),
+    PSS_SHA256: (_PSS, hashes.SHA256()),
+    PSS_SHA256_DER: (_PSS, hashes.SHA256()),
+    SHA1_WITH_RSA: (padding.PKCS1v15(), hashes.SHA1()),
+}
 
 KEY_PAD = b"Key Pad for IKEv2"
 SALT_SIZE = 4
@@ -585,6 +624,37 @@ class IKEv2SA(object):
         pos += tr_prf_key_len
         self.sk_pr = keymat[pos : pos + tr_prf_key_len]
 
+    # hash identifiers announced in SIGNATURE_HASH_ALGORITHMS, None for no notify
+    sig_hashes = None
+    peer_sig_hashes = None
+
+    @property
+    def use_digital_signature(self):
+        """RFC 7427 section 3: method 14 once both ends sent the notify."""
+        return self.sig_hashes is not None and self.peer_sig_hashes is not None
+
+    # set by negative tests to put another method number on the wire
+    force_auth_method = None
+    # AlgorithmIdentifier the peer signs method 14 with, a key of SIGNATURE_SCHEMES
+    sig_algid = None
+
+    def digital_signature(self, authmsg, algid=None, key=None):
+        """Authentication Data of method 14, RFC 7427 section 3:
+        length octet, AlgorithmIdentifier, signature."""
+        algid = algid or SHA256_WITH_RSA
+        pad, md = SIGNATURE_SCHEMES[algid]
+        return (
+            bytes([len(algid)]) + algid + (key or self.priv_key).sign(authmsg, pad, md)
+        )
+
+    @property
+    def wire_auth_method(self):
+        if self.force_auth_method is not None:
+            return self.force_auth_method
+        if self.auth_method == "rsa-sig" and self.use_digital_signature:
+            return AuthMethod.value("digital-signature")
+        return AuthMethod.value(self.auth_method)
+
     def generate_authmsg(self, packet):
         if self.is_initiator:
             id = self.i_id
@@ -607,6 +677,8 @@ class IKEv2SA(object):
         if self.auth_method == "shared-key":
             psk = self.calc_prf(self.auth_data, KEY_PAD)
             self.auth_data = self.calc_prf(psk, authmsg)
+        elif self.auth_method == "rsa-sig" and self.use_digital_signature:
+            self.auth_data = self.digital_signature(authmsg, self.sig_algid)
         elif self.auth_method == "rsa-sig":
             self.auth_data = self.priv_key.sign(
                 authmsg, padding.PKCS1v15(), hashes.SHA1()
@@ -874,6 +946,30 @@ class IkePeer(VppTestCase):
         gre.admin_up()
         self.p.set_tunnel_interface(gre.sw_if_index)
         self.gre_if = gre
+
+    @staticmethod
+    def find_notify_payload(packet, notify_type):
+        n = packet.getlayer(ikev2.IKEv2_payload_Notify)
+        while isinstance(n, ikev2.IKEv2_payload_Notify):
+            if n.type == notify_type:
+                return n
+            n = n.payload
+        return None
+
+    def verify_vpp_digital_signature(self, auth, signed):
+        """auth: AUTH payload of VPP, signed: the octets of RFC 7296 2.15."""
+        self.assertEqual(auth.auth_type, 14)
+        # RFC 7427 section 3: length octet, AlgorithmIdentifier, signature
+        algid_len = auth.load[0]
+        algid = auth.load[1 : 1 + algid_len]
+        # RFC 8247 section 3.2: RSASSA-PSS with SHA-256 for a peer listing SHA2-256
+        self.assertEqual(algid, PSS_SHA256_DER)
+        certs = os.path.join(config.vpp_ws_dir, "src/plugins/ikev2/test/certs")
+        with open(os.path.join(certs, "server-key.pem"), "rb") as f:
+            public_key = load_pem_private_key(f.read(), None).public_key()
+        pad, md = SIGNATURE_SCHEMES[algid]
+        # raises InvalidSignature on mismatch
+        public_key.verify(auth.load[1 + algid_len :], signed, pad, md)
 
     @classmethod
     def setUpClass(cls):
@@ -1389,15 +1485,6 @@ class TemplateInitiator(IkePeer):
         capture = self.pg0.get_capture(1)
         self.verify_del_sa(capture[0])
 
-    @staticmethod
-    def find_notify_payload(packet, notify_type):
-        n = packet.getlayer(ikev2.IKEv2_payload_Notify)
-        while isinstance(n, ikev2.IKEv2_payload_Notify):
-            if n.type == notify_type:
-                return n
-            n = n.payload
-        return None
-
     def verify_nat_detection(self, packet):
         if self.ip6:
             iph = packet[IPv6]
@@ -1450,8 +1537,15 @@ class TemplateInitiator(IkePeer):
 
         self.verify_nat_detection(packet)
         # SIGNATURE_HASH_ALGORITHMS announces the Digital Signature
-        # authentication method (RFC 7427), which is not implemented
-        self.assertIsNone(self.find_notify_payload(packet, 16431))
+        # authentication method (RFC 7427): only a certificate profile
+        # sends it, and it never lists SHA-1
+        notify = self.find_notify_payload(packet, 16431)
+        if self.sa.auth_method == "rsa-sig":
+            self.assertEqual(notify.load, b"\x00\x02\x00\x03\x00\x04")
+            self.sa.peer_sig_hashes = notify.load
+        else:
+            self.assertIsNone(notify)
+        self.sa.vpp_init_req = ih
         self.sa.set_ike_props(
             crypto="AES-GCM-16ICV",
             crypto_key_len=32,
@@ -1551,6 +1645,14 @@ class TemplateInitiator(IkePeer):
                 type="NAT_DETECTION_DESTINATION_IP", load=dst_nat
             )
         )
+        if self.sa.sig_hashes is not None:
+            last = self.sa.init_resp_packet.getlayer(ikev2.IKEv2_payload_Notify, 2)
+            last.next_payload = "Notify"
+            last.add_payload(
+                ikev2.IKEv2_payload_Notify(
+                    type="SIGNATURE_HASH_ALGORITHMS", load=self.sa.sig_hashes
+                )
+            )
 
         return self.create_packet(
             self.pg0,
@@ -1611,7 +1713,7 @@ class TemplateInitiator(IkePeer):
             )
             / ikev2.IKEv2_payload_AUTH(
                 next_payload="SA",
-                auth_type=AuthMethod.value(self.sa.auth_method),
+                auth_type=self.sa.wire_auth_method,
                 load=self.sa.auth_data,
             )
             / ikev2.IKEv2_payload_SA(next_payload="TSi", prop=props)
@@ -1773,6 +1875,11 @@ class TemplateResponder(IkePeer):
             nat_dst_detection = ikev2.IKEv2_payload_Notify(
                 type="NAT_DETECTION_DESTINATION_IP", load=dst_nat
             )
+            if self.sa.sig_hashes is not None:
+                nat_dst_detection.next_payload = "Notify"
+                nat_dst_detection = nat_dst_detection / ikev2.IKEv2_payload_Notify(
+                    type="SIGNATURE_HASH_ALGORITHMS", load=self.sa.sig_hashes
+                )
             self.sa.init_req_packet = (
                 self.sa.init_req_packet / nat_src_detection / nat_dst_detection
             )
@@ -1834,7 +1941,7 @@ class TemplateResponder(IkePeer):
         plain = (
             ikev2.IKEv2_payload_AUTH(
                 next_payload="SA",
-                auth_type=AuthMethod.value(self.sa.auth_method),
+                auth_type=self.sa.wire_auth_method,
                 load=self.sa.auth_data,
             )
             / ikev2.IKEv2_payload_SA(next_payload="TSi", prop=props)
@@ -1925,6 +2032,9 @@ class TemplateResponder(IkePeer):
             self.logger.error("unexpected reply: SA/Nonce/KE payload found!")
             self.logger.error(ih.show())
             raise
+        self.sa.init_resp_packet = ih
+        notify = self.find_notify_payload(packet, 16431)  # SIGNATURE_HASH_ALGORITHMS
+        self.sa.peer_sig_hashes = None if notify is None else notify.load
         self.sa.complete_dh_data()
         self.sa.calc_keys()
         self.sa.auth_init()
@@ -3634,6 +3744,225 @@ class TestResponderUnusableSigningKey(TestResponderRsaSign):
         self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
 
 
+class TestInitiatorDigitalSignature(TemplateInitiator, Ikev2Params):
+    """RFC 7427: the initiator announces hashes and signs with method 14."""
+
+    def config_tc(self):
+        self.config_params(
+            {
+                "is_initiator": False,  # seen from test case perspective
+                # thus vpp is initiator
+                "auth": "rsa-sig",
+                "server-key": "server-key.pem",
+                "client-key": "client-key.pem",
+                "client-cert": "client-cert.pem",
+                "server-cert": "server-cert.pem",
+                "ike-crypto": ("AES-GCM-16ICV", 32),
+                "ike-integ": "NULL",
+                "ike-dh": "3072MODPgr",
+                "ike_transforms": {
+                    "crypto_alg": 20,  # "aes-gcm-16"
+                    "crypto_key_size": 256,
+                    "dh_group": 15,  # "modp-3072"
+                },
+                "esp_transforms": {
+                    "crypto_alg": 12,  # "aes-cbc"
+                    "crypto_key_size": 256,
+                    # "hmac-sha2-256-128"
+                    "integ_alg": 12,
+                },
+                "responder_hostname": {
+                    "hostname": "vpp.responder.org",
+                    "sw_if_index": self.pg0.sw_if_index,
+                },
+            }
+        )
+        self.sa.sig_hashes = b"\x00\x02\x00\x03\x00\x04"
+
+    def verify_sa_auth_req(self, packet):
+        super().verify_sa_auth_req(packet)
+        plain = self.sa.hmac_and_decrypt(self.get_ike_header(packet))
+        auth = ikev2.IKEv2_payload_IDi(plain)[ikev2.IKEv2_payload_AUTH]
+        # the initiator signs its IKE_SA_INIT message, the responder nonce and
+        # prf(SK_pi, IDi), RFC 7296 section 2.15
+        idi = bytes([self.sa.id_type, 0, 0, 0]) + self.sa.i_id
+        self.verify_vpp_digital_signature(
+            auth,
+            raw(self.sa.vpp_init_req)
+            + self.sa.r_nonce
+            + self.sa.calc_prf(self.sa.sk_pi, idi),
+        )
+
+
+class TestInitiatorDigitalSignatureNoNotify(TestInitiatorDigitalSignature):
+    """An initiator rejects a method 14 answer from a responder that sent no notify."""
+
+    def config_tc(self):
+        super().config_tc()
+        self.sa.sig_hashes = None
+
+    def tearDown(self):
+        super(IkePeer, self).tearDown()
+        self.p.remove_vpp_config()
+
+    def verify_sa_auth_req(self, packet):
+        # without the notify from the responder the initiator uses method 1
+        TemplateInitiator.verify_sa_auth_req(self, packet)
+        plain = self.sa.hmac_and_decrypt(self.get_ike_header(packet))
+        auth = ikev2.IKEv2_payload_IDi(plain)[ikev2.IKEv2_payload_AUTH]
+        self.assertEqual(auth.auth_type, 1)
+
+    def test_initiator(self):
+        self.initiate_sa_init()
+        self.sa.force_auth_method = 14
+        self.sa.auth_data = self.sa.digital_signature(
+            self.sa.generate_authmsg(raw(self.sa.init_resp_packet))
+        )
+        self.sa.calc_child_keys()
+        self.send_auth_response()
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
+        for sa in self.vapi.ikev2_sa_v2_dump():
+            self.assertNotEqual(sa.sa.state, 4)  # AUTHENTICATED
+
+
+class TestResponderDigitalSignatureRejected(TestResponderRsaSign):
+    """Method 14 with a signature of another key is rejected; base of the
+    cases the responder must answer with AUTHENTICATION_FAILED."""
+
+    vpp_worker_count = 0
+    sig_hashes = b"\x00\x02\x00\x03\x00\x04"
+
+    def config_tc(self):
+        super().config_tc()
+        self.sa.sig_hashes = self.sig_hashes
+
+    def tearDown(self):
+        super(IkePeer, self).tearDown()
+        self.p.remove_vpp_config()
+
+    def authmsg(self):
+        return self.sa.generate_authmsg(raw(self.sa.init_req_packet))
+
+    def forge(self):
+        """Replace the honest AUTH value built by the peer."""
+        other = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        self.sa.auth_data = self.sa.digital_signature(self.authmsg(), key=other)
+
+    def verify_sa_auth_resp(self, packet):
+        ih = self.get_ike_header(packet)
+        self.assertEqual(ih.exch_type, 35)  # IKE_AUTH
+        self.assertIn("Response", ih.flags)
+        notify = ikev2.IKEv2_payload_Notify(self.sa.hmac_and_decrypt(ih))
+        self.assertEqual(notify.type, 24)  # AUTHENTICATION_FAILED
+
+    def test_responder(self):
+        self.send_sa_init_req()
+        self.forge()
+        self.send_sa_auth()
+        self.assertEqual(len(self.vapi.ipsec_sa_dump()), 0)
+
+
+class TestResponderDigitalSignatureSha1(TestResponderDigitalSignatureRejected):
+    """Method 14 with a valid sha1WithRSAEncryption signature is rejected."""
+
+    def forge(self):
+        self.sa.auth_data = self.sa.digital_signature(self.authmsg(), SHA1_WITH_RSA)
+
+
+class TestResponderDigitalSignatureShortId(TestResponderDigitalSignatureRejected):
+    """Method 14 whose length octet covers the whole payload is rejected."""
+
+    def forge(self):
+        self.sa.auth_data = bytes([len(SHA256_WITH_RSA)]) + SHA256_WITH_RSA[:5]
+
+
+class TestResponderDigitalSignatureOneOctet(TestResponderDigitalSignatureRejected):
+    """Method 14 with nothing but the length octet is rejected."""
+
+    def forge(self):
+        self.sa.auth_data = bytes([len(SHA256_WITH_RSA)])
+
+
+class TestResponderDigitalSignatureNoSignature(TestResponderDigitalSignatureRejected):
+    """Method 14 with an AlgorithmIdentifier and no signature is rejected."""
+
+    def forge(self):
+        self.sa.auth_data = bytes([len(SHA256_WITH_RSA)]) + SHA256_WITH_RSA
+
+
+class TestResponderDigitalSignatureBadLength(TestResponderDigitalSignatureRejected):
+    """Method 14 whose length octet exceeds the payload is rejected."""
+
+    def forge(self):
+        self.sa.auth_data = b"\xff" + self.sa.auth_data[1:]
+
+
+class TestResponderDigitalSignatureNoNotify(TestResponderDigitalSignatureRejected):
+    """Method 14 without the SIGNATURE_HASH_ALGORITHMS exchange is rejected."""
+
+    sig_hashes = None
+
+    def forge(self):
+        self.sa.force_auth_method = 14
+        self.sa.auth_data = self.sa.digital_signature(self.authmsg())
+
+
+class TestResponderDigitalSignatureProfile(TestResponderDigitalSignatureRejected):
+    """A digital-signature profile does not accept method 1."""
+
+    sig_hashes = None
+
+    def config_tc(self):
+        super().config_tc()
+        self.p.add_auth(method="digital-signature", data=self.p.auth["data"])
+
+    def forge(self):
+        pass  # the honest peer signs with method 1: it saw no notify
+
+
+class TestResponderRsaSignAfterNotify(TestResponderRsaSign):
+    """An rsa-sig profile accepts method 1 after the notify exchange and
+    answers with method 1, as older releases of the plugin expect."""
+
+    vpp_worker_count = 0
+
+    def config_tc(self):
+        super().config_tc()
+        self.sa.sig_hashes = b"\x00\x01\x00\x02\x00\x03\x00\x04"
+
+    def verify_sa_init(self, packet):
+        super().verify_sa_init(packet)
+        self.assertIsNotNone(self.sa.peer_sig_hashes)
+        # sign as a peer that announces the hashes and implements method 1 only
+        self.sa.peer_sig_hashes = None
+        self.sa.auth_init()
+
+    def verify_sa_auth_resp(self, packet):
+        super().verify_sa_auth_resp(packet)
+        plain = self.sa.hmac_and_decrypt(self.get_ike_header(packet))
+        auth = ikev2.IKEv2_payload_IDr(plain)[ikev2.IKEv2_payload_AUTH]
+        self.assertEqual(auth.auth_type, 1)
+
+
+class TestResponderSigHashesOddLength(TestResponderRsaSign):
+    """A SIGNATURE_HASH_ALGORITHMS list of odd length is a malformed request."""
+
+    vpp_worker_count = 0
+
+    def config_tc(self):
+        super().config_tc()
+        self.sa.sig_hashes = b"\x00\x02\x00"
+
+    def tearDown(self):
+        super(IkePeer, self).tearDown()
+        self.p.remove_vpp_config()
+
+    def test_responder(self):
+        with self.assertRaises(CaptureTimeoutError):
+            self.send_sa_init_req()
+        self.assertEqual(len(self.vapi.ikev2_sa_dump()), 0)
+
+
 class TestResponderTruncatedPskAuth(TemplateResponder, Ikev2Params):
     """A shared-key AUTH payload shorter than the PRF output is rejected."""
 
@@ -3758,6 +4087,87 @@ class TestResponderInitRetransmit(TemplateResponder, Ikev2Params):
             self.assertEqual(self.n_init_retransmit(), 0)
         self.send_init(self.sa.i_nonce)
         self.assertEqual(self.n_init_retransmit(), 1)
+
+
+class TestResponderDigitalSignature(TestResponderRsaSign):
+    """RFC 7427: after both ends announce hashes, both sign with method 14."""
+
+    vpp_worker_count = 0
+
+    def config_tc(self):
+        super().config_tc()
+        # SHA2-256, SHA2-384, SHA2-512
+        self.sa.sig_hashes = b"\x00\x02\x00\x03\x00\x04"
+
+    def verify_sa_init(self, packet):
+        super().verify_sa_init(packet)
+        # the responder answers the announcement and does not offer SHA-1
+        self.assertIsNotNone(self.sa.peer_sig_hashes)
+        ids = self.sa.peer_sig_hashes
+        self.assertEqual(len(ids) % 2, 0)
+        offered = {int.from_bytes(ids[i : i + 2], "big") for i in range(0, len(ids), 2)}
+        self.assertIn(2, offered)
+        self.assertNotIn(1, offered)
+
+    def verify_sa_auth_resp(self, packet):
+        super().verify_sa_auth_resp(packet)
+        plain = self.sa.hmac_and_decrypt(self.get_ike_header(packet))
+        auth = ikev2.IKEv2_payload_IDr(plain)[ikev2.IKEv2_payload_AUTH]
+        # the responder signs its IKE_SA_INIT message, the initiator nonce and
+        # prf(SK_pr, IDr), RFC 7296 section 2.15
+        idr = bytes([self.sa.id_type, 0, 0, 0]) + self.sa.r_id
+        self.verify_vpp_digital_signature(
+            auth,
+            raw(self.sa.init_resp_packet)
+            + self.sa.i_nonce
+            + self.sa.calc_prf(self.sa.sk_pr, idr),
+        )
+
+
+class TestResponderDigitalSignaturePss(TestResponderDigitalSignature):
+    """Method 14 signed by the peer with RSASSA-PSS, RFC 7427 encoding."""
+
+    sig_algid = PSS_SHA256
+
+    def config_tc(self):
+        super().config_tc()
+        self.sa.sig_algid = self.sig_algid
+
+
+class TestResponderDigitalSignaturePssDer(TestResponderDigitalSignaturePss):
+    """Method 14 with the RSASSA-PSS identifier as a DER encoder writes it."""
+
+    sig_algid = PSS_SHA256_DER
+
+
+class TestResponderDigitalSignatureSha384(TestResponderDigitalSignaturePss):
+    """Method 14 signed by the peer with sha384WithRSAEncryption."""
+
+    sig_algid = SHA384_WITH_RSA
+
+
+class TestResponderDigitalSignatureSha512(TestResponderDigitalSignaturePss):
+    """Method 14 signed by the peer with sha512WithRSAEncryption."""
+
+    sig_algid = SHA512_WITH_RSA
+
+
+class TestResponderDigitalSignatureSha256Absent(TestResponderDigitalSignaturePss):
+    """Method 14 with sha256WithRSAEncryption and no NULL parameters."""
+
+    sig_algid = SHA256_WITH_RSA_ABSENT
+
+
+class TestResponderDigitalSignatureSha384Absent(TestResponderDigitalSignaturePss):
+    """Method 14 with sha384WithRSAEncryption and no NULL parameters."""
+
+    sig_algid = SHA384_WITH_RSA_ABSENT
+
+
+class TestResponderDigitalSignatureSha512Absent(TestResponderDigitalSignaturePss):
+    """Method 14 with sha512WithRSAEncryption and no NULL parameters."""
+
+    sig_algid = SHA512_WITH_RSA_ABSENT
 
 
 class TestResponderInvalidNewChildModp(TestResponderPsk):

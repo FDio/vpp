@@ -325,6 +325,11 @@ typedef struct
   u8 *last_res_packet_data;
 
   u8 is_initiator;
+  /* SIGNATURE_HASH_ALGORITHMS (RFC 7427): IKEV2_SIG_HASH_NOTIFY when the peer
+   * sent the notify, plus one bit per hash identifier this plugin supports */
+  u8 peer_sig_hashes;
+  /* this side sent the notify */
+  u8 sig_hashes_sent;
   /* last message id that was used for an initiated request */
   u32 last_init_msg_id;
   u32 profile_index;
@@ -460,6 +465,12 @@ int ikev2_decrypt_aead_data (ikev2_sa_t *sa, ikev2_sa_transform_t *tr_encr, u8 *
 int ikev2_generate_dh (ikev2_sa_t *sa, ikev2_sa_transform_t *t);
 int ikev2_complete_dh (ikev2_sa_t *sa, ikev2_sa_transform_t *t);
 int ikev2_verify_sign (EVP_PKEY * pkey, u8 * sigbuf, u8 * data);
+#define IKEV2_SIG_HASH_NOTIFY  1
+#define IKEV2_SIG_HASH_BIT(id) (1 << (id))
+int ikev2_parse_sig_hashes (u8 *data, u8 *hashes);
+u8 *ikev2_sig_hashes_notify_data (void);
+int ikev2_verify_digital_sign (EVP_PKEY *pkey, u8 *auth_data, u8 *data);
+u8 *ikev2_calc_digital_sign (EVP_PKEY *pkey, u8 peer_hashes, u8 *data);
 u8 *ikev2_calc_sign (EVP_PKEY * pkey, u8 * data);
 EVP_PKEY *ikev2_load_cert_file (u8 * file);
 EVP_PKEY *ikev2_load_key_file (u8 * file);

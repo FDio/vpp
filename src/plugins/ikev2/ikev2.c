@@ -551,6 +551,7 @@ ikev2_complete_sa_data (ikev2_sa_t * sa, ikev2_sa_t * sai)
   sa->i_id.type = sai->i_id.type;
   sa->r_id.type = sai->r_id.type;
   sa->profile_index = sai->profile_index;
+  sa->sig_hashes_sent = sai->sig_hashes_sent;
   sa->tun_itf = sai->tun_itf;
   sa->is_tun_itf_set = sai->is_tun_itf_set;
   if (sai->natt_state == IKEV2_NATT_DISABLED)
@@ -967,6 +968,13 @@ ikev2_process_sa_init_req (vlib_main_t *vm, ikev2_sa_t *sa, ike_header_t *ike,
 		}
 	      vec_free (dst_sha);
 	    }
+	  else if (n->msg_type == IKEV2_NOTIFY_MSG_SIGNATURE_HASH_ALGORITHMS &&
+		   !ikev2_parse_sig_hashes (n->data, &sa->peer_sig_hashes))
+	    {
+	      log_err ("ispi %lx malformed SIGNATURE_HASH_ALGORITHMS", sa->ispi);
+	      ikev2_notify_free (&n);
+	      return 0;
+	    }
 	  ikev2_notify_free (&n);
 	}
       else if (payload == IKEV2_PAYLOAD_VENDOR)
@@ -1090,6 +1098,14 @@ ikev2_process_sa_init_resp (vlib_main_t * vm,
 		  log_debug ("ispi %lx initiator (self) behind NAT", sa->ispi);
 		}
 	      vec_free (dst_sha);
+	    }
+	  else if (n->msg_type == IKEV2_NOTIFY_MSG_SIGNATURE_HASH_ALGORITHMS &&
+		   !ikev2_parse_sig_hashes (n->data, &sa->peer_sig_hashes))
+	    {
+	      log_err ("ispi %lx malformed SIGNATURE_HASH_ALGORITHMS", sa->ispi);
+	      ikev2_notify_free (&n);
+	      sa->state = IKEV2_STATE_UNKNOWN;
+	      return;
 	    }
 	  ikev2_notify_free (&n);
 	}
@@ -1289,6 +1305,20 @@ ikev2_parse_id_payload (const void *p, u16 rlen, ikev2_id_t * sa_id)
   vec_add (sa_id->data, id->payload, plen - sizeof (*id));
 
   return 1;
+}
+
+static_always_inline int
+ikev2_auth_method_is_signature (ikev2_auth_method_t method)
+{
+  return method == IKEV2_AUTH_METHOD_RSA_SIG || method == IKEV2_AUTH_METHOD_DIGITAL_SIGNATURE;
+}
+
+/* RFC 7427 section 3: the Digital Signature method may be used only after
+ * both ends sent SIGNATURE_HASH_ALGORITHMS */
+static_always_inline int
+ikev2_sa_sig_hashes_exchanged (ikev2_sa_t *sa)
+{
+  return sa->sig_hashes_sent && sa->peer_sig_hashes;
 }
 
 static int
@@ -2108,6 +2138,11 @@ ikev2_select_profile (vlib_main_t *vm, ikev2_main_t *km, ikev2_sa_t *sa,
 
   pool_foreach (p, km->profiles)
     {
+      /* an initiator authenticates the responder against the profile it
+       * started the exchange with, not against any profile that matches */
+      if (sa->is_initiator && p - km->profiles != sa->profile_index)
+	continue;
+
       if (!ikev2_match_profile (p, id_loc, id_rem, sa->is_initiator))
 	continue;
 
@@ -2139,12 +2174,26 @@ ikev2_select_profile (vlib_main_t *vm, ikev2_main_t *km, ikev2_sa_t *sa,
 	    log_err ("shared key mismatch! ispi %lx", sa->ispi);
 	    }
 	}
-      else if (sa_auth->method == IKEV2_AUTH_METHOD_RSA_SIG)
+      else if (ikev2_auth_method_is_signature (sa_auth->method))
 	{
-	  if (p->auth.method != IKEV2_AUTH_METHOD_RSA_SIG)
+	  int verified;
+
+	  if (!ikev2_auth_method_is_signature (p->auth.method))
 	    continue;
 
-	  if (ikev2_verify_sign (p->auth.key, sa_auth->data, authmsg) == 1)
+	  if (sa_auth->method == IKEV2_AUTH_METHOD_DIGITAL_SIGNATURE)
+	    /* never without the notify exchange */
+	    verified = ikev2_sa_sig_hashes_exchanged (sa) &&
+		       ikev2_verify_digital_sign (p->auth.key, sa_auth->data, authmsg);
+	  else
+	    /* Method 1 is accepted for an rsa-sig profile even after the
+	     * notify exchange: releases of this plugin that announce the
+	     * hashes without implementing method 14 sign this way. A
+	     * digital-signature profile takes method 14 only. */
+	    verified = p->auth.method == IKEV2_AUTH_METHOD_RSA_SIG &&
+		       ikev2_verify_sign (p->auth.key, sa_auth->data, authmsg) == 1;
+
+	  if (verified)
 	    {
 	    sa->state = IKEV2_STATE_AUTHENTICATED;
 	    log_debug ("ispi %lx SA state changed to AUTHENTICATED", sa->ispi);
@@ -2173,9 +2222,9 @@ ikev2_sa_auth (ikev2_sa_t *sa, vlib_main_t *vm)
   tr_prf =
     ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_PRF);
 
-  /* only shared key and rsa signature */
+  /* only shared key and signatures */
   if (!(sa->i_auth.method == IKEV2_AUTH_METHOD_SHARED_KEY_MIC ||
-	sa->i_auth.method == IKEV2_AUTH_METHOD_RSA_SIG))
+	ikev2_auth_method_is_signature (sa->i_auth.method)))
     {
       log_err ("unsupported authentication method %u", sa->i_auth.method);
       sa->state = IKEV2_STATE_AUTH_FAILED;
@@ -2210,11 +2259,24 @@ ikev2_sa_auth (ikev2_sa_t *sa, vlib_main_t *vm)
 	      sa->r_auth.method = IKEV2_AUTH_METHOD_SHARED_KEY_MIC;
 	      vec_free (psk);
 	    }
-	  else if (sel_p->auth.method == IKEV2_AUTH_METHOD_RSA_SIG)
+	  else if (ikev2_auth_method_is_signature (sel_p->auth.method))
 	    {
 	      vec_free (sa->r_auth.data);
-	      sa->r_auth.data = ikev2_calc_sign (km->pkey, authmsg);
-	      sa->r_auth.method = IKEV2_AUTH_METHOD_RSA_SIG;
+	      /* Answer with the method the initiator used. By using method 14
+	       * it proved that it implements it; a peer that announced the
+	       * hashes and still signed with method 1 would not understand a
+	       * method 14 answer. */
+	      if (sa->i_auth.method == IKEV2_AUTH_METHOD_DIGITAL_SIGNATURE)
+		{
+		  sa->r_auth.data =
+		    ikev2_calc_digital_sign (km->pkey, sa->peer_sig_hashes, authmsg);
+		  sa->r_auth.method = IKEV2_AUTH_METHOD_DIGITAL_SIGNATURE;
+		}
+	      else
+		{
+		  sa->r_auth.data = ikev2_calc_sign (km->pkey, authmsg);
+		  sa->r_auth.method = IKEV2_AUTH_METHOD_RSA_SIG;
+		}
 	      if (!sa->r_auth.data)
 		{
 		  log_err ("signing the AUTH payload failed! ispi %lx", sa->ispi);
@@ -2260,9 +2322,9 @@ ikev2_sa_auth_init (ikev2_sa_t * sa)
   tr_prf =
     ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_PRF);
 
-  /* only shared key and rsa signature */
+  /* only shared key and signatures */
   if (!(sa->i_auth.method == IKEV2_AUTH_METHOD_SHARED_KEY_MIC ||
-	sa->i_auth.method == IKEV2_AUTH_METHOD_RSA_SIG))
+	ikev2_auth_method_is_signature (sa->i_auth.method)))
     {
       log_err ("unsupported authentication method %u", sa->i_auth.method);
       sa->state = IKEV2_STATE_AUTH_FAILED;
@@ -2282,11 +2344,26 @@ ikev2_sa_auth_init (ikev2_sa_t * sa)
       vec_free (psk);
       vec_free (key_pad);
     }
-  else if (sa->i_auth.method == IKEV2_AUTH_METHOD_RSA_SIG)
+  else
     {
+      /* i_auth.method holds the method of the profile until here */
+      int strict = sa->i_auth.method == IKEV2_AUTH_METHOD_DIGITAL_SIGNATURE;
+
       vec_free (sa->i_auth.data);
-      sa->i_auth.data = ikev2_calc_sign (km->pkey, authmsg);
-      sa->i_auth.method = IKEV2_AUTH_METHOD_RSA_SIG;
+      if (ikev2_sa_sig_hashes_exchanged (sa))
+	{
+	  sa->i_auth.data = ikev2_calc_digital_sign (km->pkey, sa->peer_sig_hashes, authmsg);
+	  sa->i_auth.method = IKEV2_AUTH_METHOD_DIGITAL_SIGNATURE;
+	}
+      else if (!strict)
+	{
+	  sa->i_auth.data = ikev2_calc_sign (km->pkey, authmsg);
+	  sa->i_auth.method = IKEV2_AUTH_METHOD_RSA_SIG;
+	}
+      else
+	log_err ("ispi %lx the peer did not send SIGNATURE_HASH_ALGORITHMS, "
+		 "the profile requires the digital signature method",
+		 sa->ispi);
       if (!sa->i_auth.data)
 	{
 	  log_err ("signing the AUTH payload failed! ispi %lx", sa->ispi);
@@ -2959,6 +3036,17 @@ ikev2_generate_message (vlib_main_t *vm, vlib_buffer_t *b, ikev2_sa_t *sa, ike_h
 				    IKEV2_NOTIFY_MSG_NAT_DETECTION_DESTINATION_IP,
 				    nat_detection_sha1);
 	  vec_free (nat_detection_sha1);
+
+	  /* no profile is selected yet, so the answer states what this
+	   * implementation supports, RFC 7427 section 4 */
+	  if (sa->peer_sig_hashes)
+	    {
+	      u8 *sig_hashes = ikev2_sig_hashes_notify_data ();
+	      ikev2_payload_add_notify (chain, IKEV2_NOTIFY_MSG_SIGNATURE_HASH_ALGORITHMS,
+					sig_hashes);
+	      vec_free (sig_hashes);
+	      sa->sig_hashes_sent = 1;
+	    }
 	}
     }
   else if (ike->exchange == IKEV2_EXCHANGE_IKE_AUTH)
@@ -4647,7 +4735,7 @@ ikev2_set_profile_auth (vlib_main_t * vm, u8 * name, u8 auth_method,
   p->auth.data = vec_dup (auth_data);
   p->auth.hex = data_hex_format;
 
-  if (auth_method == IKEV2_AUTH_METHOD_RSA_SIG)
+  if (ikev2_auth_method_is_signature (auth_method))
     {
       vec_add1 (p->auth.data, 0);
       p->auth.key = ikev2_load_cert_file (p->auth.data);
@@ -5124,6 +5212,14 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
 			    IKEV2_NOTIFY_MSG_NAT_DETECTION_DESTINATION_IP,
 			    nat_detection_sha1);
   vec_free (nat_detection_sha1);
+
+  if (ikev2_auth_method_is_signature (p->auth.method))
+    {
+      u8 *sig_hashes = ikev2_sig_hashes_notify_data ();
+      ikev2_payload_add_notify (chain, IKEV2_NOTIFY_MSG_SIGNATURE_HASH_ALGORITHMS, sig_hashes);
+      vec_free (sig_hashes);
+      sa.sig_hashes_sent = 1;
+    }
 
   bi0 = ikev2_get_new_ike_header_buff (vm, &b0);
   if (!bi0)
