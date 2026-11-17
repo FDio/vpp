@@ -1184,6 +1184,52 @@ tcp_ack_sacks (tcp_connection_t *tc, u8 signals_loss)
     tc->flags &= ~TCP_CONN_SNDACK;
 }
 
+/* Report [start, end), received again, and blk, the block that held it if it was out of order.
+ * A duplicate that touches the pending one extends it. Others replace it once its ack is
+ * postponed or, without room, sent, see tcp_postpone_ack. Callers check that reporting is enabled
+ * and that the range is not empty */
+static void
+tcp_dsack_add (tcp_connection_t *tc, u32 start, u32 end, sack_block_t blk)
+{
+  sack_block_t *dsack = tcp_snd_dsack (tc);
+
+  /* Sized at connection init, see tcp_connection_init_vars */
+  ASSERT (tc->snd_sacks);
+
+  if (tcp_dsack_is_pending (tc))
+    {
+      if (seq_leq (start, dsack->end) && seq_leq (dsack->start, end))
+	{
+	  dsack->start = seq_min (dsack->start, start);
+	  dsack->end = seq_max (dsack->end, end);
+	  if (blk.start != blk.end)
+	    *tcp_snd_dsack_blk (tc) = blk;
+	  return;
+	}
+      tcp_postpone_ack (tc, 1 /* is_dsack */);
+    }
+
+  dsack->start = start;
+  dsack->end = end;
+  *tcp_snd_dsack_blk (tc) = blk;
+}
+
+void
+tcp_dsack_report (tcp_connection_t *tc, u32 start, u32 end)
+{
+  sack_block_t none = {};
+
+  if (tcp_dsack_report_enabled (tc) && seq_lt (start, end))
+    tcp_dsack_add (tc, start, end, none);
+}
+
+void
+tcp_dsack_report_ooo (tcp_connection_t *tc, u32 start, u32 end, sack_block_t blk)
+{
+  if (tcp_dsack_report_enabled (tc) && seq_lt (start, end))
+    tcp_dsack_add (tc, start, end, blk);
+}
+
 /** blk, the block of an out-of-order arrival, replaces the blocks it grew from or joined in
  * the postponed acks, so they report it as received */
 void
