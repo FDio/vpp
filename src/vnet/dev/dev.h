@@ -318,20 +318,6 @@ typedef struct
   vnet_dev_crypto_queue_mark_t *marks;
 } vnet_dev_crypto_deferred_free_t;
 
-#define foreach_vnet_dev_crypto_error                                                              \
-  _ (NO_QUEUE, "no-queue", "thread has no queue of the engine")                                    \
-  _ (QUEUE_FULL, "queue-full", "queue full")                                                       \
-  _ (BAD_HMAC, "bad-hmac", "authentication failed")                                                \
-  _ (ENGINE_ERROR, "engine-error", "engine error")
-
-typedef enum
-{
-#define _(f, n, d) VNET_DEV_CRYPTO_ERROR_##f,
-  foreach_vnet_dev_crypto_error
-#undef _
-    VNET_DEV_CRYPTO_N_ERROR,
-} vnet_dev_crypto_error_t;
-
 typedef struct
 {
   vnet_crypto_alg_t alg;
@@ -353,6 +339,7 @@ typedef struct
   u16 key_data_sz;
   clib_bitmap_t *algs;			    /* algorithms of the started queues */
   vnet_dev_crypto_queue_t ***thread_queues; /* queues of each thread */
+  u64 *enq_no_queue;			    /* per thread, requests of threads without a queue */
   vnet_dev_crypto_deferred_free_t *deferred_frees;
 } vnet_dev_crypto_engine_t;
 
@@ -577,6 +564,8 @@ typedef struct vnet_dev_crypto_queue
   CLIB_CACHE_LINE_ALIGN_MARK (runtime0);
   u8 initialized : 1;
   u8 started : 1;
+  u8 stopping : 1; /* takes no new requests, requests in flight are still dequeued */
+  u8 abort : 1;	   /* hardware is stopped, the dequeue node fails requests in flight */
   u64 enq_req, enq_bytes, enq_full, enq_err;
   u64 deq_req, deq_err, deq_auth_fail;
   CLIB_ALIGN_MARK (private_data, 16);

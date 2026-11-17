@@ -10,12 +10,13 @@
 #include <wireguard/wireguard.h>
 #include <wireguard/wireguard_send.h>
 
-#define foreach_wg_output_error                                               \
-  _ (NONE, "No error")                                                        \
-  _ (PEER, "Peer error")                                                      \
-  _ (KEYPAIR, "Keypair error")                                                \
-  _ (NO_BUFFERS, "No buffers")                                                \
-  _ (CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)")
+#define foreach_wg_output_error                                                                    \
+  _ (NONE, "No error")                                                                             \
+  _ (PEER, "Peer error")                                                                           \
+  _ (KEYPAIR, "Keypair error")                                                                     \
+  _ (NO_BUFFERS, "No buffers")                                                                     \
+  _ (CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)")                                  \
+  _ (CRYPTO_QUEUE_FULL, "crypto queue full (packet dropped)")
 
 typedef enum
 {
@@ -651,13 +652,13 @@ wg_output_tun_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     }
   if (n_async)
     {
-      vnet_crypto_deq_scalar_data_t scalar = {
+      vnet_crypto_enq_scalar_data_t scalar = {
 	.next_node_index =
 	  is_ip4 ? wg_encrypt_async_next.wg4_post_next : wg_encrypt_async_next.wg6_post_next,
 	.op_type = VNET_CRYPTO_OP_TYPE_ENCRYPT,
       };
-      vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar (
-	vm, node, async_bi, async_ctx, WG_OUTPUT_NEXT_CRYPTO_ENQ, n_async, &scalar);
+      vnet_crypto_enqueue_to_crypto_enq (vm, node, async_bi, async_ctx, WG_OUTPUT_NEXT_CRYPTO_ENQ,
+					 n_async, &scalar);
     }
   if (n_noop)
     {
@@ -671,9 +672,11 @@ always_inline uword
 wg_output_tun_post (vlib_main_t *vm, vlib_node_runtime_t *node,
 		    vlib_frame_t *frame)
 {
+  vnet_crypto_frame_scalar_data_t *sd = vlib_frame_scalar_args (frame);
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
   u32 *from = vlib_frame_vector_args (frame);
+  uword i;
   u32 n_left = frame->n_vectors;
 
   index_t peeri = ~0;
@@ -767,6 +770,18 @@ wg_output_tun_post (vlib_main_t *vm, vlib_node_runtime_t *node,
       n_left -= 1;
     }
 
+  if (PREDICT_FALSE (vnet_crypto_frame_n_failures (sd)))
+    foreach_vlib_frame_bitmap_set_bit_index (i, sd->failed_bitmap)
+      {
+	vnet_crypto_op_status_t status = vnet_crypto_buffer_get_metadata (bufs[i])->status;
+	u32 err = WG_OUTPUT_ERROR_CRYPTO_ENGINE_ERROR;
+
+	if (status == VNET_CRYPTO_OP_STATUS_FAIL_QUEUE_FULL)
+	  err = WG_OUTPUT_ERROR_CRYPTO_QUEUE_FULL;
+	bufs[i]->error = node->errors[err];
+	nexts[i] = WG_OUTPUT_NEXT_ERROR;
+      }
+
   vlib_buffer_enqueue_to_next (vm, node, from, nexts, frame->n_vectors);
   return frame->n_vectors;
 }
@@ -774,6 +789,8 @@ wg_output_tun_post (vlib_main_t *vm, vlib_node_runtime_t *node,
 VLIB_REGISTER_NODE (wg4_output_tun_post_node) = {
   .name = "wg4-output-tun-post-node",
   .vector_size = sizeof (u32),
+  .scalar_size = sizeof (vnet_crypto_frame_scalar_data_t),
+  .aux_size = sizeof (vnet_crypto_ctx_t *),
   .format_trace = format_wg_output_tun_post_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .sibling_of = "wg4-output-tun",
@@ -784,6 +801,8 @@ VLIB_REGISTER_NODE (wg4_output_tun_post_node) = {
 VLIB_REGISTER_NODE (wg6_output_tun_post_node) = {
   .name = "wg6-output-tun-post-node",
   .vector_size = sizeof (u32),
+  .scalar_size = sizeof (vnet_crypto_frame_scalar_data_t),
+  .aux_size = sizeof (vnet_crypto_ctx_t *),
   .format_trace = format_wg_output_tun_post_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .sibling_of = "wg6-output-tun",

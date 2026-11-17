@@ -235,17 +235,16 @@ VLIB_NODE_FN (crypto_sw_scheduler_enq_node)
 {
   crypto_sw_scheduler_main_t *cm = &crypto_sw_scheduler_main;
   crypto_sw_scheduler_per_thread_data_t *ptd = cm->per_thread_data + vm->thread_index;
-  vnet_crypto_deq_scalar_data_t *sd = vlib_frame_scalar_args (frame);
+  vnet_crypto_frame_scalar_data_t *sd = vlib_frame_scalar_args (frame);
   crypto_sw_scheduler_queue_t *q = crypto_sw_scheduler_queue (ptd, sd->op_type);
   u32 head = q->head, n_vectors = frame->n_vectors;
   crypto_sw_scheduler_job_t *job = q->jobs + (head & cm->crypto_sw_scheduler_queue_mask);
 
   if (PREDICT_FALSE (job->frame != 0))
     {
-      vlib_error_drop_buffers (vm, node, vlib_frame_vector_args (frame), 0, n_vectors, 0,
-			       node->node_index, CRYPTO_SW_SCHED_ERROR_QUEUE_FULL);
-      vlib_frame_free (vm, frame);
-      return n_vectors;
+      vlib_node_increment_counter (vm, node->node_index, CRYPTO_SW_SCHED_ERROR_QUEUE_FULL,
+				   n_vectors);
+      return vnet_crypto_frame_to_consumer (vm, node, frame, VNET_CRYPTO_OP_STATUS_FAIL_QUEUE_FULL);
     }
 
   job->frame = frame;
@@ -263,13 +262,12 @@ VLIB_NODE_FN (crypto_sw_scheduler_enq_node)
 VLIB_REGISTER_NODE (crypto_sw_scheduler_enq_node) = {
   .name = "crypto-sw-scheduler-enq",
   .vector_size = sizeof (u32),
-  .scalar_size = sizeof (vnet_crypto_deq_scalar_data_t),
+  .scalar_size = sizeof (vnet_crypto_frame_scalar_data_t),
   .aux_size = sizeof (vnet_crypto_ctx_t *),
   .flags = VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH,
   .n_errors = CRYPTO_SW_SCHED_N_ERROR,
   .error_strings = crypto_sw_scheduler_error_strings,
-  .n_next_nodes = 1,
-  .next_nodes = { [0] = "error-drop" },
+  .sibling_of = "crypto-async",
 };
 
 static_always_inline crypto_sw_scheduler_job_t *
@@ -327,7 +325,7 @@ crypto_sw_scheduler_process_job (vlib_main_t *vm, crypto_sw_scheduler_per_thread
 				 crypto_sw_scheduler_job_t *job)
 {
   vlib_frame_t *f = job->frame;
-  vnet_crypto_deq_scalar_data_t *sd = vlib_frame_scalar_args (f);
+  vnet_crypto_frame_scalar_data_t *sd = vlib_frame_scalar_args (f);
   vnet_crypto_ctx_t **ctxs = vlib_frame_aux_args (f);
   u32 *bis = vlib_frame_vector_args (f), n = f->n_vectors;
   u8 is_aead = crypto_main.algs[sd->alg].alg_type == VNET_CRYPTO_ALG_T_AEAD;
@@ -353,24 +351,26 @@ crypto_sw_scheduler_return_job (vlib_main_t *vm, vlib_node_runtime_t *node,
 				crypto_sw_scheduler_job_t *job)
 {
   vlib_frame_t *f = job->frame;
-  vnet_crypto_deq_scalar_data_t *sd = vlib_frame_scalar_args (f);
+  vnet_crypto_frame_scalar_data_t *sd = vlib_frame_scalar_args (f);
   u32 *bis = vlib_frame_vector_args (f), n = f->n_vectors;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
-  u16 nexts[VLIB_FRAME_SIZE];
+  u32 n_fail = 0;
 
   vlib_get_buffers (vm, bis, bufs, n);
 
   for (u32 i = 0; i < n; i++)
-    {
-      nexts[i] = sd->next_node_index;
-      if (PREDICT_FALSE (job->status[i] != VNET_CRYPTO_OP_STATUS_COMPLETED))
-	{
-	  bufs[i]->error = node->errors[job->status[i] == VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC ?
-					  CRYPTO_SW_SCHED_ERROR_BAD_HMAC :
-					  CRYPTO_SW_SCHED_ERROR_ENGINE_ERROR];
-	  nexts[i] = 0;
-	}
-    }
+    if (PREDICT_FALSE (job->status[i] != VNET_CRYPTO_OP_STATUS_COMPLETED))
+      {
+	u32 err = CRYPTO_SW_SCHED_ERROR_ENGINE_ERROR;
+
+	if (job->status[i] == VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC)
+	  err = CRYPTO_SW_SCHED_ERROR_BAD_HMAC;
+	vlib_node_increment_counter (vm, node->node_index, err, 1);
+	n_fail++;
+      }
+
+  if (PREDICT_FALSE (n_fail))
+    vnet_crypto_frame_set_statuses (vm, f, job->status);
 
   if (PREDICT_FALSE (job->is_traced))
     for (u32 i = 0; i < n; i++)
@@ -382,9 +382,7 @@ crypto_sw_scheduler_return_job (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  t->status = job->status[i];
 	}
 
-  vlib_buffer_enqueue_to_next (vm, node, bis, nexts, n);
-  vlib_frame_free (vm, f);
-  return n;
+  return vnet_crypto_frame_to_consumer (vm, node, f, VNET_CRYPTO_OP_STATUS_COMPLETED);
 }
 
 VLIB_NODE_FN (crypto_sw_scheduler_deq_node)
@@ -442,7 +440,7 @@ VLIB_NODE_FN (crypto_sw_scheduler_deq_node)
 VLIB_REGISTER_NODE (crypto_sw_scheduler_deq_node) = {
   .name = "crypto-sw-scheduler-deq",
   .type = VLIB_NODE_TYPE_INPUT,
-  .sibling_of = "crypto-deq",
+  .sibling_of = "crypto-async",
   .state = VLIB_NODE_STATE_INTERRUPT,
   .format_trace = format_crypto_sw_scheduler_trace,
   .n_errors = CRYPTO_SW_SCHED_N_ERROR,

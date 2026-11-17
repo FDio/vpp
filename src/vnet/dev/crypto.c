@@ -7,6 +7,8 @@
 #include <vnet/dev/log.h>
 #include <vlib/unix/unix.h>
 
+#define VNET_DEV_CRYPTO_DRAIN_TIMEOUT 1.0
+
 VLIB_REGISTER_LOG_CLASS (dev_log, static) = {
   .class_name = "dev",
   .subclass_name = "crypto",
@@ -53,42 +55,26 @@ vnet_dev_crypto_engines_update_algs (vlib_main_t *vm)
     vnet_dev_crypto_engine_update_algs (vm, vnet_dev_main.crypto_engines[i]);
 }
 
-static vlib_error_desc_t vnet_dev_crypto_error_counters[] = {
-#define _(f, n, d)                                                                                 \
-  {                                                                                                \
-    .name = n,                                                                                     \
-    .desc = d,                                                                                     \
-    .severity = VL_COUNTER_SEVERITY_ERROR,                                                         \
-  },
-  foreach_vnet_dev_crypto_error
-#undef _
-};
-
 /* Called with the worker threads at the barrier. */
 static u32
 vnet_dev_crypto_enq_node_register (vlib_main_t *vm, vnet_dev_crypto_engine_t *e,
 				   vnet_dev_node_t *dn)
 {
-  u32 ei = e->index, ni;
+  u32 ei = e->index;
   vlib_node_registration_t reg = {
     .node_fn_registrations = dn->registrations,
     .type = VLIB_NODE_TYPE_INTERNAL,
+    .sibling_of = "crypto-async",
     .vector_size = sizeof (u32),
-    .scalar_size = sizeof (vnet_crypto_deq_scalar_data_t),
+    .scalar_size = sizeof (vnet_crypto_frame_scalar_data_t),
     .aux_size = sizeof (vnet_crypto_ctx_t *),
     .flags = VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH | VLIB_NODE_FLAG_TRACE_SUPPORTED,
     .runtime_data = &ei,
     .runtime_data_bytes = sizeof (ei),
     .format_trace = dn->format_trace,
-    .error_counters = vnet_dev_crypto_error_counters,
-    .n_errors = VNET_DEV_CRYPTO_N_ERROR,
   };
 
-  ni = vlib_register_node (vm, &reg, "%s-%s", e->name, dn->name);
-
-  /* the enqueue node drops to next 0 */
-  vlib_node_add_named_next (vm, ni, "error-drop");
-  return ni;
+  return vlib_register_node (vm, &reg, "%s-%s", e->name, dn->name);
 }
 
 /* handlers may share enqueue nodes, each node is registered once */
@@ -119,14 +105,12 @@ vnet_dev_crypto_engine_nodes_register (vlib_main_t *vm, vnet_dev_crypto_engine_t
   vlib_node_registration_t deq_reg = {
     .node_fn_registrations = g->deq_node->registrations,
     .type = VLIB_NODE_TYPE_INPUT,
-    .sibling_of = "crypto-deq",
+    .sibling_of = "crypto-async",
     .state = VLIB_NODE_STATE_INTERRUPT,
     .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
     .runtime_data = &ei,
     .runtime_data_bytes = sizeof (ei),
     .format_trace = g->deq_node->format_trace,
-    .error_counters = vnet_dev_crypto_error_counters,
-    .n_errors = VNET_DEV_CRYPTO_N_ERROR,
   };
 
   e->deq_node_index = vlib_register_node (vm, &deq_reg, "%s-deq", e->name);
@@ -237,7 +221,7 @@ vnet_dev_crypto_queue_free (vlib_main_t *vm, vnet_dev_crypto_queue_t *cq)
 {
   vnet_dev_crypto_queue_ops_t *ops = &cq->group->ops;
 
-  if (cq->started && ops->stop)
+  if (cq->started && cq->abort == 0 && ops->stop)
     ops->stop (vm, cq);
   cq->started = 0;
 
@@ -282,6 +266,7 @@ vnet_dev_crypto_engine_assign (vnet_dev_crypto_engine_t *e, u32 n_threads)
   uword ti;
 
   vec_validate (e->thread_queues, n_threads - 1);
+  vec_validate (e->enq_no_queue, n_threads - 1);
   for (ti = 0; ti < n_threads; ti++)
     vec_reset_length (e->thread_queues[ti]);
 
@@ -695,11 +680,79 @@ done:
   return rv;
 }
 
+/* interrupts the dequeue nodes of queues with requests in flight */
+static u32
+vnet_dev_crypto_queues_n_in_flight (vnet_dev_t *dev)
+{
+  u32 n = 0;
+
+  vec_foreach_pointer (cq, dev->crypto_queues)
+    if (cq->started && cq->deq_req < cq->enq_req)
+      {
+	vnet_dev_crypto_engine_t *e = vnet_dev_main.crypto_engines[cq->group->engine_index];
+	uword ti;
+
+	clib_bitmap_foreach (ti, cq->assigned_threads)
+	  vlib_node_set_interrupt_pending (vlib_get_main_by_index (ti), e->deq_node_index);
+	n++;
+      }
+
+  return n;
+}
+
+static int
+vnet_dev_crypto_queues_wait (vlib_main_t *vm, vnet_dev_t *dev)
+{
+  f64 deadline = vlib_time_now (vm) + VNET_DEV_CRYPTO_DRAIN_TIMEOUT;
+
+  while (vnet_dev_crypto_queues_n_in_flight (dev))
+    {
+      if (vlib_time_now (vm) > deadline)
+	return 0;
+      vlib_process_suspend (vm, 1e-3);
+    }
+
+  return 1;
+}
+
+/* frames in flight hold consumer context, so the dequeue nodes hand them over to the consumers
+ * before the queues are removed */
+static void
+vnet_dev_crypto_queues_drain (vlib_main_t *vm, vnet_dev_t *dev)
+{
+  vlib_worker_thread_barrier_sync (vm);
+  vec_foreach_pointer (cq, dev->crypto_queues)
+    cq->stopping = 1;
+  vlib_worker_thread_barrier_release (vm);
+
+  if (vnet_dev_crypto_queues_wait (vm, dev))
+    return;
+
+  log_warn (dev, "crypto requests in flight did not complete, aborting them");
+
+  vlib_worker_thread_barrier_sync (vm);
+  vec_foreach_pointer (cq, dev->crypto_queues)
+    if (cq->started && cq->deq_req < cq->enq_req)
+      {
+	if (cq->group->ops.stop)
+	  cq->group->ops.stop (vm, cq);
+	cq->abort = 1;
+      }
+  vlib_worker_thread_barrier_release (vm);
+
+  if (vnet_dev_crypto_queues_wait (vm, dev) == 0)
+    log_err (dev, "aborted crypto requests were not released");
+}
+
 void
 vnet_dev_crypto_deinit (vlib_main_t *vm, vnet_dev_t *dev)
 {
   if (vec_len (dev->crypto_queues) == 0)
     return;
+
+  /* nothing runs the dequeue nodes outside of the main loop */
+  if (vlib_in_process_context (vm))
+    vnet_dev_crypto_queues_drain (vm, dev);
 
   vlib_worker_thread_barrier_sync (vm);
   vnet_dev_crypto_queues_remove (vm, dev);
@@ -959,7 +1012,16 @@ format_vnet_dev_crypto_queue_group_info (u8 *s, va_list *args)
   if (g->engine_index == CLIB_U8_MAX)
     s = format (s, "engine: not created, no device attached yet");
   else
-    s = format (s, "engine: %s", vnet_dev_main.crypto_engines[g->engine_index]->name);
+    {
+      vnet_dev_crypto_engine_t *e = vnet_dev_main.crypto_engines[g->engine_index];
+      u64 n_no_queue = 0;
+
+      s = format (s, "engine: %s", e->name);
+      for (u32 i = 0; i < vec_len (e->enq_no_queue); i++)
+	n_no_queue += e->enq_no_queue[i];
+      if (n_no_queue)
+	s = format (s, ", %lu requests failed on threads without a queue", n_no_queue);
+    }
   s = format_newline (s, indent);
   s = format (s, "queue size: min %u max %u default %u%s", c->min_size, c->max_size,
 	      c->default_size, c->size_is_power_of_two ? ", power of 2" : "");

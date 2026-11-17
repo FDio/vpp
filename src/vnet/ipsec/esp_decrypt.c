@@ -89,6 +89,19 @@ esp_process_ops (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_crypto_op_t *o
     }
 }
 
+/* same errors as the sync path, a failed AEAD tag check is a decryption failure */
+static_always_inline u32
+esp_decrypt_crypto_status_to_err (vnet_crypto_buffer_metadata_t *md)
+{
+  vnet_crypto_op_status_t status = md->status;
+
+  if (status == VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC)
+    return md->is_hmac_check ? ESP_DECRYPT_ERROR_INTEG_ERROR : ESP_DECRYPT_ERROR_DECRYPTION_FAILED;
+  if (status == VNET_CRYPTO_OP_STATUS_FAIL_QUEUE_FULL)
+    return ESP_DECRYPT_ERROR_CRYPTO_QUEUE_FULL;
+  return ESP_DECRYPT_ERROR_CRYPTO_ENGINE_ERROR;
+}
+
 always_inline void
 esp_remove_tail (vlib_main_t * vm, vlib_buffer_t * b, vlib_buffer_t * last,
 		 u16 tail)
@@ -1050,12 +1063,12 @@ esp_decrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   if (n_async)
     {
-      vnet_crypto_deq_scalar_data_t scalar = {
+      vnet_crypto_enq_scalar_data_t scalar = {
 	.next_node_index = async_next_node,
 	.op_type = VNET_CRYPTO_OP_TYPE_DECRYPT,
       };
-      vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar (
-	vm, node, async_bi, async_ctx, ESP_DECRYPT_NEXT_CRYPTO_ENQ, n_async, &scalar);
+      vnet_crypto_enqueue_to_crypto_enq (vm, node, async_bi, async_ctx, ESP_DECRYPT_NEXT_CRYPTO_ENQ,
+					 n_async, &scalar);
     }
 
   if (n_sync)
@@ -1141,6 +1154,8 @@ esp_decrypt_post_inline (vlib_main_t * vm,
 {
   const ipsec_main_t *im = &ipsec_main;
   const u16 *next_by_next_header = im->next_header_registrations;
+  vnet_crypto_frame_scalar_data_t *sd = vlib_frame_scalar_args (from_frame);
+  uword *failed_bitmap = vnet_crypto_frame_n_failures (sd) ? sd->failed_bitmap : 0;
   u32 *from = vlib_frame_vector_args (from_frame);
   u32 n_left = from_frame->n_vectors;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
@@ -1157,7 +1172,13 @@ esp_decrypt_post_inline (vlib_main_t * vm,
 	  vlib_prefetch_buffer_header (b[1], LOAD);
 	}
 
-      esp_decrypt_post_crypto (vm, node, next_by_next_header, pd, b[0], next, is_ip6, is_tun, 1);
+      if (PREDICT_FALSE (failed_bitmap && vlib_frame_bitmap_is_bit_set (failed_bitmap, b - bufs)))
+	esp_decrypt_set_next_index (
+	  b[0], node, vm->thread_index,
+	  esp_decrypt_crypto_status_to_err (vnet_crypto_buffer_get_metadata (b[0])), 0, next,
+	  ESP_DECRYPT_NEXT_DROP, pd->sa_index);
+      else
+	esp_decrypt_post_crypto (vm, node, next_by_next_header, pd, b[0], next, is_ip6, is_tun, 1);
 
       /*trace: */
       if (PREDICT_FALSE (b[0]->flags & VLIB_BUFFER_IS_TRACED))
@@ -1276,6 +1297,8 @@ VLIB_REGISTER_NODE (esp4_decrypt_node) = {
 VLIB_REGISTER_NODE (esp4_decrypt_post_node) = {
   .name = "esp4-decrypt-post",
   .vector_size = sizeof (u32),
+  .scalar_size = sizeof (vnet_crypto_frame_scalar_data_t),
+  .aux_size = sizeof (vnet_crypto_ctx_t *),
   .format_trace = format_esp_decrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
@@ -1309,6 +1332,8 @@ VLIB_REGISTER_NODE (esp6_decrypt_node) = {
 VLIB_REGISTER_NODE (esp6_decrypt_post_node) = {
   .name = "esp6-decrypt-post",
   .vector_size = sizeof (u32),
+  .scalar_size = sizeof (vnet_crypto_frame_scalar_data_t),
+  .aux_size = sizeof (vnet_crypto_ctx_t *),
   .format_trace = format_esp_decrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
@@ -1340,6 +1365,8 @@ VLIB_REGISTER_NODE (esp4_decrypt_tun_node) = {
 VLIB_REGISTER_NODE (esp4_decrypt_tun_post_node) = {
   .name = "esp4-decrypt-tun-post",
   .vector_size = sizeof (u32),
+  .scalar_size = sizeof (vnet_crypto_frame_scalar_data_t),
+  .aux_size = sizeof (vnet_crypto_ctx_t *),
   .format_trace = format_esp_decrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
@@ -1371,6 +1398,8 @@ VLIB_REGISTER_NODE (esp6_decrypt_tun_node) = {
 VLIB_REGISTER_NODE (esp6_decrypt_tun_post_node) = {
   .name = "esp6-decrypt-tun-post",
   .vector_size = sizeof (u32),
+  .scalar_size = sizeof (vnet_crypto_frame_scalar_data_t),
+  .aux_size = sizeof (vnet_crypto_ctx_t *),
   .format_trace = format_esp_decrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 

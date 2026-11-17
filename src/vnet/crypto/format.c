@@ -82,6 +82,8 @@ format_vnet_crypto_op_status (u8 * s, va_list * args)
     [VNET_CRYPTO_OP_STATUS_FAIL_NO_HANDLER] = "fail-no-handler",
     [VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC] = "fail-bad-hmac",
     [VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR] = "fail-engine-err",
+    [VNET_CRYPTO_OP_STATUS_FAIL_QUEUE_FULL] = "fail-queue-full",
+    [VNET_CRYPTO_OP_STATUS_FAIL_NO_QUEUE] = "fail-no-queue",
     [VNET_CRYPTO_OP_STATUS_WORK_IN_PROGRESS] = "work-in-progress",
   };
 
