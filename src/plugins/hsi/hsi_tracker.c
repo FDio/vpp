@@ -3,6 +3,7 @@
  * Copyright (c) 2026 Cisco and/or its affiliates.
  */
 
+#include <math.h>
 #include <hsi/hsi_tracker_private.h>
 #include <vnet/session/segment_manager.h>
 #include <vnet/session/transport.h>
@@ -398,8 +399,8 @@ static const hsi_wheel_expired_fn hsi_wheel_expired_fns[HSI_WHEEL_N_TIMERS] = {
 };
 
 /*
- * Arms a timer that fires in at least interval seconds, rounded up to wheel
- * ticks, or after one wheel turn if longer. Users rearm with the time left.
+ * Arms a timer that fires once interval seconds pass, see HSI_WHEEL_TICK for
+ * how late, or after one wheel turn if longer. Users rearm with the time left.
  * Returns the handle needed to disarm it.
  */
 u32
@@ -408,19 +409,23 @@ hsi_wheel_arm (clib_thread_index_t thread_index, hsi_wheel_timer_t timer, u32 in
 {
   hsi_worker_t *wrk = hsi_worker_get (thread_index);
   tw_timer_wheel_2t_1w_2048sl_t *tw = &wrk->wheel;
-  u64 ticks;
+  i64 ticks;
 
   ASSERT (timer < HSI_WHEEL_N_TIMERS && index <= HSI_WHEEL_HANDLE_INDEX_MASK);
 
   if (PREDICT_FALSE (!tw->timers))
     tw_timer_wheel_init_2t_1w_2048sl (tw, 0 /* no callback */, HSI_WHEEL_TICK, ~0);
-  else if (!wrk->wheel_n_armed && now - tw->last_run_time > 2 * HSI_WHEEL_TICK)
-    /* Wheel is not advanced while empty, resync it on next expire instead
-     * of catching up on all the ticks missed */
-    tw->last_run_time = 0;
 
-  ticks = interval > 0 ? (u64) (interval / HSI_WHEEL_TICK) + 1 : 1;
-  ticks = clib_min (ticks, HSI_WHEEL_MAX_TICKS);
+  /* Wheel is not advanced while empty, so restart it with its next tick due
+   * now, instead of catching up on the ticks missed. A new wheel would not
+   * count its first tick otherwise */
+  if (!wrk->wheel_n_armed)
+    tw->last_run_time = now - HSI_WHEEL_TICK;
+
+  /* The slot k ticks after the current one expires k + 1 ticks after the
+   * wheel last ticked, and k can't be 0 */
+  ticks = (i64) ceil ((now + interval - tw->last_run_time) / HSI_WHEEL_TICK) - 1;
+  ticks = clib_clamp (ticks, 1, HSI_WHEEL_MAX_TICKS);
   wrk->wheel_n_armed += 1;
   hsi_timer_schedule (thread_index, now + HSI_WHEEL_TICK);
 
