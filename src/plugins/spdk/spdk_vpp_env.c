@@ -7,8 +7,7 @@
  *
  * SPDK itself only depends on the API in spdk/env.h.  Its usual env_dpdk
  * implementation is deliberately not linked here: VPP owns the worker
- * threads, CPU placement and physically backed memory.  PCI access is kept
- * disabled until an SPDK PCI provider backed by VPP's PCI/VFIO layer exists.
+ * threads, CPU placement and physically backed memory.
  */
 
 #define _GNU_SOURCE
@@ -25,6 +24,7 @@
 
 #include <vlib/vlib.h>
 #include <vlib/physmem_funcs.h>
+#include <vlib/pci/pci.h>
 #include <vppinfra/os.h>
 #include <vppinfra/time.h>
 
@@ -34,13 +34,23 @@
 #include "spdk_plugin.h"
 
 #define SPDK_VPP_DEFAULT_ALIGNMENT CLIB_CACHE_LINE_BYTES
+#define SPDK_VPP_PCI_ARENA_SIZE	   (512ULL << 20)
+
+typedef struct spdk_vpp_arena_span
+{
+  size_t offset;
+  size_t size;
+  struct spdk_vpp_arena_span *next;
+} spdk_vpp_arena_span_t;
 
 typedef struct spdk_vpp_allocation
 {
   void *ptr;
   size_t size;
   int numa_id;
+  uint32_t flags;
   bool physical;
+  bool arena;
   bool huge;
   size_t mapped_size;
   struct spdk_vpp_allocation *next;
@@ -110,20 +120,151 @@ struct spdk_pci_driver
   struct spdk_pci_driver *next;
 };
 
+typedef struct spdk_vpp_pci_device
+{
+  struct spdk_pci_device device;
+  vlib_pci_dev_handle_t handle;
+  void *bars[6];
+  uint64_t bar_sizes[6];
+  uint64_t bar_addresses[6];
+  bool claimed;
+  struct spdk_vpp_pci_device *next;
+} spdk_vpp_pci_device_t;
+
 static pthread_mutex_t spdk_vpp_memory_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t spdk_vpp_mempool_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t spdk_vpp_map_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t spdk_vpp_pci_lock = PTHREAD_MUTEX_INITIALIZER;
 static spdk_vpp_allocation_t *spdk_vpp_allocations;
+static void *spdk_vpp_pci_arena;
+static spdk_vpp_arena_span_t *spdk_vpp_pci_free;
+static bool spdk_vpp_pci_enabled;
 static spdk_vpp_memzone_t *spdk_vpp_memzones;
 static struct spdk_mempool *spdk_vpp_mempools;
 static struct spdk_mem_map *spdk_vpp_maps;
 static spdk_vpp_mem_registration_t *spdk_vpp_registrations;
 static struct spdk_pci_driver *spdk_vpp_pci_drivers;
+static spdk_vpp_pci_device_t *spdk_vpp_pci_devices;
 static struct spdk_cpuset spdk_vpp_core_mask;
 static uint32_t spdk_vpp_main_core = SPDK_ENV_LCORE_ID_ANY;
 static bool spdk_vpp_env_initialized;
 static __thread uint32_t spdk_vpp_current_core = SPDK_ENV_LCORE_ID_ANY;
+
+int
+spdk_vpp_env_prepare_pci (vlib_main_t *vm)
+{
+  clib_error_t *err;
+  u32 map_index;
+  spdk_vpp_arena_span_t *span;
+
+  if (spdk_vpp_pci_arena)
+    return 0;
+  span = calloc (1, sizeof (*span));
+  if (!span)
+    return -ENOMEM;
+
+  /* Keep all SPDK allocations in one contiguous IOVA range.  This map is
+   * process-lifetime VPP physmem; it is never returned to the OS by VPP. */
+  vlib_worker_thread_barrier_sync (vm);
+  err = vlib_physmem_shared_map_create (vm, "spdk-pci-dma", SPDK_VPP_PCI_ARENA_SIZE, 21,
+					clib_get_current_numa_node (), &map_index);
+  vlib_worker_thread_barrier_release (vm);
+  if (err)
+    {
+      clib_warning ("SPDK PCI DMA arena: %U", format_clib_error, err);
+      clib_error_free (err);
+      free (span);
+      return -ENOMEM;
+    }
+
+  spdk_vpp_pci_arena = vlib_physmem_get_map (vm, map_index)->base;
+  span->size = SPDK_VPP_PCI_ARENA_SIZE;
+  spdk_vpp_pci_free = span;
+  return 0;
+}
+
+static void *
+spdk_vpp_arena_alloc (size_t size, size_t align)
+{
+  spdk_vpp_arena_span_t **link = &spdk_vpp_pci_free, *span;
+  size_t start, end, before, after;
+
+  while ((span = *link) != NULL)
+    {
+      start = (span->offset + align - 1) & ~(align - 1);
+      if (start < span->offset || size > SIZE_MAX - start)
+	return NULL;
+      end = start + size;
+      if (end > span->offset + span->size)
+	{
+	  link = &span->next;
+	  continue;
+	}
+      before = start - span->offset;
+      after = span->offset + span->size - end;
+      if (before && after)
+	{
+	  spdk_vpp_arena_span_t *tail = calloc (1, sizeof (*tail));
+	  if (!tail)
+	    return NULL;
+	  tail->offset = end;
+	  tail->size = after;
+	  tail->next = span->next;
+	  span->size = before;
+	  span->next = tail;
+	}
+      else if (before)
+	span->size = before;
+      else if (after)
+	{
+	  span->offset = end;
+	  span->size = after;
+	}
+      else
+	{
+	  *link = span->next;
+	  free (span);
+	}
+      return (uint8_t *) spdk_vpp_pci_arena + start;
+    }
+  return NULL;
+}
+
+static void
+spdk_vpp_arena_free (void *ptr, size_t size)
+{
+  size_t offset = (uint8_t *) ptr - (uint8_t *) spdk_vpp_pci_arena;
+  spdk_vpp_arena_span_t **link = &spdk_vpp_pci_free, *span;
+
+  while (*link && (*link)->offset < offset)
+    link = &(*link)->next;
+  span = calloc (1, sizeof (*span));
+  if (!span)
+    abort (); /* Never silently lose a DMA allocation. */
+  span->offset = offset;
+  span->size = size;
+  span->next = *link;
+  *link = span;
+  if (span->next && offset + size == span->next->offset)
+    {
+      spdk_vpp_arena_span_t *next = span->next;
+      span->size += next->size;
+      span->next = next->next;
+      free (next);
+    }
+  if (link != &spdk_vpp_pci_free)
+    {
+      spdk_vpp_arena_span_t *prev = spdk_vpp_pci_free;
+      while (prev->next != span)
+	prev = prev->next;
+      if (prev->offset + prev->size == span->offset)
+	{
+	  prev->size += span->size;
+	  prev->next = span->next;
+	  free (span);
+	}
+    }
+}
 
 static inline vlib_main_t *
 spdk_vpp_vm (void)
@@ -165,18 +306,20 @@ spdk_vpp_find_allocation (const void *ptr, spdk_vpp_allocation_t ***link)
 }
 
 static void *
-spdk_vpp_allocate (size_t size, size_t align, int numa_id, bool zero)
+spdk_vpp_allocate (size_t size, size_t align, int numa_id, uint32_t flags, bool zero)
 {
   spdk_vpp_allocation_t *allocation;
   vlib_main_t *vm = spdk_vpp_vm ();
   clib_pmalloc_main_t *pm = vm->physmem_main.pmalloc_main;
   void *ptr = NULL;
   bool physical = false;
+  bool arena = false;
   bool huge = false;
   size_t mapped_size = 0;
   size_t page_size = 0;
+  bool require_dma = spdk_vpp_pci_enabled && (flags & SPDK_MALLOC_DMA);
 
-  if (size == 0)
+  if (size == 0 || flags == 0 || (flags & ~(SPDK_MALLOC_DMA | SPDK_MALLOC_SHARE)))
     return NULL;
   if (align == 0)
     align = SPDK_VPP_DEFAULT_ALIGNMENT;
@@ -197,7 +340,12 @@ spdk_vpp_allocate (size_t size, size_t align, int numa_id, bool zero)
   pthread_mutex_lock (&spdk_vpp_memory_lock);
   if (pm != NULL)
     page_size = 1ULL << pm->def_log2_page_sz;
-  if (page_size != 0 && size <= page_size && align <= page_size)
+  if (require_dma)
+    {
+      ptr = spdk_vpp_arena_alloc (size, align);
+      arena = ptr != NULL;
+    }
+  else if (page_size != 0 && size <= page_size && align <= page_size)
     {
       if (numa_id == SPDK_ENV_NUMA_ID_ANY)
 	ptr = vlib_physmem_alloc_aligned (vm, size, align);
@@ -206,7 +354,7 @@ spdk_vpp_allocate (size_t size, size_t align, int numa_id, bool zero)
       physical = ptr != NULL;
     }
 
-  if (ptr == NULL && page_size != 0 && size > page_size / 2 && align <= page_size &&
+  if (!require_dma && ptr == NULL && page_size != 0 && size > page_size / 2 && align <= page_size &&
       size <= SIZE_MAX - (page_size - 1))
     {
       mapped_size = (size + page_size - 1) & ~(page_size - 1);
@@ -218,13 +366,15 @@ spdk_vpp_allocate (size_t size, size_t align, int numa_id, bool zero)
 	huge = true;
     }
 
-  if (ptr == NULL && posix_memalign (&ptr, align, size) != 0)
+  if (!require_dma && ptr == NULL && posix_memalign (&ptr, align, size) != 0)
     ptr = NULL;
 
   allocation = calloc (1, sizeof (*allocation));
   if (ptr == NULL || allocation == NULL)
     {
-      if (physical)
+      if (arena)
+	spdk_vpp_arena_free (ptr, size);
+      else if (physical)
 	vlib_physmem_free (vm, ptr);
       else if (huge)
 	munmap (ptr, mapped_size);
@@ -238,7 +388,9 @@ spdk_vpp_allocate (size_t size, size_t align, int numa_id, bool zero)
   allocation->ptr = ptr;
   allocation->size = size;
   allocation->numa_id = numa_id;
+  allocation->flags = flags;
   allocation->physical = physical;
+  allocation->arena = arena;
   allocation->huge = huge;
   allocation->mapped_size = mapped_size;
   allocation->next = spdk_vpp_allocations;
@@ -253,19 +405,17 @@ spdk_vpp_allocate (size_t size, size_t align, int numa_id, bool zero)
 void *
 spdk_malloc (size_t size, size_t align, uint64_t *unused, int numa_id, uint32_t flags)
 {
-  (void) flags;
   if (unused != NULL)
     return NULL;
-  return spdk_vpp_allocate (size, align, numa_id, false);
+  return spdk_vpp_allocate (size, align, numa_id, flags, false);
 }
 
 void *
 spdk_zmalloc (size_t size, size_t align, uint64_t *unused, int numa_id, uint32_t flags)
 {
-  (void) flags;
   if (unused != NULL)
     return NULL;
-  return spdk_vpp_allocate (size, align, numa_id, true);
+  return spdk_vpp_allocate (size, align, numa_id, flags, true);
 }
 
 void
@@ -282,7 +432,9 @@ spdk_free (void *ptr)
   if (allocation)
     {
       *link = allocation->next;
-      if (allocation->physical)
+      if (allocation->arena)
+	spdk_vpp_arena_free (ptr, allocation->size);
+      else if (allocation->physical)
 	vlib_physmem_free (spdk_vpp_vm (), ptr);
       else if (allocation->huge)
 	munmap (ptr, allocation->mapped_size);
@@ -293,16 +445,18 @@ spdk_free (void *ptr)
   pthread_mutex_unlock (&spdk_vpp_memory_lock);
 }
 
-void *
-spdk_realloc (void *ptr, size_t size, size_t align)
+static void *
+spdk_vpp_reallocate (void *ptr, size_t size, size_t align, uint32_t required_flags)
 {
   spdk_vpp_allocation_t *allocation;
   size_t old_size;
   int numa_id;
+  uint32_t flags;
   void *new_ptr;
 
   if (ptr == NULL)
-    return spdk_vpp_allocate (size, align, SPDK_ENV_NUMA_ID_ANY, false);
+    return spdk_vpp_allocate (size, align, SPDK_ENV_NUMA_ID_ANY,
+			      required_flags | SPDK_MALLOC_DMA | SPDK_MALLOC_SHARE, false);
   if (size == 0)
     {
       spdk_free (ptr);
@@ -318,15 +472,22 @@ spdk_realloc (void *ptr, size_t size, size_t align)
     }
   old_size = allocation->size;
   numa_id = allocation->numa_id;
+  flags = allocation->flags | required_flags;
   pthread_mutex_unlock (&spdk_vpp_memory_lock);
 
-  new_ptr = spdk_vpp_allocate (size, align, numa_id, false);
+  new_ptr = spdk_vpp_allocate (size, align, numa_id, flags, false);
   if (new_ptr)
     {
       memcpy (new_ptr, ptr, clib_min (old_size, size));
       spdk_free (ptr);
     }
   return new_ptr;
+}
+
+void *
+spdk_realloc (void *ptr, size_t size, size_t align)
+{
+  return spdk_vpp_reallocate (ptr, size, align, 0);
 }
 
 void *
@@ -358,7 +519,7 @@ spdk_dma_realloc (void *ptr, size_t size, size_t align, uint64_t *unused)
 {
   if (unused != NULL)
     return NULL;
-  return spdk_realloc (ptr, size, align);
+  return spdk_vpp_reallocate (ptr, size, align, SPDK_MALLOC_DMA | SPDK_MALLOC_SHARE);
 }
 
 void
@@ -767,11 +928,13 @@ spdk_env_init (const struct spdk_env_opts *opts)
 
   if (opts == NULL || opts->core_mask == NULL)
     return -EINVAL;
-  if (!opts->no_pci)
-    {
-      fprintf (stderr, "SPDK VPP env requires no_pci until a VPP PCI provider is configured\n");
-      return -ENOTSUP;
-    }
+  /* The embedded VPP environment has no secondary-process attach protocol.
+   * SPDK_MALLOC_SHARE is sufficient for objects shared by threads here, but
+   * must not be presented as DPDK-style multiprocess shared memory. */
+  if (opts->shm_id >= 0)
+    return -ENOTSUP;
+  if (!opts->no_pci && !spdk_vpp_pci_arena)
+    return -ENODEV;
   if (spdk_cpuset_parse (&spdk_vpp_core_mask, opts->core_mask) != 0 ||
       spdk_cpuset_count (&spdk_vpp_core_mask) == 0)
     return -EINVAL;
@@ -780,6 +943,7 @@ spdk_env_init (const struct spdk_env_opts *opts)
   spdk_vpp_main_core = opts->main_core >= 0 ? opts->main_core : first_core;
   if (!spdk_cpuset_get_cpu (&spdk_vpp_core_mask, spdk_vpp_main_core))
     return -EINVAL;
+  spdk_vpp_pci_enabled = !opts->no_pci;
   spdk_vpp_env_initialized = true;
   return 0;
 }
@@ -788,6 +952,7 @@ void
 spdk_env_fini (void)
 {
   spdk_vpp_env_initialized = false;
+  spdk_vpp_pci_enabled = false;
   spdk_vpp_main_core = SPDK_ENV_LCORE_ID_ANY;
   spdk_cpuset_zero (&spdk_vpp_core_mask);
 }
@@ -931,8 +1096,7 @@ spdk_pause (void)
 bool
 spdk_iommu_is_enabled (void)
 {
-  /* PCI is disabled in this environment, so no SPDK device owns an IOMMU map. */
-  return false;
+  return spdk_vpp_pci_enabled;
 }
 
 uint64_t
@@ -943,6 +1107,18 @@ spdk_vtophys (const void *buffer, uint64_t *size)
 
   if (!spdk_vpp_physmem_contains (buffer))
     return SPDK_VTOPHYS_ERROR;
+  if (spdk_vpp_pci_enabled)
+    {
+      /* PCI DMA is limited to the mapped arena. VLIB packet buffers need a
+       * separate ownership and alignment contract before direct NVMe I/O. */
+      if ((const uint8_t *) buffer < (uint8_t *) spdk_vpp_pci_arena ||
+	  (const uint8_t *) buffer >= (uint8_t *) spdk_vpp_pci_arena + SPDK_VPP_PCI_ARENA_SIZE)
+	return SPDK_VTOPHYS_ERROR;
+      if (size)
+	*size = clib_min (*size, (uint8_t *) spdk_vpp_pci_arena + SPDK_VPP_PCI_ARENA_SIZE -
+				     (const uint8_t *) buffer);
+      return pointer_to_uword (buffer);
+    }
   page_size = 1ULL << pm->lookup_log2_page_sz;
   offset = pointer_to_uword (buffer) & (page_size - 1);
   if (size)
@@ -1236,14 +1412,91 @@ spdk_pci_enumerate (struct spdk_pci_driver *driver, spdk_pci_enum_cb cb, void *c
   (void) driver;
   (void) cb;
   (void) cb_ctx;
-  return 0;
+  /* For now, require an explicit BDF.  This must never claim an unrelated
+   * host disk just because a caller requested a PCIe scan. */
+  return spdk_vpp_pci_enabled ? -ENOTSUP : 0;
 }
 
 void
 spdk_pci_for_each_device (void *ctx, void (*fn) (void *, struct spdk_pci_device *))
 {
-  (void) ctx;
-  (void) fn;
+  spdk_vpp_pci_device_t *p, *next;
+
+  /* PCI attach/detach and iteration are all driven by SPDK's app thread.
+   * Do not hold the list lock across a user callback that may detach. */
+  for (p = spdk_vpp_pci_devices; p; p = next)
+    {
+      next = p->next;
+      fn (ctx, &p->device);
+    }
+}
+
+static spdk_vpp_pci_device_t *
+spdk_vpp_pci_device (struct spdk_pci_device *d)
+{
+  return (spdk_vpp_pci_device_t *) d;
+}
+
+static int
+spdk_vpp_pci_map_bar (struct spdk_pci_device *d, uint32_t bar, void **address,
+		      uint64_t *physical_address, uint64_t *size)
+{
+  spdk_vpp_pci_device_t *p = spdk_vpp_pci_device (d);
+  clib_error_t *err;
+
+  if (bar >= 6 || p->bar_sizes[bar] == 0)
+    return -EINVAL;
+  if (!p->bars[bar])
+    {
+      err = vlib_pci_map_region (spdk_vpp_vm (), p->handle, bar, &p->bars[bar]);
+      if (err)
+	{
+	  clib_warning ("SPDK PCI BAR %u: %U", bar, format_clib_error, err);
+	  clib_error_free (err);
+	  return -EIO;
+	}
+    }
+  *address = p->bars[bar];
+  *physical_address = p->bar_addresses[bar];
+  *size = p->bar_sizes[bar];
+  return 0;
+}
+
+static int
+spdk_vpp_pci_unmap_bar (struct spdk_pci_device *d, uint32_t bar, void *address)
+{
+  spdk_vpp_pci_device_t *p = spdk_vpp_pci_device (d);
+  /* VPP owns BAR mappings and unmaps them at device close. */
+  return bar < 6 && p->bars[bar] == address ? 0 : -EINVAL;
+}
+
+static int
+spdk_vpp_pci_cfg (struct spdk_pci_device *d, void *value, uint32_t len, uint32_t offset,
+		  vlib_read_or_write_t direction)
+{
+  spdk_vpp_pci_device_t *p = spdk_vpp_pci_device (d);
+  clib_error_t *err;
+
+  if (len == 0 || offset > 4096 || len > 4096 - offset)
+    return -EINVAL;
+  err = vlib_pci_read_write_config (spdk_vpp_vm (), p->handle, direction, offset, value, len);
+  if (!err)
+    return 0;
+  clib_warning ("SPDK PCI config: %U", format_clib_error, err);
+  clib_error_free (err);
+  return -EIO;
+}
+
+static int
+spdk_vpp_pci_cfg_read (struct spdk_pci_device *d, void *value, uint32_t len, uint32_t offset)
+{
+  return spdk_vpp_pci_cfg (d, value, len, offset, VLIB_READ);
+}
+
+static int
+spdk_vpp_pci_cfg_write (struct spdk_pci_device *d, void *value, uint32_t len, uint32_t offset)
+{
+  return spdk_vpp_pci_cfg (d, value, len, offset, VLIB_WRITE);
 }
 
 int
@@ -1415,28 +1668,150 @@ spdk_pci_device_cfg_write32 (struct spdk_pci_device *d, uint32_t v, uint32_t o)
 int
 spdk_pci_device_claim (struct spdk_pci_device *d)
 {
-  (void) d;
-  return -ENOTSUP;
+  spdk_vpp_pci_device_t *p = spdk_vpp_pci_device (d);
+  pthread_mutex_lock (&spdk_vpp_pci_lock);
+  if (p->claimed)
+    {
+      pthread_mutex_unlock (&spdk_vpp_pci_lock);
+      return -EBUSY;
+    }
+  p->claimed = true;
+  pthread_mutex_unlock (&spdk_vpp_pci_lock);
+  return 0;
 }
 void
 spdk_pci_device_unclaim (struct spdk_pci_device *d)
 {
-  (void) d;
+  pthread_mutex_lock (&spdk_vpp_pci_lock);
+  spdk_vpp_pci_device (d)->claimed = false;
+  pthread_mutex_unlock (&spdk_vpp_pci_lock);
 }
 void
 spdk_pci_device_detach (struct spdk_pci_device *d)
 {
-  (void) d;
+  spdk_vpp_pci_device_t *p = spdk_vpp_pci_device (d), **link;
+
+  pthread_mutex_lock (&spdk_vpp_pci_lock);
+  link = &spdk_vpp_pci_devices;
+  while (*link && *link != p)
+    link = &(*link)->next;
+  if (*link)
+    *link = p->next;
+  pthread_mutex_unlock (&spdk_vpp_pci_lock);
+  vlib_pci_device_close (spdk_vpp_vm (), p->handle);
+  free (p);
 }
 int
 spdk_pci_device_attach (struct spdk_pci_driver *d, spdk_pci_enum_cb cb, void *c,
 			struct spdk_pci_addr *a)
 {
-  (void) d;
-  (void) cb;
-  (void) c;
-  (void) a;
-  return -ENOTSUP;
+  vlib_main_t *vm = spdk_vpp_vm ();
+  vlib_pci_addr_t addr = { 0 };
+  vlib_pci_device_info_t *di;
+  spdk_vpp_pci_device_t *p;
+  clib_error_t *err = NULL;
+  uint64_t size;
+  uint32_t i, bar;
+  int rc;
+
+  if (!spdk_vpp_pci_enabled || !d || !cb || !a || a->domain > UINT16_MAX ||
+      strcmp (d->name, "nvme") != 0)
+    return -ENOTSUP;
+  addr.domain = a->domain;
+  addr.bus = a->bus;
+  addr.slot = a->dev;
+  addr.function = a->func;
+  di = vlib_pci_get_device_info (vm, &addr, &err);
+  if (err)
+    {
+      clib_warning ("SPDK PCI lookup: %U", format_clib_error, err);
+      clib_error_free (err);
+      return -1;
+    }
+  if (!di || di->device_class != 0x0108 || di->config.prog_if != 0x02 || !di->driver_name ||
+      strcmp ((char *) di->driver_name, "vfio-pci") != 0)
+    {
+      clib_warning ("SPDK PCI requires an NVMe device bound to vfio-pci");
+      vlib_pci_free_device_info (di);
+      return -1;
+    }
+  p = calloc (1, sizeof (*p));
+  if (!p)
+    {
+      vlib_pci_free_device_info (di);
+      return -1;
+    }
+  p->device.addr = *a;
+  p->device.id.class_id = 0x010802;
+  p->device.id.vendor_id = di->vendor_id;
+  p->device.id.device_id = di->device_id;
+  p->device.id.subvendor_id = di->config.sub_vendor_id;
+  p->device.id.subdevice_id = di->config.sub_device_id;
+  p->device.numa_id = di->numa_node;
+  p->device.type = "vpp-vfio";
+  p->device.map_bar = spdk_vpp_pci_map_bar;
+  p->device.unmap_bar = spdk_vpp_pci_unmap_bar;
+  p->device.cfg_read = spdk_vpp_pci_cfg_read;
+  p->device.cfg_write = spdk_vpp_pci_cfg_write;
+  p->device.internal.driver = d;
+  for (bar = 0; bar < 6; bar++)
+    {
+      uint64_t address = di->config.bar[bar] & ~0xFULL;
+      if (di->config.bar[bar] & 1)
+	continue;
+      if ((di->config.bar[bar] & 6) == 4 && bar < 5)
+	address |= (uint64_t) di->config.bar[bar + 1] << 32;
+      p->bar_addresses[bar] = address;
+    }
+  vlib_pci_free_device_info (di);
+
+  err = vlib_pci_device_open (vm, &addr, NULL, &p->handle);
+  if (err)
+    goto fail_open;
+  if (!vlib_pci_supports_virtual_addr_dma (vm, p->handle))
+    goto fail_close;
+  for (i = 0; i < SPDK_VPP_PCI_ARENA_SIZE >> 21; i++)
+    {
+      err = vlib_pci_map_dma (vm, p->handle, (uint8_t *) spdk_vpp_pci_arena + ((size_t) i << 21));
+      if (err)
+	goto fail_close;
+    }
+  for (bar = 0; bar < 6; bar++)
+    if (p->bar_addresses[bar])
+      {
+	err = vlib_pci_get_region_size (vm, p->handle, bar, &size);
+	if (err)
+	  {
+	    clib_error_free (err);
+	    err = NULL;
+	  }
+	else
+	  p->bar_sizes[bar] = size;
+      }
+
+  pthread_mutex_lock (&spdk_vpp_pci_lock);
+  p->next = spdk_vpp_pci_devices;
+  spdk_vpp_pci_devices = p;
+  pthread_mutex_unlock (&spdk_vpp_pci_lock);
+  rc = cb (c, &p->device);
+  if (rc == 0)
+    {
+      p->device.internal.attached = true;
+      return 0;
+    }
+  spdk_pci_device_detach (&p->device);
+  return -1;
+
+fail_close:
+  vlib_pci_device_close (vm, p->handle);
+fail_open:
+  if (err)
+    {
+      clib_warning ("SPDK PCI attach: %U", format_clib_error, err);
+      clib_error_free (err);
+    }
+  free (p);
+  return -1;
 }
 int
 spdk_pci_device_allow (struct spdk_pci_addr *a)
