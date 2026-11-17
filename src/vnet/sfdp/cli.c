@@ -244,6 +244,75 @@ done:
 }
 
 static clib_error_t *
+sfdp_set_filters_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  unformat_input_t line_input_, *line_input = &line_input_;
+  sfdp_filter_registration_t **filters = 0, *r;
+  clib_error_t *err = 0;
+  sfdp_main_t *sfdp = &sfdp_main;
+  u32 tenant_id = ~0;
+  u8 *name = 0;
+  int none = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "tenant %d", &tenant_id))
+	;
+      else if (unformat (line_input, "none"))
+	none = 1;
+      else if (unformat (line_input, "%s", &name))
+	{
+	  vec_add1 (name, 0);
+	  r = sfdp_filter_by_name (sfdp, (char *) name);
+	  if (!r)
+	    err = clib_error_return (0, "unknown filter %s", name);
+	  vec_free (name);
+	  if (err)
+	    goto done;
+	  vec_add1 (filters, r);
+	}
+      else
+	{
+	  err = unformat_parse_error (line_input);
+	  goto done;
+	}
+    }
+  if (tenant_id == ~0)
+    {
+      err = clib_error_return (0, "missing tenant id");
+      goto done;
+    }
+  if (!filters && !none)
+    {
+      err = clib_error_return (0, "missing filter name or none");
+      goto done;
+    }
+  if (filters && none)
+    {
+      err = clib_error_return (0, "none can't be combined with filter names");
+      goto done;
+    }
+
+  err = sfdp_set_filters (sfdp, tenant_id, filters);
+done:
+  vec_free (filters);
+  unformat_free (line_input);
+  return err;
+}
+
+static clib_error_t *
+sfdp_show_filters_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  sfdp_filter_registration_t *r;
+
+  for (r = sfdp_main.next_filter_registration; r; r = r->next)
+    vlib_cli_output (vm, "%s", r->name);
+  return 0;
+}
+
+static clib_error_t *
 sfdp_set_icmp_error_node_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				     vlib_cli_command_t *cmd)
 {
@@ -596,6 +665,18 @@ VLIB_CLI_COMMAND (sfdp_set_sp_node_command, static) = {
   .short_help = "set sfdp sp-node tenant <tenant-id>"
 		" <sp-name> node <node-name>",
   .function = sfdp_set_sp_node_command_fn
+};
+
+VLIB_CLI_COMMAND (sfdp_set_filters_command, static) = {
+  .path = "set sfdp filters",
+  .short_help = "set sfdp filters tenant <tenant-id> <filter-name> [<filter-name> ...] | none",
+  .function = sfdp_set_filters_command_fn,
+};
+
+VLIB_CLI_COMMAND (sfdp_show_filters_command, static) = {
+  .path = "show sfdp filters",
+  .short_help = "show sfdp filters",
+  .function = sfdp_show_filters_command_fn,
 };
 
 VLIB_CLI_COMMAND (sfdp_set_icmp_error_node_command, static) = {

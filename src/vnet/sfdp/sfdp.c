@@ -65,6 +65,15 @@ sfdp_timeout_add_registration (sfdp_timeout_registration_t *registration)
   sfdp->next_timeout_registration = registration;
 }
 
+void
+sfdp_filter_add_registration (sfdp_filter_registration_t *registration)
+{
+  sfdp_main_t *sfdp = &sfdp_main;
+
+  registration->next = sfdp->next_filter_registration;
+  sfdp->next_filter_registration = registration;
+}
+
 clib_error_t *
 sfdp_timeout_register (sfdp_main_t *sfdp, sfdp_timeout_t *timeout)
 {
@@ -291,6 +300,7 @@ sfdp_tenant_add_del (sfdp_main_t *sfdp, u32 tenant_id, u32 context_id,
 	  tenant->context_id = context_id;
 	  sfdp_tenant_init_timeouts (tenant);
 	  sfdp_tenant_init_sp_nodes (tenant);
+	  tenant->filters = 0;
 	  kv.key = tenant_id;
 	  kv.value = tenant_idx;
 	  clib_bihash_add_del_8_8 (&sfdp->tenant_idx_by_id, &kv, 1);
@@ -318,6 +328,7 @@ sfdp_tenant_add_del (sfdp_main_t *sfdp, u32 tenant_id, u32 context_id,
 	{
 	  sfdp_notify_deleted_tenant (kv.value);
 	  sfdp_tenant_clear_counters (sfdp, kv.value);
+	  vec_free (sfdp_tenant_at_index (sfdp, kv.value)->filters);
 	  pool_put_index (sfdp->tenants, kv.value);
 	  clib_bihash_add_del_8_8 (&sfdp->tenant_idx_by_id, &kv, 0);
 	}
@@ -373,6 +384,31 @@ sfdp_set_sp_node (sfdp_main_t *sfdp, u32 tenant_id, u32 sp_index,
       0, "Can't configure slow path node: tenant id %d not found", tenant_id);
   tenant = sfdp_tenant_at_index (sfdp, kv.value);
   tenant->sp_node_indices[sp_index] = node_index;
+  return 0;
+}
+
+sfdp_filter_registration_t *
+sfdp_filter_by_name (sfdp_main_t *sfdp, const char *name)
+{
+  sfdp_filter_registration_t *r;
+
+  for (r = sfdp->next_filter_registration; r; r = r->next)
+    if (!strcmp (r->name, name))
+      return r;
+  return 0;
+}
+
+clib_error_t *
+sfdp_set_filters (sfdp_main_t *sfdp, u32 tenant_id, sfdp_filter_registration_t **filters)
+{
+  sfdp_init_main_if_needed (sfdp);
+  clib_bihash_kv_8_8_t kv = { .key = tenant_id, .value = 0 };
+  sfdp_tenant_t *tenant;
+  if (clib_bihash_search_inline_8_8 (&sfdp->tenant_idx_by_id, &kv))
+    return clib_error_return (0, "Can't configure filters: tenant id %d not found", tenant_id);
+  tenant = sfdp_tenant_at_index (sfdp, kv.value);
+  vec_free (tenant->filters);
+  tenant->filters = vec_dup (filters);
   return 0;
 }
 

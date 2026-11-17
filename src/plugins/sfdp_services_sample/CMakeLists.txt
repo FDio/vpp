@@ -5,6 +5,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_vpp_plugin(sfdp_services_sample
   SOURCES
+  filter.c
   node.c
   parser.c
   parser_input.c

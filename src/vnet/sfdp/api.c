@@ -90,6 +90,39 @@ vl_api_sfdp_set_sp_node_t_handler (vl_api_sfdp_set_sp_node_t *mp)
 }
 
 static void
+vl_api_sfdp_set_filters_t_handler (vl_api_sfdp_set_filters_t *mp)
+{
+  vl_api_sfdp_set_filters_reply_t *rmp;
+  sfdp_main_t *sfdp = &sfdp_main;
+  sfdp_filter_registration_t **filters = 0, *r;
+  u32 tenant_id = clib_net_to_host_u32 (mp->tenant_id);
+  clib_error_t *err;
+  int rv = 0;
+
+  for (uword i = 0; i < mp->n_filters; i++)
+    {
+      char *name = (char *) mp->filters[i].data;
+      name[sizeof (mp->filters[i].data) - 1] = 0;
+      r = sfdp_filter_by_name (sfdp, name);
+      if (!r)
+	{
+	  rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+	  goto done;
+	}
+      vec_add1 (filters, r);
+    }
+  err = sfdp_set_filters (sfdp, tenant_id, filters);
+  if (err)
+    {
+      clib_error_free (err);
+      rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+    }
+done:
+  vec_free (filters);
+  REPLY_MACRO (VL_API_SFDP_SET_FILTERS_REPLY);
+}
+
+static void
 vl_api_sfdp_set_icmp_error_node_t_handler (
   vl_api_sfdp_set_icmp_error_node_t *mp)
 {
