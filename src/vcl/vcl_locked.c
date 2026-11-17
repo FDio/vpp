@@ -2046,6 +2046,8 @@ vls_app_fork_child_handler (void)
   vls_mt_locks_init ();
 
   parent_wrk = vcl_worker_get (parent_wrk_index);
+  vcl_worker_set_wait_mq_fns (parent_wrk->pre_wait_fn,
+                           parent_wrk->post_wait_fn);
   vls_worker_copy_on_fork (parent_wrk);
   parent_wrk->forked_child = vcl_get_worker_index ();
 
