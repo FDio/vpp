@@ -2145,6 +2145,10 @@ hsi_tracker_show_tcp (vlib_main_t *vm, u32 i, hsi_worker_t *wrk, f64 now)
 		       now - drain->start_time, now - drain->last_progress_time);
     }
 
+  /* Tcp allocates its workers once enabled */
+  if (i >= vec_len (tcp_main.wrk))
+    return;
+
   pool_foreach (tc, tcp_main.wrk[i].connections)
     {
       if (!(tc->cfg_flags & TCP_CFG_F_TRACKED) || !hsi_tcp_connection_is_committed (tc))
