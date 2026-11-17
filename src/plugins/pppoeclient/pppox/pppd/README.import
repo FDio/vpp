@@ -1,0 +1,48 @@
+SPDX-FileCopyrightText: Copyright (c) 2026 Jiajun Liang.
+SPDX-License-Identifier: Apache-2.0
+
+This directory contains imported PPP control-plane sources derived from
+the upstream pppd codebase.
+
+Import scope
+- Files under this directory provide the PPP finite state machines and
+  control protocols used by pppoeclient/pppox: LCP, IPCP, IPv6CP, PAP,
+  CHAP-MD5, and supporting utility code (`auth.c`, `chap-md5.[ch]`,
+  `chap-new.[ch]`, `fsm.[ch]`, `if_ppp.h`, `ipcp.[ch]`, `ipv6cp.[ch]`,
+  `lcp.[ch]`, `magic.[ch]`, `pathnames.h`, `ppp_defs.h`, `pppd.h`,
+  `pppio.h`, `sys-vpp.[ch]`, `upap.[ch]`, `utils.c`).
+- Unused upstream protocol/compression/MD5 sources (`ccp.*`, `ecp.*`,
+  `eap.h`, `options.c`, `md5.*`, `slcompress.h`, `vjcompress.h`,
+  `ppp-comp.h`) have been trimmed out.
+- The original per-file provenance is preserved in the source headers
+  via the upstream copyright and RCS identifiers.
+
+Why these files are retained
+- pppoeclient needs an in-process PPP control plane running directly on
+  top of VPP virtual interfaces (`pppoxN`) without spawning external
+  daemons.
+- CHAP-MD5 uses OpenSSL `EVP_md5()` (`libcrypto`) instead of the vendored
+  RSA-MD `md5.c` implementation, because VPP's crypto engine framework does
+  not expose a plain unkeyed MD5 hash op.
+- Monotonic timers use VPP's `vlib_time_now` (`pppox_time_now()`) rather
+  than wall-clock `gettimeofday()`, and PRNG/magic generation uses VPP's
+  `<vppinfra/random.h>`.
+
+Local adaptations
+- Added per-unit state handling so multiple PPPoX instances can run
+  concurrently inside VPP.
+- Added the sys-vpp shim layer in sys-vpp.c / sys-vpp.h to bridge the
+  imported PPP state machines to VPP/PPPoX runtime hooks.
+- Kept plugin-facing behavior changes outside the imported files where
+  possible, in pppox.c and pppoeclient.c.
+- auth.c carries two minimal hook calls (`pppox_note_auth_failure(unit)`
+  in `auth_peer_fail` and `auth_withpeer_fail`) so the pppox / pppoeclient
+  restart path can distinguish CHAP / PAP denial from a normal teardown.
+  The hook is declared via an `extern` near the top of auth.c and
+  implemented in pppox.c.
+
+Review expectations
+- Treat these files as imported third-party sources with localized VPP
+  integration changes, not as freshly authored VPP-native code.
+- When touching behavior, prefer small, well-contained changes and keep
+  the original upstream structure recognizable.
