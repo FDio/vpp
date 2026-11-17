@@ -50,6 +50,7 @@ list(APPEND VNET_SOURCES
   interface.c
   interface_api.c
   interface/cli_types.c
+  ip/cli_types.c
   interface_cli.c
   interface_format.c
   interface_output.c
@@ -94,6 +95,7 @@ list(APPEND VNET_HEADERS
   interface.h
   interface_funcs.h
   interface/cli_types.h
+  ip/cli_types.h
   interface_output.h
   ip/ip4_to_ip6.h
   ip/ip6_to_ip4.h
