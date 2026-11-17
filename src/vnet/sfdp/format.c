@@ -302,10 +302,17 @@ format_sfdp_tenant (u8 *s, va_list *args)
   __clib_unused sfdp_main_t *sfdp = va_arg (*args, sfdp_main_t *);
   u32 tenant_idx = va_arg (*args, u32);
   sfdp_tenant_t *tenant = va_arg (*args, sfdp_tenant_t *);
+  sfdp_filter_registration_t **filter;
   u32 scope_index;
   s = format (s, "index: %d\n", tenant_idx);
   s = format (s, "%Ucontext: %d\n", format_white_space, indent,
 	      tenant->context_id);
+  s = format (s, "%Ufilters:", format_white_space, indent);
+  if (!tenant->filters)
+    s = format (s, " none");
+  vec_foreach (filter, tenant->filters)
+    s = format (s, " %s", filter[0]->name);
+  s = format (s, "\n");
   foreach_sfdp_scope_index (scope_index)
   {
     s = format (s, "%Uscope: %U\n", format_white_space, indent,
