@@ -8352,6 +8352,8 @@ typedef struct
   i32 fr_cwnd_delta;	   /**< cwnd - ssthresh after the last such ack */
   u32 rto_sack_dupacks;	   /**< dupacks that sacked data in timer recovery */
   i32 rto_sack_growth;	   /**< cwnd change across those dupacks */
+  u32 open_sack_acks;	   /**< dupacks outside recovery that grew cwnd with sacked data */
+  i32 open_sack_growth;	   /**< cwnd change across those dupacks */
 } tcp_test_cc_t;
 
 static tcp_test_cc_t tcp_test_cc;
@@ -8371,6 +8373,16 @@ static void
 tcp_test_cc_rcv_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 {
   tcp_test_cc_t *cc = &tcp_test_cc;
+  u32 cwnd = tc->cwnd;
+
+  /* Once reordering was seen, dupacks outside recovery grow cwnd with the data they sack */
+  if (!ac->bytes_acked && (ac->ack_flags & TCP_ACK_F_DUPACK) && !tcp_in_cong_recovery (tc))
+    {
+      cc->base.rcv_ack (tc, ac);
+      cc->open_sack_acks++;
+      cc->open_sack_growth += (i32) (tc->cwnd - cwnd);
+      return;
+    }
 
   /* A cumulative ack ends the dupack run */
   if (!tcp_in_cong_recovery (tc))
@@ -8439,8 +8451,8 @@ tcp_test_cc_install (tcp_connection_t *tc)
   return cc_algo;
 }
 
-/* With sacks, dupacks must leave cwnd unchanged both outside recovery
- * (RFC 5681 Sec. 3.2) and during timer recovery, where only cumulative acks
+/* With sacks and no reordering seen, dupacks must leave cwnd unchanged both
+ * outside recovery (RFC 5681 Sec. 3.2) and during timer recovery, where only cumulative acks
  * grow it (RFC 5681 Sec. 3.1). After a first segment opens the server's
  * window, losing the first three of the next four segments yields a single
  * dupack, too few for fast recovery, so an rto starts timer recovery from the
@@ -8592,9 +8604,9 @@ tcp_test_tamper_dupack_cwnd (vlib_main_t *vm)
       rv = 1;
       goto cleanup;
     }
-  if (!TCP_TEST_I ((cc->open_dupacks > 0 && cc->open_dupack_growth == 0),
-		   "dupack_cwnd: %u dupacks outside recovery changed cwnd by %d", cc->open_dupacks,
-		   cc->open_dupack_growth))
+  if (!TCP_TEST_I ((cc->open_dupacks > 0 && cc->open_dupack_growth == 0 && !cc->open_sack_acks),
+		   "dupack_cwnd: %u dupacks outside recovery changed cwnd by %d, %u grew it",
+		   cc->open_dupacks, cc->open_dupack_growth, cc->open_sack_acks))
     {
       rv = 1;
       goto cleanup;
@@ -8607,6 +8619,174 @@ tcp_test_tamper_dupack_cwnd (vlib_main_t *vm)
       goto cleanup;
     }
   if (!TCP_TEST_I ((drained == total_bytes), "dupack_cwnd: all %u bytes delivered (got %u)",
+		   total_bytes, drained))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+cleanup:
+  if (client_tc && cc_algo)
+    client_tc->cc_algo = cc_algo;
+  tcp_tamper_reset ();
+  vec_free (data);
+  if (!tcp_e2e_teardown (vm, ctx))
+    rv = 1;
+  return rv;
+}
+
+/* Once reordering beyond the dupack threshold was seen, sacked data was likely
+ * delayed, not lost, so dupacks outside recovery grow cwnd with the bytes they
+ * sack. The tamper rules cannot delay segments, so the reorder estimate is set
+ * as if reordering was seen. After a first segment opens the server's window,
+ * losing the first of the next four segments yields dupacks that sack the
+ * other three, too few for fast recovery with that estimate, and they must all
+ * grow cwnd. */
+static int
+tcp_test_tamper_reorder_cwnd (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "reorder_cwnd",
+    .client_addr = 0x2e2e2e01,
+    .server_addr = 0x2f2f2f01,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2281,
+    .client_port = 0, /* ephemeral */
+    .secret = 2280,
+    .rx_fifo_size = 256 << 10,
+    .tx_fifo_size = 256 << 10,
+  };
+  tcp_test_cc_t *cc = &tcp_test_cc;
+  tcp_cc_algorithm_t *cc_algo = 0;
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc = 0;
+  tcp_tamper_rule_t *rules;
+  session_t *client_s, *server_s;
+  u32 tries, max_iters, mss, fr_before, drained = 0, total_bytes;
+  u8 *data = 0;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "reorder_cwnd: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "reorder_cwnd: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I (
+	(tcp_opts_sack_permitted (&client_tc->rcv_opts) && !tcp_rack_enabled (client_tc)),
+	"reorder_cwnd: sack negotiated, default loss detection"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  mss = client_tc->snd_mss;
+  total_bytes = 5 * mss;
+  vec_validate (data, total_bytes - 1);
+  for (i = 0; i < (int) total_bytes; i++)
+    data[i] = i & 0xff;
+
+  /* The server advertises its full window only once it acks data. Deliver
+   * one segment first so that the lossy flight fits in that window. */
+  error = svm_fifo_enqueue (client_s->tx_fifo, mss, data);
+  if (!TCP_TEST_I ((error == (int) mss), "reorder_cwnd: client queued %u bytes", mss))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "reorder_cwnd: client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  max_iters = tcp_e2e_rxt_wait_iters (client_tc, 5e-3);
+  for (tries = 0; (drained < mss || client_tc->snd_una != client_tc->snd_nxt) && tries < max_iters;
+       tries++)
+    {
+      drained += session_test_drain_rx_fifo (server_s);
+      tcp_e2e_pump (vm, 5e-3);
+    }
+  if (!TCP_TEST_I ((drained == mss && client_tc->snd_una == client_tc->snd_nxt),
+		   "reorder_cwnd: first segment delivered and acked"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  fr_before = client_tc->fr_occurences;
+
+  /* Send the next four segments in one flight that fills cwnd, after reordering
+   * of more segments than the flight's dupacks was seen */
+  client_tc->cwnd = 4 * mss;
+  client_tc->rto = TCP_RTO_MIN;
+  client_tc->sack_sb.reorder = 2 * TCP_DUPACK_THRESHOLD + 2;
+
+  cc_algo = tcp_test_cc_install (client_tc);
+
+  /* Drop the first segment once */
+  tcp_tamper_drop_seq (client_tc, client_tc->snd_una, 1);
+  rules = tcp_tamper_main.rules;
+  tcp_tamper_enable (client_tc);
+
+  error = svm_fifo_enqueue (client_s->tx_fifo, total_bytes - mss, data + mss);
+  if (!TCP_TEST_I ((error == (int) (total_bytes - mss)), "reorder_cwnd: client queued %u bytes",
+		   total_bytes - mss))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  error = session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  if (!TCP_TEST_I ((error == 0), "reorder_cwnd: client tx event programmed"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  max_iters = 2 * tcp_e2e_rxt_wait_iters (client_tc, 5e-3);
+  for (tries = 0; drained < total_bytes && tries < max_iters; tries++)
+    {
+      drained += session_test_drain_rx_fifo (server_s);
+      if (drained >= total_bytes)
+	break;
+      tcp_e2e_pump (vm, 5e-3);
+    }
+
+  vlib_cli_output (vm,
+		   "reorder_cwnd: fr delta %u, %u dupacks grew cwnd by %d, %u left it (cwnd %+d)",
+		   client_tc->fr_occurences - fr_before, cc->open_sack_acks, cc->open_sack_growth,
+		   cc->open_dupacks, cc->open_dupack_growth);
+
+  if (!TCP_TEST_I ((rules[0].n_dropped == 1), "reorder_cwnd: dropped %u of 1 segment sends",
+		   rules[0].n_dropped))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((client_tc->fr_occurences == fr_before),
+		   "reorder_cwnd: no fast recovery (fr %u)", client_tc->fr_occurences - fr_before))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((cc->open_sack_acks && cc->open_sack_growth > 0 && !cc->open_dupacks),
+		   "reorder_cwnd: %u dupacks grew cwnd by %d, %u did not grow it",
+		   cc->open_sack_acks, cc->open_sack_growth, cc->open_dupacks))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  if (!TCP_TEST_I ((drained == total_bytes), "reorder_cwnd: all %u bytes delivered (got %u)",
 		   total_bytes, drained))
     {
       rv = 1;
@@ -9290,6 +9470,7 @@ tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
     { "dsack-rto", tcp_test_tamper_dsack_rto },
     { "dsack-partial", tcp_test_tamper_dsack_partial },
     { "dupack-cwnd", tcp_test_tamper_dupack_cwnd },
+    { "reorder-cwnd", tcp_test_tamper_reorder_cwnd },
     { "nosack-cwnd", tcp_test_tamper_nosack_cwnd },
     { "rcv-wnd-retract", tcp_test_tamper_rcv_wnd_retract },
     { "snd-small-wnd", tcp_test_tamper_snd_small_wnd },
