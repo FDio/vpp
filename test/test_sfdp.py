@@ -1180,6 +1180,244 @@ class TestSfdpSampleTimeout(BaseSfdpTest):
     or "sfdp_services_sample" in config.excluded_plugins,
     "SFDP services and SFDP sample services plugins are required to run this test",
 )
+class TestSfdpSampleFilter(BaseSfdpTest):
+    """Test SFDP new-session filters"""
+
+    tenant_id = 100
+    refused = "/err/sfdp-lookup-ip4/session refused by filter"
+
+    extra_vpp_plugin_config = [
+        "plugin sfdp_services_sample_plugin.so { enable }",
+    ]
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        try:
+            cls.create_pg_interfaces(range(2))
+            for interface in cls.pg_interfaces:
+                interface.admin_up()
+                interface.config_ip4()
+                interface.resolve_arp()
+                interface.config_ip6()
+                interface.resolve_ndp()
+        except Exception:
+            super().tearDownClass()
+            raise
+
+    @classmethod
+    def tearDownClass(cls):
+        for interface in cls.pg_interfaces:
+            interface.unconfig_ip4()
+            interface.unconfig_ip6()
+            interface.admin_down()
+        super().tearDownClass()
+
+    def setUp(self):
+        super().setUp()
+        reply = self.vapi.sfdp_tenant_add_del(tenant_id=self.tenant_id, is_del=False)
+        self.assertEqual(reply.retval, 0)
+        for direction in (
+            VppEnum.vl_api_sfdp_session_direction_t.SFDP_API_FORWARD,
+            VppEnum.vl_api_sfdp_session_direction_t.SFDP_API_REVERSE,
+        ):
+            reply = self.vapi.sfdp_set_services(
+                tenant_id=self.tenant_id,
+                dir=direction,
+                n_services=1,
+                services=[{"data": "ip4-lookup"}],
+            )
+            self.assertEqual(reply.retval, 0)
+        self.vapi.sfdp_interface_input_set(
+            sw_if_index=self.pg0.sw_if_index,
+            tenant_id=self.tenant_id,
+            is_disable=False,
+        )
+
+    def tearDown(self):
+        self.vapi.sfdp_kill_session(is_all=True)
+        self.wait_no_sessions()
+        self.vapi.sfdp_interface_input_set(
+            sw_if_index=self.pg0.sw_if_index,
+            tenant_id=self.tenant_id,
+            is_disable=True,
+        )
+        self.vapi.sfdp_tenant_add_del(tenant_id=self.tenant_id, is_del=True)
+        super().tearDown()
+
+    def udp(self, dport):
+        return self.create_udp_packet(
+            self.pg0.remote_mac,
+            self.pg0.local_mac,
+            self.pg0.remote_ip4,
+            self.pg1.remote_ip4,
+            sport=12345,
+            dport=dport,
+        )
+
+    def udp6(self, dport):
+        return (
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst=self.pg1.remote_ip6)
+            / UDP(sport=12345, dport=dport)
+            / Raw(b"\xa5" * 100)
+        )
+
+    def filter_calls(self, before=(0, 0)):
+        calls = self.statistics.get_counter("/sfdp/sample/filter-calls")
+        return [sum(thread[i] for thread in calls) - before[i] for i in range(2)]
+
+    def set_filters(self, names, tenant_id=None):
+        reply = self.vapi.sfdp_set_filters(
+            tenant_id=self.tenant_id if tenant_id is None else tenant_id,
+            n_filters=len(names),
+            filters=[{"data": n} for n in names],
+        )
+        self.assertEqual(reply.retval, 0)
+
+    def test_sample_filters_api(self):
+        """Filters enabled over the API refuse new sessions in order"""
+        self.set_filters(["sample-discard", "sample-echo"])
+        before = self.statistics.get_err_counter(self.refused)
+
+        self.send_and_assert_no_replies(self.pg0, [self.udp(9), self.udp(7)])
+        self.assertEqual(self.statistics.get_err_counter(self.refused) - before, 2)
+        self.assertEqual(len(self.sessions()), 0)
+
+        self.send_and_expect(self.pg0, self.udp(80), self.pg1)
+        self.assertEqual(len(self.sessions()), 1)
+
+        self.set_filters(["sample-echo"])
+        self.send_and_expect(self.pg0, self.udp(9), self.pg1)
+        self.send_and_assert_no_replies(self.pg0, self.udp(7))
+        self.assertEqual(len(self.sessions()), 2)
+        self.assertEqual(self.statistics.get_err_counter(self.refused) - before, 3)
+
+        self.set_filters([])
+        self.send_and_expect(self.pg0, self.udp(7), self.pg1)
+        self.assertEqual(len(self.sessions()), 3)
+
+    def test_sample_filters_order(self):
+        """Filters are called in order and the first refusal stops the walk"""
+        before = self.filter_calls()
+
+        self.set_filters(["sample-discard", "sample-echo"])
+        self.send_and_assert_no_replies(self.pg0, self.udp(9))
+        self.assertEqual(self.filter_calls(before), [1, 0])
+
+        self.set_filters(["sample-echo", "sample-discard"])
+        self.send_and_assert_no_replies(self.pg0, self.udp(9))
+        self.assertEqual(self.filter_calls(before), [2, 1])
+        self.send_and_assert_no_replies(self.pg0, self.udp(7))
+        self.assertEqual(self.filter_calls(before), [2, 2])
+        self.assertEqual(len(self.sessions()), 0)
+
+    def test_sample_filters_ip6(self):
+        """Filters refuse new IPv6 sessions"""
+        tenant_id = self.tenant_id + 1
+        refused = "/err/sfdp-lookup-ip6/session refused by filter"
+        reply = self.vapi.sfdp_tenant_add_del(tenant_id=tenant_id, is_del=False)
+        self.assertEqual(reply.retval, 0)
+        try:
+            for direction in (
+                VppEnum.vl_api_sfdp_session_direction_t.SFDP_API_FORWARD,
+                VppEnum.vl_api_sfdp_session_direction_t.SFDP_API_REVERSE,
+            ):
+                reply = self.vapi.sfdp_set_services(
+                    tenant_id=tenant_id,
+                    dir=direction,
+                    n_services=1,
+                    services=[{"data": "ip6-lookup"}],
+                )
+                self.assertEqual(reply.retval, 0)
+            self.vapi.sfdp_interface_input_set(
+                sw_if_index=self.pg0.sw_if_index,
+                tenant_id=tenant_id,
+                is_disable=False,
+                is_ip6=True,
+            )
+            self.set_filters(["sample-discard"], tenant_id)
+            before = self.statistics.get_err_counter(refused)
+
+            self.send_and_assert_no_replies(self.pg0, self.udp6(9))
+            self.assertEqual(self.statistics.get_err_counter(refused) - before, 1)
+            self.assertEqual(len(self.sessions()), 0)
+
+            self.send_and_expect(self.pg0, self.udp6(80), self.pg1)
+            self.assertEqual(len(self.sessions()), 1)
+        finally:
+            self.vapi.sfdp_kill_session(is_all=True)
+            self.wait_no_sessions()
+            self.vapi.sfdp_interface_input_set(
+                sw_if_index=self.pg0.sw_if_index,
+                tenant_id=tenant_id,
+                is_disable=True,
+                is_ip6=True,
+            )
+            self.vapi.sfdp_tenant_add_del(tenant_id=tenant_id, is_del=True)
+
+    def test_sample_filters_unknown(self):
+        """Unknown filter names are rejected and leave the tenant unchanged"""
+        self.set_filters(["sample-discard"])
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.sfdp_set_filters(
+                tenant_id=self.tenant_id,
+                n_filters=1,
+                filters=[{"data": "no-such-filter"}],
+            )
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.sfdp_set_filters(
+                tenant_id=self.tenant_id + 1,
+                n_filters=1,
+                filters=[{"data": "sample-discard"}],
+            )
+        self.send_and_assert_no_replies(self.pg0, self.udp(9))
+        self.assertEqual(len(self.sessions()), 0)
+
+    def test_sample_filters_cli(self):
+        """Filters configured and shown over the CLI"""
+        out = self.vapi.cli("show sfdp filters")
+        self.assertIn("sample-discard", out)
+        self.assertIn("sample-echo", out)
+
+        self.vapi.cli(
+            f"set sfdp filters tenant {self.tenant_id} sample-echo sample-discard"
+        )
+        out = self.vapi.cli(f"show sfdp tenant {self.tenant_id}")
+        self.assertIn("filters: sample-echo sample-discard", out)
+        self.send_and_assert_no_replies(self.pg0, self.udp(9))
+
+        self.vapi.cli(f"set sfdp filters tenant {self.tenant_id} none")
+        out = self.vapi.cli(f"show sfdp tenant {self.tenant_id}")
+        self.assertIn("filters: none", out)
+        self.send_and_expect(self.pg0, self.udp(9), self.pg1)
+        self.assertEqual(len(self.sessions()), 1)
+
+        reply = self.vapi.cli_return_response(
+            f"set sfdp filters tenant {self.tenant_id} no-such-filter"
+        )
+        self.assertNotEqual(reply.retval, 0)
+        self.assertIn("unknown filter no-such-filter", reply.reply)
+
+        for args, error in (
+            ("", "missing filter name or none"),
+            ("none sample-echo", "none can't be combined with filter names"),
+            ("sample-echo none", "none can't be combined with filter names"),
+        ):
+            reply = self.vapi.cli_return_response(
+                f"set sfdp filters tenant {self.tenant_id} {args}"
+            )
+            self.assertNotEqual(reply.retval, 0)
+            self.assertIn(error, reply.reply)
+        out = self.vapi.cli(f"show sfdp tenant {self.tenant_id}")
+        self.assertIn("filters: none", out)
+
+
+@unittest.skipIf(
+    "sfdp_services" in config.excluded_plugins
+    or "sfdp_services_sample" in config.excluded_plugins,
+    "SFDP services and SFDP sample services plugins are required to run this test",
+)
 class TestSfdpSampleParser(BaseSfdpTest):
     """Test SFDP custom parser registration"""
 

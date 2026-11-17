@@ -2,7 +2,7 @@
  * Copyright (c) 2025 Cisco Systems, Inc.
  */
 
-option version = "1.0.2";
+option version = "1.1.0";
 import "vnet/ip/ip_types.api";
 import "vnet/sfdp/sfdp_types.api";
 
@@ -171,6 +171,17 @@ autoreply define sfdp_set_sp_node
   u32 tenant_id;
   vl_api_sfdp_sp_node_t sp_node;
   u32 node_index;
+};
+
+autoreply define sfdp_set_filters
+{
+  option status="in_progress";
+  u32 client_index;
+  u32 context;
+
+  u32 tenant_id;
+  u8 n_filters;
+  vl_api_sfdp_service_name_t filters[n_filters];
 };
 
 autoreply define sfdp_set_icmp_error_node
