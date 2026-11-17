@@ -347,7 +347,7 @@ void tcp_ack_sacks (tcp_connection_t *tc, u8 signals_loss);
 /** blk replaces the blocks it grew from or joined in the postponed acks */
 void tcp_postponed_acks_merge (tcp_connection_t *tc, sack_block_t blk);
 __clib_export void tcp_postponed_acks_free (tcp_connection_t *tc);
-void tcp_send_window_update_ack (tcp_connection_t * tc);
+__clib_export void tcp_send_window_update_ack (tcp_connection_t *tc);
 
 __clib_export void tcp_program_ack (tcp_connection_t *tc);
 void tcp_program_dupack (tcp_connection_t * tc);
