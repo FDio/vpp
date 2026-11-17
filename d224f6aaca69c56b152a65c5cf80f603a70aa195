@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "db6de708_35975668",
+        "filename": "src/plugins/ikev2/ikev2_crypto.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1080,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-17T18:25:25Z",
+      "side": 1,
+      "message": "Done in patch set 2. The table now also holds the three RSASSA-PKCS1-v1_5 identifiers with absent parameters (accepted, never sent), and three tests cover SHA-256, SHA-384 and SHA-512 signed with them.",
+      "parentUuid": "75d28a4a_1b1a139b",
+      "revId": "d224f6aaca69c56b152a65c5cf80f603a70aa195",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "642dbea2_28226fdf",
+        "filename": "src/plugins/ikev2/ikev2_crypto.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1115,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-17T18:25:25Z",
+      "side": 1,
+      "message": "Done in patch set 2. Signing uses the 67-byte identifier without trailerField; the 72-byte one from RFC 7427 A.4.3 is kept for verification only. The outbound expectation in the test is updated.",
+      "parentUuid": "60b7f760_dd94d539",
+      "revId": "d224f6aaca69c56b152a65c5cf80f603a70aa195",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
