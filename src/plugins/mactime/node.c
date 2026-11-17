@@ -21,12 +21,11 @@ typedef struct
 vlib_node_registration_t mactime_node;
 vlib_node_registration_t mactime_tx_node;
 
-#define foreach_mactime_error                   \
-_(OK, "Permitted packets")			\
-_(STATIC_DROP, "Static drop packets")           \
-_(RANGE_DROP, "Range drop packets")             \
-_(QUOTA_DROP, "Data quota drop packets")	\
-_(DROP_10001, "Dropped UDP DST-port 10001")
+#define foreach_mactime_error                                                                      \
+  _ (OK, "Permitted packets")                                                                      \
+  _ (STATIC_DROP, "Static drop packets")                                                           \
+  _ (RANGE_DROP, "Range drop packets")                                                             \
+  _ (QUOTA_DROP, "Data quota drop packets")
 
 typedef enum
 {
@@ -193,34 +192,9 @@ mactime_node_inline (vlib_main_t * vm,
 		}
 	      else		/* note next0 set to allow */
 		{
-		  /*
-		   * Special-case mini-ACL for a certain species of
-		   * home security DVR which likes to "call home."
-		   */
-		  if (PREDICT_FALSE
-		      (dp->flags & MACTIME_DEVICE_FLAG_DROP_UDP_10001))
-		    {
-		      ip4_header_t *ip = (void *) (((u8 *) en0) + 14);
-		      udp_header_t *udp = (udp_header_t *) (ip + 1);
-		      if (ip->protocol != IP_PROTOCOL_UDP)
-			goto pass;
-		      if (clib_net_to_host_u16 (udp->dst_port) == 10001 ||
-			  clib_net_to_host_u16 (udp->dst_port) == 9603)
-			{
-			  next0 = MACTIME_NEXT_DROP;
-			  b0->error = node->errors[MACTIME_ERROR_DROP_10001];
-			}
-		      else
-			goto pass;
-		    }
-		  else
-		    {
-		    pass:
-		      vlib_increment_combined_counter
-			(&mm->allow_counters, thread_index, dp - mm->devices,
-			 1, len0);
-		      packets_ok++;
-		    }
+		  vlib_increment_combined_counter (&mm->allow_counters, thread_index,
+						   dp - mm->devices, 1, len0);
+		  packets_ok++;
 		}
 	      goto trace0;
 	    }
