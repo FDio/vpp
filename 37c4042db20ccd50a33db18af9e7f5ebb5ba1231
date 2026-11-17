@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a7c2e69a_6c52b694",
+        "filename": "docs/contributing/committer-etiquette.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-17T10:56:57Z",
+      "side": 1,
+      "message": "I would add that patch should not be more than N commits or days behind HEAD, Verified date can be misleading if patch was updated couple of times without rebase.",
+      "revId": "37c4042db20ccd50a33db18af9e7f5ebb5ba1231",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
