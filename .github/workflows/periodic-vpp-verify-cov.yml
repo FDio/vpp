@@ -46,7 +46,7 @@ jobs:
       matrix:
         build_type: ['release']
         class: ['builder']
-        os: ['ubuntu2404']
+        os: ['ubuntu2604']
         executor_arch: ['x86_64']
 
     env:
@@ -64,8 +64,8 @@ jobs:
       TEST_JOBS: 4
       HS_PARALLEL: auto
       TEST_RETRIES: 3
-      MAKE_TEST_OS: ubuntu-24.04
-      VPPAPIGEN_TEST_OS: ubuntu-24.04
+      MAKE_TEST_OS: ubuntu-26.04
+      VPPAPIGEN_TEST_OS: ubuntu-26.04
       SHM_SIZE: 2048M
       TUI_LINE: "*******************************************************************"
 

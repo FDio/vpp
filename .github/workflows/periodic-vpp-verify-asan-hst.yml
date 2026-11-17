@@ -48,7 +48,7 @@ jobs:
         include:
           # Debug builds on x86_64
           - build_type: 'debug'
-            os: 'ubuntu2404'
+            os: 'ubuntu2604'
             executor_arch: 'x86_64'
             class: 'hst'
             size: 'hst'
