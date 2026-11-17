@@ -471,6 +471,11 @@ M:	Damjan Marion <dmarion@0xa5.net>
 F:	src/drivers/net/ibverbs/
 F:	src/drivers/common/rdma/
 
+MLX5 Device driver
+I:	mlx5
+M:	Damjan Marion <dmarion@0xa5.net>
+F:	src/drivers/net/mlx5/
+
 Marvell Armada device driver
 I:	armada
 M:	Damjan Marion <damarion@cisco.com>
