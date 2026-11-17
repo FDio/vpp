@@ -267,7 +267,7 @@ def del_namespace_neighbor(ns, ifname, ip_addr):
 
 def add_namespace_vlan(ns, parent, ifname, vlan_id):
     """Add a VLAN link to a namespace."""
-    with lock:
+    with net_helper_lock():
         try:
             cmd = [
                 "ip",
@@ -296,7 +296,7 @@ def add_namespace_vlan(ns, parent, ifname, vlan_id):
 
 def add_namespace_qinq(ns, parent, ifname, vlan_id):
     """Add a QinQ (vlan-on-vlan) link to a namespace."""
-    with lock:
+    with net_helper_lock():
         try:
             cmd = [
                 "ip",
@@ -327,7 +327,7 @@ def add_namespace_qinq(ns, parent, ifname, vlan_id):
 
 def del_namespace_link(ns, ifname):
     """Delete a link from a namespace."""
-    with lock:
+    with net_helper_lock():
         try:
             cmd = [
                 "ip",
