@@ -184,8 +184,8 @@ typedef struct tcp_configuration_
   /** Default congestion control algorithm type */
   tcp_cc_algorithm_type_e cc_algo;
 
-  /** Min rwnd, as number of snd_mss segments, for update ack to be sent after
-   * a zero rwnd advertisement */
+  /** Min rwnd, as number of snd_mss segments, for update ack to be sent after a rwnd smaller
+   * than an mss was advertised */
   u32 rwnd_min_update_ack;
 
   /** Timer ticks to wait for close from app */

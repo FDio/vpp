@@ -1122,13 +1122,6 @@ tcp_session_cal_goal_size (tcp_connection_t * tc)
 }
 
 always_inline u32
-tcp_unsent_bytes (tcp_connection_t *tc)
-{
-  u32 n_bytes = transport_max_tx_dequeue (&tc->connection), flight = tc->snd_nxt - tc->snd_una;
-  return n_bytes > flight ? n_bytes - flight : 0;
-}
-
-always_inline u32
 tcp_round_snd_space (tcp_connection_t * tc, u32 snd_space)
 {
   if (PREDICT_FALSE (tc->snd_wnd < tc->snd_mss))
@@ -1421,7 +1414,7 @@ tcp_session_app_rx_evt (transport_connection_t *conn)
   tcp_connection_t *tc = (tcp_connection_t *) conn;
   u32 fifo_size, min_free, lo = 4 << 10, hi = 128 << 10;
 
-  if (!(tc->flags & TCP_CONN_ZERO_RWND_SENT))
+  if (!(tc->flags & TCP_CONN_SMALL_RWND_SENT))
     return 0;
 
   /* At most half of the fifo, so small fifos still get updates */

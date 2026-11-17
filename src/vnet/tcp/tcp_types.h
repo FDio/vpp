@@ -120,7 +120,7 @@ typedef enum tcp_cfg_flag_
   _ (DEQ_PENDING, "Dequeue pending ")                                                              \
   _ (PSH_PENDING, "PSH pending")                                                                   \
   _ (FINRCVD, "FIN received")                                                                      \
-  _ (ZERO_RWND_SENT, "Zero RWND sent")                                                             \
+  _ (SMALL_RWND_SENT, "Small RWND sent")                                                           \
   _ (TLP_PENDING, "TLP outcome pending")
 
 typedef enum tcp_connection_flag_bits_
@@ -584,9 +584,9 @@ tcp_cong_recovery_off (tcp_connection_t * tc)
 
 #define tcp_csum_offload(tc) (!((tc)->cfg_flags & TCP_CFG_F_NO_CSUM_OFFLOAD))
 
-#define tcp_zero_rwnd_sent(tc) ((tc)->flags & TCP_CONN_ZERO_RWND_SENT)
-#define tcp_zero_rwnd_sent_on(tc) (tc)->flags |= TCP_CONN_ZERO_RWND_SENT
-#define tcp_zero_rwnd_sent_off(tc) (tc)->flags &= ~TCP_CONN_ZERO_RWND_SENT
+#define tcp_small_rwnd_sent(tc)	    ((tc)->flags & TCP_CONN_SMALL_RWND_SENT)
+#define tcp_small_rwnd_sent_on(tc)  (tc)->flags |= TCP_CONN_SMALL_RWND_SENT
+#define tcp_small_rwnd_sent_off(tc) (tc)->flags &= ~TCP_CONN_SMALL_RWND_SENT
 
 #define tcp_dsack_has_undo(tc) (((tc)->sack_sb.flags & TCP_DSACK_RXT_SEEN) != 0)
 
