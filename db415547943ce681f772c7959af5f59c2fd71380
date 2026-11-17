@@ -17,6 +17,24 @@
       "tag": "prview:23051633734b8b591393af9184b301ec:db415547943ce681f772c7959af5f59c2fd71380",
       "revId": "db415547943ce681f772c7959af5f59c2fd71380",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e0af4ac5_3ebbf773",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-17T14:06:41Z",
+      "side": 1,
+      "message": "Done in patch set 4: both paragraphs are wrapped at 72 columns. The patch set is also rebased on master; the code is unchanged.",
+      "parentUuid": "216e4c23_ff61f16f",
+      "revId": "db415547943ce681f772c7959af5f59c2fd71380",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
