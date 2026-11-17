@@ -33,6 +33,29 @@
       "message": "Just a kindly reminder for review.",
       "revId": "8dbef3f1c556e4f084838763aa97a02ffdb25473",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "49036c39_2ed15135",
+        "filename": "src/plugins/fastacl/FEATURE.yaml",
+        "patchSetId": 6
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-17T17:58:21Z",
+      "side": 1,
+      "message": "s/production/experimental/g\n\nNew plugins should be maintained for a while prior to transitioning to \u0027production\u0027.",
+      "range": {
+        "startLine": 39,
+        "startChar": 7,
+        "endLine": 39,
+        "endChar": 17
+      },
+      "revId": "8dbef3f1c556e4f084838763aa97a02ffdb25473",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
