@@ -161,10 +161,10 @@ tcp_rcv_wnd_commit (tcp_connection_t *tc, u32 wnd)
   if (PREDICT_FALSE (round_down_pow2 (wnd, 1 << tc->rcv_wscale) < tc->rcv_opts.mss))
     {
       transport_rx_fifo_req_deq_ntf (&tc->connection);
-      tcp_zero_rwnd_sent_on (tc);
+      tcp_small_rwnd_sent_on (tc);
     }
   else
-    tcp_zero_rwnd_sent_off (tc);
+    tcp_small_rwnd_sent_off (tc);
 }
 
 /**
@@ -901,7 +901,6 @@ tcp_push_hdr_i (tcp_connection_t *tc, vlib_buffer_t *b, u32 snd_nxt,
 
   if (push_hdr_flags & TCP_PUSH_HDR_F_UPDATE_SND_NXT)
     tc->snd_nxt += data_len;
-  tc->rcv_las = tc->rcv_nxt;
 
   tc->bytes_out += data_len;
   tc->data_segs_out += 1;
@@ -1259,18 +1258,17 @@ tcp_program_retransmit (tcp_connection_t * tc)
 /**
  * Send window update ack
  *
- * Ensures that it will be sent only once, after a zero rwnd has been
- * advertised in a previous ack, and only if rwnd has grown beyond a
- * configurable value.
+ * Ensures that it will be sent only once, after a rwnd smaller than an mss has been advertised in
+ * a previous ack, and only if rwnd has grown beyond a configurable value.
  */
 void
 tcp_send_window_update_ack (tcp_connection_t * tc)
 {
-  if (tcp_zero_rwnd_sent (tc))
+  if (tcp_small_rwnd_sent (tc))
     {
       if (tcp_rcv_wnd_compute (tc) >= tcp_cfg.rwnd_min_update_ack * tc->snd_mss)
 	{
-	  tcp_zero_rwnd_sent_off (tc);
+	  tcp_small_rwnd_sent_off (tc);
 	  tcp_program_ack (tc);
 	}
     }
@@ -1970,13 +1968,6 @@ tcp_cc_recovery_snd_space (tcp_connection_t *tc)
   return (u32) tcp_fastrecovery_prr_snd_space (tc);
 }
 
-static inline u8
-tcp_max_tx_deq (tcp_connection_t * tc)
-{
-  return (transport_max_tx_dequeue (&tc->connection)
-	  - (tc->snd_nxt - tc->snd_una));
-}
-
 #define scoreboard_rescue_rxt_valid(_sb, _tc)			\
     (seq_geq (_sb->rescue_rxt, _tc->snd_una) 			\
 	&& seq_leq (_sb->rescue_rxt, _tc->snd_congestion))
@@ -2324,8 +2315,8 @@ tcp_send_acks (tcp_connection_t * tc, u32 max_burst_size)
 	return n_post;
 
       /* Data, if any, carries the ack, unless the peer's window is too small to send into */
-      if (tcp_in_cong_recovery (tc) || !tcp_max_tx_deq (tc) || tc->state != TCP_STATE_ESTABLISHED ||
-	  (tc->snd_wnd < tc->snd_mss && !tcp_snd_space (tc)))
+      if (tcp_in_cong_recovery (tc) || !tcp_unsent_bytes (tc) ||
+	  tc->state != TCP_STATE_ESTABLISHED || (tc->snd_wnd < tc->snd_mss && !tcp_snd_space (tc)))
 	{
 	  tcp_send_ack (tc);
 	  return 1;

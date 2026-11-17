@@ -151,6 +151,16 @@ tcp_flight_size (const tcp_connection_t * tc)
 }
 
 /**
+ * Bytes in the tx fifo not yet sent
+ */
+always_inline u32
+tcp_unsent_bytes (tcp_connection_t *tc)
+{
+  u32 n_bytes = transport_max_tx_dequeue (&tc->connection), flight = tc->snd_nxt - tc->snd_una;
+  return n_bytes > flight ? n_bytes - flight : 0;
+}
+
+/**
  * Initial cwnd as per RFC 6928, min (10 * MSS, max (2 * MSS, 14600))
  */
 always_inline u32
