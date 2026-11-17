@@ -553,9 +553,11 @@ hsi_tcp_drain_start_msg (hsi_tcp_drain_start_req_t *a)
   hsi_session_save_app_wrk (s, a->flags);
   drain = hsi_tcp_drain_start (s, peer_s, tc, peer_tc);
 
-  /* App handed off session but it might have been closed while the message
-   * was pending. Drains also can't fill rx holes. Either way fail the pair */
-  if (!hsi_track_sessions_compatible (s, peer_s) || svm_fifo_has_ooo_data (s->rx_fifo))
+  /* App handed off session but it might have been closed, or half-closed,
+   * while the message was pending. Drains also can't fill rx holes. Either
+   * way fail the pair */
+  if (!hsi_track_sessions_compatible (s, peer_s) || tc->state != TCP_STATE_ESTABLISHED ||
+      svm_fifo_has_ooo_data (s->rx_fifo))
     {
       hsi_tcp_drain_fail_pair (drain);
       return;
@@ -1298,6 +1300,18 @@ hsi_track_tcp (session_t *s, session_t *peer_s, hsi_track_flags_t flags, u32 idl
   tc1 = hsi_tcp_connection_at_session (peer_s);
   is_same_thread = s->thread_index == peer_s->thread_index;
   wrk = hsi_worker_get (s->thread_index);
+
+  /* Apps can half-close sessions without changing their state */
+  if (tc0->state != TCP_STATE_ESTABLISHED)
+    {
+      hsi_worker_counter_inc (wrk, tcp_track_fail_closing);
+      return -1;
+    }
+  if (tc1->state != TCP_STATE_ESTABLISHED)
+    {
+      hsi_worker_counter_inc (wrk, tcp_track_fail_peer_closing);
+      return -1;
+    }
 
   if (!hsi_tcp_track_is_possible (tc0, tc1))
     {
