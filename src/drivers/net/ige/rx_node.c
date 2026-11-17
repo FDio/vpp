@@ -67,7 +67,7 @@ ige_rx_deq_64_desc (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queu
   u32 bc[64], *buffer_indices = iq->buffer_indices,
 	      *bi = buffer_indices + slot;
   vlib_buffer_t *buffers[64];
-  u32 n_descs = 0, n_complete = 0, n_pkts = 0, n_err = 0, n_drop = 0, n_drop_pkts = 0;
+  u32 n_descs = 0, n_complete = 0, n_pkts = 0, n_err = 0, n_drop = 0;
   u32 drop[ARRAY_LEN (dc)];
 
   while (d->dd && n_descs < ARRAY_LEN (dc) && n_pkts < max_pkts)
@@ -132,9 +132,7 @@ ige_rx_deq_64_desc (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queu
 	    {
 	      if (PREDICT_FALSE (dc[i].rxe))
 		{
-		  for (u32 j = hi; j <= i; j++)
-		    drop[n_drop++] = bc[j];
-		  n_drop_pkts++;
+		  drop[n_drop++] = bc[hi];
 		  tlnif = 0;
 		}
 	      else
@@ -192,10 +190,10 @@ ige_rx_deq_64_desc (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queu
   if (PREDICT_FALSE (n_drop))
     {
       vlib_buffer_free (vm, drop, n_drop);
-      vlib_error_count (vm, node->node_index, IGE_RX_NODE_CTR_DESC_ERROR, n_drop_pkts);
+      vlib_error_count (vm, node->node_index, IGE_RX_NODE_CTR_DESC_ERROR, n_drop);
     }
 
-  return n_pkts - n_drop_pkts;
+  return n_pkts - n_drop;
 }
 
 static_always_inline u32
