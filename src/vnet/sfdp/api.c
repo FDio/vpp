@@ -90,6 +90,38 @@ vl_api_sfdp_set_sp_node_t_handler (vl_api_sfdp_set_sp_node_t *mp)
 }
 
 static void
+vl_api_sfdp_set_pre_filter_t_handler (vl_api_sfdp_set_pre_filter_t *mp)
+{
+  vl_api_sfdp_set_pre_filter_reply_t *rmp;
+  sfdp_main_t *sfdp = &sfdp_main;
+  sfdp_pre_filter_registration_t *pre_filter = 0;
+  u32 tenant_id = clib_net_to_host_u32 (mp->tenant_id);
+  char pre_filter_name[sizeof (mp->name.data) + 1];
+  clib_error_t *err;
+  int rv = 0;
+
+  if (!mp->is_disable)
+    {
+      clib_memcpy (pre_filter_name, mp->name.data, sizeof (mp->name.data));
+      pre_filter_name[sizeof (mp->name.data)] = 0;
+      pre_filter = sfdp_pre_filter_by_name (sfdp, pre_filter_name);
+      if (!pre_filter)
+	{
+	  rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+	  goto done;
+	}
+    }
+  err = sfdp_set_pre_filter (sfdp, tenant_id, pre_filter);
+  if (err)
+    {
+      clib_error_free (err);
+      rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+    }
+done:
+  REPLY_MACRO (VL_API_SFDP_SET_PRE_FILTER_REPLY);
+}
+
+static void
 vl_api_sfdp_set_icmp_error_node_t_handler (
   vl_api_sfdp_set_icmp_error_node_t *mp)
 {
@@ -407,6 +439,52 @@ vl_api_sfdp_service_dump_t_handler (vl_api_sfdp_service_dump_t *mp)
 	  sfdp_send_service_details (rp, mp->context, *service, scope_name);
 	}
     }
+}
+
+static void
+vl_api_sfdp_pre_filter_dump_t_handler (vl_api_sfdp_pre_filter_dump_t *mp)
+{
+  sfdp_main_t *sfdp = &sfdp_main;
+  sfdp_pre_filter_registration_t *r;
+  vl_api_sfdp_pre_filter_details_t *rmp;
+  vl_api_registration_t *rp;
+
+  rp = vl_api_client_index_to_registration (mp->client_index);
+  if (rp == 0)
+    return;
+
+  sfdp_foreach_pre_filter (sfdp, r)
+  {
+    rmp = vl_msg_api_alloc_zero (sizeof (*rmp));
+    rmp->_vl_msg_id = ntohs (VL_API_SFDP_PRE_FILTER_DETAILS + sfdp->msg_id_base);
+    rmp->context = mp->context;
+    strncpy ((char *) rmp->name.data, r->name, ARRAY_LEN (rmp->name.data) - 1);
+    vl_api_send_msg (rp, (u8 *) rmp);
+  }
+}
+
+static void
+vl_api_sfdp_get_pre_filter_t_handler (vl_api_sfdp_get_pre_filter_t *mp)
+{
+  vl_api_sfdp_get_pre_filter_reply_t *rmp;
+  sfdp_main_t *sfdp = &sfdp_main;
+  sfdp_pre_filter_registration_t *pre_filter = 0;
+  u32 tenant_id = clib_net_to_host_u32 (mp->tenant_id);
+  clib_error_t *err;
+  int rv = 0;
+
+  err = sfdp_get_pre_filter (sfdp, tenant_id, &pre_filter);
+  if (err)
+    {
+      clib_error_free (err);
+      rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+    }
+  REPLY_MACRO2_ZERO (VL_API_SFDP_GET_PRE_FILTER_REPLY, ({
+		       rmp->is_set = pre_filter != 0;
+		       if (pre_filter)
+			 strncpy ((char *) rmp->name.data, pre_filter->name,
+				  ARRAY_LEN (rmp->name.data) - 1);
+		     }));
 }
 
 #include <vnet/sfdp/sfdp.api.c>

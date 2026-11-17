@@ -142,15 +142,17 @@ enum
 #undef _
 };
 
-#define foreach_sfdp_sp_node                                                  \
-  _ (IP4_REASS, "error-drop", "sp-ip4-reassembly")                            \
-  _ (IP6_REASS, "error-drop", "sp-ip6-reassembly")                            \
-  _ (IP4_UNKNOWN_PROTO, "error-drop", "sp-ip4-unknown-proto")                 \
-  _ (IP6_UNKNOWN_PROTO, "error-drop", "sp-ip6-unknown-proto")                 \
-  _ (IP4_ICMP4_ERROR, "error-drop", "sp-ip4-icmp4-error")                     \
-  _ (IP6_ICMP6_ERROR, "error-drop", "sp-ip4-icmp6-error")                     \
-  _ (IP4_TABLE_OVERFLOW, "error-drop", "sp-ip4-table-overflow")               \
-  _ (IP6_TABLE_OVERFLOW, "error-drop", "sp-ip6-table-overflow")
+#define foreach_sfdp_sp_node                                                                       \
+  _ (IP4_REASS, "error-drop", "sp-ip4-reassembly")                                                 \
+  _ (IP6_REASS, "error-drop", "sp-ip6-reassembly")                                                 \
+  _ (IP4_UNKNOWN_PROTO, "error-drop", "sp-ip4-unknown-proto")                                      \
+  _ (IP6_UNKNOWN_PROTO, "error-drop", "sp-ip6-unknown-proto")                                      \
+  _ (IP4_ICMP4_ERROR, "error-drop", "sp-ip4-icmp4-error")                                          \
+  _ (IP6_ICMP6_ERROR, "error-drop", "sp-ip4-icmp6-error")                                          \
+  _ (IP4_TABLE_OVERFLOW, "error-drop", "sp-ip4-table-overflow")                                    \
+  _ (IP6_TABLE_OVERFLOW, "error-drop", "sp-ip6-table-overflow")                                    \
+  _ (IP4_PRE_FILTERED, "error-drop", "sp-ip4-pre-filtered")                                        \
+  _ (IP6_PRE_FILTERED, "error-drop", "sp-ip6-pre-filtered")
 
 enum
 {
@@ -401,6 +403,33 @@ __clib_export void sfdp_timeout_add_registration (sfdp_timeout_registration_t *r
 #define SFDP_TIMEOUT_DEFINE(x, timeout_name, timeout_val) SFDP_TIMEOUT_DECLARE (x)
 #endif
 
+typedef u32 (sfdp_pre_filter_fn_t) (vlib_main_t *vm, vlib_buffer_t *b, u32 tenant_index, u8 is_ip6);
+
+typedef struct sfdp_pre_filter_registration
+{
+  struct sfdp_pre_filter_registration *next;
+  const char *name;
+  sfdp_pre_filter_fn_t *fn;
+} sfdp_pre_filter_registration_t;
+
+__clib_export void sfdp_pre_filter_add_registration (sfdp_pre_filter_registration_t *registration);
+
+#ifndef CLIB_MARCH_VARIANT
+#define SFDP_PRE_FILTER_DEFINE(x, pre_filter_name, pre_filter_fn)                                  \
+  sfdp_pre_filter_registration_t sfdp_pre_filter_registration_##x = {                              \
+    .name = pre_filter_name,                                                                       \
+    .fn = pre_filter_fn,                                                                           \
+  };                                                                                               \
+  static void __sfdp_pre_filter_add_registration_##x (void) __attribute__ ((__constructor__));     \
+  static void __sfdp_pre_filter_add_registration_##x (void)                                        \
+  {                                                                                                \
+    sfdp_pre_filter_add_registration (&sfdp_pre_filter_registration_##x);                          \
+  }
+#else
+#define SFDP_PRE_FILTER_DEFINE(x, pre_filter_name, pre_filter_fn)                                  \
+  extern sfdp_pre_filter_registration_t sfdp_pre_filter_registration_##x
+#endif
+
 /* Maximum number of tenant timers configurable */
 #define SFDP_MAX_TIMEOUTS 8
 #define SFDP_TIMEOUT_NAME_LEN	      32
@@ -450,6 +479,7 @@ typedef struct
 
   /* pool of tenants */
   sfdp_tenant_t *tenants;
+  sfdp_pre_filter_registration_t **tenant_pre_filters;
 
   /* per-thread data */
   sfdp_per_thread_data_t *per_thread_data;
@@ -460,6 +490,7 @@ typedef struct
    * Timers with name equal to NULL are not configured. */
   sfdp_timeout_t timeouts[SFDP_MAX_TIMEOUTS];
   sfdp_timeout_registration_t *next_timeout_registration;
+  sfdp_pre_filter_registration_t *next_pre_filter_registration;
   u32 n_custom_timeouts;
   u8 timeouts_initialized;
 
@@ -495,6 +526,10 @@ __clib_export extern sfdp_main_t sfdp_main;
 clib_error_t *sfdp_timeout_register (sfdp_main_t *sfdp, sfdp_timeout_t *timeout);
 
 #define SFDP_N_REGISTERED_TIMEOUTS (SFDP_N_BASE_TIMEOUTS + sfdp_main.n_custom_timeouts)
+
+#define sfdp_foreach_pre_filter(sfdp, pre_filter)                                                  \
+  for ((pre_filter) = (sfdp)->next_pre_filter_registration; (pre_filter);                          \
+       (pre_filter) = (pre_filter)->next)
 
 #define sfdp_foreach_timeout(sfdp, timeout)                                                        \
   for ((timeout) = (sfdp)->timeouts; (timeout) < (sfdp)->timeouts + SFDP_N_REGISTERED_TIMEOUTS;    \
@@ -717,6 +752,17 @@ sfdp_tenant_at_index (sfdp_main_t *sfdpm, u32 idx)
   return pool_elt_at_index (sfdpm->tenants, idx);
 }
 
+static_always_inline u32
+sfdp_pre_filter_accept (vlib_main_t *vm, sfdp_main_t *sfdp, vlib_buffer_t *b, u32 tenant_index,
+			u8 is_ip6)
+{
+  sfdp_pre_filter_registration_t *f = vec_elt (sfdp->tenant_pre_filters, tenant_index);
+
+  if (PREDICT_TRUE (!f))
+    return 1;
+  return f->fn (vm, b, tenant_index, is_ip6);
+}
+
 static_always_inline u8
 sfdp_session_n_keys (sfdp_session_t *session)
 {
@@ -934,6 +980,11 @@ clib_error_t *sfdp_set_sp_node (sfdp_main_t *sfdp, u32 tenant_id, u32 sp_index,
 				u32 node_index);
 clib_error_t *sfdp_set_icmp_error_node (sfdp_main_t *sfdp, u32 tenant_id,
 					u8 is_ip6, u32 node_index);
+sfdp_pre_filter_registration_t *sfdp_pre_filter_by_name (sfdp_main_t *sfdp, const char *name);
+clib_error_t *sfdp_set_pre_filter (sfdp_main_t *sfdp, u32 tenant_id,
+				   sfdp_pre_filter_registration_t *pre_filter);
+clib_error_t *sfdp_get_pre_filter (sfdp_main_t *sfdp, u32 tenant_id,
+				   sfdp_pre_filter_registration_t **pre_filter);
 int sfdp_kill_session (sfdp_main_t *sfdp, u32 session_index, u8 is_all);
 int sfdp_kill_session_batch (sfdp_main_t *sfdp, u32 max);
 __clib_export void sfdp_normalise_ip4_key (sfdp_session_t *session, sfdp_session_ip4_key_t *result,

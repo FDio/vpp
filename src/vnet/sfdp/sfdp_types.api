@@ -41,6 +41,11 @@ typedef sfdp_service_name
   string data[32];
 };
 
+typedef sfdp_pre_filter_name
+{
+  string data[32];
+};
+
 typedef sfdp_session_key
 {
   u32 context_id;

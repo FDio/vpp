@@ -65,6 +65,15 @@ sfdp_timeout_add_registration (sfdp_timeout_registration_t *registration)
   sfdp->next_timeout_registration = registration;
 }
 
+void
+sfdp_pre_filter_add_registration (sfdp_pre_filter_registration_t *registration)
+{
+  sfdp_main_t *sfdp = &sfdp_main;
+
+  registration->next = sfdp->next_pre_filter_registration;
+  sfdp->next_pre_filter_registration = registration;
+}
+
 clib_error_t *
 sfdp_timeout_register (sfdp_main_t *sfdp, sfdp_timeout_t *timeout)
 {
@@ -161,6 +170,7 @@ sfdp_init_main_if_needed (sfdp_main_t *sfdp)
   sfdp->free_sessions = sfdp_num_sessions ();
   sfdp_init_ptd_counters ();
   pool_init_fixed (sfdp->tenants, 1ULL << sfdp->log2_tenants);
+  vec_validate (sfdp->tenant_pre_filters, (1ULL << sfdp->log2_tenants) - 1);
 
   sfdp_init_tenant_counters (sfdp);
 
@@ -318,6 +328,7 @@ sfdp_tenant_add_del (sfdp_main_t *sfdp, u32 tenant_id, u32 context_id,
 	{
 	  sfdp_notify_deleted_tenant (kv.value);
 	  sfdp_tenant_clear_counters (sfdp, kv.value);
+	  *vec_elt_at_index (sfdp->tenant_pre_filters, kv.value) = 0;
 	  pool_put_index (sfdp->tenants, kv.value);
 	  clib_bihash_add_del_8_8 (&sfdp->tenant_idx_by_id, &kv, 0);
 	}
@@ -373,6 +384,41 @@ sfdp_set_sp_node (sfdp_main_t *sfdp, u32 tenant_id, u32 sp_index,
       0, "Can't configure slow path node: tenant id %d not found", tenant_id);
   tenant = sfdp_tenant_at_index (sfdp, kv.value);
   tenant->sp_node_indices[sp_index] = node_index;
+  return 0;
+}
+
+sfdp_pre_filter_registration_t *
+sfdp_pre_filter_by_name (sfdp_main_t *sfdp, const char *name)
+{
+  sfdp_pre_filter_registration_t *r;
+
+  sfdp_foreach_pre_filter (sfdp, r)
+  {
+    if (!strcmp (r->name, name))
+      return r;
+  }
+  return 0;
+}
+
+clib_error_t *
+sfdp_set_pre_filter (sfdp_main_t *sfdp, u32 tenant_id, sfdp_pre_filter_registration_t *pre_filter)
+{
+  sfdp_init_main_if_needed (sfdp);
+  clib_bihash_kv_8_8_t kv = { .key = tenant_id, .value = 0 };
+  if (clib_bihash_search_inline_8_8 (&sfdp->tenant_idx_by_id, &kv))
+    return clib_error_return (0, "Can't configure pre-filter: tenant id %u not found", tenant_id);
+  *vec_elt_at_index (sfdp->tenant_pre_filters, kv.value) = pre_filter;
+  return 0;
+}
+
+clib_error_t *
+sfdp_get_pre_filter (sfdp_main_t *sfdp, u32 tenant_id, sfdp_pre_filter_registration_t **pre_filter)
+{
+  sfdp_init_main_if_needed (sfdp);
+  clib_bihash_kv_8_8_t kv = { .key = tenant_id, .value = 0 };
+  if (clib_bihash_search_inline_8_8 (&sfdp->tenant_idx_by_id, &kv))
+    return clib_error_return (0, "Can't get pre-filter: tenant id %u not found", tenant_id);
+  *pre_filter = *vec_elt_at_index (sfdp->tenant_pre_filters, kv.value);
   return 0;
 }
 

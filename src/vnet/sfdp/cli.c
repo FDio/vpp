@@ -244,6 +244,73 @@ done:
 }
 
 static clib_error_t *
+sfdp_set_pre_filter_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  unformat_input_t line_input_, *line_input = &line_input_;
+  sfdp_pre_filter_registration_t *pre_filter = 0;
+  clib_error_t *err = 0;
+  sfdp_main_t *sfdp = &sfdp_main;
+  u32 tenant_id = ~0;
+  u8 *pre_filter_name = 0;
+  int none = 0;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "missing tenant id");
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "tenant %u", &tenant_id))
+	;
+      else if (unformat (line_input, "none"))
+	none = 1;
+      else if (unformat (line_input, "%s", &pre_filter_name))
+	{
+	  vec_add1 (pre_filter_name, 0);
+	  if (pre_filter)
+	    err = clib_error_return (0, "only one pre-filter per tenant");
+	  else if (!(pre_filter = sfdp_pre_filter_by_name (sfdp, (char *) pre_filter_name)))
+	    err = clib_error_return (0, "unknown pre-filter %s", pre_filter_name);
+	  vec_free (pre_filter_name);
+	  if (err)
+	    goto done;
+	}
+      else
+	{
+	  err = unformat_parse_error (line_input);
+	  goto done;
+	}
+    }
+  if (tenant_id == ~0)
+    {
+      err = clib_error_return (0, "missing tenant id");
+      goto done;
+    }
+  if (!pre_filter && !none)
+    {
+      err = clib_error_return (0, "missing pre-filter name or none");
+      goto done;
+    }
+  if (pre_filter && none)
+    {
+      err = clib_error_return (0, "none can't be combined with a pre-filter name");
+      goto done;
+    }
+
+  err = sfdp_set_pre_filter (sfdp, tenant_id, pre_filter);
+done:
+  unformat_free (line_input);
+  return err;
+}
+
+static clib_error_t *
+sfdp_show_pre_filters_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  sfdp_pre_filter_registration_t *r;
+
+  sfdp_foreach_pre_filter (&sfdp_main, r) { vlib_cli_output (vm, "%s", r->name); }
+  return 0;
+}
+
+static clib_error_t *
 sfdp_set_icmp_error_node_command_fn (vlib_main_t *vm, unformat_input_t *input,
 				     vlib_cli_command_t *cmd)
 {
@@ -596,6 +663,18 @@ VLIB_CLI_COMMAND (sfdp_set_sp_node_command, static) = {
   .short_help = "set sfdp sp-node tenant <tenant-id>"
 		" <sp-name> node <node-name>",
   .function = sfdp_set_sp_node_command_fn
+};
+
+VLIB_CLI_COMMAND (sfdp_set_pre_filter_command, static) = {
+  .path = "set sfdp pre-filter",
+  .short_help = "set sfdp pre-filter tenant <tenant-id> <pre-filter-name> | none",
+  .function = sfdp_set_pre_filter_command_fn,
+};
+
+VLIB_CLI_COMMAND (sfdp_show_pre_filters_command, static) = {
+  .path = "show sfdp pre-filters",
+  .short_help = "show sfdp pre-filters",
+  .function = sfdp_show_pre_filters_command_fn,
 };
 
 VLIB_CLI_COMMAND (sfdp_set_icmp_error_node_command, static) = {
