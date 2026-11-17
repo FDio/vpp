@@ -601,7 +601,7 @@ oct_driver_init (vlib_main_t *vm, vnet_dev_driver_t *drv __clib_unused)
 }
 
 VNET_DEV_REGISTER_DRIVER (octeon_net) = {
-  .name = "octeon_net",
+  .name = "octeon-net",
   .description = "Marvell Octeon network",
   .bus = "pci",
   .device = {
