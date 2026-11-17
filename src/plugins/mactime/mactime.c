@@ -5,6 +5,7 @@
 /* mactime.c - time-based src mac address filtration */
 
 #include <vnet/vnet.h>
+#include <vnet/interface/cli_types.h>
 #include <vnet/plugin/plugin.h>
 #include <mactime/mactime.h>
 
@@ -85,31 +86,12 @@ mactime_enable_disable (mactime_main_t * mm, u32 sw_if_index,
 }
 
 static clib_error_t *
-mactime_enable_disable_command_fn (vlib_main_t * vm,
-				   unformat_input_t * input,
-				   vlib_cli_command_t * cmd)
+mactime_enable_disable_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   mactime_main_t *mm = &mactime_main;
-  u32 sw_if_index = ~0;
-  int enable_disable = 1;
-
+  u32 sw_if_index = cli_index (ctx, "interface");
+  int enable_disable = !cli_flag (ctx, "disable");
   int rv;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "disable"))
-	enable_disable = 0;
-      else if (unformat (input, "%U", unformat_vnet_sw_interface,
-			 mm->vnet_main, &sw_if_index))
-	;
-      else if (unformat (input, "sw_if_index %d", &sw_if_index))
-	;
-      else
-	break;
-    }
-
-  if (sw_if_index == ~0)
-    return clib_error_return (0, "Please specify an interface...");
 
   rv = mactime_enable_disable (mm, sw_if_index, enable_disable);
 
@@ -129,14 +111,17 @@ mactime_enable_disable_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-VLIB_CLI_COMMAND (mactime_enable_disable_command, static) =
-{
+VLIB_CLI_COMMAND (mactime_enable_disable_command, static) = {
   .path = "mactime enable-disable",
-  .short_help =
-  "mactime enable-disable <interface-name> [disable]",
-  .function = mactime_enable_disable_command_fn,
+  .short_help = "Enable or disable the time-based MAC source address filter on an interface",
+  .args =
+    (cli_arg_t[]) {
+      CLI_VALUE ("interface", cli_type_sw_interface, .help = "physical interface"),
+      CLI_FLAG ("disable", .help = "disable the filter"),
+      {},
+    },
+  .handler = mactime_enable_disable_command_fn,
 };
-
 
 /** Enable / disable time-base src mac filtration on an interface
  */
@@ -512,15 +497,14 @@ mactime_ip_neighbor_copy (index_t ipni, void *ctx)
 }
 
 static clib_error_t *
-show_mactime_command_fn (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
+show_mactime_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   mactime_main_t *mm = &mactime_main;
   mactime_device_t *dp;
   u8 *macstring = 0;
   char *status_string;
   u32 *pool_indices = 0;
-  int verbose = 0;
+  int verbose = cli_flag (ctx, "detail") ? 2 : cli_flag (ctx, "verbose");
   int current_status = 99;
   int i, j;
   f64 now;
@@ -540,12 +524,6 @@ show_mactime_command_fn (vlib_main_t * vm,
 
   if (PREDICT_FALSE ((now - mm->sunday_midnight) > 86400.0 * 7.0))
     mm->sunday_midnight = clib_timebase_find_sunday_midnight (now);
-
-  if (unformat (input, "verbose %d", &verbose))
-    ;
-
-  if (unformat (input, "verbose"))
-    verbose = 1;
 
   if (verbose)
     vlib_cli_output (vm, "Time now: %U", format_clib_timebase_time, now);
@@ -665,16 +643,20 @@ show_mactime_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-VLIB_CLI_COMMAND (show_mactime_command, static) =
-{
+VLIB_CLI_COMMAND (show_mactime_command, static) = {
   .path = "show mactime",
-  .short_help = "show mactime [verbose]",
-  .function = show_mactime_command_fn,
+  .short_help = "Show the time-based MAC source address filter devices",
+  .args =
+    (cli_arg_t[]) {
+      CLI_FLAG ("verbose", .help = "show the time now and the matching time range"),
+      CLI_FLAG ("detail", .help = "show all the time ranges of each device"),
+      {},
+    },
+  .handler = show_mactime_command_fn,
 };
 
 static clib_error_t *
-clear_mactime_command_fn (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
+clear_mactime_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   mactime_main_t *mm = &mactime_main;
 
@@ -691,6 +673,11 @@ clear_mactime_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (clear_mactime_command, static) = {
   .path = "clear mactime",
-  .short_help = "clear mactime counters",
-  .function = clear_mactime_command_fn,
+  .short_help = "Clear the mactime counters",
+  .args =
+    (cli_arg_t[]) {
+      CLI_FLAG ("counters"),
+      {},
+    },
+  .handler = clear_mactime_command_fn,
 };
