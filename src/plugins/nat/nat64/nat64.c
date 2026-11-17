@@ -4,6 +4,7 @@
  */
 
 #include <vppinfra/crc32.h>
+#include <sys/random.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/ip/ip4_to_ip6.h>
 
@@ -217,6 +218,9 @@ nat64_init (vlib_main_t * vm)
   vlib_node_t *node;
 
   clib_memset (nm, 0, sizeof (*nm));
+
+  if (getrandom (&nm->random_seed, sizeof (nm->random_seed), 0) != sizeof (nm->random_seed))
+    return clib_error_return (0, "getrandom() failed to seed NAT64 PRNG");
 
   nm->ip4_main = &ip4_main;
   nm->log_class = vlib_log_register_class ("nat64", 0);
