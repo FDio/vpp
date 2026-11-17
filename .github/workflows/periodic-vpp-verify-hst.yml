@@ -52,8 +52,8 @@ jobs:
         class: ['hst']
         size: ['hst']
         exclude:
-          # Exclude ubuntu2404 on x86_64 for all builds
-          - os: 'ubuntu2404'
+          # Exclude ubuntu2604 on x86_64 for all builds
+          - os: 'ubuntu2604'
             executor_arch: 'x86_64'
           # Exclude ubuntu2204 on x86_64 for release build
           - os: 'ubuntu2204'

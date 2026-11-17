@@ -30,7 +30,7 @@ inputs:
   MAKE_TEST_OS:
     description: "OS to run 'make test' on"
     required: false
-    default: "ubuntu-24.04"
+    default: "ubuntu-26.04"
     type: string
   MAKE_TEST_MULTIWORKER_OS:
     description: "OS to run 'make test' with multiworker config"
@@ -40,7 +40,7 @@ inputs:
   VPPAPIGEN_TEST_OS:
     description: "OS to run 'vppapigen' tests on"
     required: false
-    default: "ubuntu-24.04"
+    default: "ubuntu-26.04"
     type: string
   VPP_WORKER_COUNT:
     description: "Number of VPP workers to use"
