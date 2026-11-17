@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b27a0cd0_a6a49ff4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-17T16:47:43Z",
+      "side": 1,
+      "message": "Oh wow this smells so bad. The test fix is fine, but the bigger issue to fix is that nat64_main.random_seed is never set and thus the ports can be predicted. Worth a followup fix. There are more port checks in this test which should get the same bib treatment and will be the source of \"random\" failures once the seed is no longer fixed.",
+      "revId": "3ea5d1d421012de1520cf2692d3b5665addc5acf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
