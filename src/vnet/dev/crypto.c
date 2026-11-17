@@ -348,9 +348,11 @@ vnet_dev_crypto_queues_remove (vlib_main_t *vm, vnet_dev_t *dev)
 
       e = vnet_dev_main.crypto_engines[cq->group->engine_index];
       vec_foreach (df, e->deferred_frees)
-	for (u32 i = 0; i < vec_len (df->marks); i++)
+	for (u32 i = 0; i < vec_len (df->marks);)
 	  if (df->marks[i].queue == cq)
-	    vec_del1 (df->marks, i--);
+	    vec_del1 (df->marks, i);
+	  else
+	    i++;
     }
 
   vec_foreach_pointer (cq, dev->crypto_queues)
