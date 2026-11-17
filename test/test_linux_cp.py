@@ -911,6 +911,80 @@ class TestLinuxCPRoutes(TestLinuxCPNetNSBase):
         self.verify_paths("192.168.110.1/32", drop)
         self.verify_paths("192.168.120.1/32", drop)
 
+    def test_linux_cp_nexthop_object_delete(self):
+        """Linux CP Route of a deleted nexthop object"""
+        ns = self.ns_name
+        path0 = dict(
+            type=FibPathType.FIB_PATH_TYPE_NORMAL,
+            sw_if_index=self.lo_interfaces[0].sw_if_index,
+            ip4="10.10.1.1",
+        )
+        path1 = dict(
+            type=FibPathType.FIB_PATH_TYPE_NORMAL,
+            sw_if_index=self.lo_interfaces[1].sw_if_index,
+            ip4="10.20.1.1",
+        )
+        drop = dict(type=FibPathType.FIB_PATH_TYPE_DROP)
+
+        add_namespace_nexthop(ns, 11, gw_ip="10.10.1.1", dev="hloop0")
+        add_namespace_nexthop(ns, 12, gw_ip="10.20.1.1", dev="hloop1")
+        add_namespace_nexthop(ns, 13, group=(11, 12))
+        add_namespace_nexthop(ns, 14, gw_ip="10.10.1.1", dev="hloop0")
+        add_namespace_nexthop(ns, 15, group=(14,))
+        add_namespace_route(ns, "192.168.130.0/24", nh_id=11)
+        add_namespace_route(ns, "192.168.140.0/24", nh_id=11)
+        add_namespace_route(ns, "192.168.150.0/24", nh_id=11)
+        add_namespace_route(ns, "192.168.160.0/24", nh_id=15)
+        self.verify_paths("192.168.130.1/32", path0)
+        self.verify_paths("192.168.160.1/32", path0)
+
+        # A route moved to another object, or to no object, is not a route
+        # of the object it used before.
+        add_namespace_route(ns, "192.168.140.0/24", nh_id=12, replace=True)
+        add_namespace_route(
+            ns, "192.168.150.0/24", gw_ip="10.20.1.1", dev="hloop1", replace=True
+        )
+        self.verify_paths("192.168.140.1/32", path1)
+        self.verify_paths("192.168.150.1/32", path1)
+
+        # The kernel removes the IPv4 routes of a deleted object and sends
+        # no route message for them. Deleting 11 also takes it out of 13.
+        del_namespace_nexthop(ns, 11)
+        self.verify_paths("192.168.130.1/32", drop)
+        self.verify_paths("192.168.140.1/32", path1)
+        self.verify_paths("192.168.150.1/32", path1)
+
+        # a group is an object as well
+        del_namespace_nexthop(ns, 15)
+        self.verify_paths("192.168.160.1/32", drop)
+
+        del_namespace_nexthop(ns, 12)
+        self.verify_paths("192.168.140.1/32", drop)
+        self.verify_paths("192.168.150.1/32", path1)
+
+        del_namespace_route(ns, "192.168.150.0/24")
+        del_namespace_nexthop(ns, 14)
+        self.verify_paths("192.168.150.1/32", drop)
+
+        # A link that goes down takes its nexthop objects and their routes
+        # away without a message for either. A route to the same prefix
+        # added later is not a route of an object that reuses the id.
+        add_namespace_nexthop(ns, 17, gw_ip="10.10.1.1", dev="hloop0")
+        add_namespace_route(ns, "192.168.170.0/24", nh_id=17)
+        self.verify_paths("192.168.170.1/32", path0)
+        set_interface_down(ns, "hloop0")
+        self.verify_paths("192.168.170.1/32", drop)
+        set_interface_up(ns, "hloop0")
+        add_namespace_route(ns, "192.168.170.0/24", gw_ip="10.10.1.1", dev="hloop0")
+        self.verify_paths("192.168.170.1/32", path0)
+        add_namespace_nexthop(ns, 17, gw_ip="10.10.1.1", dev="hloop0")
+        add_namespace_route(ns, "192.168.180.0/24", nh_id=17)
+        self.verify_paths("192.168.180.1/32", path0)
+        del_namespace_nexthop(ns, 17)
+        self.verify_paths("192.168.180.1/32", drop)
+        self.verify_paths("192.168.170.1/32", path0)
+        del_namespace_route(ns, "192.168.170.0/24")
+
 
 ISIS_PROTO = 0x83
 

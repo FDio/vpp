@@ -93,7 +93,14 @@ def create_namespace(history_file, ns=None, prefix="vpp_ns"):
 
 
 def add_namespace_route(
-    ns, prefix, gw_ip=None, dev=None, route_type=None, check=True, nh_id=None
+    ns,
+    prefix,
+    gw_ip=None,
+    dev=None,
+    route_type=None,
+    check=True,
+    nh_id=None,
+    replace=False,
 ):
     """Add a route to a namespace.
     arguments:
@@ -103,10 +110,12 @@ def add_namespace_route(
     dev -- Output Device
     route_type -- Route type (e.g. "blackhole", "unreachable", "prohibit")
     nh_id -- id of a nexthop object
+    replace -- replace the route to the prefix if there is one
     """
     with net_helper_lock():
         try:
-            cmd = ["ip", "netns", "exec", ns, "ip", "route", "add"]
+            cmd = ["ip", "netns", "exec", ns, "ip", "route"]
+            cmd += ["replace" if replace else "add"]
             if route_type is not None:
                 cmd += [route_type]
             cmd += [prefix]
