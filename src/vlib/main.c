@@ -1061,6 +1061,9 @@ dispatch_pending_node (vlib_main_t * vm, uword pending_frame_index,
   n->flags |= (nf->flags & VLIB_FRAME_TRACE) ? VLIB_NODE_FLAG_TRACE : 0;
   nf->flags &= ~VLIB_FRAME_TRACE;
 
+  /* a node which keeps its frames may put the frame to another node while dispatched */
+  f->frame_flags &= ~(VLIB_FRAME_PENDING | VLIB_FRAME_NO_APPEND);
+
   last_time_stamp =
     dispatch_node (vm, n, VLIB_NODE_TYPE_INTERNAL, f,
 		   VLIB_NODE_DISPATCH_REASON_PENDING_FRAME, last_time_stamp);
@@ -1070,8 +1073,6 @@ dispatch_pending_node (vlib_main_t * vm, uword pending_frame_index,
   vm->internal_node_last_vectors_per_main_loop =
     (f->n_vectors > vm->internal_node_last_vectors_per_main_loop) ?
     f->n_vectors : vm->internal_node_last_vectors_per_main_loop;
-
-  f->frame_flags &= ~(VLIB_FRAME_PENDING | VLIB_FRAME_NO_APPEND);
 
   /* Frame is ready to be used again, so restore it. */
   if (restore_frame != NULL)
@@ -1119,7 +1120,9 @@ dispatch_pending_node (vlib_main_t * vm, uword pending_frame_index,
     }
   else
     {
-      if (f->frame_flags & VLIB_FRAME_FREE_AFTER_DISPATCH)
+      /* a frame put to another node while dispatched is pending again and freed there */
+      if ((f->frame_flags & (VLIB_FRAME_FREE_AFTER_DISPATCH | VLIB_FRAME_PENDING)) ==
+	  VLIB_FRAME_FREE_AFTER_DISPATCH)
 	{
 	  ASSERT (!(n->flags & VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH));
 	  vlib_frame_free (vm, f);
