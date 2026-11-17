@@ -370,6 +370,12 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 				    0);
 	  goto done;
 	}
+      else if (unformat (line_input, "set %U auth digital-signature cert-file %v",
+			 unformat_ikev2_token, &name, &data))
+	{
+	  r = ikev2_set_profile_auth (vm, name, IKEV2_AUTH_METHOD_DIGITAL_SIGNATURE, data, 0);
+	  goto done;
+	}
       else if (unformat (line_input, "set %U id local %U %U",
 			 unformat_ikev2_token, &name,
 			 unformat_ikev2_id_type, &id_type,
@@ -574,8 +580,8 @@ done:
 VLIB_CLI_COMMAND (ikev2_profile_add_del_command, static) = {
   .path = "ikev2 profile",
   .short_help = "ikev2 profile [add|del] <id>\n"
-		"ikev2 profile set <id> auth [rsa-sig|shared-key-mic] [cert-file|string|hex]"
-		" <data>\n"
+		"ikev2 profile set <id> auth [rsa-sig|digital-signature|shared-key-mic] "
+		"[cert-file|string|hex] <data>\n"
 		"ikev2 profile set <id> id <local|remote> <type> <data>\n"
 		"ikev2 profile set <id> tunnel <interface>\n"
 		"ikev2 profile set <id> udp-encap\n"
