@@ -206,13 +206,26 @@ oct_crypto_inst_prep (vlib_main_t *vm, oct_crypto_key_t *ckey, struct cpt_inst_s
   return 0;
 }
 
-static_always_inline void
-oct_crypto_frame_fail (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
-		       vnet_dev_crypto_error_t error)
+/* builds the instruction of one request, returns 0 on success */
+static_always_inline int
+oct_crypto_enq_one (vlib_main_t *vm, vlib_buffer_t *b, vnet_crypto_ctx_t *ctx,
+		    struct cpt_inst_s *inst, oct_crypto_meta_t *m, u64 *n_bytes, const u8 is_aead,
+		    u8 aad_len, const u8 is_enc)
 {
-  vlib_error_drop_buffers (vm, node, vlib_frame_vector_args (frame), 0, frame->n_vectors, 0,
-			   node->node_index, error);
-  vlib_frame_free (vm, frame);
+  oct_crypto_key_t *ckey = (oct_crypto_key_t *) vnet_crypto_get_async_key_data (ctx);
+  vnet_crypto_buffer_metadata_t *md = vnet_crypto_buffer_get_metadata (b);
+
+  if (PREDICT_FALSE (ckey->enc_ctx == 0))
+    return -1;
+
+  *n_bytes += clib_max (md->cipher_data_len, md->auth_data_len);
+  *inst = (struct cpt_inst_s) {};
+  if (PREDICT_FALSE (oct_crypto_inst_prep (vm, ckey, inst, b, md, m, is_aead, aad_len, is_enc)))
+    return -1;
+
+  inst->w7.u64 = is_enc ? ckey->enc_inst_w7 : ckey->dec_inst_w7;
+  inst->res_addr = pointer_to_uword (&m->res);
+  return 0;
 }
 
 static_always_inline uword
@@ -220,59 +233,69 @@ oct_crypto_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_fra
 			    const u8 is_aead, u8 aad_len, const u8 is_enc)
 {
   vnet_dev_crypto_engine_t *e = vnet_dev_crypto_node_engine (node);
-  vnet_dev_crypto_queue_t *cq = vnet_dev_crypto_get_thread_queue (e, vm->thread_index);
+  vnet_dev_crypto_queue_t *cq = vnet_dev_crypto_get_enq_thread_queue (e, vm->thread_index);
   struct cpt_inst_s inst[VLIB_FRAME_SIZE];
   vnet_crypto_ctx_t **ctxs = vlib_frame_aux_args (frame);
-  u32 *bi = vlib_frame_vector_args (frame);
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE + 4], **b = bufs;
   u32 i, nb_infl_allowed, n_elts = frame->n_vectors;
-  vnet_crypto_buffer_metadata_t *md;
-  u16 elt_tail, slot, mask;
-  oct_crypto_key_t *ckey;
+  u16 elt_tail, mask;
   u64 n_bytes = 0;
-  vlib_buffer_t *b;
   oct_crypto_meta_t *meta;
   oct_crypto_queue_t *q;
 
   if (PREDICT_FALSE (cq == 0))
-    {
-      oct_crypto_frame_fail (vm, node, frame, VNET_DEV_CRYPTO_ERROR_NO_QUEUE);
-      return n_elts;
-    }
+    return vnet_dev_crypto_frame_no_queue (vm, node, frame);
 
   q = vnet_dev_get_crypto_queue_data (cq);
   nb_infl_allowed = q->n_desc - (u16) (q->elt_tail - q->elt_head);
   if (PREDICT_FALSE (nb_infl_allowed < n_elts))
     {
       cq->enq_full += n_elts;
-      oct_crypto_frame_fail (vm, node, frame, VNET_DEV_CRYPTO_ERROR_QUEUE_FULL);
-      return n_elts;
+      return vnet_crypto_frame_to_consumer (vm, node, frame, VNET_CRYPTO_OP_STATUS_FAIL_QUEUE_FULL);
     }
 
+  vlib_get_buffers (vm, vlib_frame_vector_args (frame), bufs, n_elts);
+  b[n_elts] = b[n_elts + 1] = b[n_elts + 2] = b[n_elts + 3] = b[n_elts - 1];
   meta = q->meta;
   elt_tail = q->elt_tail;
   mask = q->n_desc - 1;
 
-  for (i = 0; i < n_elts; i++)
+  clib_prefetch_load (b[0]);
+  clib_prefetch_load (b[1]);
+  clib_prefetch_load (b[2]);
+  clib_prefetch_load (b[3]);
+  clib_prefetch_load (vnet_crypto_buffer_get_metadata (b[0]));
+  clib_prefetch_load (vnet_crypto_buffer_get_metadata (b[1]));
+  clib_prefetch_load (vnet_crypto_buffer_get_metadata (b[2]));
+  clib_prefetch_load (vnet_crypto_buffer_get_metadata (b[3]));
+
+  for (i = 0; i + 4 <= n_elts; i += 4, b += 4, elt_tail += 4)
     {
-      slot = elt_tail & mask;
-      ckey = (oct_crypto_key_t *) vnet_crypto_get_async_key_data (ctxs[i]);
+      clib_prefetch_load (b[4]);
+      clib_prefetch_load (b[5]);
+      clib_prefetch_load (b[6]);
+      clib_prefetch_load (b[7]);
+      clib_prefetch_load (vnet_crypto_buffer_get_metadata (b[4]));
+      clib_prefetch_load (vnet_crypto_buffer_get_metadata (b[5]));
+      clib_prefetch_load (vnet_crypto_buffer_get_metadata (b[6]));
+      clib_prefetch_load (vnet_crypto_buffer_get_metadata (b[7]));
 
-      if (PREDICT_FALSE (ckey->enc_ctx == 0))
+      if (PREDICT_FALSE (
+	    oct_crypto_enq_one (vm, b[0], ctxs[i], inst + i, meta + (elt_tail & mask), &n_bytes,
+				is_aead, aad_len, is_enc) |
+	    oct_crypto_enq_one (vm, b[1], ctxs[i + 1], inst + i + 1, meta + ((elt_tail + 1) & mask),
+				&n_bytes, is_aead, aad_len, is_enc) |
+	    oct_crypto_enq_one (vm, b[2], ctxs[i + 2], inst + i + 2, meta + ((elt_tail + 2) & mask),
+				&n_bytes, is_aead, aad_len, is_enc) |
+	    oct_crypto_enq_one (vm, b[3], ctxs[i + 3], inst + i + 3, meta + ((elt_tail + 3) & mask),
+				&n_bytes, is_aead, aad_len, is_enc)))
 	goto error;
-
-      b = vlib_get_buffer (vm, bi[i]);
-      md = vnet_crypto_buffer_get_metadata (b);
-      n_bytes += clib_max (md->cipher_data_len, md->auth_data_len);
-
-      inst[i] = (struct cpt_inst_s) {};
-      if (PREDICT_FALSE (oct_crypto_inst_prep (vm, ckey, inst + i, b, md, meta + slot, is_aead,
-					       aad_len, is_enc)))
-	goto error;
-
-      inst[i].w7.u64 = is_enc ? ckey->enc_inst_w7 : ckey->dec_inst_w7;
-      inst[i].res_addr = pointer_to_uword (&meta[slot].res);
-      elt_tail++;
     }
+
+  for (; i < n_elts; i++, b++, elt_tail++)
+    if (PREDICT_FALSE (oct_crypto_enq_one (vm, b[0], ctxs[i], inst + i, meta + (elt_tail & mask),
+					   &n_bytes, is_aead, aad_len, is_enc)))
+      goto error;
 
   oct_crypto_burst_submit (q, inst, n_elts);
 
@@ -281,11 +304,10 @@ oct_crypto_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_fra
       {
 	oct_crypto_enq_trace_t *t;
 
-	b = vlib_get_buffer (vm, bi[i]);
-	if ((b->flags & VLIB_BUFFER_IS_TRACED) == 0)
+	if ((bufs[i]->flags & VLIB_BUFFER_IS_TRACED) == 0)
 	  continue;
 
-	t = vlib_add_trace (vm, node, b, sizeof (*t));
+	t = vlib_add_trace (vm, node, bufs[i], sizeof (*t));
 	t->lf_id = q->lf->lf_id;
 	t->slot = (u16) (q->elt_tail + i) & mask;
 	t->inst = inst[i];
@@ -300,8 +322,7 @@ oct_crypto_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_fra
 
 error:
   cq->enq_err += n_elts;
-  oct_crypto_frame_fail (vm, node, frame, VNET_DEV_CRYPTO_ERROR_ENGINE_ERROR);
-  return n_elts;
+  return vnet_crypto_frame_to_consumer (vm, node, frame, VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR);
 }
 
 #define _(n, s, is_aead, aad_len, is_enc)                                                          \

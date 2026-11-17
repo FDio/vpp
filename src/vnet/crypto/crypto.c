@@ -449,6 +449,16 @@ crypto_register_async_handler (vnet_crypto_engine_id_t engine, vnet_crypto_alg_t
   vnet_crypto_async_engine_update (alg);
 }
 
+/* all nodes which receive crypto frames use the frame layout of crypto-async */
+static_always_inline int
+vnet_crypto_node_has_frame_layout (vlib_main_t *vm, vlib_node_t *n)
+{
+  vlib_node_t *an = vlib_get_node (vm, crypto_async_node.index);
+
+  return n->frame_size == an->frame_size && n->scalar_offset == an->scalar_offset &&
+	 n->aux_offset == an->aux_offset;
+}
+
 void
 vnet_crypto_register_async_alg (vlib_main_t *vm, vnet_crypto_engine_id_t engine,
 				vnet_crypto_alg_t alg, vnet_crypto_op_type_t type,
@@ -459,6 +469,9 @@ vnet_crypto_register_async_alg (vlib_main_t *vm, vnet_crypto_engine_id_t engine,
   vlib_node_t *enq = vlib_get_node_by_name (vm, (u8 *) "crypto-enq");
 
   ASSERT (e->deq_node_index != ~0);
+  ASSERT (vlib_get_node (vm, enq_node_index)->sibling_of &&
+	  strcmp (vlib_get_node (vm, enq_node_index)->sibling_of, "crypto-async") == 0);
+  ASSERT (vnet_crypto_node_has_frame_layout (vm, vlib_get_node (vm, enq_node_index)));
   op->enq_node_index = enq_node_index;
   op->enq_next_index = vlib_node_add_next (vm, enq->index, enq_node_index);
 
@@ -575,9 +588,9 @@ vnet_crypto_register_engine_deq_node (vlib_main_t *vm, vnet_crypto_engine_id_t e
 {
   vnet_crypto_engine_t *e = vec_elt_at_index (crypto_main.engines, engine);
 
-  /* the next nodes of crypto-deq are the next nodes of the engine */
+  /* the next nodes of crypto-async are the next nodes of the engine */
   ASSERT (vlib_get_node (vm, deq_node_index)->sibling_of &&
-	  strcmp (vlib_get_node (vm, deq_node_index)->sibling_of, "crypto-deq") == 0);
+	  strcmp (vlib_get_node (vm, deq_node_index)->sibling_of, "crypto-async") == 0);
   e->deq_node_index = deq_node_index;
 }
 
@@ -589,7 +602,9 @@ vnet_crypto_register_post_node (vlib_main_t *vm, char *post_node_name)
   if (!pn)
     return ~0;
 
-  return vlib_node_add_next (vm, crypto_deq_node.index, pn->index);
+  /* frames of crypto-async siblings are handed over to the consumer as they are */
+  ASSERT (vnet_crypto_node_has_frame_layout (vm, pn));
+  return vlib_node_add_next (vm, crypto_async_node.index, pn->index);
 }
 
 static void

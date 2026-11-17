@@ -80,39 +80,14 @@ oct_crypto_queue_init (vlib_main_t *vm, vnet_dev_crypto_queue_t *cq)
   return VNET_DEV_OK;
 }
 
-/* hardware writes results into the queue memory */
+/* requests still in flight are failed by the dequeue node */
 void
 oct_crypto_queue_stop (vlib_main_t *vm, vnet_dev_crypto_queue_t *cq)
 {
   oct_crypto_queue_t *q = vnet_dev_get_crypto_queue_data (cq);
-  f64 timeout = vlib_time_now (vm) + 1.0;
-  u16 mask = q->n_desc - 1;
 
-  while (q->frame_head != q->frame_tail)
-    {
-      cpt_res_t r = {
-	.u64[0] = __atomic_load_n (&q->meta[q->deq_next & mask].res.u64[0], __ATOMIC_RELAXED),
-      };
-
-      if (r.cn10k.compcode != CPT_COMP_NOT_DONE)
-	{
-	  if (q->deq_left == 0)
-	    q->deq_left = q->frames[q->frame_head & mask]->n_vectors;
-	  q->deq_next++;
-	  if (--q->deq_left == 0)
-	    {
-	      q->elt_head = q->deq_next;
-	      q->frame_head++;
-	    }
-	  continue;
-	}
-
-      if (vlib_time_now (vm) > timeout)
-	{
-	  log_err (cq->dev, "timeout waiting for %u crypto frames",
-		   (u16) (q->frame_tail - q->frame_head));
-	  break;
-	}
-      CLIB_PAUSE ();
-    }
+  roc_cpt_iq_disable (q->lf);
+  if (q->elt_tail != q->elt_head)
+    log_warn (cq->dev, "queue %u: %u crypto requests aborted", cq->index,
+	      (u16) (q->elt_tail - q->elt_head));
 }

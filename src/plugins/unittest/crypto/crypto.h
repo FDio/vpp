@@ -51,6 +51,7 @@ typedef struct
   u32 async_process_node_index;
   u32 async_n_expected;
   u32 *async_done; /* buffers received by the post node */
+  u32 async_n_failed; /* buffers received by the post node with a failed status */
 
   unittest_crypto_test_registration_t *test_registrations;
 } crypto_test_main_t;

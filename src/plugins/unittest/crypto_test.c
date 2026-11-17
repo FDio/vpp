@@ -1982,8 +1982,12 @@ VLIB_NODE_FN (crypto_test_async_post_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
   crypto_test_main_t *tm = &crypto_test_main;
+  vnet_crypto_frame_scalar_data_t *sd = vlib_frame_scalar_args (frame);
+  u32 *bi = vlib_frame_vector_args (frame);
 
-  vec_add (tm->async_done, (u32 *) vlib_frame_vector_args (frame), frame->n_vectors);
+  tm->async_n_failed += vnet_crypto_frame_n_failures (sd);
+
+  vec_add (tm->async_done, bi, frame->n_vectors);
   if (tm->async_n_expected)
     vlib_process_signal_event (vm, tm->async_process_node_index, 0, 0);
 
@@ -1993,31 +1997,9 @@ VLIB_NODE_FN (crypto_test_async_post_node)
 VLIB_REGISTER_NODE (crypto_test_async_post_node) = {
   .name = "crypto-test-async-post",
   .vector_size = sizeof (u32),
+  .scalar_size = sizeof (vnet_crypto_frame_scalar_data_t),
+  .aux_size = sizeof (vnet_crypto_ctx_t *),
 };
-
-/* buffers failed by the engine are dropped, they show up only in error counters */
-static u64
-crypto_test_async_error_count (vlib_main_t *vm, vnet_crypto_engine_t *e, vnet_crypto_alg_t alg,
-			       vnet_crypto_op_type_t type)
-{
-  vlib_error_main_t *em = &vm->error_main;
-  u32 node_indices[] = {
-    vlib_get_node_by_name (vm, (u8 *) "crypto-enq")->index,
-    e->ops[alg][type].enq_node_index,
-    e->deq_node_index,
-  };
-  u64 n = 0;
-
-  for (u32 i = 0; i < ARRAY_LEN (node_indices); i++)
-    {
-      vlib_node_t *node = vlib_get_node (vm, node_indices[i]);
-
-      for (u32 j = 0; j < node->n_errors; j++)
-	n += em->counters[node->error_heap_index + j];
-    }
-
-  return n;
-}
 
 clib_error_t *
 crypto_test_async_run (vlib_main_t *vm, crypto_test_main_t *tm, vnet_crypto_engine_id_t engine,
@@ -2027,7 +2009,6 @@ crypto_test_async_run (vlib_main_t *vm, crypto_test_main_t *tm, vnet_crypto_engi
   vnet_crypto_engine_t *e = vec_elt_at_index (crypto_main.engines, engine);
   u32 enq_node_index = vlib_get_node_by_name (vm, (u8 *) "crypto-enq")->index;
   f64 deadline = vlib_time_now (vm) + 1.0;
-  u64 errors_before;
   u32 n_submitted = 0;
 
   if (e->ops[ctxs[0]->alg][type].handlers[VNET_CRYPTO_HANDLER_TYPE_ASYNC] == 0)
@@ -2046,15 +2027,12 @@ crypto_test_async_run (vlib_main_t *vm, crypto_test_main_t *tm, vnet_crypto_engi
   vec_reset_length (tm->async_done);
   tm->async_process_node_index = vlib_get_current_process_node_index (vm);
   tm->async_n_expected = n;
-  errors_before = crypto_test_async_error_count (vm, e, ctxs[0]->alg, type);
+  tm->async_n_failed = 0;
 
   while (1)
     {
-      u32 n_completed;
-
-      *n_errors = crypto_test_async_error_count (vm, e, ctxs[0]->alg, type) - errors_before;
-      n_completed = vec_len (tm->async_done) + *n_errors;
-      if (n_completed >= n)
+      *n_errors = tm->async_n_failed;
+      if (vec_len (tm->async_done) >= n)
 	break;
 
       while (n_submitted < n)
@@ -2067,11 +2045,10 @@ crypto_test_async_run (vlib_main_t *vm, crypto_test_main_t *tm, vnet_crypto_engi
 			    n_vectors * sizeof (u32));
 	  clib_memcpy_fast (vlib_frame_aux_args (f), ctxs + n_submitted,
 			    n_vectors * sizeof (ctxs[0]));
-	  *(vnet_crypto_deq_scalar_data_t *) vlib_frame_scalar_args (f) =
-	    (vnet_crypto_deq_scalar_data_t) {
+	  *(vnet_crypto_enq_scalar_data_t *) vlib_frame_scalar_args (f) =
+	    (vnet_crypto_enq_scalar_data_t) {
 	      .next_node_index = tm->async_post_next_index,
 	      .op_type = type,
-	      .alg = ctxs[n_submitted]->alg,
 	    };
 	  vlib_put_frame_to_node (vm, enq_node_index, f);
 	  n_submitted += n_vectors;
@@ -2081,7 +2058,7 @@ crypto_test_async_run (vlib_main_t *vm, crypto_test_main_t *tm, vnet_crypto_engi
 	{
 	  tm->async_n_expected = 0;
 	  return clib_error_return (0, "timeout, %u of %u buffers completed",
-				    vec_len (tm->async_done) + *n_errors, n);
+				    vec_len (tm->async_done), n);
 	}
 
       vlib_process_wait_for_event_or_clock (vm, 1e-3);
@@ -2381,7 +2358,6 @@ test_crypto_async_case (vlib_main_t *vm, crypto_test_main_t *tm,
   *test_result = CRYPTO_TEST_RESULT_OK;
 
 done:
-  /* buffers failed by the engine were freed by error-drop */
   if (completed)
     vlib_buffer_free (vm, tm->async_done, vec_len (tm->async_done));
   else if (n_alloc && !enqueued)

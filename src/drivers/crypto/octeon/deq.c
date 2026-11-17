@@ -9,6 +9,36 @@
 #include <octeon_common.h>
 #include <crypto.h>
 
+/* hardware is stopped, frames in flight are handed over to the consumer as failed */
+static_always_inline u32
+oct_crypto_deq_abort (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_crypto_queue_t *cq)
+{
+  oct_crypto_queue_t *q = vnet_dev_get_crypto_queue_data (cq);
+  vnet_crypto_op_status_t status[VLIB_FRAME_SIZE];
+  u16 mask = q->n_desc - 1;
+  u32 n_aborted = 0;
+
+  for (u32 i = 0; i < VLIB_FRAME_SIZE; i++)
+    status[i] = VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR;
+
+  for (u16 i = q->elt_head; i != q->elt_tail; i++)
+    q->meta[i & mask].res.u64[0] = 0;
+
+  for (; q->frame_head != q->frame_tail; q->frame_head++)
+    {
+      vlib_frame_t *f = q->frames[q->frame_head & mask];
+
+      n_aborted += f->n_vectors;
+      vnet_dev_crypto_frame_done (vm, node, f, status);
+    }
+
+  cq->deq_err += n_aborted;
+  cq->deq_req += n_aborted;
+  q->elt_head = q->deq_next = q->elt_tail;
+  q->deq_left = 0;
+  return n_aborted;
+}
+
 VNET_DEV_NODE_FN (oct_crypto_deq_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
 {
@@ -22,6 +52,9 @@ VNET_DEV_NODE_FN (oct_crypto_deq_node)
 
   if (cq == 0)
     return 0;
+
+  if (PREDICT_FALSE (cq->abort))
+    return oct_crypto_deq_abort (vm, node, cq);
 
   q = vnet_dev_get_crypto_queue_data (cq);
   meta = q->meta;
