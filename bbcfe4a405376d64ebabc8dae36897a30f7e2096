@@ -1,0 +1,118 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5e0e3531_b8a6a42d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-17T13:05:51Z",
+      "side": 1,
+      "message": "I’d prefer to keep existing API contract. For HEAD responses, msg.data.body_len can retain the advertised length while the request method determines that zero body bytes follow. That matche HTTP semantics, HEAD has no response content, but its Content-Length may describe the corresponding GET response. RFC 9110 (https://www.rfc-editor.org/rfc/rfc9110.html#section-8.6)",
+      "revId": "bbcfe4a405376d64ebabc8dae36897a30f7e2096",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "de977005_0709c2b1",
+        "filename": "src/plugins/hs_apps/http_cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 272,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-17T13:05:51Z",
+      "side": 1,
+      "message": "application should not add content-length header",
+      "revId": "bbcfe4a405376d64ebabc8dae36897a30f7e2096",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "289a0d21_075fa8e8",
+        "filename": "src/plugins/hs_apps/http_cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 441,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-17T13:05:51Z",
+      "side": 1,
+      "message": "this need to be handled by http transport, app will set msg.data.body_len without enqueueing body bytes",
+      "revId": "bbcfe4a405376d64ebabc8dae36897a30f7e2096",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "9b381c71_0ece28f0",
+        "filename": "src/plugins/http/http_plugin.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 750,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-17T13:05:51Z",
+      "side": 1,
+      "message": "this should be set, app might need this information and it breaks current api where app doesn\u0027t need to search for content-length header in received list",
+      "range": {
+        "startLine": 750,
+        "startChar": 51,
+        "endLine": 750,
+        "endChar": 76
+      },
+      "revId": "bbcfe4a405376d64ebabc8dae36897a30f7e2096",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "94bdc08c_4d49026d",
+        "filename": "src/plugins/http/http_plugin.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 760,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-17T13:05:51Z",
+      "side": 1,
+      "message": "this need to be handled in http transport based on method, app will set body_len as in normal get response but do not enqueue body bytes",
+      "range": {
+        "startLine": 757,
+        "startChar": 0,
+        "endLine": 760,
+        "endChar": 57
+      },
+      "revId": "bbcfe4a405376d64ebabc8dae36897a30f7e2096",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f6b812b8_c8655a5d",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 402,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-17T13:05:51Z",
+      "side": 1,
+      "message": "please put QUIC half-close fixes and their regression tests in separate commit. They fix existing transport bug independently of http changes in this patch, making them easier to review and backport",
+      "revId": "bbcfe4a405376d64ebabc8dae36897a30f7e2096",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
