@@ -1102,7 +1102,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     }
   if (n_async)
     {
-      vnet_crypto_deq_scalar_data_t scalar = {
+      vnet_crypto_frame_scalar_data_t scalar = {
 	.next_node_index = async_next_node,
 	.op_type = VNET_CRYPTO_OP_TYPE_ENCRYPT,
       };
@@ -1118,9 +1118,29 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   return frame->n_vectors;
 }
 
-always_inline uword
-esp_encrypt_post_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+static_always_inline void
+esp_encrypt_post_failures (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_buffer_t **b,
+			   u16 *nexts, vnet_crypto_frame_scalar_data_t *sd, u16 drop_next)
 {
+  uword i;
+
+  foreach_vlib_frame_bitmap_set_bit_index (i, sd->failed_bitmap)
+    {
+      vnet_crypto_op_status_t status = vnet_crypto_buffer_get_metadata (b[i])->status;
+      u32 err = ESP_ENCRYPT_ERROR_CRYPTO_ENGINE_ERROR;
+
+      if (status == VNET_CRYPTO_OP_STATUS_FAIL_QUEUE_FULL)
+	err = ESP_ENCRYPT_ERROR_CRYPTO_QUEUE_FULL;
+      esp_encrypt_set_next_index (b[i], node, vm->thread_index, err, i, nexts, drop_next,
+				  vnet_buffer (b[i])->ipsec.sad_index);
+    }
+}
+
+always_inline uword
+esp_encrypt_post_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
+			 u16 drop_next)
+{
+  vnet_crypto_frame_scalar_data_t *sd = vlib_frame_scalar_args (frame);
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
   u32 *from = vlib_frame_vector_args (frame);
@@ -1197,6 +1217,9 @@ esp_encrypt_post_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_
       n_left -= 1;
     }
 
+  if (PREDICT_FALSE (vnet_crypto_frame_n_failures (sd)))
+    esp_encrypt_post_failures (vm, node, bufs, nexts, sd, drop_next);
+
   vlib_node_increment_counter (vm, node->node_index,
 			       ESP_ENCRYPT_ERROR_POST_RX_PKTS,
 			       frame->n_vectors);
@@ -1236,12 +1259,14 @@ VLIB_NODE_FN (esp4_encrypt_post_node) (vlib_main_t * vm,
 				       vlib_node_runtime_t * node,
 				       vlib_frame_t * from_frame)
 {
-  return esp_encrypt_post_inline (vm, node, from_frame);
+  return esp_encrypt_post_inline (vm, node, from_frame, ESP_ENCRYPT_NEXT_DROP4);
 }
 
 VLIB_REGISTER_NODE (esp4_encrypt_post_node) = {
   .name = "esp4-encrypt-post",
   .vector_size = sizeof (u32),
+  .scalar_size = sizeof (vnet_crypto_frame_scalar_data_t),
+  .aux_size = sizeof (vnet_crypto_ctx_t *),
   .format_trace = format_esp_post_encrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .sibling_of = "esp4-encrypt",
@@ -1273,12 +1298,14 @@ VLIB_NODE_FN (esp6_encrypt_post_node) (vlib_main_t * vm,
 				       vlib_node_runtime_t * node,
 				       vlib_frame_t * from_frame)
 {
-  return esp_encrypt_post_inline (vm, node, from_frame);
+  return esp_encrypt_post_inline (vm, node, from_frame, ESP_ENCRYPT_NEXT_DROP6);
 }
 
 VLIB_REGISTER_NODE (esp6_encrypt_post_node) = {
   .name = "esp6-encrypt-post",
   .vector_size = sizeof (u32),
+  .scalar_size = sizeof (vnet_crypto_frame_scalar_data_t),
+  .aux_size = sizeof (vnet_crypto_ctx_t *),
   .format_trace = format_esp_post_encrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .sibling_of = "esp4-encrypt",
@@ -1321,12 +1348,14 @@ VLIB_NODE_FN (esp4_encrypt_tun_post_node) (vlib_main_t * vm,
 				  vlib_node_runtime_t * node,
 				  vlib_frame_t * from_frame)
 {
-  return esp_encrypt_post_inline (vm, node, from_frame);
+  return esp_encrypt_post_inline (vm, node, from_frame, ESP_ENCRYPT_NEXT_DROP4);
 }
 
 VLIB_REGISTER_NODE (esp4_encrypt_tun_post_node) = {
   .name = "esp4-encrypt-tun-post",
   .vector_size = sizeof (u32),
+  .scalar_size = sizeof (vnet_crypto_frame_scalar_data_t),
+  .aux_size = sizeof (vnet_crypto_ctx_t *),
   .format_trace = format_esp_post_encrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .sibling_of = "esp4-encrypt-tun",
@@ -1369,12 +1398,14 @@ VLIB_NODE_FN (esp6_encrypt_tun_post_node) (vlib_main_t * vm,
 					   vlib_node_runtime_t * node,
 					   vlib_frame_t * from_frame)
 {
-  return esp_encrypt_post_inline (vm, node, from_frame);
+  return esp_encrypt_post_inline (vm, node, from_frame, ESP_ENCRYPT_NEXT_DROP6);
 }
 
 VLIB_REGISTER_NODE (esp6_encrypt_tun_post_node) = {
   .name = "esp6-encrypt-tun-post",
   .vector_size = sizeof (u32),
+  .scalar_size = sizeof (vnet_crypto_frame_scalar_data_t),
+  .aux_size = sizeof (vnet_crypto_ctx_t *),
   .format_trace = format_esp_post_encrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .sibling_of = "esp-mpls-encrypt-tun",
@@ -1415,12 +1446,14 @@ VLIB_REGISTER_NODE (esp_mpls_encrypt_tun_node) = {
 VLIB_NODE_FN (esp_mpls_encrypt_tun_post_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *from_frame)
 {
-  return esp_encrypt_post_inline (vm, node, from_frame);
+  return esp_encrypt_post_inline (vm, node, from_frame, ESP_ENCRYPT_NEXT_DROP_MPLS);
 }
 
 VLIB_REGISTER_NODE (esp_mpls_encrypt_tun_post_node) = {
   .name = "esp-mpls-encrypt-tun-post",
   .vector_size = sizeof (u32),
+  .scalar_size = sizeof (vnet_crypto_frame_scalar_data_t),
+  .aux_size = sizeof (vnet_crypto_ctx_t *),
   .format_trace = format_esp_post_encrypt_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .sibling_of = "esp-mpls-encrypt-tun",

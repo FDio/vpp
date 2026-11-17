@@ -8,14 +8,13 @@ typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u32 *buffers;
-  u32 *completed; /* buffers back at the sink, failed ones are freed by error-drop */
+  u32 *completed; /* buffers back at the sink */
   vnet_crypto_ctx_t *ctx;
   vnet_crypto_ctx_t **ctxs; /* frame aux data, the thread ctx for all buffers */
   u32 n_submitted;
   u32 trace_end; /* buffers below this index are traced */
   u32 n_completed;
-  u32 n_errors;
-  u64 errors_base;
+  u32 n_errors; /* completed buffers with a failed status */
   u64 t_start, t_end;
   u8 active;
   u8 done;
@@ -25,7 +24,6 @@ typedef struct
 {
   crypto_test_async_perf_thread_t *threads;
   u32 enq_node_index;
-  u32 *error_node_indices;
   u32 sink_next_index;
   u32 elts_per_frame;
   u32 max_in_flight;
@@ -34,23 +32,6 @@ typedef struct
 } crypto_test_async_perf_main_t;
 
 static crypto_test_async_perf_main_t crypto_test_async_perf_main;
-
-static u64
-crypto_test_async_perf_errors (vlib_main_t *vm, crypto_test_async_perf_main_t *pm)
-{
-  vlib_error_main_t *em = &vm->error_main;
-  u64 n = 0;
-
-  for (u32 i = 0; i < vec_len (pm->error_node_indices); i++)
-    {
-      vlib_node_t *node = vlib_get_node (vm, pm->error_node_indices[i]);
-
-      for (u32 j = 0; j < node->n_errors; j++)
-	n += em->counters[node->error_heap_index + j];
-    }
-
-  return n;
-}
 
 typedef struct
 {
@@ -86,6 +67,7 @@ VLIB_NODE_FN (crypto_test_async_sink_node)
 {
   crypto_test_async_perf_main_t *pm = &crypto_test_async_perf_main;
   crypto_test_async_perf_thread_t *pt = pm->threads + vm->thread_index;
+  vnet_crypto_frame_scalar_data_t *sd = vlib_frame_scalar_args (frame);
   u32 *from = vlib_frame_vector_args (frame), n = frame->n_vectors;
 
   if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
@@ -110,6 +92,8 @@ VLIB_NODE_FN (crypto_test_async_sink_node)
       return n;
     }
 
+  pt->n_errors += vnet_crypto_frame_n_failures (sd);
+
   clib_memcpy_fast (pt->completed + pt->n_completed, from, n * sizeof (from[0]));
   pt->n_completed += n;
   return n;
@@ -118,6 +102,8 @@ VLIB_NODE_FN (crypto_test_async_sink_node)
 VLIB_REGISTER_NODE (crypto_test_async_sink_node) = {
   .name = "crypto-test-async-sink",
   .vector_size = sizeof (u32),
+  .scalar_size = sizeof (vnet_crypto_frame_scalar_data_t),
+  .aux_size = sizeof (vnet_crypto_ctx_t *),
   .flags = VLIB_NODE_FLAG_TRACE_SUPPORTED,
   .format_trace = format_crypto_test_async_sink_trace,
 };
@@ -134,14 +120,9 @@ VLIB_NODE_FN (crypto_test_async_perf_node)
     return 0;
 
   if (pt->t_start == 0)
-    {
-      pt->errors_base = crypto_test_async_perf_errors (vm, pm);
-      pt->t_start = clib_cpu_time_now ();
-    }
+    pt->t_start = clib_cpu_time_now ();
 
-  /* buffers failed by the engine are dropped, they show up only in error counters */
-  pt->n_errors = crypto_test_async_perf_errors (vm, pm) - pt->errors_base;
-  if (pt->n_completed + pt->n_errors >= n)
+  if (pt->n_completed >= n)
     {
       pt->t_end = clib_cpu_time_now ();
       pt->active = 0;
@@ -173,7 +154,7 @@ VLIB_NODE_FN (crypto_test_async_perf_node)
   while (n_submitted < n)
     {
       u32 n_vectors = clib_min (pm->elts_per_frame, n - n_submitted);
-      u32 in_flight = n_submitted - pt->n_completed - pt->n_errors;
+      u32 in_flight = n_submitted - pt->n_completed;
       vlib_frame_t *f;
 
       if (pm->max_in_flight && in_flight + n_vectors > pm->max_in_flight)
@@ -186,8 +167,8 @@ VLIB_NODE_FN (crypto_test_async_perf_node)
       clib_memcpy_fast (vlib_frame_vector_args (f), pt->buffers + n_submitted,
 			n_vectors * sizeof (u32));
       clib_memcpy_fast (vlib_frame_aux_args (f), pt->ctxs, n_vectors * sizeof (pt->ctxs[0]));
-      *(vnet_crypto_deq_scalar_data_t *) vlib_frame_scalar_args (f) =
-	(vnet_crypto_deq_scalar_data_t) {
+      *(vnet_crypto_frame_scalar_data_t *) vlib_frame_scalar_args (f) =
+	(vnet_crypto_frame_scalar_data_t) {
 	  .next_node_index = pm->sink_next_index,
 	  .op_type = pm->type,
 	  .alg = pm->alg,
@@ -251,7 +232,7 @@ crypto_test_async_perf_run (vlib_main_t *vm, crypto_test_async_perf_main_t *pm,
 	{
 	  if (vlib_time_now (vm) > deadline)
 	    return clib_error_return (0, "thread %u timeout, %u of %u buffers completed", ti,
-				      pt->n_completed + pt->n_errors, vec_len (pt->buffers));
+				      pt->n_completed, vec_len (pt->buffers));
 	  vlib_process_suspend (vm, 1e-3);
 	}
 
@@ -364,12 +345,6 @@ test_crypto_async_perf (vlib_main_t *vm, crypto_test_main_t *tm)
   if (pm->sink_next_index == 0)
     pm->sink_next_index = vnet_crypto_register_post_node (vm, "crypto-test-async-sink");
 
-  /* encrypt and decrypt may share the enqueue node */
-  vec_reset_length (pm->error_node_indices);
-  vec_add1 (pm->error_node_indices, e->deq_node_index);
-  for (u32 i = 0; i < n_types; i++)
-    if (vec_search (pm->error_node_indices, e->ops[tm->alg][types[i]].enq_node_index) == ~0)
-      vec_add1 (pm->error_node_indices, e->ops[tm->alg][types[i]].enq_node_index);
   pm->elts_per_frame = tm->elts_per_frame ? tm->elts_per_frame : VLIB_FRAME_SIZE;
   pm->max_in_flight = tm->max_in_flight;
   pm->alg = tm->alg;
@@ -518,7 +493,7 @@ done:
       __atomic_store_n (&pt->active, 0, __ATOMIC_RELEASE);
       vlib_buffer_free (vm, pt->completed, pt->n_completed);
       vlib_buffer_free (vm, pt->buffers + n_submitted, vec_len (pt->buffers) - n_submitted);
-      if (pt->ctx && n_submitted == pt->n_completed + pt->n_errors)
+      if (pt->ctx && n_submitted == pt->n_completed)
 	vnet_crypto_ctx_destroy (vm, pt->ctx);
       pt->ctx = 0;
       vec_free (pt->ctxs);

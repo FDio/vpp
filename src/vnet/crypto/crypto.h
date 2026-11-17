@@ -22,6 +22,7 @@ typedef struct
   u8 icv_len;
   u8 is_hmac_check : 1;
   u8 is_chained_buffers : 1;
+  u8 status; /* vnet_crypto_op_status_t, valid only in frames with failures */
 } vnet_crypto_buffer_metadata_t;
 
 STATIC_ASSERT_SIZEOF (vnet_crypto_buffer_metadata_t, 6 * sizeof (u32));
@@ -126,7 +127,9 @@ typedef enum
   _ (3, COMPLETED, "completed")                                                                    \
   _ (4, FAIL_NO_HANDLER, "no-handler")                                                             \
   _ (5, FAIL_BAD_HMAC, "bad-hmac")                                                                 \
-  _ (6, FAIL_ENGINE_ERR, "engine-error")
+  _ (6, FAIL_ENGINE_ERR, "engine-error")                                                           \
+  _ (7, FAIL_QUEUE_FULL, "queue-full")                                                             \
+  _ (8, FAIL_NO_QUEUE, "no-queue")
 
 /** async crypto **/
 
@@ -316,22 +319,137 @@ typedef enum
 		VNET_CRYPTO_N_ALGS,
 } __clib_packed vnet_crypto_alg_t;
 
-/* scalar data of frames to crypto-enq and to engine enqueue nodes */
+/* scalar data of frames to crypto-enq, to engine enqueue nodes and to consumer nodes */
 typedef struct
 {
   u16 next_node_index;
   vnet_crypto_op_type_t op_type;
   vnet_crypto_alg_t alg;
-} vnet_crypto_deq_scalar_data_t;
-STATIC_ASSERT_SIZEOF (vnet_crypto_deq_scalar_data_t, sizeof (u32));
+  u32 unused;
+  vlib_frame_bitmap_t failed_bitmap; /* failed elements, their status is in the buffer metadata */
+} vnet_crypto_frame_scalar_data_t;
+STATIC_ASSERT_SIZEOF (vnet_crypto_frame_scalar_data_t, 8 + sizeof (vlib_frame_bitmap_t));
+
+static_always_inline u32
+vnet_crypto_frame_n_failures (vnet_crypto_frame_scalar_data_t *sd)
+{
+  return vlib_frame_bitmap_count_set_bits (sd->failed_bitmap);
+}
 
 static_always_inline void
 vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar (
   vlib_main_t *vm, vlib_node_runtime_t *node, u32 *buffers, u64 *aux_data, u16 next_index,
-  u32 count, vnet_crypto_deq_scalar_data_t *scalar_data)
+  u32 count, vnet_crypto_frame_scalar_data_t *scalar_data)
 {
   vlib_buffer_enqueue_to_single_next_with_aux64_and_scalar_size (
     vm, node, buffers, aux_data, scalar_data, sizeof (*scalar_data), next_index, count);
+}
+
+static_always_inline void
+vnet_crypto_buffers_set_status (vlib_main_t *vm, u32 *bi, u32 n, vnet_crypto_op_status_t status)
+{
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+
+  vlib_get_buffers (vm, bi, bufs, n);
+
+  for (; n >= 16; n -= 8, b += 8)
+    {
+      clib_prefetch_store (vnet_crypto_buffer_get_metadata (b[8]));
+      clib_prefetch_store (vnet_crypto_buffer_get_metadata (b[9]));
+      clib_prefetch_store (vnet_crypto_buffer_get_metadata (b[10]));
+      clib_prefetch_store (vnet_crypto_buffer_get_metadata (b[11]));
+      clib_prefetch_store (vnet_crypto_buffer_get_metadata (b[12]));
+      clib_prefetch_store (vnet_crypto_buffer_get_metadata (b[13]));
+      clib_prefetch_store (vnet_crypto_buffer_get_metadata (b[14]));
+      clib_prefetch_store (vnet_crypto_buffer_get_metadata (b[15]));
+
+      vnet_crypto_buffer_get_metadata (b[0])->status = status;
+      vnet_crypto_buffer_get_metadata (b[1])->status = status;
+      vnet_crypto_buffer_get_metadata (b[2])->status = status;
+      vnet_crypto_buffer_get_metadata (b[3])->status = status;
+      vnet_crypto_buffer_get_metadata (b[4])->status = status;
+      vnet_crypto_buffer_get_metadata (b[5])->status = status;
+      vnet_crypto_buffer_get_metadata (b[6])->status = status;
+      vnet_crypto_buffer_get_metadata (b[7])->status = status;
+    }
+
+  for (u32 i = 0; i < n; i++)
+    vnet_crypto_buffer_get_metadata (b[i])->status = status;
+}
+
+/* status of each buffer from the status vector */
+static_always_inline void
+vnet_crypto_buffers_set_statuses (vlib_main_t *vm, u32 *bi, u32 n, vnet_crypto_op_status_t *sv)
+{
+  vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
+
+  vlib_get_buffers (vm, bi, bufs, n);
+
+  for (; n >= 16; n -= 8, b += 8, sv += 8)
+    {
+      clib_prefetch_store (vnet_crypto_buffer_get_metadata (b[8]));
+      clib_prefetch_store (vnet_crypto_buffer_get_metadata (b[9]));
+      clib_prefetch_store (vnet_crypto_buffer_get_metadata (b[10]));
+      clib_prefetch_store (vnet_crypto_buffer_get_metadata (b[11]));
+      clib_prefetch_store (vnet_crypto_buffer_get_metadata (b[12]));
+      clib_prefetch_store (vnet_crypto_buffer_get_metadata (b[13]));
+      clib_prefetch_store (vnet_crypto_buffer_get_metadata (b[14]));
+      clib_prefetch_store (vnet_crypto_buffer_get_metadata (b[15]));
+
+      vnet_crypto_buffer_get_metadata (b[0])->status = sv[0];
+      vnet_crypto_buffer_get_metadata (b[1])->status = sv[1];
+      vnet_crypto_buffer_get_metadata (b[2])->status = sv[2];
+      vnet_crypto_buffer_get_metadata (b[3])->status = sv[3];
+      vnet_crypto_buffer_get_metadata (b[4])->status = sv[4];
+      vnet_crypto_buffer_get_metadata (b[5])->status = sv[5];
+      vnet_crypto_buffer_get_metadata (b[6])->status = sv[6];
+      vnet_crypto_buffer_get_metadata (b[7])->status = sv[7];
+    }
+
+  for (u32 i = 0; i < n; i++)
+    vnet_crypto_buffer_get_metadata (b[i])->status = sv[i];
+}
+
+/* sets the status of each element of a completed frame and marks the failed ones */
+static_always_inline void
+vnet_crypto_frame_set_statuses (vlib_main_t *vm, vlib_frame_t *f, vnet_crypto_op_status_t *sv)
+{
+  vnet_crypto_frame_scalar_data_t *sd = vlib_frame_scalar_args (f);
+
+  vnet_crypto_buffers_set_statuses (vm, vlib_frame_vector_args (f), f->n_vectors, sv);
+  for (u32 i = 0; i < f->n_vectors; i++)
+    if (sv[i] != VNET_CRYPTO_OP_STATUS_COMPLETED)
+      vlib_frame_bitmap_set_bit_at_index (sd->failed_bitmap, i);
+}
+
+/* hands a frame owned by a sibling of crypto-async over to its consumer node, status is
+ * VNET_CRYPTO_OP_STATUS_COMPLETED for good frames, otherwise it is set in every buffer, returns
+ * the number of buffers */
+static_always_inline u32
+vnet_crypto_frame_to_consumer (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f,
+			       vnet_crypto_op_status_t status)
+{
+  vnet_crypto_frame_scalar_data_t *sd = vlib_frame_scalar_args (f);
+  u32 *bi = vlib_frame_vector_args (f), n = f->n_vectors;
+
+  if (PREDICT_FALSE (status != VNET_CRYPTO_OP_STATUS_COMPLETED))
+    {
+      vnet_crypto_buffers_set_status (vm, bi, n, status);
+      vlib_frame_bitmap_init (sd->failed_bitmap, n);
+    }
+
+  if (PREDICT_FALSE (vm->trace_main.trace_enable))
+    for (u32 i = 0; i < n; i++)
+      if (vlib_get_buffer (vm, bi[i])->flags & VLIB_BUFFER_IS_TRACED)
+	{
+	  f->frame_flags |= VLIB_FRAME_TRACE;
+	  break;
+	}
+
+  f->frame_flags |= VLIB_FRAME_FREE_AFTER_DISPATCH;
+  vlib_put_frame_to_node (vm, vlib_get_node (vm, node->node_index)->next_nodes[sd->next_node_index],
+			  f);
+  return n;
 }
 
 typedef enum
@@ -530,8 +648,8 @@ vnet_crypto_register_key_change_handler (vlib_main_t *vm, vnet_crypto_engine_id_
 /* reserve async key data for engines registered after the ctx layout is set */
 __clib_export int vnet_crypto_reserve_async_key_data (u16 key_data_sz);
 
-/* anchor of the engine dequeue nodes, which are its siblings */
-extern vlib_node_registration_t crypto_deq_node;
+/* crypto-enq and engine enqueue and dequeue nodes are its siblings, consumers are its next nodes */
+extern vlib_node_registration_t crypto_async_node;
 
 /** async crypto register functions */
 __clib_export u32 vnet_crypto_register_post_node (vlib_main_t *vm, char *post_node_name);

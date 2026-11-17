@@ -11,21 +11,22 @@
 #include <wireguard/wireguard_send.h>
 #include <wireguard/wireguard_if.h>
 
-#define foreach_wg_input_error                                                \
-  _ (NONE, "No error")                                                        \
-  _ (HANDSHAKE_MAC, "Invalid MAC handshake")                                  \
-  _ (HANDSHAKE_RATELIMITED, "Handshake ratelimited")                          \
-  _ (PEER, "Peer error")                                                      \
-  _ (INTERFACE, "Interface error")                                            \
-  _ (DECRYPTION, "Failed during decryption")                                  \
-  _ (KEEPALIVE_SEND, "Failed while sending Keepalive")                        \
-  _ (HANDSHAKE_SEND, "Failed while sending Handshake")                        \
-  _ (HANDSHAKE_RECEIVE, "Failed while receiving Handshake")                   \
-  _ (COOKIE_DECRYPTION, "Failed during Cookie decryption")                    \
-  _ (COOKIE_SEND, "Failed during sending Cookie")                             \
-  _ (NO_BUFFERS, "No buffers")                                                \
-  _ (UNDEFINED, "Undefined error")                                            \
-  _ (CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)")
+#define foreach_wg_input_error                                                                     \
+  _ (NONE, "No error")                                                                             \
+  _ (HANDSHAKE_MAC, "Invalid MAC handshake")                                                       \
+  _ (HANDSHAKE_RATELIMITED, "Handshake ratelimited")                                               \
+  _ (PEER, "Peer error")                                                                           \
+  _ (INTERFACE, "Interface error")                                                                 \
+  _ (DECRYPTION, "Failed during decryption")                                                       \
+  _ (KEEPALIVE_SEND, "Failed while sending Keepalive")                                             \
+  _ (HANDSHAKE_SEND, "Failed while sending Handshake")                                             \
+  _ (HANDSHAKE_RECEIVE, "Failed while receiving Handshake")                                        \
+  _ (COOKIE_DECRYPTION, "Failed during Cookie decryption")                                         \
+  _ (COOKIE_SEND, "Failed during sending Cookie")                                                  \
+  _ (NO_BUFFERS, "No buffers")                                                                     \
+  _ (UNDEFINED, "Undefined error")                                                                 \
+  _ (CRYPTO_ENGINE_ERROR, "crypto engine error (packet dropped)")                                  \
+  _ (CRYPTO_QUEUE_FULL, "crypto queue full (packet dropped)")
 
 typedef enum
 {
@@ -959,7 +960,7 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   if (n_async)
     {
-      vnet_crypto_deq_scalar_data_t scalar = {
+      vnet_crypto_frame_scalar_data_t scalar = {
 	.next_node_index =
 	  is_ip4 ? wg_decrypt_async_next.wg4_post_next : wg_decrypt_async_next.wg6_post_next,
 	.op_type = VNET_CRYPTO_OP_TYPE_DECRYPT,
@@ -979,6 +980,16 @@ wg_input_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
   return frame->n_vectors;
 }
 
+static_always_inline u32
+wg_input_crypto_status_to_err (vnet_crypto_op_status_t status)
+{
+  if (status == VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC)
+    return WG_INPUT_ERROR_DECRYPTION;
+  if (status == VNET_CRYPTO_OP_STATUS_FAIL_QUEUE_FULL)
+    return WG_INPUT_ERROR_CRYPTO_QUEUE_FULL;
+  return WG_INPUT_ERROR_CRYPTO_ENGINE_ERROR;
+}
+
 always_inline uword
 wg_input_post (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 	       u8 is_ip4)
@@ -986,6 +997,8 @@ wg_input_post (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
   wg_main_t *wmp = &wg_main;
+  vnet_crypto_frame_scalar_data_t *sd = vlib_frame_scalar_args (frame);
+  uword *failed_bitmap = vnet_crypto_frame_n_failures (sd) ? sd->failed_bitmap : 0;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE], **b = bufs;
   u16 nexts[VLIB_FRAME_SIZE], *next = nexts;
   u32 *from = vlib_frame_vector_args (frame);
@@ -1013,6 +1026,14 @@ wg_input_post (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 	  vlib_prefetch_buffer_header (b[2], LOAD);
 	  p = vlib_buffer_get_current (b[1]);
 	  CLIB_PREFETCH (p, CLIB_CACHE_LINE_BYTES, LOAD);
+	}
+
+      if (PREDICT_FALSE (failed_bitmap && vlib_frame_bitmap_is_bit_set (failed_bitmap, b - bufs)))
+	{
+	  b[0]->error = node->errors[wg_input_crypto_status_to_err (
+	    vnet_crypto_buffer_get_metadata (b[0])->status)];
+	  next[0] = WG_INPUT_NEXT_ERROR;
+	  goto trace;
 	}
 
       bool is_keepalive = false;
@@ -1160,6 +1181,8 @@ VLIB_REGISTER_NODE (wg6_input_node) =
 VLIB_REGISTER_NODE (wg4_input_post_node) = {
   .name = "wg4-input-post-node",
   .vector_size = sizeof (u32),
+  .scalar_size = sizeof (vnet_crypto_frame_scalar_data_t),
+  .aux_size = sizeof (vnet_crypto_ctx_t *),
   .format_trace = format_wg_input_post_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .sibling_of = "wg4-input",
@@ -1171,6 +1194,8 @@ VLIB_REGISTER_NODE (wg4_input_post_node) = {
 VLIB_REGISTER_NODE (wg6_input_post_node) = {
   .name = "wg6-input-post-node",
   .vector_size = sizeof (u32),
+  .scalar_size = sizeof (vnet_crypto_frame_scalar_data_t),
+  .aux_size = sizeof (vnet_crypto_ctx_t *),
   .format_trace = format_wg_input_post_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .sibling_of = "wg6-input",

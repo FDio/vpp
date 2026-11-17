@@ -651,6 +651,12 @@ counters esp_decrypt {
     units "packets";
     description "crypto engine error (packet dropped)";
   };
+  crypto_queue_full {
+    severity error;
+    type counter64;
+    units "packets";
+    description "crypto queue full (packet dropped)";
+  };
   replay {
     severity error;
     type counter64;

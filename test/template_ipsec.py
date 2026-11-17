@@ -359,14 +359,7 @@ class IpsecTra4(object):
             hash_failed_node_name = (
                 "/err/%s/integ_error" % self.tra4_decrypt_node_name[p.async_mode]
             )
-        count = self.statistics.get_err_counter(hash_failed_node_name)
-
-        if p.async_mode:
-            count += self.statistics.get_err_counter(
-                "/err/crypto-sw-scheduler-deq/bad-hmac"
-            )
-
-        return count
+        return self.statistics.get_err_counter(hash_failed_node_name)
 
     def verify_hi_seq_num(self):
         p = self.params[socket.AF_INET]
@@ -636,13 +629,7 @@ class IpsecTra4(object):
             # For AES-GCM an error in the hash is reported as a decryption failure
             if p.crypt_algo in ("AES-GCM", "AES-NULL-GMAC"):
                 hash_err = "decryption_failed"
-        # In async mode, we don't report errors in the hash.
-        if p.async_mode:
-            hash_err = ""
-        else:
-            initial_sa_node_hash_diff = hash_failed_count - p.tra_sa_in.get_err(
-                hash_err
-            )
+        initial_sa_node_hash_diff = hash_failed_count - p.tra_sa_in.get_err(hash_err)
 
         #
         # send packets with seq numbers 1->34

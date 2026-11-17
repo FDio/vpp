@@ -43,75 +43,56 @@ vnet_dev_crypto_get_thread_queue (vnet_dev_crypto_engine_t *e, clib_thread_index
   return vec_len (qs) ? qs[0] : 0;
 }
 
-/* least loaded queue of the thread, all queues of an engine can do the same algorithms */
+/* queue of the thread which takes new requests */
+static_always_inline vnet_dev_crypto_queue_t *
+vnet_dev_crypto_get_enq_thread_queue (vnet_dev_crypto_engine_t *e, clib_thread_index_t ti)
+{
+  vnet_dev_crypto_queue_t *cq = vnet_dev_crypto_get_thread_queue (e, ti);
+
+  return cq && cq->stopping == 0 ? cq : 0;
+}
+
+/* least loaded queue of the thread which takes new requests, all queues of an engine can do the
+ * same algorithms */
 static_always_inline vnet_dev_crypto_queue_t *
 vnet_dev_crypto_get_least_loaded_queue (vnet_dev_crypto_engine_t *e, clib_thread_index_t ti)
 {
   vnet_dev_crypto_queue_t **qs = vnet_dev_crypto_get_thread_queues (e, ti);
-  vnet_dev_crypto_queue_t *best;
+  vnet_dev_crypto_queue_t *best = 0;
 
   if (PREDICT_TRUE (vec_len (qs) == 1))
-    return qs[0];
+    return qs[0]->stopping ? 0 : qs[0];
 
-  if (vec_len (qs) == 0)
-    return 0;
-
-  best = qs[0];
-  for (u32 i = 1; i < vec_len (qs); i++)
-    if (qs[i]->enq_req - qs[i]->deq_req < best->enq_req - best->deq_req)
+  for (u32 i = 0; i < vec_len (qs); i++)
+    if (qs[i]->stopping == 0 &&
+	(best == 0 || qs[i]->enq_req - qs[i]->deq_req < best->enq_req - best->deq_req))
       best = qs[i];
 
   return best;
 }
 
-/* sends the buffers of a completed frame to the next node and frees the frame, status is per
- * frame element, 0 if all elements completed */
+/* hands a completed frame over to the consumer, status is per frame element, 0 if all elements
+ * completed */
 static_always_inline void
 vnet_dev_crypto_frame_done (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame,
 			    vnet_crypto_op_status_t *status)
 {
-  vnet_crypto_deq_scalar_data_t *sd = vlib_frame_scalar_args (frame);
-  u32 *bi = vlib_frame_vector_args (frame), n = frame->n_vectors;
-  u16 nexts[VLIB_FRAME_SIZE];
+  if (PREDICT_FALSE (status != 0))
+    vnet_crypto_frame_set_statuses (vm, frame, status);
 
-  /* dequeue nodes are input nodes, they mark the next frames of traced buffers */
-  if (PREDICT_FALSE (vm->trace_main.trace_enable))
-    for (u32 i = 0; i < n; i++)
-      if (vlib_get_buffer (vm, bi[i])->flags & VLIB_BUFFER_IS_TRACED)
-	{
-	  vlib_trace_next_frame (vm, node, sd->next_node_index);
-	  vlib_trace_next_frame (vm, node, 0);
-	  break;
-	}
-
-  if (PREDICT_TRUE (status == 0))
-    {
-      vlib_buffer_enqueue_to_single_next (vm, node, bi, sd->next_node_index, n);
-      vlib_frame_free (vm, frame);
-      return;
-    }
-
-  for (u32 i = 0; i < n; i++)
-    {
-      vlib_buffer_t *b;
-
-      nexts[i] = sd->next_node_index;
-      if (PREDICT_TRUE (status[i] == VNET_CRYPTO_OP_STATUS_COMPLETED))
-	continue;
-
-      b = vlib_get_buffer (vm, bi[i]);
-      b->error = node->errors[status[i] == VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC ?
-				VNET_DEV_CRYPTO_ERROR_BAD_HMAC :
-				VNET_DEV_CRYPTO_ERROR_ENGINE_ERROR];
-      nexts[i] = 0;
-    }
-
-  vlib_buffer_enqueue_to_next (vm, node, bi, nexts, n);
-  vlib_frame_free (vm, frame);
+  vnet_crypto_frame_to_consumer (vm, node, frame, VNET_CRYPTO_OP_STATUS_COMPLETED);
 }
 
 static_always_inline vnet_dev_crypto_engine_t *
 vnet_dev_crypto_node_engine (vlib_node_runtime_t *node)
 {
   return vnet_dev_main.crypto_engines[*(u32 *) node->runtime_data];
+}
+
+/* hands a frame enqueued on a thread without a queue of the engine over to the consumer */
+static_always_inline u32
+vnet_dev_crypto_frame_no_queue (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
+{
+  vnet_dev_crypto_node_engine (node)->enq_no_queue[vm->thread_index] += frame->n_vectors;
+  return vnet_crypto_frame_to_consumer (vm, node, frame, VNET_CRYPTO_OP_STATUS_FAIL_NO_QUEUE);
 }

@@ -910,7 +910,7 @@ VLIB_NODE_FN (cryptodev_enq_node)
 {
   cryptodev_main_t *cmt = &cryptodev_main;
   cryptodev_engine_thread_t *cet = cmt->per_thread_data + vm->thread_index;
-  vnet_crypto_deq_scalar_data_t *sd = vlib_frame_scalar_args (frame);
+  vnet_crypto_frame_scalar_data_t *sd = vlib_frame_scalar_args (frame);
   vnet_crypto_alg_data_t *ad = crypto_main.algs + sd->alg;
   u8 aad_len = ad->alg_type == VNET_CRYPTO_ALG_T_AEAD ? ad->aad_len : 1;
   cryptodev_cache_ring_elt_t *ring_elt;
@@ -919,10 +919,8 @@ VLIB_NODE_FN (cryptodev_enq_node)
   ring_elt = cryptodev_cache_ring_push (&cet->cache_ring, frame, sd->op_type, aad_len);
   if (PREDICT_FALSE (ring_elt == 0))
     {
-      vlib_error_drop_buffers (vm, node, vlib_frame_vector_args (frame), 0, n_vectors, 0,
-			       node->node_index, CRYPTODEV_ERROR_QUEUE_FULL);
-      vlib_frame_free (vm, frame);
-      return n_vectors;
+      vlib_node_increment_counter (vm, node->node_index, CRYPTODEV_ERROR_QUEUE_FULL, n_vectors);
+      return vnet_crypto_frame_to_consumer (vm, node, frame, VNET_CRYPTO_OP_STATUS_FAIL_QUEUE_FULL);
     }
 
   ring_elt->is_traced = (node->flags & VLIB_NODE_FLAG_TRACE) != 0;
@@ -933,13 +931,12 @@ VLIB_NODE_FN (cryptodev_enq_node)
 VLIB_REGISTER_NODE (cryptodev_enq_node) = {
   .name = "dpdk-cryptodev-enq",
   .vector_size = sizeof (u32),
-  .scalar_size = sizeof (vnet_crypto_deq_scalar_data_t),
+  .scalar_size = sizeof (vnet_crypto_frame_scalar_data_t),
   .aux_size = sizeof (vnet_crypto_ctx_t *),
   .flags = VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH,
   .n_errors = CRYPTODEV_N_ERROR,
   .error_strings = cryptodev_error_strings,
-  .n_next_nodes = 1,
-  .next_nodes = { [0] = "error-drop" },
+  .sibling_of = "crypto-async",
 };
 
 static_always_inline u32
@@ -947,10 +944,9 @@ cryptodev_return_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
 			cryptodev_cache_ring_elt_t *ring_elt)
 {
   vlib_frame_t *f = ring_elt->f;
-  vnet_crypto_deq_scalar_data_t *sd = vlib_frame_scalar_args (f);
+  vnet_crypto_frame_scalar_data_t *sd = vlib_frame_scalar_args (f);
   u32 *bis = vlib_frame_vector_args (f), n = f->n_vectors;
   vlib_buffer_t *bufs[VLIB_FRAME_SIZE];
-  u16 nexts[VLIB_FRAME_SIZE];
   u8 errors[VLIB_FRAME_SIZE] = {};
   u64 any_err = 0;
 
@@ -959,24 +955,31 @@ cryptodev_return_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   vlib_get_buffers (vm, bis, bufs, n);
 
-  for (u32 i = 0; i < n; i++)
-    nexts[i] = sd->next_node_index;
-
   if (PREDICT_FALSE (any_err))
-    for (u32 i = 0; i < n; i++)
-      {
-	u64 bit = 1ULL << (i % 64);
+    {
+      for (u32 i = 0; i < n; i++)
+	{
+	  vnet_crypto_buffer_metadata_t *md = vnet_crypto_buffer_get_metadata (bufs[i]);
+	  u64 bit = 1ULL << (i % 64);
 
-	if (ring_elt->bad_hmac[i / 64] & bit)
-	  errors[i] = CRYPTODEV_ERROR_BAD_HMAC + 1;
-	else if (ring_elt->engine_err[i / 64] & bit)
-	  errors[i] = CRYPTODEV_ERROR_ENGINE_ERROR + 1;
-	else
-	  continue;
+	  md->status = VNET_CRYPTO_OP_STATUS_COMPLETED;
+	  if (ring_elt->bad_hmac[i / 64] & bit)
+	    {
+	      errors[i] = CRYPTODEV_ERROR_BAD_HMAC + 1;
+	      md->status = VNET_CRYPTO_OP_STATUS_FAIL_BAD_HMAC;
+	    }
+	  else if (ring_elt->engine_err[i / 64] & bit)
+	    {
+	      errors[i] = CRYPTODEV_ERROR_ENGINE_ERROR + 1;
+	      md->status = VNET_CRYPTO_OP_STATUS_FAIL_ENGINE_ERR;
+	    }
+	  else
+	    continue;
 
-	bufs[i]->error = node->errors[errors[i] - 1];
-	nexts[i] = 0;
-      }
+	  vlib_node_increment_counter (vm, node->node_index, errors[i] - 1, 1);
+	  vlib_frame_bitmap_set_bit_at_index (sd->failed_bitmap, i);
+	}
+    }
 
   if (PREDICT_FALSE (ring_elt->is_traced))
     for (u32 i = 0; i < n; i++)
@@ -988,9 +991,7 @@ cryptodev_return_frame (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  t->error = errors[i];
 	}
 
-  vlib_buffer_enqueue_to_next (vm, node, bis, nexts, n);
-  vlib_frame_free (vm, f);
-  return n;
+  return vnet_crypto_frame_to_consumer (vm, node, f, VNET_CRYPTO_OP_STATUS_COMPLETED);
 }
 
 VLIB_NODE_FN (cryptodev_deq_node)
@@ -1040,7 +1041,7 @@ VLIB_NODE_FN (cryptodev_deq_node)
 VLIB_REGISTER_NODE (cryptodev_deq_node) = {
   .name = "dpdk-cryptodev-deq",
   .type = VLIB_NODE_TYPE_INPUT,
-  .sibling_of = "crypto-deq",
+  .sibling_of = "crypto-async",
   .state = VLIB_NODE_STATE_INTERRUPT,
   .format_trace = format_cryptodev_deq_trace,
   .n_errors = CRYPTODEV_N_ERROR,
