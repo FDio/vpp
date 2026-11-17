@@ -1700,7 +1700,7 @@ class TestNAT64(VppTestCase):
         frags = self.pg1.get_capture(len(pkts))
         p = self.reass_frags_and_verify(frags, self.nat_addr, self.pg1.remote_ip4)
         self.assertEqual(p[TCP].dport, 20)
-        self.assertNotEqual(p[TCP].sport, self.tcp_port_in)
+        self.assert_tcp_bib(self.pg0.remote_ip6, self.tcp_port_in, p[TCP].sport)
         self.tcp_port_out = p[TCP].sport
         self.assertEqual(data, p[Raw].load)
 
@@ -1765,9 +1765,17 @@ class TestNAT64(VppTestCase):
         frags = self.pg0.get_capture(len(pkts))
         self.logger.debug(ppc("Captured:", frags))
         p = self.reass_frags_and_verify_ip6(frags, nat_addr_ip6, server.ip6)
-        self.assertNotEqual(p[TCP].sport, client_in_port)
+        self.assert_tcp_bib(self.pg0.remote_ip6, client_in_port, p[TCP].sport)
         self.assertEqual(p[TCP].dport, server_in_port)
         self.assertEqual(data, p[Raw].load)
+
+    def assert_tcp_bib(self, inside_addr, inside_port, outside_port):
+        """Check the mapping; a dynamically allocated port may be preserved."""
+        mappings = [
+            (str(bib.i_addr), bib.i_port, str(bib.o_addr), bib.o_port)
+            for bib in self.vapi.nat64_bib_dump(proto=IP_PROTOS.tcp)
+        ]
+        self.assertIn((inside_addr, inside_port, self.nat_addr, outside_port), mappings)
 
     def test_frag_out_of_order(self):
         """NAT64 translate fragments arriving out of order"""
@@ -1799,7 +1807,7 @@ class TestNAT64(VppTestCase):
         frags = self.pg1.get_capture(len(pkts))
         p = self.reass_frags_and_verify(frags, self.nat_addr, self.pg1.remote_ip4)
         self.assertEqual(p[TCP].dport, 20)
-        self.assertNotEqual(p[TCP].sport, self.tcp_port_in)
+        self.assert_tcp_bib(self.pg0.remote_ip6, self.tcp_port_in, p[TCP].sport)
         self.tcp_port_out = p[TCP].sport
         self.assertEqual(data, p[Raw].load)
 
