@@ -9,6 +9,8 @@
 #include <vnet/ip/ip.h>
 #include <vnet/pg/pg.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/ethernet/cli_types.h>
+#include <vnet/interface/cli_types.h>
 // #include <vnet/ethernet/arp.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2/l2_bd.h>
@@ -879,36 +881,24 @@ vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address,
 }
 
 static clib_error_t *
-create_simulated_ethernet_interfaces (vlib_main_t * vm,
-				      unformat_input_t * input,
-				      vlib_cli_command_t * cmd)
+create_simulated_ethernet_interfaces (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   int rv;
   u32 sw_if_index;
-  u8 mac_address[6];
-  u8 is_specified = 0;
-  u32 user_instance = 0;
+  u8 mac_address[6] = {};
+  cli_value_t *mac = cli_get (ctx, "mac");
+  cli_value_t *instance = cli_get (ctx, "instance");
 
-  clib_memset (mac_address, 0, sizeof (mac_address));
+  if (mac)
+    clib_memcpy (mac_address, mac->prefix.addr, sizeof (mac_address));
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "mac %U", unformat_ethernet_address, mac_address))
-	;
-      if (unformat (input, "instance %d", &user_instance))
-	is_specified = 1;
-      else
-	break;
-    }
-
-  rv = vnet_create_loopback_interface (&sw_if_index, mac_address,
-				       is_specified, user_instance);
+  rv = vnet_create_loopback_interface (&sw_if_index, mac_address, instance != 0,
+				       cli_u64 (ctx, "instance", 0));
 
   if (rv)
     return clib_error_return (0, "vnet_create_loopback_interface failed");
 
-  vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main (),
-		   sw_if_index);
+  vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main (), sw_if_index);
   return 0;
 }
 
@@ -925,8 +915,12 @@ create_simulated_ethernet_interfaces (vlib_main_t * vm,
 ?*/
 VLIB_CLI_COMMAND (create_simulated_ethernet_interface_command, static) = {
   .path = "loopback create-interface",
-  .short_help = "loopback create-interface [mac <mac-addr>] [instance <instance>]",
-  .function = create_simulated_ethernet_interfaces,
+  .short_help = "Create a loopback interface",
+  .args = CLI_ARGS (CLI_OPT_KEYWORD ("mac", cli_type_mac_address,
+				     .help = "MAC address, default de:ad:00:00:00:<instance>"),
+		    CLI_OPT_KEYWORD ("instance", cli_type_u32,
+				     .help = "instance number, default is the first free one")),
+  .handler = create_simulated_ethernet_interfaces,
 };
 
 /*?
@@ -942,8 +936,12 @@ VLIB_CLI_COMMAND (create_simulated_ethernet_interface_command, static) = {
 ?*/
 VLIB_CLI_COMMAND (create_loopback_interface_command, static) = {
   .path = "create loopback interface",
-  .short_help = "create loopback interface [mac <mac-addr>] [instance <instance>]",
-  .function = create_simulated_ethernet_interfaces,
+  .short_help = "Create a loopback interface",
+  .args = CLI_ARGS (CLI_OPT_KEYWORD ("mac", cli_type_mac_address,
+				     .help = "MAC address, default de:ad:00:00:00:<instance>"),
+		    CLI_OPT_KEYWORD ("instance", cli_type_u32,
+				     .help = "instance number, default is the first free one")),
+  .handler = create_simulated_ethernet_interfaces,
 };
 
 ethernet_interface_t *
@@ -1089,27 +1087,9 @@ vnet_delete_sub_interface (u32 sw_if_index)
 }
 
 static clib_error_t *
-delete_simulated_ethernet_interfaces (vlib_main_t * vm,
-				      unformat_input_t * input,
-				      vlib_cli_command_t * cmd)
+delete_simulated_ethernet_interfaces (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  int rv;
-  u32 sw_if_index = ~0;
-  vnet_main_t *vnm = vnet_get_main ();
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "intfc %U",
-		    unformat_vnet_sw_interface, vnm, &sw_if_index))
-	;
-      else
-	break;
-    }
-
-  if (sw_if_index == ~0)
-    return clib_error_return (0, "interface not specified");
-
-  rv = vnet_delete_loopback_interface (sw_if_index);
+  int rv = vnet_delete_loopback_interface (cli_index (ctx, "intfc"));
 
   if (rv)
     return clib_error_return (0, "vnet_delete_loopback_interface failed");
@@ -1118,28 +1098,11 @@ delete_simulated_ethernet_interfaces (vlib_main_t * vm,
 }
 
 static clib_error_t *
-delete_sub_interface (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+delete_sub_interface (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  int rv = 0;
-  u32 sw_if_index = ~0;
-  vnet_main_t *vnm = vnet_get_main ();
+  u32 sw_if_index = cli_index (ctx, "interface");
+  int rv = vnet_delete_sub_interface (sw_if_index);
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat
-	  (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
-	;
-      else
-	break;
-    }
-  if (sw_if_index == ~0)
-    return clib_error_return (0, "interface doesn't exist");
-
-  if (pool_is_free_index (vnm->interface_main.sw_interfaces, sw_if_index))
-    rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
-  else
-    rv = vnet_delete_sub_interface (sw_if_index);
   if (rv)
     return clib_error_return (0, "delete_subinterface_interface failed");
   return 0;
@@ -1157,8 +1120,10 @@ delete_sub_interface (vlib_main_t * vm,
 ?*/
 VLIB_CLI_COMMAND (delete_simulated_ethernet_interface_command, static) = {
   .path = "loopback delete-interface",
-  .short_help = "loopback delete-interface intfc <interface>",
-  .function = delete_simulated_ethernet_interfaces,
+  .short_help = "Delete a loopback interface",
+  .args = CLI_ARGS (CLI_KEYWORD ("intfc", cli_type_sw_interface, .alias = "interface",
+				 .help = "loopback interface to delete")),
+  .handler = delete_simulated_ethernet_interfaces,
 };
 
 /*?
@@ -1173,8 +1138,10 @@ VLIB_CLI_COMMAND (delete_simulated_ethernet_interface_command, static) = {
 ?*/
 VLIB_CLI_COMMAND (delete_loopback_interface_command, static) = {
   .path = "delete loopback interface",
-  .short_help = "delete loopback interface intfc <interface>",
-  .function = delete_simulated_ethernet_interfaces,
+  .short_help = "Delete a loopback interface",
+  .args = CLI_ARGS (CLI_KEYWORD ("intfc", cli_type_sw_interface, .alias = "interface",
+				 .help = "loopback interface to delete")),
+  .handler = delete_simulated_ethernet_interfaces,
 };
 
 /*?
@@ -1186,8 +1153,9 @@ VLIB_CLI_COMMAND (delete_loopback_interface_command, static) = {
 ?*/
 VLIB_CLI_COMMAND (delete_sub_interface_command, static) = {
   .path = "delete sub-interface",
-  .short_help = "delete sub-interface <interface>",
-  .function = delete_sub_interface,
+  .short_help = "Delete a sub-interface",
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_sw_interface)),
+  .handler = delete_sub_interface,
 };
 
 /* ethernet { ... } configuration. */
