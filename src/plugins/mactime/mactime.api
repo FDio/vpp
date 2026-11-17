@@ -83,7 +83,7 @@ autoreply define mactime_add_del_range
   bool drop;                      /**< drop flag */
   bool allow;                     /**< allow flag */
   u8 allow_quota;               /**< allow subject to quota */
-  bool no_udp_10001;              /**< drop udp to port 10001 */
+  bool no_udp_10001;              /**< deprecated, ignored */
   u64 data_quota;		/**< max bytes this device */
   vl_api_mac_address_t mac_address;            /**< src mac address */
   string device_name[64];           /**< device name */

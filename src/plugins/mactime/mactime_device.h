@@ -29,6 +29,5 @@ typedef struct
 #define MACTIME_DEVICE_FLAG_DYNAMIC_DROP	(1<<2)
 #define MACTIME_DEVICE_FLAG_DYNAMIC_ALLOW	(1<<3)
 #define MACTIME_DEVICE_FLAG_DYNAMIC_ALLOW_QUOTA	(1<<4)
-#define MACTIME_DEVICE_FLAG_DROP_UDP_10001      (1<<5)
 
 #endif /* included_mactime_device_h */
