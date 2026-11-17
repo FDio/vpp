@@ -11,9 +11,9 @@ Runs the current `make test` based verification flow from a built VPP workspace.
 | `LOG_DIR` | No | `/scratch/docker-build/vpp/logs/maketest` | Directory used for `maketest.log` |
 | `TEST_JOBS` | No | `4` | Passed to make test runs |
 | `TEST_RETRIES` | No | `3` | Used for the retry-enabled test flows |
-| `MAKE_TEST_OS` | No | `ubuntu-24.04` | Standard make test runs only when the current OS string matches |
+| `MAKE_TEST_OS` | No | `ubuntu-26.04` | Standard make test runs only when the current OS string matches |
 | `MAKE_TEST_MULTIWORKER_OS` | No | `debian-12` | Multiworker test runs only when the current OS string matches |
-| `VPPAPIGEN_TEST_OS` | No | `ubuntu-24.04` | `test_vppapigen.py` runs only when the current OS string matches |
+| `VPPAPIGEN_TEST_OS` | No | `ubuntu-26.04` | `test_vppapigen.py` runs only when the current OS string matches |
 | `VPP_WORKER_COUNT` | No | `0` | Passed to the multiworker make invocation |
 | `MAKE_TEST_SUITES` | No | empty string | Space-separated suites; switches to suite-by-suite mode |
 | `VPP_TEARDOWN_TIMEOUT` | No | `30` | Accepted input; not used by the current script |
@@ -53,7 +53,7 @@ make UNATTENDED=yes CCACHE_DISABLE=1 TESTS_GCOV=1 TEST_JOBS="$TEST_JOBS" TEST=$s
     LOG_DIR: ${{ github.workspace }}/logs/maketest
     TEST_JOBS: '4'
     TEST_RETRIES: '3'
-    MAKE_TEST_OS: ubuntu-24.04
+    MAKE_TEST_OS: ubuntu-26.04
     MAKE_TEST_MULTIWORKER_OS: debian-12
-    VPPAPIGEN_TEST_OS: ubuntu-24.04
+    VPPAPIGEN_TEST_OS: ubuntu-26.04
 ```

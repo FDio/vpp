@@ -138,7 +138,7 @@ jobs:
       matrix:
         build_type: ['release']
         class: ['builder']
-        os: ['ubuntu2404']
+        os: ['ubuntu2604']
         executor_arch: ['x86_64']
 
     env:

@@ -127,7 +127,7 @@ jobs:
       fail-fast: false
       matrix:
         class: ['builder']
-        os: ['ubuntu2404']
+        os: ['ubuntu2604']
         executor_arch: ['x86_64']
 
     env:

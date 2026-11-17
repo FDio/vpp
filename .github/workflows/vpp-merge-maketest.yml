@@ -135,7 +135,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ['ubuntu2404', 'ubuntu2204', 'debian12']
+        os: ['ubuntu2604', 'ubuntu2404', 'debian12']
         executor_arch: ['x86_64', 'aarch64']
         build_type: ['release']
         exclude:
@@ -163,9 +163,9 @@ jobs:
       MAKE_PARALLEL_JOBS: 16
       TEST_JOBS: 4
       TEST_RETRIES: 3
-      MAKE_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || 'ubuntu-24.04'  }}
+      MAKE_TEST_OS: ${{ matrix.os == 'ubuntu2404' && 'ubuntu-24.04' || 'ubuntu-26.04'  }}
       MAKE_TEST_MULTIWORKER_OS: 'debian-12'
-      VPPAPIGEN_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || 'ubuntu-24.04' }}
+      VPPAPIGEN_TEST_OS: ${{ matrix.os == 'ubuntu2404' && 'ubuntu-24.04' || 'ubuntu-26.04' }}
       SHM_SIZE: ${{ matrix.executor_arch == 'aarch64' && '4096M' || '2048M' }}
       TUI_LINE: "*******************************************************************"
       VPP_TEARDOWN_TIMEOUT: 30
