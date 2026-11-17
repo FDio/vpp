@@ -2360,9 +2360,9 @@ tcp_send_acks (tcp_connection_t * tc, u32 max_burst_size)
       if (n_post)
 	return n_post;
 
-      /* Data, if any, carries the ack, unless the peer's window is too small to send into */
+      /* Data, if any, carries the ack, unless it cannot be sent now */
       if (tcp_in_cong_recovery (tc) || !tcp_unsent_bytes (tc) ||
-	  tc->state != TCP_STATE_ESTABLISHED || (tc->snd_wnd < tc->snd_mss && !tcp_snd_space (tc)))
+	  tc->state != TCP_STATE_ESTABLISHED || !tcp_snd_space (tc))
 	{
 	  tcp_send_ack (tc);
 	  return 1;
