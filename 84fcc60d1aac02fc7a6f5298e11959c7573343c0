@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "75d28a4a_1b1a139b",
+        "filename": "src/plugins/ikev2/ikev2_crypto.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1080,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-17T17:30:07Z",
+      "side": 1,
+      "message": "This comparison rejects valid SHA-256/384/512 RSA signatures when the AlgorithmIdentifier omits NULL parameters, preventing those peers from establishing an SA. The focused ASAN tests reproduced AUTHENTICATION_FAILED for all three hashes with independently verified signatures. Could we accept the absent-parameters variants as well, as [RFC 4055 §5](https://www.rfc-editor.org/rfc/rfc4055.html#section-5) requires?",
+      "tag": "prview:900e8fb696ea7df1d64169a34fbab51b:84fcc60d1aac02fc7a6f5298e11959c7573343c0",
+      "revId": "84fcc60d1aac02fc7a6f5298e11959c7573343c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "60b7f760_dd94d539",
+        "filename": "src/plugins/ikev2/ikev2_crypto.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1115,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-17T17:30:07Z",
+      "side": 1,
+      "message": "Entry 0 emits the 72-byte PSS identifier with an explicit default trailerField, whereas [RFC 4055 §3.1](https://www.rfc-editor.org/rfc/rfc4055.html#section-3.1) requires generation to omit that field. The wire-output test confirms this encoding; rejection by another implementation has not been reproduced. Could we select the existing 67-byte entry for signing and update the outbound expectations?",
+      "tag": "prview:900e8fb696ea7df1d64169a34fbab51b:84fcc60d1aac02fc7a6f5298e11959c7573343c0",
+      "revId": "84fcc60d1aac02fc7a6f5298e11959c7573343c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
