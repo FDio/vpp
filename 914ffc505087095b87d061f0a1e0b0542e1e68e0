@@ -17,6 +17,24 @@
       "parentUuid": "b27a0cd0_a6a49ff4",
       "revId": "914ffc505087095b87d061f0a1e0b0542e1e68e0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "66a87f7a_0688162c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-17T19:57:13Z",
+      "side": 1,
+      "message": "The production seeding follow-up is now 47872, stacked on PS2. A fresh build of that stack passes all nine affected NAT64 tests on two independent VPP starts with the same Python seed, no retries (18 executions). This also validates the expanded BIB checks with the updated source, beyond the older-binary validation above. All unequal-port checks are addressed here; seeding review continues in 47872.",
+      "parentUuid": "d9310e5e_9a895ea2",
+      "revId": "914ffc505087095b87d061f0a1e0b0542e1e68e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
