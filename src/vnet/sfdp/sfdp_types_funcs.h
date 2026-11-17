@@ -68,6 +68,20 @@ sfdp_api_sp_node (vl_api_sfdp_sp_node_t sp_node)
     }
 }
 
+static_always_inline u8
+sfdp_api_sp_node_v2 (vl_api_sfdp_sp_node_v2_t sp_node)
+{
+  switch (sp_node)
+    {
+#define _(name, val, str)                                                                          \
+  case SFDP_API_SP_NODE_V2_##name:                                                                 \
+    return SFDP_SP_NODE_##name;
+      foreach_sfdp_sp_node
+#undef _
+	default : return 0;
+    }
+}
+
 static_always_inline void
 sfdp_session_ip46_key_encode (sfdp_session_ip46_key_t *skey, ip46_type_t type,
 			      vl_api_sfdp_session_key_t *out)
