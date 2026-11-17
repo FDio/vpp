@@ -30,7 +30,8 @@
 #define HSI_POSTPONED_CLEANUP_TIME		  0.1
 #define HSI_MQ_DEFAULT_LENGTH			  4096
 
-/* Timer wheel tick, idle flows are detected at most this late */
+/* Timer wheel tick. Timers fire at most this late, or twice this if armed for
+ * less than a tick, so idle flows are detected that late */
 #define HSI_WHEEL_TICK 1.0
 /* Longest a wheel timer can be armed for, one wheel turn */
 #define HSI_WHEEL_MAX_TICKS	 2047
