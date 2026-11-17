@@ -465,6 +465,12 @@ I:	ige
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/drivers/net/ige/
 
+IBVERBS Device driver
+I:	ibverbs
+M:	Damjan Marion <dmarion@0xa5.net>
+F:	src/drivers/net/ibverbs/
+F:	src/drivers/common/rdma/
+
 Marvell Armada device driver
 I:	armada
 M:	Damjan Marion <damarion@cisco.com>
