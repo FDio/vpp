@@ -201,7 +201,7 @@ jobs:
           set -euxo pipefail
           cd "$WORKSPACE"
           vpp_release="$(${WORKSPACE}/build-root/scripts/version rpm-version)"
-          echo "S3_DOCS_PATH=vpp/$vpp_release" >> "$GITHUB_ENV"
+          echo "S3_DOCS_PATH=vpp/${vpp_release:0:5}" >> "$GITHUB_ENV"
           make docs | tee "$LOG_DIR/make_docs.log"
 
       - name: AWS S3 Publish Docs
