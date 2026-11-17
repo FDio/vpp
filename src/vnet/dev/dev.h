@@ -933,8 +933,8 @@ vnet_dev_rv_t vnet_dev_process_call_port_op_no_rv (vlib_main_t *vm,
 vnet_dev_rv_t
 vnet_dev_process_call_port_op_with_ptr (vlib_main_t *, vnet_dev_port_t *,
 					vnet_dev_port_op_with_ptr_t *, void *);
-void vnet_dev_process_call_port_op_no_wait (vlib_main_t *, vnet_dev_port_t *,
-					    vnet_dev_port_op_no_rv_t *);
+__clib_export void vnet_dev_process_call_port_op_no_wait (vlib_main_t *, vnet_dev_port_t *,
+							  vnet_dev_port_op_no_rv_t *);
 vnet_dev_rv_t
 vnet_dev_process_port_cfg_change_req (vlib_main_t *, vnet_dev_port_t *,
 				      vnet_dev_port_cfg_change_req_t *);
