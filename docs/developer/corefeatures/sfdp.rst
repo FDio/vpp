@@ -175,7 +175,7 @@ Slow-path nodes are tenant-configurable:
   set sfdp icmp-error-node tenant <tenant-id> ip4 node <node-name>
   set sfdp icmp-error-node tenant <tenant-id> ip6 node <node-name>
 
-The equivalent API messages are `sfdp_set_sp_node` and
+The equivalent API messages are `sfdp_set_sp_node_v2` and
 `sfdp_set_icmp_error_node`.
 
 Provided slow-path nodes
@@ -192,6 +192,22 @@ SFDP ships with a small set of built-in slow-path nodes. The most common are:
 
 Other slow-path nodes include table-overflow and unknown-protocol handlers,
 which default to error-drop unless configured otherwise.
+
+Pre-filters
+___________
+
+A tenant can have one pre-filter: a function that decides whether a packet
+matching no session may create one. It is registered at init time with
+`SFDP_PRE_FILTER_DEFINE (x, "name", fn)`, where `fn` has the type
+`sfdp_pre_filter_fn_t` and returns non-zero to accept. Names must be unique.
+A refused packet creates no session and goes to the tenant's
+`sp-ip4-pre-filtered` / `sp-ip6-pre-filtered` slow-path node (error-drop by
+default). A pre-filter is set per tenant with
+`set sfdp pre-filter tenant <tenant-id> <name> | none` or the
+`sfdp_set_pre_filter` API.
+
+Only the default IPv4/IPv6 lookup nodes call the pre-filter. A custom parser
+has to call `sfdp_pre_filter_accept` itself before creating a session.
 
 Normalized lookup and pseudo-direction
 ______________________________________

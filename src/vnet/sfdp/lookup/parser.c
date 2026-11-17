@@ -71,7 +71,8 @@ sfdp_parser_init (vlib_main_t *vm)
   sfdp_parser_main_t *pm = &sfdp_parser_main;
   sfdp_parser_registration_mutable_t *current_reg = pm->regs;
   clib_error_t *err;
-  vlib_call_init_function (vm, sfdp_init);
+  if ((err = vlib_call_init_function (vm, sfdp_init)))
+    clib_panic ("%U", format_clib_error, err);
   uword pi;
 
   pm->parser_index_per_name = hash_create_string (0, sizeof (uword));

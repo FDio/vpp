@@ -429,6 +429,13 @@ sfdp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    u16 tenant_idx = sfdp_buffer (b[0])->tenant_index;
 	    int rv;
 	    tenant = sfdp_tenant_at_index (sfdp, tenant_idx);
+	    if (PREDICT_FALSE (!sfdp_pre_filter_accept (vm, sfdp, b[0], tenant_idx, is_ipv6)))
+	      {
+		vlib_node_increment_counter (vm, node->node_index, SFDP_LOOKUP_ERROR_PRE_FILTERED,
+					     1);
+		lv[0] = (u64) SFDP_SP_NODE_IP6_PRE_FILTERED << 32 | SFDP_LV_TO_SP;
+		goto next_pkt6;
+	      }
 	    rv = sfdp_create_session_v6 (sfdp, ptd, tenant, tenant_idx,
 					 thread_index, time_now, k6, h, lv,
 					 scope_index);
@@ -489,6 +496,13 @@ sfdp_lookup_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    u16 tenant_idx = sfdp_buffer (b[0])->tenant_index;
 	    int rv;
 	    tenant = sfdp_tenant_at_index (sfdp, tenant_idx);
+	    if (PREDICT_FALSE (!sfdp_pre_filter_accept (vm, sfdp, b[0], tenant_idx, is_ipv6)))
+	      {
+		vlib_node_increment_counter (vm, node->node_index, SFDP_LOOKUP_ERROR_PRE_FILTERED,
+					     1);
+		lv[0] = (u64) SFDP_SP_NODE_IP4_PRE_FILTERED << 32 | SFDP_LV_TO_SP;
+		goto next_pkt4;
+	      }
 	    rv = sfdp_create_session_v4 (sfdp, ptd, tenant, tenant_idx,
 					 thread_index, time_now, k4, h, lv,
 					 scope_index);
