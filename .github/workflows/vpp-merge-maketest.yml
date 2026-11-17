@@ -135,13 +135,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ['ubuntu2404', 'ubuntu2204', 'debian12']
-        executor_arch: ['x86_64', 'aarch64']
-        build_type: ['release']
-        exclude:
-          # Exclude debian12 on aarch64 for all builds
-          - os: 'debian12'
+        include:
+          - os: 'ubuntu2604'
             executor_arch: 'aarch64'
+            build_type: 'release'
+            run_tests: true
+          - os: 'ubuntu2604'
+            executor_arch: 'x86_64'
+            build_type: 'release'
+            run_tests: true
+          - os: 'debian12'
+            executor_arch: 'x86_64'
+            build_type: 'release'
+            run_tests: true
+          - os: 'ubuntu2404'
+            executor_arch: 'x86_64'
+            build_type: 'release'
+            run_tests: false
 
     env:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
@@ -163,9 +173,9 @@ jobs:
       MAKE_PARALLEL_JOBS: 16
       TEST_JOBS: 4
       TEST_RETRIES: 3
-      MAKE_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || 'ubuntu-24.04'  }}
+      MAKE_TEST_OS: ${{ matrix.os == 'ubuntu2404' && 'ubuntu-24.04' || 'ubuntu-26.04'  }}
       MAKE_TEST_MULTIWORKER_OS: 'debian-12'
-      VPPAPIGEN_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || 'ubuntu-24.04' }}
+      VPPAPIGEN_TEST_OS: ${{ matrix.os == 'ubuntu2404' && 'ubuntu-24.04' || 'ubuntu-26.04' }}
       SHM_SIZE: ${{ matrix.executor_arch == 'aarch64' && '4096M' || '2048M' }}
       TUI_LINE: "*******************************************************************"
       VPP_TEARDOWN_TIMEOUT: 30
@@ -268,12 +278,13 @@ jobs:
           echo '{"url":"https://packagecloud.io","token":"$token"}' > /root/.packagecloud
 
       - name: Remove vpp-opt-deps Before Make Test
-        if: always()
+        if: ${{ always() && matrix.run_tests }}
         run: |
           set -euxo pipefail
           apt-get remove -y vpp-opt-deps || true
 
       - name: Setup Docker VPP Runtime Environment for 'make test'
+        if: ${{ matrix.run_tests }}
         # yamllint disable-line rule:line-length
         uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@777792ecef2d5c93ce15fa5b7fdca999f5412c9d
         with:
@@ -283,6 +294,7 @@ jobs:
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: VPP Make Test
+        if: ${{ matrix.run_tests }}
         # yamllint disable-line rule:line-length
         uses: fdio/vpp/.github/actions/vpp-make-test@03f35503fee57df2348617498db28fde557a3880
         timeout-minutes: 120
@@ -316,19 +328,21 @@ jobs:
           set -euxo pipefail
           archives_dir="$WORKSPACE/archives"
           unittest_failed_dir="/tmp/vpp-failed-unittests"
-          for failed_test in $(ls "$unittest_failed_dir")
-          do
-            unittest_failed_test="$unittest_failed_dir"/"$failed_test"
-            if [ -f "$unittest_failed_test" ] ; then
-              cp -a "$unittest_failed_test" "$archives_dir"
-            else
-              failed_test_dir="$archives_dir"/"$failed_test"
-              if [ ! -e "$failed_test_dir" ] ; then
-                mkdir -p "$failed_test_dir"
-                cp -a "$unittest_failed_test"/* "$failed_test_dir"
+          if [ -d "$unittest_failed_dir" ]; then
+            for failed_test in $(ls "$unittest_failed_dir")
+            do
+              unittest_failed_test="$unittest_failed_dir"/"$failed_test"
+              if [ -f "$unittest_failed_test" ] ; then
+                cp -a "$unittest_failed_test" "$archives_dir"
+              else
+                failed_test_dir="$archives_dir"/"$failed_test"
+                if [ ! -e "$failed_test_dir" ] ; then
+                  mkdir -p "$failed_test_dir"
+                  cp -a "$unittest_failed_test"/* "$failed_test_dir"
+                fi
               fi
-            fi
-          done
+            done
+          fi
           if [[ -d "$archives_dir" ]] && find "$archives_dir" -type f -print -quit | grep -q . ; then
             echo "has_archives=true" >> "$GITHUB_OUTPUT"
           else

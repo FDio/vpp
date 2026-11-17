@@ -125,7 +125,7 @@ jobs:
       matrix:
         build_type: ['debug', 'release']
         class: ['hst']
-        os: ['ubuntu2404']
+        os: ['ubuntu2604']
         executor_arch: ['x86_64']
         size: ['hst']
 

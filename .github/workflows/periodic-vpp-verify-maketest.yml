@@ -45,12 +45,20 @@ jobs:
       matrix:
         build_type: ['debug', 'release']
         executor_arch: ['x86_64', 'aarch64']
-        os: ['ubuntu2604']
+        os: ['ubuntu2204']
         class: ['builder']
         include:
           - build_type: 'release'
+            executor_arch: 'x86_64'
+            os: 'ubuntu2404'
+            class: 'builder'
+          - build_type: 'release'
             executor_arch: 'aarch64'
-            os: 'ubuntu2204'
+            os: 'ubuntu2404'
+            class: 'builder'
+          - build_type: 'debug'
+            executor_arch: 'aarch64'
+            os: 'ubuntu2604'
             class: 'builder'
 
     env:
@@ -64,8 +72,12 @@ jobs:
       WORKSPACE: /scratch/docker-build/vpp
       CCACHE_DIR: /scratch/ccache/${{ matrix.os }}-${{ matrix.executor_arch }}
       MAKE_PARALLEL_JOBS: 16
-      MAKE_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || 'ubuntu-26.04' }}
-      VPPAPIGEN_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || 'ubuntu-26.04' }}
+      MAKE_TEST_OS: >-
+        ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' ||
+            matrix.os == 'ubuntu2404' && 'ubuntu-24.04' || 'ubuntu-26.04' }}
+      VPPAPIGEN_TEST_OS: >-
+        ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' ||
+            matrix.os == 'ubuntu2404' && 'ubuntu-24.04' || 'ubuntu-26.04' }}
       TEST_JOBS: 4
       SHM_SIZE: ${{ matrix.executor_arch == 'aarch64' && '4096M' || '2048M' }}
       TUI_LINE: "*******************************************************************"
