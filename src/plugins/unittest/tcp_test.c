@@ -8781,6 +8781,114 @@ cleanup:
   return rv;
 }
 
+/* Data that cwnd holds does not carry acks. The client's data is lost, so its cwnd stays used
+ * while more data waits, and server data must still be acked right away */
+static int
+tcp_test_tamper_ack_cwnd (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "ack_cwnd",
+    .client_addr = 0x2e2e2e01,
+    .server_addr = 0x2f2f2f01,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2281,
+    .client_port = 0, /* ephemeral */
+    .secret = 2280,
+    .rx_fifo_size = 64 << 10,
+    .tx_fifo_size = 64 << 10,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_connection_t *client_tc, *server_tc;
+  tcp_tamper_rule_t *seg_rule;
+  session_t *client_s, *server_s;
+  u32 total, srv_nxt, tries, max_iters, drained = 0;
+  u8 *data = 0;
+  int error, rv = 0, i;
+
+  tcp_tamper_reset ();
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "ack_cwnd: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  client_tc = ctx->client_tc;
+  client_s = ctx->client_s;
+  server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
+  if (!TCP_TEST_I ((server_s != 0), "ack_cwnd: server session resolvable"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  server_tc = tcp_connection_get (server_s->connection_index, server_s->thread_index);
+
+  /* Keep the pacer from splitting the client's burst */
+  client_tc->connection.flags &= ~TRANSPORT_CONNECTION_F_IS_TX_PACED;
+  total = client_tc->cwnd + 4 * client_tc->snd_mss;
+  vec_validate (data, total - 1);
+  for (i = 0; i < (int) total; i++)
+    data[i] = i & 0xff;
+
+  /* Lose the client's data, not its acks */
+  seg_rule = tcp_tamper_drop_from_seq (client_tc, client_tc->snd_una, ~0);
+  seg_rule->data_only = 1;
+  tcp_tamper_enable (client_tc);
+
+  error = svm_fifo_enqueue (client_s->tx_fifo, total, data);
+  if (!TCP_TEST_I ((error == (int) total), "ack_cwnd: client queued %u bytes", total))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+  session_program_tx_io_evt (client_s->handle, SESSION_IO_EVT_TX);
+  for (tries = 0; tries < 100 && tcp_snd_space (client_tc); tries++)
+    tcp_e2e_pump (vm, 1e-3);
+  if (!TCP_TEST_I ((!tcp_snd_space (client_tc) && tcp_unsent_bytes (client_tc) &&
+		    client_tc->snd_wnd >= client_tc->snd_mss && seg_rule->n_dropped &&
+		    !client_tc->rto_boff),
+		   "ack_cwnd: cwnd used (%u in flight, %u dropped), %u bytes wait, window %u",
+		   client_tc->snd_nxt - client_tc->snd_una, seg_rule->n_dropped,
+		   tcp_unsent_bytes (client_tc), client_tc->snd_wnd))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Server data is acked well before the client's rto */
+  srv_nxt = server_tc->snd_nxt;
+  svm_fifo_enqueue (server_s->tx_fifo, 10, data);
+  session_program_tx_io_evt (server_s->handle, SESSION_IO_EVT_TX);
+  for (tries = 0; tries < 10 && server_tc->snd_una != srv_nxt + 10; tries++)
+    tcp_e2e_pump (vm, 1e-3);
+  if (!TCP_TEST_I (
+	(server_tc->snd_una == srv_nxt + 10 && !client_tc->rto_boff && !tcp_snd_space (client_tc)),
+	"ack_cwnd: server data acked while cwnd holds client data (acked %u of 10)",
+	server_tc->snd_una - srv_nxt))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  /* Stop losing client data, it is all delivered after the rto */
+  tcp_tamper_reset ();
+  max_iters = tcp_e2e_rxt_wait_iters (client_tc, 10e-3);
+  for (tries = 0; tries < max_iters && drained < total; tries++)
+    {
+      drained += session_test_drain_rx_fifo (server_s);
+      tcp_e2e_pump (vm, 10e-3);
+    }
+  if (!TCP_TEST_I ((drained == total), "ack_cwnd: all %u bytes delivered (got %u)", total, drained))
+    rv = 1;
+
+cleanup:
+  tcp_tamper_reset ();
+  vec_free (data);
+  if (!tcp_e2e_teardown (vm, ctx))
+    rv = 1;
+  return rv;
+}
+
 /* With window scaling, the receiver may advertise a window that ends before a right edge it already
  * advertised. Fill the server's rx fifo so that, after the client's next segment, the free space
  * rounds down below an mss, and drop the client's segment after that. The client's acks for server
@@ -9291,6 +9399,7 @@ tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
     { "dsack-partial", tcp_test_tamper_dsack_partial },
     { "dupack-cwnd", tcp_test_tamper_dupack_cwnd },
     { "nosack-cwnd", tcp_test_tamper_nosack_cwnd },
+    { "ack-cwnd", tcp_test_tamper_ack_cwnd },
     { "rcv-wnd-retract", tcp_test_tamper_rcv_wnd_retract },
     { "snd-small-wnd", tcp_test_tamper_snd_small_wnd },
     { "rcv-wnd-update", tcp_test_tamper_rcv_wnd_update },
