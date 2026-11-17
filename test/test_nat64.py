@@ -217,6 +217,7 @@ class TestNAT64(VppTestCase):
         dst_ip=None,
         is_ip6=False,
         ignore_port=False,
+        inside_ip=None,
     ):
         """
         Verify captured packets on outside network
@@ -226,6 +227,7 @@ class TestNAT64(VppTestCase):
         :param same_port: Source port number is not translated (Default False)
         :param dst_ip: Destination IP address (Default do not verify)
         :param is_ip6: If L3 protocol is IPv6 (Default False)
+        :param inside_ip: Original source address (Default pg0 remote IPv6)
         """
         if is_ip6:
             IP46 = IPv6
@@ -235,6 +237,8 @@ class TestNAT64(VppTestCase):
             ICMP46 = ICMP
         if nat_ip is None:
             nat_ip = self.nat_addr
+        if inside_ip is None:
+            inside_ip = self.pg0.remote_ip6
         for packet in capture:
             try:
                 if not is_ip6:
@@ -247,7 +251,13 @@ class TestNAT64(VppTestCase):
                         if same_port:
                             self.assertEqual(packet[TCP].sport, self.tcp_port_in)
                         else:
-                            self.assertNotEqual(packet[TCP].sport, self.tcp_port_in)
+                            self.assert_bib(
+                                IP_PROTOS.tcp,
+                                inside_ip,
+                                self.tcp_port_in,
+                                nat_ip,
+                                packet[TCP].sport,
+                            )
                     self.tcp_port_out = packet[TCP].sport
                     self.assert_packet_checksums_valid(packet)
                 elif packet.haslayer(UDP):
@@ -255,14 +265,26 @@ class TestNAT64(VppTestCase):
                         if same_port:
                             self.assertEqual(packet[UDP].sport, self.udp_port_in)
                         else:
-                            self.assertNotEqual(packet[UDP].sport, self.udp_port_in)
+                            self.assert_bib(
+                                IP_PROTOS.udp,
+                                inside_ip,
+                                self.udp_port_in,
+                                nat_ip,
+                                packet[UDP].sport,
+                            )
                     self.udp_port_out = packet[UDP].sport
                 else:
                     if not ignore_port:
                         if same_port:
                             self.assertEqual(packet[ICMP46].id, self.icmp_id_in)
                         else:
-                            self.assertNotEqual(packet[ICMP46].id, self.icmp_id_in)
+                            self.assert_bib(
+                                IP_PROTOS.icmp,
+                                inside_ip,
+                                self.icmp_id_in,
+                                nat_ip,
+                                packet[ICMP46].id,
+                            )
                     self.icmp_id_out = packet[ICMP46].id
                     self.assert_packet_checksums_valid(packet)
             except:
@@ -930,7 +952,10 @@ class TestNAT64(VppTestCase):
         self.pg_start()
         capture = self.pg1.get_capture(len(pkts))
         self.verify_capture_out(
-            capture, nat_ip=self.vrf1_nat_addr, dst_ip=self.pg1.remote_ip4
+            capture,
+            nat_ip=self.vrf1_nat_addr,
+            dst_ip=self.pg1.remote_ip4,
+            inside_ip=self.pg2.remote_ip6,
         )
 
         pkts = self.create_stream_out(self.pg1, dst_ip=self.vrf1_nat_addr)
@@ -1259,11 +1284,23 @@ class TestNAT64(VppTestCase):
                 self.assertEqual(packet[IPv6].dst, server.ip6)
                 self.assert_packet_checksums_valid(packet)
                 if packet.haslayer(TCP):
-                    self.assertNotEqual(packet[TCP].sport, client_tcp_in_port)
+                    self.assert_bib(
+                        IP_PROTOS.tcp,
+                        client.ip6,
+                        client_tcp_in_port,
+                        self.nat_addr,
+                        packet[TCP].sport,
+                    )
                     self.assertEqual(packet[TCP].dport, server_tcp_in_port)
                     client_tcp_out_port = packet[TCP].sport
                 else:
-                    self.assertNotEqual(packet[UDP].sport, client_udp_in_port)
+                    self.assert_bib(
+                        IP_PROTOS.udp,
+                        client.ip6,
+                        client_udp_in_port,
+                        self.nat_addr,
+                        packet[UDP].sport,
+                    )
                     self.assertEqual(packet[UDP].dport, server_udp_in_port)
                     client_udp_out_port = packet[UDP].sport
             except:
@@ -1413,7 +1450,10 @@ class TestNAT64(VppTestCase):
         self.pg_start()
         capture = self.pg1.get_capture(len(pkts))
         self.verify_capture_out(
-            capture, nat_ip=self.vrf1_nat_addr, dst_ip=self.pg1.remote_ip4
+            capture,
+            nat_ip=self.vrf1_nat_addr,
+            dst_ip=self.pg1.remote_ip4,
+            inside_ip=self.pg2.remote_ip6,
         )
 
         pkts = self.create_stream_out(self.pg1, dst_ip=self.vrf1_nat_addr)
@@ -1640,7 +1680,9 @@ class TestNAT64(VppTestCase):
             tcp = p[TCP]
             self.assertEqual(ip.src, self.nat_addr)
             self.assertEqual(ip.dst, self.pg3.remote_ip4)
-            self.assertNotEqual(tcp.sport, 12345)
+            self.assert_bib(
+                IP_PROTOS.tcp, self.pg3.remote_ip6, 12345, self.nat_addr, tcp.sport
+            )
             external_port = tcp.sport
             self.assertEqual(tcp.dport, 80)
             self.assert_packet_checksums_valid(p)
@@ -1700,7 +1742,13 @@ class TestNAT64(VppTestCase):
         frags = self.pg1.get_capture(len(pkts))
         p = self.reass_frags_and_verify(frags, self.nat_addr, self.pg1.remote_ip4)
         self.assertEqual(p[TCP].dport, 20)
-        self.assertNotEqual(p[TCP].sport, self.tcp_port_in)
+        self.assert_bib(
+            IP_PROTOS.tcp,
+            self.pg0.remote_ip6,
+            self.tcp_port_in,
+            self.nat_addr,
+            p[TCP].sport,
+        )
         self.tcp_port_out = p[TCP].sport
         self.assertEqual(data, p[Raw].load)
 
@@ -1765,9 +1813,23 @@ class TestNAT64(VppTestCase):
         frags = self.pg0.get_capture(len(pkts))
         self.logger.debug(ppc("Captured:", frags))
         p = self.reass_frags_and_verify_ip6(frags, nat_addr_ip6, server.ip6)
-        self.assertNotEqual(p[TCP].sport, client_in_port)
+        self.assert_bib(
+            IP_PROTOS.tcp,
+            self.pg0.remote_ip6,
+            client_in_port,
+            self.nat_addr,
+            p[TCP].sport,
+        )
         self.assertEqual(p[TCP].dport, server_in_port)
         self.assertEqual(data, p[Raw].load)
+
+    def assert_bib(self, proto, inside_addr, inside_port, outside_addr, outside_port):
+        """Check the mapping; a dynamically allocated port may be preserved."""
+        mappings = [
+            (str(bib.i_addr), bib.i_port, str(bib.o_addr), bib.o_port)
+            for bib in self.vapi.nat64_bib_dump(proto=proto)
+        ]
+        self.assertIn((inside_addr, inside_port, outside_addr, outside_port), mappings)
 
     def test_frag_out_of_order(self):
         """NAT64 translate fragments arriving out of order"""
@@ -1799,7 +1861,13 @@ class TestNAT64(VppTestCase):
         frags = self.pg1.get_capture(len(pkts))
         p = self.reass_frags_and_verify(frags, self.nat_addr, self.pg1.remote_ip4)
         self.assertEqual(p[TCP].dport, 20)
-        self.assertNotEqual(p[TCP].sport, self.tcp_port_in)
+        self.assert_bib(
+            IP_PROTOS.tcp,
+            self.pg0.remote_ip6,
+            self.tcp_port_in,
+            self.nat_addr,
+            p[TCP].sport,
+        )
         self.tcp_port_out = p[TCP].sport
         self.assertEqual(data, p[Raw].load)
 
