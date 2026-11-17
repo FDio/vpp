@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f5f022ee_233860d9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 5
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-17T18:00:38Z",
+      "side": 1,
+      "message": "This has been included in the official release notes via the normal release process.  Please abandon.",
+      "revId": "382083e4682ec2d2c372b1aa7b23e6290617666c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
