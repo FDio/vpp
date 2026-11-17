@@ -151,6 +151,7 @@ typedef enum tcp_connection_flag_
 #define TCP_INVALID_POSTPONED_ACK   ((u16) ~0)
 #define TCP_INVALID_SACK_HOLE_INDEX ((u32)~0)
 #define TCP_MAX_SACK_REORDER 300
+STATIC_ASSERT (TCP_MAX_SACK_REORDER <= CLIB_U16_MAX, "reorder estimate must fit its u16");
 #define TCP_SEQ_HALF_SPACE	    (1ULL << 31) /**< Half the 32-bit TCP sequence space */
 
 typedef struct _scoreboard_trace_elt
@@ -229,8 +230,9 @@ typedef struct _sack_scoreboard
   u32 rescue_rxt;			/**< Rescue sequence number */
   u32 lost_bytes;			/**< Bytes lost as per RFC6675 */
   u32 cur_rxt_hole;			/**< Retransmitting from this hole */
-  u32 reorder;				/**< Estimate of segment reordering */
+  u16 reorder;				/**< Estimate of segment reordering */
   tcp_scoreboard_flag_t flags;		/**< Scoreboard and D-SACK state */
+  u32 rxt_frontier;			/**< Highest sequence retransmitted in this recovery */
 
 #if TCP_SCOREBOARD_TRACE
   scoreboard_trace_elt_t *trace;

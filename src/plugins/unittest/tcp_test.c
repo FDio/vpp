@@ -128,8 +128,7 @@ static_always_inline void
 tcp_test_sack_backend_track_rxt (tcp_connection_t *tc, tcp_test_sack_backend_t backend, u32 start,
 				 u32 end)
 {
-  if (backend == TCP_TEST_SACK_BACKEND_BT)
-    tcp_test_track_rxt (tc, start, end);
+  tcp_test_track_rxt (tc, start, end);
 }
 
 scoreboard_trace_elt_t sb_trace[] = {};
@@ -564,7 +563,7 @@ tcp_test_sack_rto_new_data (vlib_main_t *vm, int verbose)
 		     sb->lost_bytes, hole->start, hole->end, hole->is_lost);
 
   /* [1100, 2000] is retransmitted and the peer acks up to the sacked block */
-  sb->high_rxt = 2000;
+  sb->high_rxt = sb->rxt_frontier = 2000;
   vec_reset_length (tc->rcv_opts.sacks);
   tc->rcv_opts.flags &= ~TCP_OPTS_FLAG_SACK;
   tc->rcv_opts.n_sack_blocks = 0;
@@ -815,6 +814,8 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_SACK;
   tc->snd_mss = 150;
   scoreboard_init (&tc->sack_sb);
+  /* Copies of all data in flight, so sacks don't move the reordering estimate */
+  sb->rxt_frontier = tc->snd_nxt;
 
   for (i = 0; i < 1000 / 100; i++)
     {
@@ -900,7 +901,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
    * Make sure we accept duplicate acks while reneging.
    */
   tc->snd_una = 100;
-  sb->high_rxt = 950;
+  sb->high_rxt = sb->rxt_frontier = 950;
 
   block.start = 900;
   block.end = 950;
@@ -926,7 +927,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Sack [960 970] [980 990]
    */
-  sb->high_rxt = 985;
+  sb->high_rxt = sb->rxt_frontier = 985;
 
   tc->snd_una = 950;
   vec_reset_length (tc->rcv_opts.sacks);
@@ -1302,7 +1303,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tc->flags |= TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
   tc->snd_una = 0;
   tc->snd_nxt = 1000;
-  sb->high_rxt = 0;
+  sb->high_rxt = sb->rxt_frontier = 0;
 
   block.start = 100;
   block.end = 500;
@@ -1318,7 +1319,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Renege, sack all of the remaining bytes and cover some rxt bytes
    */
-  sb->high_rxt = 700;
+  sb->high_rxt = sb->rxt_frontier = 700;
   tc->rcv_opts.sacks[0].start = 500;
   tc->rcv_opts.sacks[0].end = 1000;
 
@@ -1343,7 +1344,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tc->flags |= TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
   tc->snd_una = 0;
   tc->snd_nxt = 3000;
-  sb->high_rxt = 0;
+  sb->high_rxt = sb->rxt_frontier = 0;
   /* scoreboard_init_rxt sentinel: no rescue retransmit fired this episode */
   sb->rescue_rxt = tc->snd_una - 1;
   TCP_TEST ((sb->reorder == TCP_DUPACK_THRESHOLD), "reorder at floor %u", sb->reorder);
@@ -1378,7 +1379,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tc->flags |= TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
   tc->snd_una = 0;
   tc->snd_nxt = 3000;
-  sb->high_rxt = 0;
+  sb->high_rxt = sb->rxt_frontier = 0;
   sb->rescue_rxt = tc->snd_una - 1;
 
   block.start = 2400;
@@ -1389,7 +1390,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((sb->reorder == TCP_DUPACK_THRESHOLD), "reorder floor %u", sb->reorder);
 
   /* Everything below the frontier has now been retransmitted */
-  sb->high_rxt = 2400;
+  sb->high_rxt = sb->rxt_frontier = 2400;
   vec_reset_length (tc->rcv_opts.sacks);
   block.start = 300;
   block.end = 450;
@@ -1401,10 +1402,10 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 
   /*
    * After a rescue retransmit (RFC 6675) the re-sent segment sits at/above
-   * high_rxt but is NOT reordering. rescue_rxt advanced to snd_congestion marks
-   * it, so a later out-of-order sack at/above high_rxt must NOT grow reorder
-   * (else a delayed rescue + advancing frontier would inflate it toward 300 and
-   * strand real loss until rto).
+   * high_rxt but is NOT reordering. The copy raises rxt_frontier, so a later
+   * out-of-order sack at/above high_rxt must NOT grow reorder (else a delayed
+   * rescue + advancing frontier would inflate it toward 300 and strand real
+   * loss until rto).
    */
   scoreboard_clear (sb);
   sb->reorder = TCP_DUPACK_THRESHOLD;
@@ -1413,9 +1414,11 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tc->snd_una = 0;
   tc->snd_nxt = 3000;
   tc->snd_congestion = 3000;
-  sb->high_rxt = 0;
-  /* A rescue fired: rescue_rxt was set to snd_congestion (>= snd_una) */
+  sb->high_rxt = sb->rxt_frontier = 0;
+  /* A rescue fired: rescue_rxt was set to snd_congestion (>= snd_una) and the
+   * copy of [300, 450) raised the frontier */
   sb->rescue_rxt = tc->snd_congestion;
+  sb->rxt_frontier = 450;
 
   block.start = 2400;
   block.end = 3000;
@@ -1493,7 +1496,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   sb->head = sb->tail = scoreboard_hole_index (sb, hole);
   sb->lost_bytes = scoreboard_hole_bytes (hole);
   sb->cur_rxt_hole = sb->head;
-  sb->high_rxt = 35300;
+  sb->high_rxt = sb->rxt_frontier = 35300;
   sb->rescue_rxt = tc->snd_nxt;
   sb->sacked_bytes = 67000;
 
@@ -10239,8 +10242,8 @@ tcp_test_bt_scoreboard_random (u32 base, u32 seed, tcp_test_bt_sb_mode_t mode)
       tcp_sack_init_rxt (default_tc, base);
       tcp_sack_init_rxt (bt_tc, base);
 
-      /* HighRxt only identifies a retransmission frontier for the
-       * scoreboard. BT must additionally mark the retransmitted samples.
+      /* HighRxt and rxt_frontier only identify the retransmitted data for
+       * the scoreboard. BT must additionally mark the retransmitted samples.
        * Mark the full flight so random SACK blocks cannot straddle HighRxt;
        * BT intentionally accounts such mixed blocks more precisely than the
        * hole scoreboard, so they are not strict equivalence cases. */
@@ -10250,6 +10253,7 @@ tcp_test_bt_scoreboard_random (u32 base, u32 seed, tcp_test_bt_sb_mode_t mode)
       tcp_bt_tx_order_build (bt_tc->bt);
       tcp_test_bt_track_output_rxt (bt_tc, base, high_rxt);
       default_tc->sack_sb.high_rxt = bt_tc->sack_sb.high_rxt = high_rxt;
+      default_tc->sack_sb.rxt_frontier = high_rxt;
     }
 
   for (i = 0; i < 96 && default_tc->snd_una != default_tc->snd_nxt; i++)
@@ -10501,6 +10505,7 @@ tcp_test_bt_retransmit_ranges (void)
   default_tc->flags = bt_tc->flags = TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY;
   default_tc->snd_congestion = bt_tc->snd_congestion = 1000;
   default_tc->sack_sb.high_rxt = bt_tc->sack_sb.high_rxt = 500;
+  default_tc->sack_sb.rxt_frontier = 500;
   tcp_dsack_recovery_clear (bt_tc);
   tcp_test_track_rxt (bt_tc, 0, 300);
   tcp_test_track_rxt (bt_tc, 400, 500);
@@ -11025,6 +11030,7 @@ tcp_test_bt_retransmit_range_cache_skip_sacked (void)
 
   tcp_test_track_rxt (bt_tc, 0, 100);
   default_tc->sack_sb.high_rxt = bt_tc->sack_sb.high_rxt = 100;
+  default_tc->sack_sb.rxt_frontier = 100;
 
   default_rescue = bt_rescue = default_limited = bt_limited = 0;
   hole = scoreboard_next_rxt_hole (&default_tc->sack_sb, hole, 1 /* have_unsent */, &default_rescue,
@@ -11037,6 +11043,7 @@ tcp_test_bt_retransmit_range_cache_skip_sacked (void)
    * the cached classification must still make RFC 6675 Rule 1 win. */
   tcp_test_track_rxt (bt_tc, 200, 300);
   default_tc->sack_sb.high_rxt = bt_tc->sack_sb.high_rxt = 300;
+  default_tc->sack_sb.rxt_frontier = 300;
 
   default_rescue = bt_rescue = default_limited = bt_limited = 0;
   hole = scoreboard_next_rxt_hole (&default_tc->sack_sb, hole, 1 /* have_unsent */, &default_rescue,
@@ -11198,6 +11205,7 @@ tcp_test_bt_rxt_over_sacked (void)
    */
   tcp_test_track_rxt (bt_tc, 0, 100);
   default_tc->sack_sb.high_rxt = bt_tc->sack_sb.high_rxt = 100;
+  default_tc->sack_sb.rxt_frontier = 100;
 
   TCP_TEST (bt_tc->sack_sb.sacked_bytes == default_tc->sack_sb.sacked_bytes &&
 	      bt_tc->sack_sb.sacked_bytes == 150,
@@ -11387,6 +11395,7 @@ tcp_test_bt_rxt_across_sacked_island (void)
   /* The RTO segment covers unsacked bytes on both sides of the SACKed island. */
   tcp_test_track_rxt (bt_tc, 0, 100);
   default_tc->sack_sb.high_rxt = bt_tc->sack_sb.high_rxt = 100;
+  default_tc->sack_sb.rxt_frontier = 100;
 
   bts = pool_elt_at_index (bt_tc->bt->samples, bt_tc->bt->head);
   TCP_TEST (bts->min_seq == 0 && bts->max_seq == 40 && (bts->flags & TCP_BTS_IS_RXT),

@@ -376,8 +376,9 @@ format_tcp_scoreboard (u8 * s, va_list * args)
   s = format (s, "sacked %u lost %u high_sacked %u is_reneging %u reorder %u\n", sb->sacked_bytes,
 	      sb->lost_bytes, sb->high_sacked - tc->iss, tcp_scoreboard_is_reneging (sb),
 	      sb->reorder);
-  s = format (s, "%Ucur_rxt_hole %u high_rxt %u rescue_rxt %u", format_white_space, indent,
-	      sb->cur_rxt_hole, sb->high_rxt - tc->iss, sb->rescue_rxt - tc->iss);
+  s = format (s, "%Ucur_rxt_hole %u high_rxt %u rxt_frontier %u rescue_rxt %u", format_white_space,
+	      indent, sb->cur_rxt_hole, sb->high_rxt - tc->iss, sb->rxt_frontier - tc->iss,
+	      sb->rescue_rxt - tc->iss);
 
   hole = scoreboard_first_hole (sb);
   if (hole)
