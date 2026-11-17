@@ -113,11 +113,6 @@ __clib_export void scoreboard_init (sack_scoreboard_t *sb);
 
 __clib_export format_function_t format_tcp_scoreboard;
 
-/** Report [start, end), received again (RFC 2883), if reporting is enabled */
-__clib_export void tcp_dsack_report (tcp_connection_t *tc, u32 start, u32 end);
-/** Same, for out-of-order data in blk, which follows the dsack even if no longer kept */
-__clib_export void tcp_dsack_report_ooo (tcp_connection_t *tc, u32 start, u32 end,
-					 sack_block_t blk);
 /** Drop the blocks in-order data delivered */
 void tcp_sack_delivered (tcp_connection_t *tc);
 /** Fill blks with the pending dsack, the block that holds it, if any, and the other blocks. A

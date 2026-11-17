@@ -344,6 +344,10 @@ void tcp_postpone_ack (tcp_connection_t *tc, u8 is_dsack);
 /** Ack the blocks, and the pending dsack, as they are now. If signals_loss, it is one of the first
  * acks for a hole and never folded into another */
 void tcp_ack_sacks (tcp_connection_t *tc, u8 signals_loss);
+/** Report [start, end), received again (RFC 2883), if reporting is enabled */
+__clib_export void tcp_dsack_report (tcp_connection_t *tc, u32 start, u32 end);
+/** Same, for out-of-order data in blk, which follows the dsack even if no longer kept */
+void tcp_dsack_report_ooo (tcp_connection_t *tc, u32 start, u32 end, sack_block_t blk);
 /** blk replaces the blocks it grew from or joined in the postponed acks */
 void tcp_postponed_acks_merge (tcp_connection_t *tc, sack_block_t blk);
 __clib_export void tcp_postponed_acks_free (tcp_connection_t *tc);
