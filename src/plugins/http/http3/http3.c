@@ -341,7 +341,6 @@ http3_conn_init (u32 parent_index, clib_thread_index_t thread_index, http_ctx_t 
 				     &ctrl_stream))
     {
       HTTP_DBG (1, "failed to open control stream");
-      http3_conn_terminate (hc, HTTP3_ERROR_INTERNAL_ERROR);
       return -1;
     }
   ctrl_stream->http_req_index = SESSION_INVALID_INDEX;
@@ -2737,7 +2736,7 @@ http3_transport_connected_callback (http_ctx_t *hc)
     {
       HTTP_DBG (1, "failed to initialize connection");
       hc = http_ctx_get_w_thread (hc_index, thread_index);
-      /* not much to do here, just notify app */
+      /* returning error lets session layer close transport */
       app_worker_t *app_wrk = app_worker_get_if_valid (hc->hc_pa_wrk_index);
       if (!app_wrk)
 	{
@@ -3121,7 +3120,11 @@ http3_conn_accept_callback (http_ctx_t *hc)
   hc->peer_settings = http3_default_conn_settings;
   hc->flags |= HTTP_CONN_F_EXPECT_PEER_SETTINGS;
   if (PREDICT_FALSE (http3_conn_init (hc_index, thread_index, hc)))
-    return;
+    {
+      hc = http_ctx_get_w_thread (hc_index, thread_index);
+      http3_conn_terminate (hc, HTTP3_ERROR_INTERNAL_ERROR);
+      return;
+    }
   parent_req = http3_stream_alloc_req (hc_index, thread_index, 1);
   hc = http_ctx_get_w_thread (hc_index, thread_index);
   if (http_conn_accept_request (hc, parent_req, 0))
