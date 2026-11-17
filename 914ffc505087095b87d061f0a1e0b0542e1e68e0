@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d9310e5e_9a895ea2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-17T19:46:49Z",
+      "side": 1,
+      "message": "Thanks, agreed. PS2 replaces all remaining assertNotEqual port/ICMP-ID checks in this file with BIB checks. The helper now checks protocol and the inside/outside address/port tuple, including the pg2 VRF and pg3 one-armed cases. Static mappings still have their exact-port assertions.\n\nNine affected VPP tests pass on the existing local ARM64 Release build, seed 42, no retries: dynamic, hairpinning, ICMP error, prefixes, one-armed, static and the three fragment tests. Black and commit checks pass. A full-class attempt hit an abort in test_icmp_error_unsupported_inner_protocol on that older binary, so I am not claiming the complete class passed; fresh-build coverage is left to Gerrit CI.\n\nI also checked the seed: nat64_init clears the main structure and I found no initialization of random_seed before its use in nat64_random_port. I agree this needs a separate production follow-up. Seeding the existing PRNG would avoid the identical startup sequence; whether stronger port unpredictability is required deserves separate consideration.",
+      "parentUuid": "b27a0cd0_a6a49ff4",
+      "revId": "914ffc505087095b87d061f0a1e0b0542e1e68e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
