@@ -12,6 +12,7 @@ int spdk_vpp_attach (void);
 u32 spdk_vpp_app_index (void);
 u8 *format_spdk_vpp_state (u8 *s);
 void spdk_vpp_env_set_current_core (u32 core);
+int spdk_vpp_env_prepare_pci (vlib_main_t *vm);
 
 int spdk_plugin_lcore_for_vpp_thread (u32 thread_index, u32 *lcore);
 int spdk_plugin_vpp_thread_for_lcore (u32 lcore, u32 *thread_index);

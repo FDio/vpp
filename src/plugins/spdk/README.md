@@ -91,11 +91,13 @@ authorization policy. Stop initiator I/O and disconnect controllers before:
 spdk app stop
 ```
 
-## Initial scope
+## Supported scope
 
 - Standard copied RX and TX using upstream SPDK and existing VPP session APIs.
-- Software bdevs such as Malloc and Null; `no-pci` is required. Native PCI NVMe
-  requires a separate environment/DMA integration and is not supported here.
+- Malloc and Null bdevs, plus AIO over a Linux block device with `no-pci`.
+  AIO uses the kernel NVMe driver, if the block device is an NVMe namespace.
+- Native PCIe NVMe over VFIO with an explicitly named controller BDF, as
+  described below. This does not depend on VPP's choice of NIC driver.
 - Busy polling, not interrupt/eventfd-driven operation.
 - Plain TCP only. TLS/kTLS/PSK socket options are rejected, not silently
   interpreted as an unencrypted connection.
@@ -107,6 +109,45 @@ SPDK and its modules share the VPP process and failure domain. A fault in an
 embedded module can terminate VPP. The environment implementation, scheduling
 and shutdown behavior need review before production use. Throughput tests on
 a Null bdev are not a substitute for payload-integrity tests on a Malloc bdev.
+
+## Experimental native PCIe NVMe
+
+The VPP environment provides SPDK with PCI access and DMA mappings through
+VPP's VFIO-backed PCI API. It accepts only an explicitly named NVMe BDF
+already bound to `vfio-pci`; automatic PCI enumeration, VMD, hotplug and other
+PCI device classes are not implemented. An IOMMU must be enabled. Do not bind
+a mounted, formatted or system disk to VFIO.
+
+Start the SPDK app without `no-pci`, then attach a dedicated SSD by BDF:
+
+```text
+spdk app start name vpp_spdk rpc /run/vpp/spdk.sock
+```
+
+```sh
+rpc.py -s /run/vpp/spdk.sock bdev_nvme_attach_controller -b Nvme0 -t PCIe \
+  -a 0000:53:00.0
+```
+
+The BDF above is an example, not a device automatically selected by VPP.
+The normal `no-pci` workflow remains unchanged.
+
+In PCI mode, allocations marked `SPDK_MALLOC_DMA` use a VPP-owned, 512 MiB
+shared physmem arena mapped into VFIO. Other allocations retain the normal
+in-process VPP environment path; reallocations preserve their allocation
+flags. VPP's embedded SPDK application does not support a secondary SPDK
+process, and an environment initialization requesting a nonnegative `shm_id`
+is rejected. `SPDK_MALLOC_SHARE` alone should therefore not be interpreted
+as general multiprocess support.
+
+Native PCIe NVMe was tested on an Intel Optane P4800X with a VPP NVMe/TCP
+listener, a Linux initiator on a direct 100-Gb/s link, and both the VPP
+RDMA-DV and DPDK mlx5 NIC drivers. Read and write I/O, including CRC32C
+write/read verification, completed without I/O errors. These tests used the
+copied SPDK socket path. PCI DMA mappings are limited to the arena; direct
+DMA from a received VLIB buffer to the SSD is not supported by this change.
+The experimental RX/TX zero-copy bindings remain separate. The fixed DMA
+arena and device lifecycle remain experimental.
 
 ## Opt-in integration test
 
