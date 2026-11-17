@@ -213,7 +213,7 @@ jobs:
       - start-merge
       - detect-docs-changes
     if: ${{ needs.detect-docs-changes.outputs.docs_changed == 'true' }}
-    uses: fdio/vpp/.github/workflows/vpp-merge-docs.yml@25e2784d997d02529c84f308aadd62c98ed65ff0
+    uses: fdio/vpp/.github/workflows/vpp-merge-docs.yml@b4186056f88e12f8283a218ff29c94e83ebb1ec8
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
