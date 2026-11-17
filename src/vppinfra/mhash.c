@@ -249,6 +249,10 @@ mhash_set_mem (mhash_t * h, void *key, uword * new_value, uword * old_value)
 	heap_alloc (h->key_vector_or_heap, n_key_bytes + sizeof (sk[0]),
 		    handle);
 
+      /* heap_alloc returns ~0 on failure (e.g. heap max length exceeded). */
+      if (i == ~0)
+	return ~0;
+
       sk = (void *) (h->key_vector_or_heap + i);
       sk->heap_handle = handle;
       sk->vec.len = n_key_bytes;
