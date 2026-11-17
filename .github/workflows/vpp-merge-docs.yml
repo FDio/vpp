@@ -177,8 +177,6 @@ jobs:
           LOG_DIR="$WORKSPACE/logs/$LOG_NAME"
           echo "LOG_DIR=$LOG_DIR" >> "$GITHUB_ENV"
           mkdir -p "$LOG_DIR"
-          vpp_release="$(${WORKSPACE}/build-root/scripts/version rpm-version)"
-          echo "S3_DOCS_PATH=vpp/$vpp_release" >> "$GITHUB_ENV"
       - name: Show Environment
         run: |
           set -euo pipefail
@@ -202,6 +200,8 @@ jobs:
         run: |
           set -euxo pipefail
           cd "$WORKSPACE"
+          vpp_release="$(${WORKSPACE}/build-root/scripts/version rpm-version)"
+          echo "S3_DOCS_PATH=vpp/$vpp_release" >> "$GITHUB_ENV"
           make docs | tee "$LOG_DIR/make_docs.log"
 
       - name: AWS S3 Publish Docs
