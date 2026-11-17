@@ -17,6 +17,11 @@
 #include <netlink/route/route.h>
 #include <netlink/route/neighbour.h>
 #include <netlink/route/addr.h>
+#include <netlink/attr.h>
+#include <linux/rtnetlink.h>
+#ifdef RTM_DELNEXTHOP
+#include <linux/nexthop.h>
+#endif
 
 #include <vlib/vlib.h>
 #include <vlib/file.h>
@@ -186,6 +191,72 @@ static void lcp_nl_close_socket (void);
 static void lcp_nl_open_sync_socket (nl_sock_type_t sock_type);
 static void lcp_nl_close_sync_socket (nl_sock_type_t sock_type);
 
+/* The message being parsed. libnl reports the nexthop object of a route
+ * from 3.10 only, so it is read from the message itself. */
+static struct nl_msg *nl_route_msg;
+
+u32
+lcp_nl_route_msg_nhid (void)
+{
+#ifdef RTM_DELNEXTHOP
+  struct nlmsghdr *nlh;
+  struct nlattr *nla;
+
+  if (!nl_route_msg)
+    return 0;
+
+  nlh = nlmsg_hdr (nl_route_msg);
+  if ((nlh->nlmsg_type != RTM_NEWROUTE && nlh->nlmsg_type != RTM_DELROUTE) ||
+      !nlmsg_valid_hdr (nlh, sizeof (struct rtmsg)))
+    return 0;
+
+  nla = nlmsg_find_attr (nlh, sizeof (struct rtmsg), RTA_NH_ID);
+  if (nla && nla_len (nla) == sizeof (u32))
+    return nla_get_u32 (nla);
+#endif
+  return 0;
+}
+
+/* Returns 1 when the message is about a nexthop object and has been handled
+ * here. libnl before 3.8 cannot parse such a message. */
+static int
+nl_nexthop_msg (struct nl_msg *msg)
+{
+#ifdef RTM_DELNEXTHOP
+  struct nlmsghdr *nlh = nlmsg_hdr (msg);
+  struct nlattr *nla;
+  u32 nh_id;
+
+#ifdef RTM_NEWNEXTHOPBUCKET
+  /* the buckets of a resilient group, sent to the same multicast group */
+  if (nlh->nlmsg_type == RTM_NEWNEXTHOPBUCKET || nlh->nlmsg_type == RTM_DELNEXTHOPBUCKET)
+    return 1;
+#endif
+
+  if (nlh->nlmsg_type != RTM_NEWNEXTHOP && nlh->nlmsg_type != RTM_DELNEXTHOP)
+    return 0;
+
+  /* a new or changed object: the routes that use it are announced on their own */
+  if (nlh->nlmsg_type == RTM_NEWNEXTHOP)
+    return 1;
+
+  nla = nlmsg_valid_hdr (nlh, sizeof (struct nhmsg)) ?
+	  nlmsg_find_attr (nlh, sizeof (struct nhmsg), NHA_ID) :
+	  NULL;
+  if (!nla || nla_len (nla) != sizeof (u32))
+    {
+      NL_ERROR ("nexthop del: no id in the message");
+      return 1;
+    }
+
+  nh_id = nla_get_u32 (nla);
+  FOREACH_VFT (nvl_rt_nexthop_del, nh_id);
+  return 1;
+#else
+  return 0;
+#endif
+}
+
 static void
 nl_route_del (struct rtnl_route *rr, void *arg)
 {
@@ -343,9 +414,13 @@ nl_route_process_msgs (void)
   /* process a batch of messages. break if we hit our limit */
   vec_foreach (msg_info, nm->nl_msg_queue)
     {
-      if ((err = nl_msg_parse (msg_info->msg, nl_route_dispatch, msg_info)) <
-	  0)
-	NL_ERROR ("Unable to parse object: %s", nl_geterror (err));
+      if (!nl_nexthop_msg (msg_info->msg))
+	{
+	  nl_route_msg = msg_info->msg;
+	  if ((err = nl_msg_parse (msg_info->msg, nl_route_dispatch, msg_info)) < 0)
+	    NL_ERROR ("Unable to parse object: %s", nl_geterror (err));
+	  nl_route_msg = NULL;
+	}
       nlmsg_free (msg_info->msg);
       if (++n_msgs >= nm->batch_size)
 	break;
@@ -414,8 +489,10 @@ lcp_nl_route_dump_cb (struct nl_msg *msg, void *arg)
 {
   int err;
 
+  nl_route_msg = msg;
   if ((err = nl_msg_parse (msg, nl_route_dispatch, NULL)) < 0)
     NL_ERROR ("Unable to parse object: %s", nl_geterror (err));
+  nl_route_msg = NULL;
 
   return NL_OK;
 }
@@ -917,11 +994,13 @@ lcp_nl_open_socket (void)
     }
 
   /* Subscribe to all the 'routing' notifications on the route socket */
-  nl_socket_add_memberships (nm->sk_route, RTNLGRP_LINK, RTNLGRP_IPV6_IFADDR,
-			     RTNLGRP_IPV4_IFADDR, RTNLGRP_IPV4_ROUTE,
-			     RTNLGRP_IPV6_ROUTE, RTNLGRP_NEIGH, RTNLGRP_NOTIFY,
+  nl_socket_add_memberships (nm->sk_route, RTNLGRP_LINK, RTNLGRP_IPV6_IFADDR, RTNLGRP_IPV4_IFADDR,
+			     RTNLGRP_IPV4_ROUTE, RTNLGRP_IPV6_ROUTE, RTNLGRP_NEIGH, RTNLGRP_NOTIFY,
 #ifdef RTNLGRP_MPLS_ROUTE /* not defined on CentOS/RHEL 7 */
 			     RTNLGRP_MPLS_ROUTE,
+#endif
+#ifdef RTNLGRP_NEXTHOP
+			     RTNLGRP_NEXTHOP,
 #endif
 			     RTNLGRP_IPV4_RULE, RTNLGRP_IPV6_RULE, 0);
 

@@ -19,6 +19,7 @@ typedef void (*nl_rt_neigh_sync_cb_t) (void);
 typedef void (*nl_rt_route_add_cb_t) (struct rtnl_route *rn, int is_replace);
 typedef void (*nl_rt_route_del_cb_t) (struct rtnl_route *rn);
 typedef void (*nl_rt_route_sync_cb_t) (void);
+typedef void (*nl_rt_nexthop_del_cb_t) (u32 nh_id);
 
 #define NL_RT_COMMON uword is_mp_safe
 
@@ -85,6 +86,13 @@ typedef struct nl_rt_route_sync_t_
   nl_rt_route_sync_cb_t cb;
 } nl_rt_route_sync_t;
 
+typedef struct nl_rt_nexthop_del_t_
+{
+  NL_RT_COMMON;
+
+  nl_rt_nexthop_del_cb_t cb;
+} nl_rt_nexthop_del_t;
+
 #undef NL_RT_COMMON
 
 typedef struct nl_vft_t_
@@ -105,6 +113,7 @@ typedef struct nl_vft_t_
   nl_rt_route_del_t nvl_rt_route_del;
   nl_rt_route_sync_t nvl_rt_route_sync_begin;
   nl_rt_route_sync_t nvl_rt_route_sync_end;
+  nl_rt_nexthop_del_t nvl_rt_nexthop_del;
 } nl_vft_t;
 
 extern void nl_register_vft (const nl_vft_t *nv);
@@ -137,6 +146,10 @@ typedef struct nl_msg_info
 #define LCP_NL_N_OBJS (LCP_NL_ROUTE + 1)
 
 extern struct nl_cache *lcp_nl_get_cache (lcp_nl_obj_t t);
+
+/* Id of the kernel nexthop object that the route message being dispatched
+ * refers to; 0 when it refers to none or no message is being dispatched. */
+extern u32 lcp_nl_route_msg_nhid (void);
 extern int lcp_nl_drain_messages (void);
 extern void lcp_nl_set_buffer_size (u32 buf_size);
 extern void lcp_nl_set_batch_size (u32 batch_size);

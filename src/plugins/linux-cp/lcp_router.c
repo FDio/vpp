@@ -1326,6 +1326,182 @@ lcp_router_route_mk_entry_flags (uint8_t rtype, int table_id, uint8_t rproto)
   return (fef);
 }
 
+/*
+ * IPv4 routes that refer to a kernel nexthop object. The kernel removes
+ * such a route together with the object and sends no RTM_DELROUTE for it,
+ * so the object's RTM_DELNEXTHOP is what removes the route here. For IPv6
+ * the kernel does send RTM_DELROUTE.
+ */
+typedef struct lcp_router_nh_route_t_
+{
+  u32 nh_id;
+  u32 table_id;
+  u32 fib_index;
+  fib_source_t src;
+  ip4_address_t addr;
+  u8 len;
+  fib_route_path_t *paths;
+} lcp_router_nh_route_t;
+
+static lcp_router_nh_route_t *lcp_router_nh_route_pool;
+/* table and prefix to pool index */
+static uword *lcp_router_nh_route_db;
+/* nexthop object id to the number of routes that use it */
+static uword *lcp_router_nh_refs;
+
+static u64
+lcp_router_nh_route_key (u32 fib_index, const fib_prefix_t *pfx)
+{
+  return ((u64) fib_index << 40) | ((u64) pfx->fp_len << 32) | pfx->fp_addr.ip4.as_u32;
+}
+
+static lcp_router_nh_route_t *
+lcp_router_nh_route_find (u32 fib_index, const fib_prefix_t *pfx)
+{
+  uword *p;
+
+  if (FIB_PROTOCOL_IP4 != pfx->fp_proto)
+    return (NULL);
+
+  p = hash_get (lcp_router_nh_route_db, lcp_router_nh_route_key (fib_index, pfx));
+
+  return (p ? pool_elt_at_index (lcp_router_nh_route_pool, p[0]) : NULL);
+}
+
+static void
+lcp_router_nh_route_free (lcp_router_nh_route_t *nr)
+{
+  fib_prefix_t pfx = {
+    .fp_proto = FIB_PROTOCOL_IP4,
+    .fp_len = nr->len,
+    .fp_addr.ip4 = nr->addr,
+  };
+  uword *refs;
+
+  refs = hash_get (lcp_router_nh_refs, nr->nh_id);
+  ASSERT (refs && refs[0] > 0);
+  if (0 == --refs[0])
+    hash_unset (lcp_router_nh_refs, nr->nh_id);
+
+  hash_unset (lcp_router_nh_route_db, lcp_router_nh_route_key (nr->fib_index, &pfx));
+  lcp_router_route_paths_discard (nr->paths);
+  pool_put (lcp_router_nh_route_pool, nr);
+}
+
+/* Forget the record of a route that is no longer in the FIB: a link that
+ * goes down takes its routes away without a message for them. */
+static void
+lcp_router_nh_route_expire (u32 fib_index, const fib_prefix_t *pfx)
+{
+  lcp_router_nh_route_t *nr;
+  fib_node_index_t fei;
+
+  nr = lcp_router_nh_route_find (fib_index, pfx);
+  if (!nr)
+    return;
+
+  fei = fib_table_lookup_exact_match (fib_index, pfx);
+  if (FIB_NODE_INDEX_INVALID == fei || !fib_entry_is_sourced (fei, nr->src))
+    lcp_router_nh_route_free (nr);
+}
+
+/* Takes the ownership of paths. */
+static void
+lcp_router_nh_route_set (const lcp_router_table_t *nlt, const fib_prefix_t *pfx, fib_source_t src,
+			 u32 nh_id, fib_route_path_t *paths)
+{
+  lcp_router_nh_route_t *nr;
+  uword *refs;
+
+  nr = lcp_router_nh_route_find (nlt->nlt_fib_index, pfx);
+  if (nr)
+    lcp_router_nh_route_free (nr);
+
+  if (0 == nh_id || FIB_PROTOCOL_IP4 != pfx->fp_proto)
+    {
+      lcp_router_route_paths_discard (paths);
+      return;
+    }
+
+  pool_get_zero (lcp_router_nh_route_pool, nr);
+  nr->nh_id = nh_id;
+  nr->table_id = nlt->nlt_id;
+  nr->fib_index = nlt->nlt_fib_index;
+  nr->src = src;
+  nr->addr = pfx->fp_addr.ip4;
+  nr->len = pfx->fp_len;
+  nr->paths = paths;
+
+  hash_set (lcp_router_nh_route_db, lcp_router_nh_route_key (nr->fib_index, pfx),
+	    nr - lcp_router_nh_route_pool);
+  refs = hash_get (lcp_router_nh_refs, nh_id);
+  if (refs)
+    refs[0]++;
+  else
+    hash_set (lcp_router_nh_refs, nh_id, 1);
+}
+
+static void
+lcp_router_nh_route_flush (void)
+{
+  lcp_router_nh_route_t *nr;
+
+  pool_foreach (nr, lcp_router_nh_route_pool)
+    lcp_router_route_paths_discard (nr->paths);
+  pool_free (lcp_router_nh_route_pool);
+  hash_free (lcp_router_nh_route_db);
+  hash_free (lcp_router_nh_refs);
+}
+
+static void
+lcp_router_nexthop_del (u32 nh_id)
+{
+  lcp_router_nh_route_t *nr;
+  u32 *indices = NULL, *index;
+
+  /* an object that no route uses, which is what a routing daemon deletes */
+  if (!hash_get (lcp_router_nh_refs, nh_id))
+    return;
+
+  /* ponytail: scans every route that uses any nexthop object; keep a list
+   * per object if deleting referenced objects shows up in profiles */
+  pool_foreach (nr, lcp_router_nh_route_pool)
+    if (nr->nh_id == nh_id)
+      vec_add1 (indices, nr - lcp_router_nh_route_pool);
+
+  vec_foreach (index, indices)
+    {
+      fib_node_index_t fei;
+      lcp_router_table_t *nlt;
+
+      nr = pool_elt_at_index (lcp_router_nh_route_pool, *index);
+      fib_prefix_t pfx = {
+	.fp_proto = FIB_PROTOCOL_IP4,
+	.fp_len = nr->len,
+	.fp_addr.ip4 = nr->addr,
+      };
+
+      /* The route may be gone already: a link that goes down takes its
+       * routes away without a message for the nexthop object. */
+      nlt = lcp_router_table_find (nr->table_id, FIB_PROTOCOL_IP4);
+      if (nlt && nlt->nlt_fib_index == nr->fib_index)
+	{
+	  fei = fib_table_lookup_exact_match (nr->fib_index, &pfx);
+	  if (FIB_NODE_INDEX_INVALID != fei && fib_entry_is_sourced (fei, nr->src))
+	    {
+	      LCP_ROUTER_DBG ("nexthop %u del: route %d:%U", nh_id, nr->table_id, format_fib_prefix,
+			      &pfx);
+	      fib_table_entry_path_remove2 (nr->fib_index, &pfx, nr->src, nr->paths);
+	      lcp_router_table_unlock (nlt);
+	    }
+	}
+
+      lcp_router_nh_route_free (nr);
+    }
+
+  vec_free (indices);
+}
+
 static void
 lcp_router_route_del (struct rtnl_route *rr)
 {
@@ -1385,8 +1561,13 @@ lcp_router_route_del (struct rtnl_route *rr)
   if (0 != vec_len (np.paths))
     {
       fib_source_t fib_src;
+      lcp_router_nh_route_t *nr;
 
       fib_src = lcp_router_proto_fib_source (rproto);
+
+      nr = lcp_router_nh_route_find (nlt->nlt_fib_index, &pfx);
+      if (nr && nr->nh_id == lcp_nl_route_msg_nhid ())
+	lcp_router_nh_route_free (nr);
 
       switch (pfx.fp_proto)
 	{
@@ -1539,12 +1720,25 @@ lcp_router_route_add (struct rtnl_route *rr, int is_replace)
 	      pfx.fp_payload_proto = np.paths[0].frp_proto;
 	    }
 
+	  /* A replace always redefines which object the route uses. An add
+	   * without one leaves another route to the prefix as it was. */
+	  u32 nh_id = lcp_nl_route_msg_nhid ();
+	  fib_route_path_t *nh_paths = NULL;
+
+	  lcp_router_nh_route_expire (nlt->nlt_fib_index, &pfx);
+
+	  if (nh_id && FIB_PROTOCOL_IP4 == pfx.fp_proto)
+	    nh_paths = lcp_router_fib_route_path_dup (np.paths);
+
 	  if (is_replace)
 	    fib_table_entry_update (nlt->nlt_fib_index, &pfx, fib_src,
 				    entry_flags, np.paths);
 	  else
 	    fib_table_entry_path_add2 (nlt->nlt_fib_index, &pfx, fib_src,
 				       entry_flags, np.paths);
+
+	  if (nh_id || is_replace)
+	    lcp_router_nh_route_set (nlt, &pfx, fib_src, nh_id, nh_paths);
 	}
     }
   else
@@ -1560,6 +1754,9 @@ static void
 lcp_router_route_sync_begin (void)
 {
   lcp_router_table_t *nlt;
+
+  /* the dump that follows names the nexthop object of every route again */
+  lcp_router_nh_route_flush ();
 
   pool_foreach (nlt, lcp_router_table_pool)
     {
@@ -1705,6 +1902,7 @@ __clib_export const nl_vft_t lcp_router_vft = {
   .nvl_rt_route_del = { .is_mp_safe = 1, .cb = lcp_router_route_del },
   .nvl_rt_route_sync_begin = { .is_mp_safe = 0, .cb = lcp_router_route_sync_begin },
   .nvl_rt_route_sync_end = { .is_mp_safe = 0, .cb = lcp_router_route_sync_end },
+  .nvl_rt_nexthop_del = { .is_mp_safe = 1, .cb = lcp_router_nexthop_del },
 };
 
 static void
