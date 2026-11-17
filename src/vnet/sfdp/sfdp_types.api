@@ -28,6 +28,20 @@ enum sfdp_sp_node : u8
   SFDP_API_SP_NODE_IP6_ICMP6_ERROR = 5,
 };
 
+enum sfdp_sp_node_v2 : u8
+{
+  SFDP_API_SP_NODE_V2_IP4_REASS = 0,
+  SFDP_API_SP_NODE_V2_IP6_REASS = 1,
+  SFDP_API_SP_NODE_V2_IP4_UNKNOWN_PROTO = 2,
+  SFDP_API_SP_NODE_V2_IP6_UNKNOWN_PROTO = 3,
+  SFDP_API_SP_NODE_V2_IP4_ICMP4_ERROR = 4,
+  SFDP_API_SP_NODE_V2_IP6_ICMP6_ERROR = 5,
+  SFDP_API_SP_NODE_V2_IP4_TABLE_OVERFLOW = 6,
+  SFDP_API_SP_NODE_V2_IP6_TABLE_OVERFLOW = 7,
+  SFDP_API_SP_NODE_V2_IP4_PRE_FILTERED = 8,
+  SFDP_API_SP_NODE_V2_IP6_PRE_FILTERED = 9,
+};
+
 enum sfdp_session_type : u8
 {
   SFDP_API_SESSION_TYPE_IP4 = 0,
@@ -37,6 +51,11 @@ enum sfdp_session_type : u8
 
 
 typedef sfdp_service_name
+{
+  string data[32];
+};
+
+typedef sfdp_pre_filter_name
 {
   string data[32];
 };
