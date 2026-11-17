@@ -214,8 +214,8 @@ vnet_netlink_set_link_state (int ifindex, int up)
   return err;
 }
 
-clib_error_t *
-vnet_netlink_get_link_mtu (int ifindex, u32 *mtu)
+static clib_error_t *
+vnet_netlink_get_link_u32_attr (int ifindex, u16 attr_type, char *name, u32 *val)
 {
   vnet_netlink_msg_t m, *msg;
   struct ifinfomsg ifmsg = { 0 };
@@ -223,7 +223,7 @@ vnet_netlink_get_link_mtu (int ifindex, u32 *mtu)
   clib_error_t *err = 0;
   vnet_netlink_msg_t *replies = NULL;
   int len = 0, offset = 0;
-  u32 msg_mtu;
+  u32 msg_val;
 
   ifmsg.ifi_index = ifindex;
 
@@ -233,7 +233,7 @@ vnet_netlink_get_link_mtu (int ifindex, u32 *mtu)
   err = vnet_netlink_msg_send (&m, &replies);
   if (err)
     {
-      err = clib_error_return (0, "get link mtu %U", format_clib_error, err);
+      err = clib_error_return (0, "get link %s %U", name, format_clib_error, err);
       goto done;
     }
 
@@ -258,13 +258,13 @@ vnet_netlink_get_link_mtu (int ifindex, u32 *mtu)
 
   do
     {
-      if ((attr->nla_type & NLA_TYPE_MASK) == IFLA_MTU)
+      if ((attr->nla_type & NLA_TYPE_MASK) == attr_type)
 	{
-	  msg_mtu = *(u32 *) ((u8 *) attr + NLA_HDRLEN);
+	  msg_val = *(u32 *) ((u8 *) attr + NLA_HDRLEN);
 	  if (attr->nla_type & NLA_F_NET_BYTEORDER)
-	    *mtu = clib_net_to_host_u32 (msg_mtu);
+	    *val = clib_net_to_host_u32 (msg_val);
 	  else
-	    *mtu = msg_mtu;
+	    *val = msg_val;
 	  goto done;
 	}
       offset = NLA_ALIGN (attr->nla_len);
@@ -274,7 +274,7 @@ vnet_netlink_get_link_mtu (int ifindex, u32 *mtu)
   while (len > sizeof (struct nlattr));
 
   /* not found */
-  err = clib_error_return (0, "mtu not found in netlink message");
+  err = clib_error_return (0, "%s not found in netlink message", name);
 
 done:
   vec_foreach (msg, replies)
@@ -284,6 +284,22 @@ done:
   vec_free (replies);
 
   return err;
+}
+
+clib_error_t *
+vnet_netlink_get_link_mtu (int ifindex, u32 *mtu)
+{
+  return vnet_netlink_get_link_u32_attr (ifindex, IFLA_MTU, "mtu", mtu);
+}
+
+clib_error_t *
+vnet_netlink_get_link_max_mtu (int ifindex, u32 *max_mtu)
+{
+#ifdef __linux__
+  return vnet_netlink_get_link_u32_attr (ifindex, IFLA_MAX_MTU, "max mtu", max_mtu);
+#else
+  return clib_error_return (0, "max mtu not supported");
+#endif
 }
 
 clib_error_t *
