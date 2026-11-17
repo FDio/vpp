@@ -83,7 +83,6 @@ typedef enum
 {
   TCP_SB_SACK_OOO,
   TCP_SB_SACK_RXT,
-  TCP_SB_SACK_RXT_RESCUED,
 } tcp_sb_sack_mode_e;
 
 always_inline void
@@ -91,10 +90,10 @@ scoreboard_update_sacked (sack_scoreboard_t *sb, tcp_ack_ctx_t *ac, u32 start, u
 			  tcp_sb_sack_mode_e mode, u16 snd_mss)
 {
   /* A newly sacked segment below the sack frontier arrived out of order. Use it to grow the reorder
-   * estimate when its late arrival is unambiguous reordering. Segments below high_rxt (or after
-   * rescue has fired) are excluded because they're ambiguous */
+   * estimate when its late arrival is unambiguous reordering. In recovery, segments below the
+   * highest one retransmitted are excluded, as the sack may be for a copy */
   if (seq_lt (start, sb->high_sacked) &&
-      (mode == TCP_SB_SACK_OOO || (mode == TCP_SB_SACK_RXT && seq_geq (start, sb->high_rxt))))
+      (mode == TCP_SB_SACK_OOO || seq_geq (start, sb->rxt_frontier)))
     {
       u32 reord = (sb->high_sacked - start + snd_mss - 1) / snd_mss;
       reord = clib_min (reord, TCP_MAX_SACK_REORDER);
@@ -296,6 +295,7 @@ scoreboard_init_rxt (sack_scoreboard_t *sb, u32 snd_una)
       sb->cur_rxt_hole = sb->head;
     }
   sb->high_rxt = snd_una;
+  sb->rxt_frontier = snd_una;
   sb->rescue_rxt = snd_una - 1;
 }
 
@@ -546,8 +546,12 @@ tcp_track_rxt (tcp_connection_t *tc, u32 start, u32 end)
 
   ASSERT (seq_lt (start, end));
 
+  /* The byte tracker marks the retransmitted samples. For the scoreboard, this copy makes later
+   * sacks of data up to its end ambiguous for reordering, see scoreboard_update_sacked */
   if (tc->cfg_flags & TCP_CFG_F_BYTE_TRACKER)
     tcp_bt_track_rxt (tc, start, end);
+  else
+    tc->sack_sb.rxt_frontier = seq_max (tc->sack_sb.rxt_frontier, end);
 
   /* All retransmissions add to the report budget, regardless of undo eligibility. */
   undo = &tc->dsack_undo;
@@ -799,9 +803,7 @@ tcp_scoreboard_apply_sacks (tcp_connection_t *tc, u32 ack, u32 high_sacked, tcp_
   sack_scoreboard_hole_t *hole, *next_hole;
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_block_t *blk, *rcv_sacks = tc->rcv_opts.sacks;
-  tcp_sb_sack_mode_e mode = !tcp_in_cong_recovery (tc)		  ? TCP_SB_SACK_OOO :
-			    seq_geq (sb->rescue_rxt, tc->snd_una) ? TCP_SB_SACK_RXT_RESCUED :
-								    TCP_SB_SACK_RXT;
+  tcp_sb_sack_mode_e mode = tcp_in_cong_recovery (tc) ? TCP_SB_SACK_RXT : TCP_SB_SACK_OOO;
   u32 blk_index = 0;
 
   if (sb->head == TCP_INVALID_SACK_HOLE_INDEX)
