@@ -465,6 +465,18 @@ I:	ige
 M:	Damjan Marion <damarion@cisco.com>
 F:	src/drivers/net/ige/
 
+RDMA (ibverbs) Device driver
+I:	rdma-driver
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/drivers/net/rdma/
+F:	src/drivers/common/rdma/
+
+MLX5 Device driver
+I:	mlx5
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/drivers/net/mlx5/
+F:	src/drivers/common/rdma/
+
 Marvell Armada device driver
 I:	armada
 M:	Damjan Marion <damarion@cisco.com>
