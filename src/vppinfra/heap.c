@@ -238,6 +238,10 @@ remove_free_block (void *v, uword b, uword i)
 
   l = vec_len (h->free_lists[b]);
 
+  /* Nothing to remove; also avoids unsigned underflow of l - 1. */
+  if (l == 0)
+    return;
+
   if (i < l - 1)
     {
       uword t = h->free_lists[b][l - 1];
