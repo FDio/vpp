@@ -310,9 +310,10 @@ typedef enum
 #undef _
 } ikev2_transform_esn_type_t;
 
-#define foreach_ikev2_auth_method \
- _( 1, RSA_SIG,        "rsa-sig")        \
- _( 2, SHARED_KEY_MIC, "shared-key-mic")
+#define foreach_ikev2_auth_method                                                                  \
+  _ (1, RSA_SIG, "rsa-sig")                                                                        \
+  _ (2, SHARED_KEY_MIC, "shared-key-mic")                                                          \
+  _ (14, DIGITAL_SIGNATURE, "digital-signature")
 
 typedef enum
 {
