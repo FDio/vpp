@@ -748,8 +748,6 @@ spdk_plugin_start_app (vlib_main_t *vm, const char *name, const char *json_confi
   u32 first_poll_thread = spdk_plugin_first_poll_thread ();
   int rc = 0;
 
-  (void) vm;
-
   effective_reactor_mask =
     reactor_mask ? strdup (reactor_mask) : spdk_plugin_build_default_reactor_mask ();
   if (!effective_reactor_mask)
@@ -757,6 +755,9 @@ spdk_plugin_start_app (vlib_main_t *vm, const char *name, const char *json_confi
 
   rc = spdk_plugin_validate_reactor_mask (effective_reactor_mask);
   if (rc)
+    goto early_error;
+
+  if (!no_pci && (rc = spdk_vpp_env_prepare_pci (vm)) != 0)
     goto early_error;
 
   rc = spdk_sock_set_default_impl ("vpp");
