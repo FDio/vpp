@@ -7,6 +7,8 @@
 #include <vppinfra/bihash_16_8.h>
 #include <vnet/vnet.h>
 #include <vnet/ethernet/p2p_ethernet.h>
+#include <vnet/ethernet/cli_types.h>
+#include <vnet/interface/cli_types.h>
 #include <vnet/l2/l2_input.h>
 
 p2p_ethernet_main_t p2p_main;
@@ -187,65 +189,62 @@ p2p_ethernet_add_del (vlib_main_t * vm, u32 parent_if_index,
 }
 
 static clib_error_t *
-vnet_p2p_ethernet_add_del (vlib_main_t * vm, unformat_input_t * input,
-			   vlib_cli_command_t * cmd)
+p2p_ethernet_cli (vlib_main_t *vm, cli_ctx_t *ctx, int is_add)
 {
-  vnet_main_t *vnm = vnet_get_main ();
-
-  int is_add = 1;
-  int remote_mac = 0;
-  u32 hw_if_index = ~0;
-  u32 sub_id = ~0;
-  u8 client_mac[6];
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat
-	  (input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
-	;
-      else if (unformat (input, "%U", unformat_ethernet_address, &client_mac))
-	remote_mac = 1;
-      else if (unformat (input, "sub-id %d", &sub_id))
-	;
-      else if (unformat (input, "del"))
-	is_add = 0;
-      else
-	break;
-    }
-
-  if (hw_if_index == ~0)
-    return clib_error_return (0, "Please specify parent interface ...");
-  if (!remote_mac)
-    return clib_error_return (0, "Please specify client MAC address ...");
-  if (sub_id == ~0 && is_add)
-    return clib_error_return (0, "Please specify sub-interface id ...");
-
+  u32 hw_if_index = cli_index (ctx, "interface");
+  u32 sub_id = cli_u64 (ctx, "sub-id", ~0);
   u32 rv;
-  rv = p2p_ethernet_add_del (vm, hw_if_index, client_mac, sub_id, is_add, 0);
+
+  rv = p2p_ethernet_add_del (vm, hw_if_index, cli_get (ctx, "mac-address")->prefix.addr, sub_id,
+			     is_add, 0);
   switch (rv)
     {
     case VNET_API_ERROR_BOND_SLAVE_NOT_ALLOWED:
-      return clib_error_return (0,
-				"not allowed as parent interface belongs to a BondEthernet interface");
+      return clib_error_return (
+	0, "not allowed as parent interface belongs to a BondEthernet interface");
     case -1:
-      return clib_error_return (0,
-				"p2p ethernet for given parent interface and client mac already exists");
+      return clib_error_return (
+	0, "p2p ethernet for given parent interface and client mac already exists");
     case -2:
-      return clib_error_return (0,
-				"couldn't create p2p ethernet subinterface");
+      return clib_error_return (0, "couldn't create p2p ethernet subinterface");
     case -3:
-      return clib_error_return (0,
-				"p2p ethernet for given parent interface and client mac doesn't exist");
+      return clib_error_return (
+	0, "p2p ethernet for given parent interface and client mac doesn't exist");
     default:
       break;
     }
   return 0;
 }
 
-VLIB_CLI_COMMAND (p2p_ethernet_add_del_command, static) = {
-  .path = "p2p_ethernet",
-  .function = vnet_p2p_ethernet_add_del,
-  .short_help = "p2p_ethernet <intfc> <mac-address> [sub-id <id>|del]",
+static clib_error_t *
+p2p_ethernet_add_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
+{
+  return p2p_ethernet_cli (vm, ctx, 1);
+}
+
+static clib_error_t *
+p2p_ethernet_del_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
+{
+  return p2p_ethernet_cli (vm, ctx, 0);
+}
+
+VLIB_CLI_COMMAND (p2p_ethernet_add_command, static) = {
+  .path = "p2p_ethernet add",
+  .short_help = "Add a point to point Ethernet sub-interface of a client MAC address",
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_hw_interface, .help = "parent interface"),
+		    CLI_VALUE ("mac-address", cli_type_mac_address,
+			       .help = "MAC address of the client"),
+		    CLI_KEYWORD ("sub-id", cli_type_u32, .help = "id of the sub-interface")),
+  .handler = p2p_ethernet_add_command_fn,
+};
+
+VLIB_CLI_COMMAND (p2p_ethernet_del_command, static) = {
+  .path = "p2p_ethernet del",
+  .short_help = "Delete a point to point Ethernet sub-interface of a client MAC address",
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_hw_interface, .help = "parent interface"),
+		    CLI_VALUE ("mac-address", cli_type_mac_address,
+			       .help = "MAC address of the client")),
+  .handler = p2p_ethernet_del_command_fn,
 };
 
 static clib_error_t *

@@ -108,6 +108,7 @@ list(APPEND VNET_HEADERS
   ip/ip_format_fns.h
   ip/ip_sas.h
   ip/vtep.h
+  ethernet/cli_types.h
   ethernet/ethernet_format_fns.h
   ethernet/ethernet_types_api.h
 )
@@ -130,6 +131,7 @@ list(APPEND VNET_API_FILES
 ##############################################################################
 list(APPEND VNET_SOURCES
   ethernet/arp_packet.c
+  ethernet/cli_types.c
   ethernet/ethernet_types_api.c
   ethernet/format.c
   ethernet/init.c
