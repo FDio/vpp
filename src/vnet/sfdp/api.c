@@ -90,6 +90,37 @@ vl_api_sfdp_set_sp_node_t_handler (vl_api_sfdp_set_sp_node_t *mp)
 }
 
 static void
+vl_api_sfdp_set_pre_filter_t_handler (vl_api_sfdp_set_pre_filter_t *mp)
+{
+  vl_api_sfdp_set_pre_filter_reply_t *rmp;
+  sfdp_main_t *sfdp = &sfdp_main;
+  sfdp_pre_filter_registration_t *pre_filter = 0;
+  u32 tenant_id = clib_net_to_host_u32 (mp->tenant_id);
+  char *name = (char *) mp->name.data;
+  clib_error_t *err;
+  int rv = 0;
+
+  if (!mp->is_disable)
+    {
+      name[sizeof (mp->name.data) - 1] = 0;
+      pre_filter = sfdp_pre_filter_by_name (sfdp, name);
+      if (!pre_filter)
+	{
+	  rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+	  goto done;
+	}
+    }
+  err = sfdp_set_pre_filter (sfdp, tenant_id, pre_filter);
+  if (err)
+    {
+      clib_error_free (err);
+      rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+    }
+done:
+  REPLY_MACRO (VL_API_SFDP_SET_PRE_FILTER_REPLY);
+}
+
+static void
 vl_api_sfdp_set_icmp_error_node_t_handler (
   vl_api_sfdp_set_icmp_error_node_t *mp)
 {
@@ -406,6 +437,28 @@ vl_api_sfdp_service_dump_t_handler (vl_api_sfdp_service_dump_t *mp)
 	{
 	  sfdp_send_service_details (rp, mp->context, *service, scope_name);
 	}
+    }
+}
+
+static void
+vl_api_sfdp_pre_filter_dump_t_handler (vl_api_sfdp_pre_filter_dump_t *mp)
+{
+  sfdp_main_t *sfdp = &sfdp_main;
+  sfdp_pre_filter_registration_t *r;
+  vl_api_sfdp_pre_filter_details_t *rmp;
+  vl_api_registration_t *rp;
+
+  rp = vl_api_client_index_to_registration (mp->client_index);
+  if (rp == 0)
+    return;
+
+  for (r = sfdp->next_pre_filter_registration; r; r = r->next)
+    {
+      rmp = vl_msg_api_alloc_zero (sizeof (*rmp));
+      rmp->_vl_msg_id = ntohs (VL_API_SFDP_PRE_FILTER_DETAILS + sfdp->msg_id_base);
+      rmp->context = mp->context;
+      strncpy ((char *) rmp->name.data, r->name, ARRAY_LEN (rmp->name.data) - 1);
+      vl_api_send_msg (rp, (u8 *) rmp);
     }
 }
 

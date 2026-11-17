@@ -299,13 +299,16 @@ format_sfdp_tenant (u8 *s, va_list *args)
 {
 
   u32 indent = format_get_indent (s);
-  __clib_unused sfdp_main_t *sfdp = va_arg (*args, sfdp_main_t *);
+  sfdp_main_t *sfdp = va_arg (*args, sfdp_main_t *);
   u32 tenant_idx = va_arg (*args, u32);
   sfdp_tenant_t *tenant = va_arg (*args, sfdp_tenant_t *);
+  sfdp_pre_filter_registration_t *pre_filter = sfdp->tenant_pre_filters[tenant_idx];
   u32 scope_index;
   s = format (s, "index: %d\n", tenant_idx);
   s = format (s, "%Ucontext: %d\n", format_white_space, indent,
 	      tenant->context_id);
+  s = format (s, "%Upre-filter: %s\n", format_white_space, indent,
+	      pre_filter ? pre_filter->name : "none");
   foreach_sfdp_scope_index (scope_index)
   {
     s = format (s, "%Uscope: %U\n", format_white_space, indent,
