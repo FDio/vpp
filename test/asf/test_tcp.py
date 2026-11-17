@@ -162,6 +162,7 @@ class TestTCPUnitTests(VppAsfTestCase):
             "tamper dsack-partial",
             "tamper dupack-cwnd",
             "tamper nosack-cwnd",
+            "tamper ack-cwnd",
             "tamper rcv-wnd-retract",
             "tamper snd-small-wnd",
             "tamper rcv-wnd-update",
