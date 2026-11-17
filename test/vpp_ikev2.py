@@ -3,7 +3,7 @@ from vpp_object import VppObject
 
 
 class AuthMethod:
-    v = {"rsa-sig": 1, "shared-key": 2}
+    v = {"rsa-sig": 1, "shared-key": 2, "digital-signature": 14}
 
     @staticmethod
     def value(key):

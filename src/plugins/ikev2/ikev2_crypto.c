@@ -956,6 +956,192 @@ done:
   return sign;
 }
 
+/*
+ * Digital Signature authentication, RFC 7427.
+ *
+ * The Authentication Data is a length octet, a DER AlgorithmIdentifier and
+ * the signature. Section 3 allows comparing the identifier with known
+ * encodings as octet strings, so no ASN.1 is parsed here. Hash identifiers
+ * are those of the IKEv2 "Hash Algorithms" registry: 2 SHA2-256, 3 SHA2-384,
+ * 4 SHA2-512. SHA-1 (1) is not accepted, RFC 8247 section 3.2.
+ */
+typedef struct
+{
+  u8 hash_id;
+  u8 is_pss;
+  u8 len;
+  u8 der[72];
+} ikev2_sig_scheme_t;
+
+static const ikev2_sig_scheme_t ikev2_sig_schemes[] = {
+  /* RFC 7427 A.4.3: RSASSA-PSS with SHA-256, MGF1 SHA-256, salt length 32 */
+  { 2, 1, 72, { 0x30, 0x46, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01,
+		0x0a, 0x30, 0x39, 0xa0, 0x0f, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48,
+		0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0xa1, 0x1c, 0x30, 0x1a,
+		0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x08, 0x30,
+		0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01,
+		0x05, 0x00, 0xa2, 0x03, 0x02, 0x01, 0x20, 0xa3, 0x03, 0x02, 0x01, 0x01 } },
+  /* The same parameters as a DER encoder writes them: trailerField has its
+   * default value and is left out. Accepted, never sent. */
+  { 2, 1, 67, { 0x30, 0x41, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0a, 0x30,
+		0x34, 0xa0, 0x0f, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04,
+		0x02, 0x01, 0x05, 0x00, 0xa1, 0x1c, 0x30, 0x1a, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86,
+		0xf7, 0x0d, 0x01, 0x01, 0x08, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65,
+		0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0xa2, 0x03, 0x02, 0x01, 0x20 } },
+  /* RFC 7427 A.1.2 to A.1.4: sha256, sha384, sha512 WithRSAEncryption */
+  { 2,
+    0,
+    15,
+    { 0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0b, 0x05, 0x00 } },
+  { 3,
+    0,
+    15,
+    { 0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0c, 0x05, 0x00 } },
+  { 4,
+    0,
+    15,
+    { 0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0d, 0x05, 0x00 } },
+};
+
+static const EVP_MD *
+ikev2_sig_hash_md (u8 hash_id)
+{
+  switch (hash_id)
+    {
+    case 2:
+      return EVP_sha256 ();
+    case 3:
+      return EVP_sha384 ();
+    case 4:
+      return EVP_sha512 ();
+    }
+  return 0;
+}
+
+/* the hash identifiers this plugin announces and accepts */
+u8 *
+ikev2_sig_hashes_notify_data (void)
+{
+  u8 *data = 0;
+  for (u8 id = 2; id <= 4; id++)
+    {
+      vec_add1 (data, 0);
+      vec_add1 (data, id);
+    }
+  return data;
+}
+
+/* returns 0 for a malformed list; unknown identifiers are skipped */
+int
+ikev2_parse_sig_hashes (u8 *data, u8 *hashes)
+{
+  u32 i, len = vec_len (data);
+
+  if (len & 1)
+    return 0;
+
+  *hashes = IKEV2_SIG_HASH_NOTIFY;
+  for (i = 0; i < len; i += 2)
+    if (data[i] == 0 && ikev2_sig_hash_md (data[i + 1]))
+      *hashes |= IKEV2_SIG_HASH_BIT (data[i + 1]);
+  return 1;
+}
+
+static int
+ikev2_sig_ctx_setup (EVP_PKEY_CTX *pctx, const ikev2_sig_scheme_t *s, const EVP_MD *md)
+{
+  if (!s->is_pss)
+    return 1;
+  return EVP_PKEY_CTX_set_rsa_padding (pctx, RSA_PKCS1_PSS_PADDING) > 0 &&
+	 EVP_PKEY_CTX_set_rsa_mgf1_md (pctx, md) > 0 &&
+	 EVP_PKEY_CTX_set_rsa_pss_saltlen (pctx, EVP_MD_size (md)) > 0;
+}
+
+/* 1 when the Authentication Data of method 14 verifies, 0 otherwise */
+int
+ikev2_verify_digital_sign (EVP_PKEY *pkey, u8 *auth_data, u8 *data)
+{
+  const ikev2_sig_scheme_t *s = 0;
+  const EVP_MD *md;
+  EVP_PKEY_CTX *pctx;
+  EVP_MD_CTX *ctx;
+  u32 i, alen, len = vec_len (auth_data);
+  int rv = 0;
+
+  /* a length octet, the identifier it announces, at least one signature
+   * octet */
+  if (!pkey || len < 2)
+    return 0;
+  alen = auth_data[0];
+  if (alen == 0 || 1 + alen >= len)
+    return 0;
+
+  for (i = 0; i < ARRAY_LEN (ikev2_sig_schemes); i++)
+    if (ikev2_sig_schemes[i].len == alen &&
+	!clib_memcmp (ikev2_sig_schemes[i].der, auth_data + 1, alen))
+      s = &ikev2_sig_schemes[i];
+  /* every scheme in the table needs an RSA key */
+  if (!s || EVP_PKEY_base_id (pkey) != EVP_PKEY_RSA)
+    return 0;
+
+  md = ikev2_sig_hash_md (s->hash_id);
+  ctx = EVP_MD_CTX_new ();
+  if (ctx && EVP_DigestVerifyInit (ctx, &pctx, md, NULL, pkey) == 1 &&
+      ikev2_sig_ctx_setup (pctx, s, md))
+    rv = EVP_DigestVerify (ctx, auth_data + 1 + alen, len - 1 - alen, data, vec_len (data)) == 1;
+  EVP_MD_CTX_free (ctx);
+  return rv;
+}
+
+/* Authentication Data of method 14, or 0 when it could not be produced.
+ * RSASSA-PSS with SHA-256 is the scheme RFC 8247 section 3.2 requires; it is
+ * used whenever the peer accepts SHA2-256, otherwise RSASSA-PKCS1-v1_5 with
+ * the strongest hash the peer listed. */
+u8 *
+ikev2_calc_digital_sign (EVP_PKEY *pkey, u8 peer_hashes, u8 *data)
+{
+  const ikev2_sig_scheme_t *s = 0;
+  const EVP_MD *md;
+  EVP_PKEY_CTX *pctx;
+  EVP_MD_CTX *ctx;
+  size_t sig_len = 0;
+  u8 *auth_data = 0;
+  int i;
+
+  if (!pkey || EVP_PKEY_base_id (pkey) != EVP_PKEY_RSA)
+    return 0;
+
+  if (peer_hashes & IKEV2_SIG_HASH_BIT (2))
+    s = &ikev2_sig_schemes[0];
+  else
+    for (i = ARRAY_LEN (ikev2_sig_schemes) - 1; i > 0 && !s; i--)
+      if (!ikev2_sig_schemes[i].is_pss &&
+	  peer_hashes & IKEV2_SIG_HASH_BIT (ikev2_sig_schemes[i].hash_id))
+	s = &ikev2_sig_schemes[i];
+  if (!s)
+    return 0;
+
+  md = ikev2_sig_hash_md (s->hash_id);
+  ctx = EVP_MD_CTX_new ();
+  if (!ctx || EVP_DigestSignInit (ctx, &pctx, md, NULL, pkey) != 1 ||
+      !ikev2_sig_ctx_setup (pctx, s, md) ||
+      EVP_DigestSign (ctx, NULL, &sig_len, data, vec_len (data)) != 1 || sig_len == 0)
+    goto done;
+
+  vec_validate (auth_data, s->len + sig_len);
+  auth_data[0] = s->len;
+  clib_memcpy (auth_data + 1, s->der, s->len);
+  if (EVP_DigestSign (ctx, auth_data + 1 + s->len, &sig_len, data, vec_len (data)) != 1 ||
+      sig_len == 0)
+    vec_free (auth_data);
+  else
+    vec_set_len (auth_data, 1 + s->len + sig_len);
+
+done:
+  EVP_MD_CTX_free (ctx);
+  return auth_data;
+}
+
 EVP_PKEY *
 ikev2_load_cert_file (u8 * file)
 {

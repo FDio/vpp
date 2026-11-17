@@ -313,10 +313,11 @@ autoreply define ikev2_profile_add_del
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param name - IKEv2 profile name
-    @param auth_method - IKEv2 authentication method (shared-key-mic/rsa-sig)
+    @param auth_method - IKEv2 authentication method: 1 rsa-sig, 2 shared-key-mic,
+                         14 digital-signature (RFC 7427, method 14 only)
     @param is_hex - Authentication data in hex format if non-zero, else string
     @param data_len - Authentication data length
-    @param data - Authentication data (for rsa-sig cert file path)
+    @param data - Authentication data (for rsa-sig and digital-signature cert file path)
 */
 autoreply define ikev2_profile_set_auth
 {
