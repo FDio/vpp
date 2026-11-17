@@ -47,7 +47,7 @@ jobs:
         include:
           # Debug builds on x86_64
           - build_type: 'debug'
-            os: 'ubuntu2404'
+            os: 'ubuntu2604'
             executor_arch: 'x86_64'
             class: 'builder'
 
@@ -62,7 +62,7 @@ jobs:
       WORKSPACE: /scratch/docker-build/vpp
       CCACHE_DIR: /scratch/ccache/${{ matrix.os }}-${{ matrix.executor_arch }}
       MAKE_PARALLEL_JOBS: 16
-      MAKE_TEST_OS: 'ubuntu-24.04'
+      MAKE_TEST_OS: 'ubuntu-26.04'
       TEST_JOBS: 4
       SHM_SIZE: 2048M
       TUI_LINE: "*******************************************************************"
