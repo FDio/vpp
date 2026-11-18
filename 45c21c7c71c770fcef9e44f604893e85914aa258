@@ -38,6 +38,44 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "54d2f199_4a7fa412",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2687,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-18T15:28:45Z",
+      "side": 1,
+      "message": "Reopened.",
+      "parentUuid": "55014358_a00526b7",
+      "tag": "prview:3e603d7cac4c360a36e21d1ca3d6d184:45c21c7c71c770fcef9e44f604893e85914aa258",
+      "revId": "45c21c7c71c770fcef9e44f604893e85914aa258",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "36d6dc3b_110b6490",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2687,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-18T15:28:45Z",
+      "side": 1,
+      "message": "Thinking again about my earlier bit-field suggestion, would a shared monotonic `u32` counter for inbound/outbound SA IDs be simpler? Assuming all IPsec SAs here come from IKE, it would decouple IDs from Child vector positions, avoid the allocation scan, and remove the 2,048-slot limit. We would still need to coordinate allocation across workers and handle wraparound without reusing live or pending-old IDs. What do you think—is there a reason to retain the encoded IDs that makes the bitmap preferable?",
+      "parentUuid": "55014358_a00526b7",
+      "tag": "prview:3e603d7cac4c360a36e21d1ca3d6d184:45c21c7c71c770fcef9e44f604893e85914aa258",
+      "revId": "45c21c7c71c770fcef9e44f604893e85914aa258",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "50710e3f_c6d0d645",
         "filename": "src/plugins/ikev2/ikev2.c",
         "patchSetId": 3
