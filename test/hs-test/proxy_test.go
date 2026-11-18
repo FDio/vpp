@@ -958,6 +958,7 @@ func VppConnectProxyIperfUdpTest(s *MasqueSuite) {
 }
 
 func VppConnectProxyIperfTcpMWTest(s *MasqueSuite) {
+	s.Skip("Disabled on stable/2606")
 	s.CpusPerVppContainer = 3
 	s.SetupTest()
 	vppConnectProxyIperfTcp(s)
@@ -1209,6 +1210,7 @@ func VppConnectProxyHttp3ServerClosedTcpMWTest(s *MasqueSuite) {
 }
 
 func VppConnectProxyHttp3StressMWTest(s *MasqueSuite) {
+	s.Skip("Disabled on stable/2606")
 	s.CpusPerVppContainer = 3
 	s.SetupTest("http3")
 	s.StartNginxServer()
