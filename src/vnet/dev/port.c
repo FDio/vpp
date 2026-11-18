@@ -812,6 +812,10 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
       if (caps)
 	vnet_hw_if_set_caps (vnm, hw_if_index, caps);
 
+      /* the NIC filters destination MACs, so ethernet-input can skip it */
+      if (port->attr.caps.mac_filter)
+	ethernet_set_flags (vnm, hw_if_index, ETHERNET_INTERFACE_FLAG_DEFAULT_L3);
+
       if (port->attr.speed_caps)
 	hw->supported_link_speeds = port->attr.speed_caps;
 
