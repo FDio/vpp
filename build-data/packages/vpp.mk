@@ -21,6 +21,7 @@ endif
 
 vpp_cmake_prefix_path  = /opt/vpp/external/$(shell uname -m) /opt/vpp/optional/$(shell uname -m)
 vpp_cmake_prefix_path += $(PACKAGE_INSTALL_DIR)external
+vpp_cmake_prefix_path += $(PACKAGE_INSTALL_DIR)optional
 vpp_cmake_prefix_path := $(subst $() $(),;,$(vpp_cmake_prefix_path))
 
 vpp_cmake_args ?=
@@ -48,11 +49,11 @@ vpp_configure_depend += external-install
 vpp_configure = \
   cd $(PACKAGE_BUILD_DIR) && \
   $(CMAKE) -G Ninja $(vpp_cmake_args) $(call find_source_fn,$(PACKAGE_SOURCE))
-vpp_build = $(CMAKE) --build $(PACKAGE_BUILD_DIR) -- $(MAKE_PARALLEL_FLAGS)
-vpp_install = $(CMAKE) --build $(PACKAGE_BUILD_DIR) -- install | grep -v 'Set runtime path'
+vpp_build = $(CMAKE) $(vpp_cmake_args) --build $(PACKAGE_BUILD_DIR) -- $(MAKE_PARALLEL_FLAGS)
+vpp_install = $(CMAKE) $(vpp_cmake_args) --build $(PACKAGE_BUILD_DIR) -- install | grep -v 'Set runtime path'
 
 vpp-package-deb: vpp-install
-	@$(CMAKE) --build $(PACKAGE_BUILD_DIR)/vpp -- pkg-deb
+	@$(CMAKE) $(vpp_cmake_args) --build $(PACKAGE_BUILD_DIR)/vpp -- pkg-deb
 	@find $(PACKAGE_BUILD_DIR) \
           -maxdepth 2 \
           \( -name '*.changes' -o -name '*.deb' -o -name '*.buildinfo' \) \
