@@ -902,6 +902,7 @@ format_tcp_cfg (u8 *s, va_list *args)
   s = format (s, "syn_rcvd time: %u sec\n",
 	      (u32) (tm_cfg.syn_rcvd_time * TCP_TICK));
   s = format (s, "syn_sent time: %u sec\n", (u32) (tm_cfg.syn_sent_time * TCP_TICK));
+  s = format (s, "max rto backoffs: %u\n", tm_cfg.max_rto_backoffs);
   s = format (s, "tcp allocation error cleanup time: %0.2f sec\n",
 	      (f32) (tm_cfg.alloc_err_timeout * TCP_TIMER_TICK));
   s = format (s, "connection cleanup time: %.2f sec\n", tm_cfg.cleanup_time);
@@ -964,7 +965,8 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
   u8 initial_cwnd_set = 0;
   u8 rack_set = 0;
   u8 cc_algo_set = 0;
-  u32 mtu, min_mtu = 1280, initial_cwnd_multiplier;
+  u8 max_rto_backoffs_set = 0;
+  u32 mtu, min_mtu = 1280, initial_cwnd_multiplier, max_rto_backoffs;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1037,15 +1039,22 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 	{
 	  cc_algo_set = 1;
 	}
+      else if (unformat (input, "max-rto-backoffs %u", &max_rto_backoffs))
+	{
+	  if (!max_rto_backoffs)
+	    return clib_error_return (0, "max-rto-backoffs must be positive");
+	  tcp_cfg.max_rto_backoffs = max_rto_backoffs;
+	  max_rto_backoffs_set = 1;
+	}
       else
 	return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
     }
 
   if (!byte_tracker_set && !csum_offload_set && !dsack_set && !mtu_set && !initial_cwnd_set &&
-      !rack_set && !cc_algo_set)
+      !rack_set && !cc_algo_set && !max_rto_backoffs_set)
     return clib_error_return (0, "expected byte-tracker, csum-offload, "
-				 "dsack, mtu, initial-cwnd-multiplier, [no-]rack "
-				 "or cc-algo");
+				 "dsack, mtu, initial-cwnd-multiplier, [no-]rack, "
+				 "cc-algo or max-rto-backoffs");
 
   if (byte_tracker_set)
     vlib_cli_output (vm, "TCP byte tracker for new connections: %s",
@@ -1066,6 +1075,8 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
   if (cc_algo_set)
     vlib_cli_output (vm, "TCP congestion control for new connections: %s",
 		     tcp_cc_algo_get (tcp_cfg.cc_algo)->name);
+  if (max_rto_backoffs_set)
+    vlib_cli_output (vm, "TCP max rto backoffs: %u", tcp_cfg.max_rto_backoffs);
   return 0;
 }
 
@@ -1074,7 +1085,7 @@ VLIB_CLI_COMMAND (tcp_set_command, static) = {
   .short_help = "set tcp [byte-tracker [enable|disable]] "
 		"[csum-offload [enable|disable]] [dsack [enable|disable]] "
 		"[mtu <mtu>] [initial-cwnd-multiplier <n>] [rack|no-rack] "
-		"[cc-algo <name>]",
+		"[cc-algo <name>] [max-rto-backoffs <n>]",
   .function = tcp_set_fn,
 };
 
@@ -1274,6 +1285,12 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "syn-sent-time %u", &tmp_time))
 	/* rto is capped so syn-sent timeout is estimated up to 2 * TCP_RTO_MAX */
 	tcp_cfg.syn_sent_time = clib_min ((u64) tmp_time * THZ, 2 * TCP_RTO_MAX);
+      else if (unformat (input, "max-rto-backoffs %u", &tmp))
+	{
+	  if (!tmp)
+	    return clib_error_return (0, "max-rto-backoffs must be positive");
+	  tcp_cfg.max_rto_backoffs = tmp;
+	}
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);

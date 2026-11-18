@@ -219,6 +219,9 @@ typedef struct tcp_configuration_
   /** Time to wait (tcp ticks) for syn-sent connection to establish */
   u32 syn_sent_time;
 
+  /** Retransmit timeouts backed off before resetting the connection */
+  u32 max_rto_backoffs;
+
   /** Number of preallocated connections */
   u32 preallocated_connections;
 
