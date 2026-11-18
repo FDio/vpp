@@ -3,6 +3,23 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "073fd958_5f8fc8b4",
+        "filename": ".github/workflows/vpp-verify-maketest.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-18T20:00:52Z",
+      "side": 1,
+      "message": "maybe we should reduce aarch64 to run only ubuntu2604, running two seems to be bottleneck currently",
+      "revId": "d856576185b02cdcba84488ef684812da0dc1623",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "9a4ce9af_5ded9276",
         "filename": "/PATCHSET_LEVEL",
         "patchSetId": 1
