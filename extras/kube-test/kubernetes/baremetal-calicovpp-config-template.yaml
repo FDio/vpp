@@ -20,6 +20,9 @@ data:
       exec /etc/vpp/startup.exec
     }
     api-trace { on }
+    interface {
+      default-rx-mode interrupt
+    }
     socksvr {
         socket-name /var/run/vpp/vpp-api.sock
     }
