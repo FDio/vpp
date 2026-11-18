@@ -111,6 +111,13 @@ u8x32_msb_mask (u8x32 v)
   return _mm256_movemask_epi8 ((__m256i) v);
 }
 
+/* Creates a mask from the result of an eight-lane 32-bit comparison. */
+static_always_inline u8
+u32x8_compare_mask (u32x8 v)
+{
+  return _mm256_movemask_ps ((__m256) v);
+}
+
 static_always_inline u32
 i8x32_msb_mask (i8x32 v)
 {
