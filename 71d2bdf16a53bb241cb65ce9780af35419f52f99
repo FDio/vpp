@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6187f164_c362841b",
+        "filename": ".github/workflows/periodic-vpp-verify-asan-maketest.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-18T19:39:31Z",
+      "side": 1,
+      "message": "you need to set VPPAPIGEN_TEST_OS because vpp-make-test action with this hash defaults to ubuntu-24.04",
+      "revId": "71d2bdf16a53bb241cb65ce9780af35419f52f99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
