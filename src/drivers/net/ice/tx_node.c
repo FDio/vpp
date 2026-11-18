@@ -332,7 +332,7 @@ VNET_DEV_NODE_FN (ice_tx_node)
   u32 n_chain_too_long = 0;
 
   vlib_get_buffers (vm, from, bufs, n_left);
-  bp[n_left] = bp[n_left + 1] = bp[n_left + 2] = bp[n_left + 3] = bp[n_left - 1];
+  vlib_buffers_prefetch_pad (bp, n_left, 4);
 
   vnet_dev_va_to_iova (dev, (void **) dma_addrs, (void **) bufs, n_left,
 		       STRUCT_OFFSET_OF (vlib_buffer_t, data));

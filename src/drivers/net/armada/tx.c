@@ -368,7 +368,7 @@ VNET_DEV_NODE_FN (mvpp2_tx_node)
   u8 n_retry = 5;
 
   vlib_get_buffers (vm, buffer_indices, b, n_pkts);
-  b[n_pkts] = b[n_pkts + 1] = b[n_pkts + 2] = b[n_pkts + 3] = b[n_pkts - 1];
+  vlib_buffers_prefetch_pad (b, n_pkts, 4);
 
   vnet_dev_tx_queue_lock_if_needed (txq);
 
