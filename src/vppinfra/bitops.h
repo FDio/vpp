@@ -248,6 +248,37 @@ uword_bitmap_find_first_set (uword *bmp)
   return (b - bmp) * uword_bits + get_lowest_set_bit_index (b[0]);
 }
 
+static_always_inline uword
+_uword_bitmap_count_bits_at_index (uword *bmp, uword bit_index, uword max_bits, uword inv)
+{
+  uword i = bit_index >> log2_uword_bits, off = bit_index & (uword_bits - 1);
+  uword w = (bmp[i] ^ inv) >> off, avail = uword_bits - off, n = 0;
+
+  while (w == 0 && n + avail < max_bits)
+    {
+      n += avail;
+      w = bmp[++i] ^ inv;
+      avail = uword_bits;
+    }
+
+  n += w ? get_lowest_set_bit_index (w) : avail;
+  return n < max_bits ? n : max_bits;
+}
+
+/* number of consecutive clear bits starting at bit_index, at most max_bits */
+static_always_inline uword
+uword_bitmap_count_clear_bits_at_index (uword *bmp, uword bit_index, uword max_bits)
+{
+  return _uword_bitmap_count_bits_at_index (bmp, bit_index, max_bits, 0);
+}
+
+/* number of consecutive set bits starting at bit_index, at most max_bits */
+static_always_inline uword
+uword_bitmap_count_set_bits_at_index (uword *bmp, uword bit_index, uword max_bits)
+{
+  return _uword_bitmap_count_bits_at_index (bmp, bit_index, max_bits, ~(uword) 0);
+}
+
 always_inline uword
 uword_bitmap_get_multiple (uword *bmp, uword i, uword n_bits)
 {
