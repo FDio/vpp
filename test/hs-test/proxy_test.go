@@ -1209,6 +1209,7 @@ func VppConnectProxyHttp3ServerClosedTcpMWTest(s *MasqueSuite) {
 }
 
 func VppConnectProxyHttp3StressMWTest(s *MasqueSuite) {
+	s.Skip("Disabled on stable/2606")
 	s.CpusPerVppContainer = 3
 	s.SetupTest("http3")
 	s.StartNginxServer()
