@@ -118,6 +118,7 @@ jobs:
       - fdio:workflow=${{ github.run_id }}
 
     environment: production
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
