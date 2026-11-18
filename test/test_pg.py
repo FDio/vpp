@@ -63,6 +63,14 @@ class TestPg(VppTestCase):
         for i in self.pg_interfaces:
             i.admin_down()
 
+    def test_pg_pcap_source_missing_interface(self):
+        response = self.vapi.cli_return_response(
+            "packet-generator new pcap /tmp/nonexistent.pcap "
+            "source pg999 name missing-source"
+        )
+        self.assertNotEqual(response.retval, 0)
+        self.assertIn("packet-generator interface pg999 does not exist", response.reply)
+
     def test_pg_tun(self):
         """IP[46] Tunnel Mode PG"""
 

@@ -408,8 +408,17 @@ new_stream (vlib_main_t * vm,
 	  vlib_node_t *n;
 
 	  if (s.if_id != ~0)
-	    n = vlib_get_node_by_name (vm, (u8 *) pg_interface_get_input_node (
-					     &pg->interfaces[s.if_id]));
+	    {
+	      uword *p = hash_get (pg->if_index_by_if_id, s.if_id);
+	      if (!p)
+		{
+		  error = clib_error_return (0, "packet-generator interface pg%u does not exist",
+					     s.if_id);
+		  goto done;
+		}
+	      pg_interface_t *pi = pool_elt_at_index (pg->interfaces, p[0]);
+	      n = vlib_get_node_by_name (vm, (u8 *) pg_interface_get_input_node (pi));
+	    }
 	  else
 	    n = vlib_get_node_by_name (vm, (u8 *) "ethernet-input");
 	  s.node_index = n->index;
