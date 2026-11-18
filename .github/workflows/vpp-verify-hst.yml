@@ -186,14 +186,14 @@ jobs:
 
       - name: Install VPP dependencies
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-install-deps@be4c10d674fb302334b14c217d69f9cb18eb7785
+        uses: fdio/vpp/.github/actions/vpp-install-deps@24b5fb94533ea38da472a9e912928c5275f21015
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: Install VPP external dependencies
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-install-ext-deps@be4c10d674fb302334b14c217d69f9cb18eb7785
+        uses: fdio/vpp/.github/actions/vpp-install-ext-deps@24b5fb94533ea38da472a9e912928c5275f21015
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}
@@ -222,7 +222,7 @@ jobs:
 
       - name: HST Test VPP
         if: success()
-        uses: fdio/vpp/.github/actions/vpp-hst-test@22d12e5159c193637925d8f7b1eba26325c2f9fa
+        uses: fdio/vpp/.github/actions/vpp-hst-test@24b5fb94533ea38da472a9e912928c5275f21015
         timeout-minutes: 90
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
