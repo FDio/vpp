@@ -242,8 +242,9 @@ scoreboard_next_rxt_hole (sack_scoreboard_t * sb,
       return 0;
     }
 
-  /* Rule (1): if higher than rxt, less than high_sacked and lost */
-  if (hole->is_lost && seq_lt (hole->start, sb->high_sacked))
+  /* Rule (1): if higher than rxt and lost. SACK loss detection marks only
+   * holes below high_sacked lost, an rto or reneging also those above it */
+  if (hole->is_lost)
     {
       sb->cur_rxt_hole = scoreboard_hole_index (sb, hole);
     }
@@ -320,12 +321,25 @@ scoreboard_rxt_mark_lost (sack_scoreboard_t *sb, u32 snd_una, u32 snd_nxt)
       sb->tail = scoreboard_hole_index (sb, hole);
       sb->high_sacked = snd_una;
     }
+  else
+    {
+      /* The tail hole ends at snd_nxt as of the last ack. Cover data sent since */
+      hole = scoreboard_last_hole (sb);
+      if (seq_geq (hole->start, sb->high_sacked))
+	hole->end = snd_nxt;
+      else if (seq_lt (sb->high_sacked, snd_nxt))
+	scoreboard_insert_hole (sb, sb->tail, sb->high_sacked, snd_nxt);
+    }
 
-  if (hole->is_lost)
-    return;
-
-  hole->is_lost = 1;
-  sb->lost_bytes += scoreboard_hole_bytes (hole);
+  /* Every unsacked byte is lost */
+  sb->lost_bytes = 0;
+  hole = scoreboard_first_hole (sb);
+  while (hole)
+    {
+      hole->is_lost = 1;
+      sb->lost_bytes += scoreboard_hole_bytes (hole);
+      hole = scoreboard_next_hole (sb, hole);
+    }
 }
 
 void
@@ -451,7 +465,8 @@ scoreboard_rxt_head_bytes (sack_scoreboard_t *sb, u32 snd_una, u32 max_bytes)
   hole = scoreboard_first_hole (sb);
   ASSERT (hole && hole->start == snd_una && seq_gt (hole->end, snd_una));
 
-  /* A lost hole ends where the hole for data sent after its rto starts */
+  /* Adjacent holes are one unsacked run, e.g., a lost hole and the one for
+   * data sent after its rto */
   while ((next = scoreboard_next_hole (sb, hole)) && next->start == hole->end)
     hole = next;
 
