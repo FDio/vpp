@@ -2,6 +2,11 @@ name: vpp-verify-gcc
 
 on:
   workflow_call:
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: false
+      AWS_SECRET_ACCESS_KEY:
+        required: false
     inputs:
       FDIO_NAMESPACE:
         description: "Executor Namespace (prod|sandbox)"
@@ -105,13 +110,17 @@ defaults:
 
 permissions:
   contents: read
-  actions: read
+  actions: read   # Needed to read local actions
+
+concurrency:
+  group: vpp-verify-gcc-${{ github.workflow }}-${{ inputs.GERRIT_PROJECT }}-${{ inputs.GERRIT_BRANCH }}-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.FDIO_NAMESPACE }}
+  cancel-in-progress: true
 
 jobs:
   verify-gcc:
-    # yamllint disable-line rule:line-length
-    name: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}__${{ inputs.GERRIT_BRANCH }}__${{ inputs.FDIO_NAMESPACE }}
+    name: ${{ matrix.build_type }}_${{ matrix.os }}_${{ matrix.executor_arch }}
     runs-on:
+      # zizmor: ignore[self-hosted-runner]
       - self-hosted
       - nomad
       - fdio:arch=${{ matrix.executor_arch }}
@@ -120,6 +129,7 @@ jobs:
       - fdio:os=${{ matrix.os }}
       - fdio:workflow=${{ github.run_id }}
 
+    environment: production
     strategy:
       fail-fast: false
       matrix:
@@ -136,7 +146,7 @@ jobs:
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
       GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
       LOG_PREFIX: ${{ inputs.LOG_PREFIX }}
-      LOG_NAME: ""
+      LOG_NAME: "${{ inputs.LOG_PREFIX }}/verify-gcc-${{ matrix.build_type }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
       LOG_DIR: ""
       WORKSPACE: /scratch/docker-build/vpp
       CCACHE_DIR: /scratch/ccache/${{ matrix.os }}-${{ matrix.executor_arch }}
@@ -146,7 +156,9 @@ jobs:
 
     steps:
       - name: Actions Checkout
-        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98  # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Environment
         # yamllint disable-line rule:line-length
@@ -155,7 +167,6 @@ jobs:
       - name: Prepare Log Directory
         run: |
           set -euxo pipefail
-          LOG_NAME="${{ env.LOG_PREFIX }}/verify-gcc-${{ matrix.build_type }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
           echo "LOG_NAME=$LOG_NAME" >> "$GITHUB_ENV"
           LOG_DIR="$WORKSPACE/logs/$LOG_NAME"
           echo "LOG_DIR=$LOG_DIR" >> "$GITHUB_ENV"
@@ -183,7 +194,6 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/vpp/.github/actions/vpp-install-deps@f56a1e6b5479966acbf1d8a152368dd41c700405
         with:
-          LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
@@ -191,7 +201,6 @@ jobs:
         # yamllint disable-line rule:line-length
         uses: fdio/vpp/.github/actions/vpp-install-ext-deps@f56a1e6b5479966acbf1d8a152368dd41c700405
         with:
-          LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
