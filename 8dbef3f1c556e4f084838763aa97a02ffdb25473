@@ -56,6 +56,24 @@
       },
       "revId": "8dbef3f1c556e4f084838763aa97a02ffdb25473",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "da7a4eec_6a46cc7e",
+        "filename": "src/plugins/fastacl/FEATURE.yaml",
+        "patchSetId": 6
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-11-18T07:55:07Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "49036c39_2ed15135",
+      "revId": "8dbef3f1c556e4f084838763aa97a02ffdb25473",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
