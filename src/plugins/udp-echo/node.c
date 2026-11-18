@@ -59,8 +59,7 @@ VLIB_NODE_FN (udp_echo_node)
     cksum_oflags |= VNET_BUFFER_OFFLOAD_F_UDP_CKSUM;
 
   vlib_get_buffers (vm, from, bufs, n_left_from);
-  for (u32 i = 0; i < 4; i++)
-    bufs[n_left_from + i] = bufs[n_left_from - 1];
+  vlib_buffers_prefetch_pad (bufs, n_left_from, 4);
   b = bufs;
 
   for (; n_left_from >= 4; n_left_from -= 4, b += 4)
