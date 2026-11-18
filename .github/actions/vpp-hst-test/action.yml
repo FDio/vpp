@@ -106,5 +106,8 @@ runs:
             fi
             echo -e "\n$TUI_LINE\n* VPP ${BUILD_TYPE^^} ${OS_ID^^}-${OS_VERSION_ID}-${OS_ARCH^^}" \
                     "\n* HST $BUILD_RESULT\n$TUI_LINE\n"
+            if ! make -C "$HS_TEST_DIR" clean-hst-docker-state ; then
+                echo "FAILED 'make -C $HS_TEST_DIR clean-hst-docker-state'"
+            fi
             exit $RETVAL
           } | tee "$LOG_FILE"

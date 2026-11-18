@@ -33,6 +33,13 @@ The action sets `MW_PARALLEL=true` when `TEST_JOBS=auto`. Fixed process counts
 use `MW_PARALLEL=false` because NUMA-aware MW execution requires
 `PARALLEL=auto`.
 
+After tests, the action runs `make clean-hst-docker-state`, which removes
+hst containers, images, the local registry contents, the `hst_builder` Buildx
+builder/cache. Named volumes and volumes still attached to containers are left
+alone. Nomad hst-class runners bind-mount their task's `local/docker` directory
+at `/var/lib/docker`; Nomad reclaims that storage when it garbage collects the
+allocation.
+
 ## Usage
 
 ```yaml
