@@ -427,12 +427,14 @@ quic_quicly_on_stream_destroy (quicly_stream_t *stream, quicly_error_t err)
   sctx->stream = 0;
   sctx->udp_session_handle = SESSION_INVALID_HANDLE;
 
-  /* peer reset can follow receive side FIN, when reset_notify no longer reach app, stream
-   * destruction must still report full closure and release the transport for app */
+  /* A peer reset after receive FIN must still report full closure and release
+   * the transport. A half-closed sender can retain unacknowledged TX bytes after
+   * STOP_SENDING; preserve its receive side until the app acknowledges full close. */
   if ((sctx->flags & QUIC_F_APP_CLOSED) ||
       ((sctx->c_flags & TRANSPORT_CONNECTION_F_ERROR) &&
        (!app_wrk || app_worker_application_is_builtin (app_wrk))) ||
-      svm_fifo_max_dequeue_cons (get_stream_session_and_ctx_from_stream (stream, &sctx)->tx_fifo))
+      (!(sctx->flags & QUIC_F_APP_CLOSED_TX) &&
+       svm_fifo_max_dequeue_cons (get_stream_session_and_ctx_from_stream (stream, &sctx)->tx_fifo)))
     quic_quicly_stream_delete (sctx);
   else
     session_transport_closing_notify (&sctx->connection);
@@ -548,7 +550,9 @@ quic_quicly_on_stop_sending (quicly_stream_t *stream, quicly_error_t quicly_erro
 	    session_handle (session_get (sctx->c_s_index, sctx->c_thread_index)), sctx->c_c_index,
 	    sctx->c_thread_index, sctx->flags, quic_quicly_format_err, quicly_error);
 
-  if (!(sctx->flags & QUIC_F_APP_CLOSED))
+  /* The application has already ended TX, but can still be awaiting RX. A peer
+   * cancelling that send side must not turn its response into a stream reset. */
+  if (!(sctx->flags & (QUIC_F_APP_CLOSED | QUIC_F_APP_CLOSED_TX)))
     {
       sctx->app_err_code = QUICLY_ERROR_GET_ERROR_CODE (quicly_error);
       sctx->c_flags |= TRANSPORT_CONNECTION_F_ERROR;
