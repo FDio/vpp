@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9a4ce9af_5ded9276",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-18T18:50:53Z",
+      "side": 1,
+      "message": "**Per patch verify hs-test:**\n- debug_ubuntu2604_x86_64\n- release_ubuntu2604_x86_64\n\n**Periodic verify hs-test: (twice per day)**\n- debug_ubuntu2604_aarch64\n- release_ubuntu2604_aarch64\n- debug_ubuntu2404_x86_64\n- release_ubuntu2404_x86_64\n- debug_ubuntu2404_aarch64\n- release_ubuntu2404_aarch64\n- debug_ubuntu2204_x86_64\n- debug_ubuntu2204_aarch64\n- release_ubuntu2204_aarch64\n\n**Per patch verify make test:**\n- release_ubuntu2604_x86_64\n- release_ubuntu2604_aarch64\n- debug_ubuntu2404_x86_64\n- release_ubuntu2404_x86_64\n- release_ubuntu2404_aarch64\n- release_debian12_x86_64\n\n**Per patch merge make test:**\n- release_ubuntu2604_x86_64\n- release_ubuntu2604_aarch64\n- release_ubuntu2404_x86_64\n- release_ubuntu2404_aarch64\n- release_debian12_x86_64\n\n**Periodic verify make test: (once per day)**\n- debug_ubuntu2204_x86_64\n- release_ubuntu2204_x86_64\n- debug_ubuntu2204_aarch64\n- release_ubuntu2204_aarch64",
+      "revId": "d856576185b02cdcba84488ef684812da0dc1623",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
