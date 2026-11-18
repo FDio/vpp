@@ -21,6 +21,7 @@ endif
 
 vpp_cmake_prefix_path  = /opt/vpp/external/$(shell uname -m) /opt/vpp/optional/$(shell uname -m)
 vpp_cmake_prefix_path += $(PACKAGE_INSTALL_DIR)external
+vpp_cmake_prefix_path += $(PACKAGE_INSTALL_DIR)optional
 vpp_cmake_prefix_path := $(subst $() $(),;,$(vpp_cmake_prefix_path))
 
 vpp_cmake_args ?=
