@@ -20,6 +20,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "4ed8f1be_1fdfbf2c",
+        "filename": ".github/workflows/vpp-verify-maketest.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-18T20:09:37Z",
+      "side": 1,
+      "message": "Yes, that sounds like a good idea.\nWe can remove `release_ubuntu2404_aarch64` from both `vpp-verify-maketest.yml` and `vpp-merge-maketest.yml` and instead run it as part of `periodic-vpp-verify-maketest.yml`.\nThat way coverage missing from per-patch can be run periodic.",
+      "parentUuid": "073fd958_5f8fc8b4",
+      "revId": "d856576185b02cdcba84488ef684812da0dc1623",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "9a4ce9af_5ded9276",
         "filename": "/PATCHSET_LEVEL",
         "patchSetId": 1
