@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a62a2b10_a0b5c003",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2687,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-18T15:32:48Z",
+      "side": 1,
+      "message": "Thanks. I checked what a shared counter would change.\n\nIt would remove the bitmap and its scan, the 2,048-slot limit, the exhaustion path and the 0x800 bit that alternates the remote ID on a rekey (current_remote_id_mask).\n\nWhat it would touch:\n1. The IPsec layer treats the IDs as opaque, but test_ikev2.py reads the thread and the SA index from the outbound ID and expects the new Child of a rekey at id + 1. Those tests would be rewritten.\n2. The ID space is shared with ipsec_sa_add_and_lock(), which returns ENTRY_ALREADY_EXISTS for a live ID. Here the ID is chosen where the request is handled, possibly on a worker, and the SA is added on the main thread through an RPC, so a wraparound would need a policy for IDs that are still live or pending-old. A counter also needs a range reserved for IKEv2 (today bits 31 and 30 mark local and remote).\n3. The later changes of this chain (the rekey and parallel Child fixes) are written against the current mask and old_remote_id handling, so a counter would change several changes behind this one.\n\nI suggest keeping the bitmap in this fix, since it is bounded and tested with 2,048 live Children, and doing the counter as a separate refactor once the chain is merged, if you still prefer it. I can prepare that as its own change. Does that work for you?",
+      "parentUuid": "36d6dc3b_110b6490",
+      "revId": "8c4904cb0c978116558ca96020591db131c914b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
