@@ -68,6 +68,7 @@ jobs:
     environment: production
     outputs:
       log_prefix: ${{ steps.start-time.outputs.log_prefix }}
+      proceed: ${{ steps.gate.outputs.proceed }}
 
     steps:
       - name: Start Time
@@ -124,10 +125,37 @@ jobs:
           vote-type: clear
           comment-only: true
 
+      # Verify a change in a series only after its parent change passed;
+      # vpp-gerrit-dispatch-dependents in the final-vote job of the parent
+      # starts the deferred verification.
+      - name: Series gate
+        id: gate
+        uses: fdio/vpp/.github/actions/vpp-gerrit-series-gate@master  # TODO: pin to SHA once the action is merged
+        with:
+          GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+          GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+          GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
+
+      - name: Report deferred verification
+        if: ${{ steps.gate.outputs.proceed == 'false' }}
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/gerrit-review-action@31093af31cec3755c34d8563ee54e2b7eb3a4eac  # 1.3.1
+        with:
+          host: ${{ vars.GERRIT_SERVER }}
+          username: ${{ vars.GERRIT_SSH_REQUIRED_USER }}
+          key: ${{ secrets.GERRIT_SSH_REQUIRED_PRIVKEY }}
+          known_hosts: ${{ vars.GERRIT_KNOWN_HOSTS }}
+          gerrit-change-number: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+          gerrit-patchset-number: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+          vote-type: clear
+          comment-only: true
+          message: ${{ steps.gate.outputs.message }}
+
   verify-checkstyle:
     name: Checkstyle
     needs:
       - start-verify
+    if: ${{ needs.start-verify.outputs.proceed == 'true' }}
     uses: fdio/vpp/.github/workflows/vpp-verify-checkstyle.yml@25e2784d997d02529c84f308aadd62c98ed65ff0
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
@@ -335,7 +363,8 @@ jobs:
 
   final-vote:
     name: Vote
-    if: ${{ always() }}
+    # no vote when verification was deferred by the series gate
+    if: ${{ always() && needs.start-verify.outputs.proceed != 'false' }}
     needs:
       - start-verify
       - detect-docs-changes
@@ -348,6 +377,8 @@ jobs:
       - verify-hst
     runs-on: ubuntu-latest
     environment: production
+    outputs:
+      result: ${{ steps.overall.outputs.result }}
     env:
       GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
       GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
@@ -396,3 +427,22 @@ jobs:
           gerrit-patchset-number: ${{ env.GERRIT_PATCHSET_NUMBER }}
           vote-type: ${{ steps.overall.outputs.result }}
           comment-only: false # Vote on gerrit
+
+  dispatch-dependents:
+    name: Dispatch Dependents
+    needs:
+      - final-vote
+    if: ${{ needs.final-vote.outputs.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write   # needed to dispatch gerrit-verify for dependent changes
+    steps:
+      - name: Verify changes based on this one
+        uses: fdio/vpp/.github/actions/vpp-gerrit-dispatch-dependents@master  # TODO: pin to SHA once the action is merged
+        with:
+          GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+          GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+          GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
+          FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+          REF: ${{ github.ref }}
+          GITHUB_TOKEN: ${{ github.token }}

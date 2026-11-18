@@ -1,0 +1,130 @@
+---
+name: "🛠️ VPP Gerrit Dispatch Dependents"
+description: |
+  After a patchset got Verified +1, dispatch the verify workflow for open
+  changes whose current patchset is based directly on it and which do not
+  have a Verified vote yet (their verification was deferred by
+  vpp-gerrit-series-gate).
+
+inputs:
+  GERRIT_URL:
+    description: "Gerrit REST base URL"
+    required: false
+    default: "https://gerrit.fd.io/r"
+    type: string
+  GERRIT_PROJECT:
+    description: "Project in Gerrit"
+    required: true
+    type: string
+  GERRIT_CHANGE_NUMBER:
+    description: "The Gerrit change number that passed verification"
+    required: true
+    type: string
+  GERRIT_PATCHSET_REVISION:
+    description: "Commit SHA of the patchset that passed verification"
+    required: true
+    type: string
+  FDIO_NAMESPACE:
+    description: "Executor Namespace (prod|sandbox) passed to dispatched runs"
+    required: false
+    default: "prod"
+    type: string
+  WORKFLOW:
+    description: "Workflow file to dispatch"
+    required: false
+    default: "gerrit-verify.yml"
+    type: string
+  REF:
+    description: "Git ref of the workflow to dispatch"
+    required: true
+    type: string
+  GITHUB_TOKEN:
+    description: "Token with actions: write permission"
+    required: true
+    type: string
+
+runs:
+  using: "composite"
+  steps:
+    - name: Dispatch verification of dependent changes
+      shell: bash
+      env:
+        GERRIT_URL: ${{ inputs.GERRIT_URL }}
+        GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+        GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+        GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
+        FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+        WORKFLOW: ${{ inputs.WORKFLOW }}
+        REF: ${{ inputs.REF }}
+        GITHUB_TOKEN: ${{ inputs.GITHUB_TOKEN }}
+        GITHUB_API_URL: ${{ github.api_url }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+
+        python3 -I - << '__EOF__'
+        import json, os, urllib.parse, urllib.request
+
+        url = os.environ["GERRIT_URL"].rstrip("/")
+        project = os.environ["GERRIT_PROJECT"]
+        change = os.environ["GERRIT_CHANGE_NUMBER"]
+        rev = os.environ["GERRIT_PATCHSET_REVISION"]
+
+        def get(path):
+            # gerrit.fd.io rejects the default Python-urllib user agent
+            req = urllib.request.Request(f"{url}/{path}",
+                                         headers={"User-Agent": "fdio-vpp-ci"})
+            with urllib.request.urlopen(req, timeout=30) as r:
+                body = r.read().decode()
+            return json.loads(body.split("\n", 1)[1])
+
+        def dispatch(inputs):
+            api = (f"{os.environ['GITHUB_API_URL']}/repos/"
+                   f"{os.environ['GITHUB_REPOSITORY']}/actions/workflows/"
+                   f"{os.environ['WORKFLOW']}/dispatches")
+            data = json.dumps({"ref": os.environ["REF"], "inputs": inputs})
+            req = urllib.request.Request(api, data=data.encode(), method="POST",
+                headers={
+                    "Accept": "application/vnd.github+json",
+                    "Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                })
+            urllib.request.urlopen(req, timeout=30).close()
+
+        cid = urllib.parse.quote(f"{project}~{change}", safe="")
+        related = get(f"changes/{cid}/revisions/{rev}/related")["changes"]
+
+        for r in related:
+            if r.get("status") != "NEW":
+                continue
+            if r.get("_revision_number") != r.get("_current_revision_number"):
+                continue
+            if r["commit"]["parents"][0]["commit"] != rev:
+                continue
+
+            num = r["_change_number"]
+            c = get(f"changes/{urllib.parse.quote(f'{project}~{num}', safe='')}"
+                    f"?o=CURRENT_REVISION&o=LABELS")
+            verified = c.get("labels", {}).get("Verified", {})
+            if "approved" in verified or "rejected" in verified:
+                print(f"change {num} already has a Verified vote, skipping")
+                continue
+
+            cur = c["current_revision"]
+            ps = c["revisions"][cur]
+            inputs = {
+                "FDIO_NAMESPACE": os.environ["FDIO_NAMESPACE"],
+                "GERRIT_BRANCH": c["branch"],
+                "GERRIT_CHANGE_ID": c["change_id"],
+                "GERRIT_CHANGE_NUMBER": str(num),
+                "GERRIT_CHANGE_URL": f"{url}/c/{project}/+/{num}",
+                "GERRIT_EVENT_TYPE": "patchset-created",
+                "GERRIT_PATCHSET_NUMBER": str(ps["_number"]),
+                "GERRIT_PATCHSET_REVISION": cur,
+                "GERRIT_PROJECT": project,
+                "GERRIT_REFSPEC": ps["ref"],
+            }
+            print(f"dispatching {os.environ['WORKFLOW']} for change {num} "
+                  f"patchset {ps['_number']}")
+            dispatch(inputs)
+        __EOF__

@@ -1,0 +1,106 @@
+---
+name: "🛠️ VPP Gerrit Series Gate"
+description: |
+  Decides whether a Gerrit patchset should be verified now. A patchset that
+  is part of a series is verified only after the change it is based on has
+  Verified +1 on its current patchset. Otherwise verification is deferred;
+  vpp-gerrit-dispatch-dependents starts it once the parent passes.
+
+inputs:
+  GERRIT_URL:
+    description: "Gerrit REST base URL"
+    required: false
+    default: "https://gerrit.fd.io/r"
+    type: string
+  GERRIT_PROJECT:
+    description: "Project in Gerrit"
+    required: true
+    type: string
+  GERRIT_CHANGE_NUMBER:
+    description: "The Gerrit change number"
+    required: true
+    type: string
+  GERRIT_PATCHSET_REVISION:
+    description: "Commit SHA of the patchset being verified"
+    required: true
+    type: string
+
+outputs:
+  proceed:
+    description: "'true' if verification should run now, 'false' if deferred"
+    value: ${{ steps.gate.outputs.proceed }}
+  message:
+    description: "Human readable reason when verification is deferred"
+    value: ${{ steps.gate.outputs.message }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check parent change
+      id: gate
+      shell: bash
+      env:
+        GERRIT_URL: ${{ inputs.GERRIT_URL }}
+        GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
+        GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+        GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
+      run: |
+        set -euo pipefail
+
+        # Fails open: any error talking to Gerrit means verification runs.
+        python3 -I - << '__EOF__'
+        import json, os, sys, urllib.parse, urllib.request
+
+        url = os.environ["GERRIT_URL"].rstrip("/")
+        project = os.environ["GERRIT_PROJECT"]
+        change = os.environ["GERRIT_CHANGE_NUMBER"]
+        rev = os.environ["GERRIT_PATCHSET_REVISION"]
+
+        def get(path):
+            # gerrit.fd.io rejects the default Python-urllib user agent
+            req = urllib.request.Request(f"{url}/{path}",
+                                         headers={"User-Agent": "fdio-vpp-ci"})
+            with urllib.request.urlopen(req, timeout=30) as r:
+                body = r.read().decode()
+            # strip Gerrit XSSI protection prefix
+            return json.loads(body.split("\n", 1)[1])
+
+        def out(proceed, message=""):
+            with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                f.write(f"proceed={'true' if proceed else 'false'}\n")
+                f.write(f"message={message}\n")
+            print(f"proceed={proceed} {message}")
+            sys.exit(0)
+
+        try:
+            cid = urllib.parse.quote(f"{project}~{change}", safe="")
+            commit = get(f"changes/{cid}/revisions/{rev}/commit")
+            parent = commit["parents"][0]["commit"]
+            q = urllib.parse.quote(f"project:{project} commit:{parent} status:open")
+            parents = get(f"changes/?q={q}&o=CURRENT_REVISION&o=LABELS")
+        except Exception as e:
+            print(f"WARNING: cannot query Gerrit ({e}), not gating")
+            out(True)
+
+        if not parents:
+            out(True, "parent commit is not an open change")
+
+        p = parents[0]
+        pnum = p["_number"]
+        if p["current_revision"] != parent:
+            ps = p["revisions"][p["current_revision"]]["_number"]
+            out(False, f"Verification skipped: this patchset is based on an "
+                f"outdated patchset of change {pnum} (current is patchset "
+                f"{ps}). Please rebase.")
+
+        verified = p.get("labels", {}).get("Verified", {})
+        if "approved" in verified:
+            out(True, f"parent change {pnum} is Verified+1")
+        if "rejected" in verified:
+            out(False, f"Verification deferred: parent change {pnum} has "
+                f"Verified-1. It will start automatically once change {pnum} "
+                f"passes verification.")
+        out(False, f"Verification deferred: parent change {pnum} is not "
+            f"verified yet. It will start automatically once change {pnum} "
+            f"passes verification.")
+        __EOF__
