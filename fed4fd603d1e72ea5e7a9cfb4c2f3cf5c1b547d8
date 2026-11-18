@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b81a184e_355c9632",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-11-18T18:06:46Z",
+      "side": 1,
+      "message": "Stanislav\u0027s chain of patches has now been merged.",
+      "revId": "fed4fd603d1e72ea5e7a9cfb4c2f3cf5c1b547d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
