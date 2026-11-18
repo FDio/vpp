@@ -1537,6 +1537,20 @@ vlib_frame_bitmap_find_first_set (uword *bmp)
   return rv;
 }
 
+static_always_inline uword
+vlib_frame_bitmap_count_clear_bits_at_index (uword *bmp, uword bit_index, uword max_bits)
+{
+  ASSERT (bit_index + max_bits <= VLIB_FRAME_BITMAP_N_UWORDS * uword_bits);
+  return uword_bitmap_count_clear_bits_at_index (bmp, bit_index, max_bits);
+}
+
+static_always_inline uword
+vlib_frame_bitmap_count_set_bits_at_index (uword *bmp, uword bit_index, uword max_bits)
+{
+  ASSERT (bit_index + max_bits <= VLIB_FRAME_BITMAP_N_UWORDS * uword_bits);
+  return uword_bitmap_count_set_bits_at_index (bmp, bit_index, max_bits);
+}
+
 #define foreach_vlib_frame_bitmap_set_bit_index(i, v)                         \
   for (uword _off = 0; _off < ARRAY_LEN (v); _off++)                          \
     for (uword _tmp =                                                         \
