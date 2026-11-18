@@ -61,7 +61,10 @@ if [ "$2" = "kt" ] || [ "$2" = "kt-dbg" ] || [ "$2" = "" ]; then
     else
         make build
     fi
-    docker save -o kube-test-images.tar $(docker images | grep kube-test | awk '{print $1":"$2}')
+    # Export the four images built by build-images.sh.
+    docker save -o kube-test-images.tar \
+        kube-test/vpp:latest kube-test/nginx-ldp:latest \
+        kube-test/ab:latest kube-test/wrk:latest
     sudo ctr -n k8s.io images import kube-test-images.tar
     scp kube-test-images.tar $1
     ssh $remote_user "sudo ctr -n k8s.io images import \"$remote_path\""/kube-test-images.tar
