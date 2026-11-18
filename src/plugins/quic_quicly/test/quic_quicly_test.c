@@ -202,10 +202,14 @@ quicly_test_stream_reset (vlib_main_t *vm, quic_quicly_main_t *qqm,
     u8 reset_rx;
     u8 after_fin;
     u8 no_reset;
+    u8 tx_shutdown;
+    u8 pending_tx;
   } tests[] = {
     { "bidi RESET_STREAM", 0, 1, 0 },
     { "bidi STOP_SENDING", 0, 0, 0 },
     { "bidi STOP_SENDING after FIN", 0, 0, 1 },
+    { "bidi RESET_STREAM after TX shutdown", 0, 1, 0, 0, 1, 0 },
+    { "bidi RESET_STREAM with TX awaiting acknowledgment", 0, 1, 0, 0, 1, 1 },
     { "uni RESET_STREAM", 3, 1, 0 },
     { "uni STOP_SENDING", 2, 0, 0 },
     { "destroy before app close", 0, 0, 0, 1 },
@@ -248,6 +252,10 @@ quicly_test_stream_reset (vlib_main_t *vm, quic_quicly_main_t *qqm,
 	ctx->c_proto = TRANSPORT_PROTO_QUIC;
 	ctx->c_flags = TRANSPORT_CONNECTION_F_NO_LOOKUP;
 	ctx->flags = QUIC_F_IS_STREAM;
+	if (tests[i].tx_shutdown)
+	  ctx->flags |= QUIC_F_APP_CLOSED_TX;
+	shared.head = 0;
+	shared.tail = tests[i].pending_tx ? 4 : 0;
 	ctx->udp_session_handle = 42;
 	stream =
 	  (quicly_stream_t) { .conn = (quicly_conn_t *) &conn, .stream_id = tests[i].stream_id };
@@ -948,14 +956,18 @@ quicly_test_rx_fin (vlib_main_t *vm, quic_quicly_main_t *qqm,
     u8 pending_tx;
     u8 fin_with_data;
     u8 cancel_rx;
+    u8 stop_sending;
   } tests[] = {
-    { "empty FIN with TX open", 0, 0, 0, 0, 0 },
-    { "empty FIN after TX shutdown", 0, 1, 0, 0, 0 },
-    { "DATA and FIN after TX shutdown", 4, 1, 0, 1, 0 },
-    { "FIN with a full RX FIFO", 4096, 1, 0, 0, 0 },
-    { "empty FIN with TX awaiting acknowledgment", 0, 1, 1, 0, 0 },
-    { "DATA and FIN with TX awaiting acknowledgment", 4, 1, 1, 1, 0 },
-    { "FIN after RX cancellation and TX shutdown", 0, 1, 0, 0, 1 },
+    { "empty FIN with TX open", 0, 0, 0, 0, 0, 0 },
+    { "empty FIN after TX shutdown", 0, 1, 0, 0, 0, 0 },
+    { "DATA and FIN after TX shutdown", 4, 1, 0, 1, 0, 0 },
+    { "FIN with a full RX FIFO", 4096, 1, 0, 0, 0, 0 },
+    { "empty FIN with TX awaiting acknowledgment", 0, 1, 1, 0, 0, 0 },
+    { "DATA and FIN with TX awaiting acknowledgment", 4, 1, 1, 1, 0, 0 },
+    { "FIN after RX cancellation and TX shutdown", 0, 1, 0, 0, 1, 0 },
+    { "STOP_SENDING after TX shutdown before empty FIN", 0, 1, 0, 0, 0, 1 },
+    { "STOP_SENDING with TX awaiting acknowledgment before empty FIN", 0, 1, 1, 0, 0, 1 },
+    { "STOP_SENDING with TX awaiting acknowledgment before DATA and FIN", 4, 1, 1, 1, 0, 1 },
   };
   fifo_segment_main_t fsm = {};
   fifo_segment_create_args_t args = { .segment_type = SSVM_SEGMENT_PRIVATE,
@@ -1042,6 +1054,17 @@ quicly_test_rx_fin (vlib_main_t *vm, quic_quicly_main_t *qqm,
       if (tests[i].cancel_rx)
 	ctx->flags |= QUIC_F_APP_CLOSED_RX;
 
+      if (tests[i].stop_sending)
+	{
+	  ctx->app_err_code = 0x999;
+	  callbacks->on_send_stop (&stream, QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (0x100));
+	  QUICLY_TEST (session->session_state == SESSION_STATE_READY &&
+			 clib_fifo_elts (app_wrk->wrk_evts[thread_index]) == 0 &&
+			 !(ctx->c_flags & TRANSPORT_CONNECTION_F_ERROR) &&
+			 ctx->app_err_code == 0x999,
+		       "STOP_SENDING after TX shutdown preserves response RX and its error code");
+	}
+
       callbacks->on_receive (&stream, 0, 0, 0);
       QUICLY_TEST (session->session_state == SESSION_STATE_READY &&
 		     clib_fifo_elts (app_wrk->wrk_evts[thread_index]) == 0,
@@ -1082,11 +1105,16 @@ quicly_test_rx_fin (vlib_main_t *vm, quic_quicly_main_t *qqm,
       callbacks->on_receive (&stream, 0, 0, 0);
       QUICLY_TEST (clib_fifo_elts (app_wrk->wrk_evts[thread_index]) == 0,
 		   "repeated FIN does not duplicate disconnect");
-      if (!tests[i].pending_tx && !tests[i].cancel_rx)
+      if ((!tests[i].pending_tx && !tests[i].cancel_rx) || tests[i].stop_sending)
 	{
 	  callbacks->on_destroy (&stream, 0);
 	  data = 0;
 	  stream.data = 0;
+	  ctx = pool_is_free_index (qm->wrk_ctx[thread_index].ctx_pool, ctx_index) ?
+		  0 :
+		  pool_elt_at_index (qm->wrk_ctx[thread_index].ctx_pool, ctx_index);
+	  QUICLY_TEST (ctx != 0,
+		       "stream destruction preserves application ownership until RX is read");
 	  QUICLY_TEST (clib_fifo_elts (app_wrk->wrk_evts[thread_index]) == 0,
 		       "later stream destruction does not duplicate disconnect");
 	}
@@ -1094,6 +1122,31 @@ quicly_test_rx_fin (vlib_main_t *vm, quic_quicly_main_t *qqm,
 	QUICLY_TEST (svm_fifo_dequeue (rxf, tests[i].body_len, received) == tests[i].body_len &&
 		       !memcmp (body, received, tests[i].body_len),
 		     "all body bytes remain readable after EOF");
+      if (tests[i].stop_sending && tests[i].fin_with_data)
+	{
+	  /* Reading the preserved response must still allow the application to
+	   * confirm close and retire the detached stream through queued cleanup. */
+	  session->session_state = SESSION_STATE_APP_CLOSED;
+	  engine->proto_on_close (ctx_index, thread_index);
+	  QUICLY_TEST (!pool_is_free_index (qm->wrk_ctx[thread_index].ctx_pool, ctx_index) &&
+			 clib_fifo_elts (app_wrk->wrk_evts[thread_index]) == 3,
+		       "half-closed app confirmation retains context for queued cleanup");
+	  clib_fifo_sub1 (app_wrk->wrk_evts[thread_index], event);
+	  QUICLY_TEST (event.event_type == SESSION_CTRL_EVT_TRANSPORT_CLOSED,
+		       "half-closed app confirmation reports full closure before cleanup");
+	  clib_fifo_sub1 (app_wrk->wrk_evts[thread_index], event);
+	  QUICLY_TEST (event.event_type == SESSION_CTRL_EVT_CLEANUP &&
+			 event.as_u64[0] >> 32 == SESSION_CLEANUP_TRANSPORT && event.as_u64[1],
+		       "half-closed stream queues its transport destructor");
+	  transport_cleanup_cb ((void *) event.as_u64[1], session_get_transport (session));
+	  ctx = 0;
+	  clib_fifo_sub1 (app_wrk->wrk_evts[thread_index], event);
+	  QUICLY_TEST (pool_is_free_index (qm->wrk_ctx[thread_index].ctx_pool, ctx_index) &&
+			 event.event_type == SESSION_CTRL_EVT_CLEANUP &&
+			 event.as_u64[0] >> 32 == SESSION_CLEANUP_SESSION &&
+			 !clib_fifo_elts (app_wrk->wrk_evts[thread_index]),
+		       "half-closed stream releases transport before application session cleanup");
+	}
       svm_fifo_dequeue_drop_all (txf);
       clib_fifo_free (app_wrk->wrk_evts[thread_index]);
       if (data)
