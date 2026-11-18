@@ -3058,6 +3058,36 @@ http3_transport_stream_close_callback (http_ctx_t *stream)
     }
 }
 
+static_always_inline int
+http3_stream_reset_is_ignored (http_ctx_t *req, int error_code)
+{
+  return req->req_state == HTTP_REQ_STATE_WAIT_APP_METHOD && !http_req_tx_streaming_pending (req) &&
+	 (error_code == HTTP3_ERROR_NO_ERROR || error_code == HTTP3_ERROR_REQUEST_REJECTED);
+}
+
+static void
+http3_transport_stream_closed_callback (http_ctx_t *stream)
+{
+  http_ctx_t *req;
+
+  if (!(stream->flags & HTTP_CONN_F_BIDIRECTIONAL_STREAM) ||
+      (stream->flags & HTTP_CONN_F_NO_APP_SESSION) ||
+      stream->http_req_index == SESSION_INVALID_INDEX)
+    return;
+
+  /* receive side FIN can precede cancellation of the response, full closure must
+   * still reach app after its rx EOF notification */
+  req = http_ctx_get_w_thread (stream->http_req_index, stream->c_thread_index);
+  /* Preserve the reset exemption for an unused, pre-opened client stream. */
+  if (!(req->req_flags & HTTP_REQ_F_APP_CLOSED) &&
+      req->req_state == HTTP_REQ_STATE_WAIT_APP_METHOD &&
+      http3_stream_reset_is_ignored (req, http3_get_application_error_code (stream)))
+    return;
+  if (req->req_flags & HTTP_REQ_F_IS_PARENT)
+    http_req_app_close (req, 0 /* is_shutdown */);
+  session_transport_closed_notify (&req->connection);
+}
+
 static void
 http3_transport_stream_reset_callback (http_ctx_t *stream)
 {
@@ -3089,8 +3119,7 @@ http3_transport_stream_reset_callback (http_ctx_t *stream)
     {
       /* this might happen when client is doing multiplexing because we open quic stream for
        * next request in advance */
-      if (req->req_state == HTTP_REQ_STATE_WAIT_APP_METHOD &&
-	  (error_code == HTTP3_ERROR_NO_ERROR || error_code == HTTP3_ERROR_REQUEST_REJECTED))
+      if (http3_stream_reset_is_ignored (req, error_code))
 	{
 	  http_stats_app_streams_closed_inc (stream->c_thread_index);
 	  return;
@@ -3207,9 +3236,7 @@ http3_stream_cleanup_callback (http_ctx_t *stream)
       if (req->req_flags & HTTP_REQ_F_IS_PARENT)
 	{
 	  req->hr_hc_index = stream->hc_http_conn_index;
-	  /* full parent close waits for queued request DATA and FIN to retire */
-	  if ((req->req_flags & (HTTP_REQ_F_TX_STREAMING | HTTP_REQ_F_APP_CLOSED)) ==
-	      (HTTP_REQ_F_TX_STREAMING | HTTP_REQ_F_APP_CLOSED))
+	  if (req->req_flags & HTTP_REQ_F_APP_CLOSED)
 	    {
 	      http_ctx_t *hc =
 		http_ctx_get_w_thread (stream->hc_http_conn_index, stream->c_thread_index);
@@ -3240,6 +3267,7 @@ const static http_engine_vft_t http3_engine = {
   .transport_conn_reschedule_callback = http3_transport_conn_reschedule_callback,
   .transport_stream_accept_callback = http3_transport_stream_accept_callback,
   .transport_stream_close_callback = http3_transport_stream_close_callback,
+  .transport_stream_closed_callback = http3_transport_stream_closed_callback,
   .transport_stream_reset_callback = http3_transport_stream_reset_callback,
   .conn_accept_callback = http3_conn_accept_callback,
   .conn_connect_stream_callback = http3_conn_connect_stream_callback,

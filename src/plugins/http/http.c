@@ -1035,6 +1035,9 @@ http_ts_closed_callback (session_t *ts)
   ASSERT (http_hc_is_valid (hc_handle.conn_index, ts->thread_index));
   hc = http_ctx_get_w_thread (hc_handle.conn_index, ts->thread_index);
 
+  if (http_ctx_is_stream (hc))
+    http_vfts[hc->version].transport_stream_closed_callback (hc);
+
   http_disconnect_transport (hc);
   hc->state = HTTP_CONN_STATE_CLOSED;
 }

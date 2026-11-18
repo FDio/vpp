@@ -590,6 +590,7 @@ typedef struct http_engine_vft_
   void (*transport_conn_reschedule_callback) (http_ctx_t *hc);
   int (*transport_stream_accept_callback) (http_ctx_t *stream, http_ctx_t *hc);
   void (*transport_stream_close_callback) (http_ctx_t *stream);
+  void (*transport_stream_closed_callback) (http_ctx_t *stream);
   void (*transport_stream_reset_callback) (http_ctx_t *stream);
   void (*conn_accept_callback) (http_ctx_t *hc);
   int (*conn_connect_stream_callback) (http_ctx_t *hc, u32 *req_index); /* optional */

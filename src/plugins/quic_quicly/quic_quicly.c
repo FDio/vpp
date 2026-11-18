@@ -382,12 +382,40 @@ quic_quicly_stream_shutdown_tx (quic_ctx_t *ctx, session_t *stream_session)
 }
 
 static void
+quic_quicly_stream_cleanup (transport_connection_t *tc)
+{
+  quic_ctx_t *sctx = quic_quicly_get_quic_ctx (tc->c_index, tc->thread_index);
+
+  quic_ctx_free (quic_quicly_main.qm, sctx);
+}
+
+static void
+quic_quicly_stream_delete (quic_ctx_t *ctx)
+{
+  /* close/reset confirmation can arrive while cleanup is already queued */
+  if (ctx->flags & QUIC_F_STREAM_DELETING)
+    return;
+
+  session_transport_closed_notify (&ctx->connection);
+  if (session_get (ctx->c_s_index, ctx->c_thread_index)->session_state ==
+      SESSION_STATE_TRANSPORT_DELETED)
+    quic_ctx_free (quic_quicly_main.qm, ctx);
+  else
+    {
+      ctx->flags |= QUIC_F_STREAM_DELETING;
+      session_transport_delete_request (&ctx->connection, quic_quicly_stream_cleanup);
+    }
+}
+
+static void
 quic_quicly_on_stream_destroy (quicly_stream_t *stream, quicly_error_t err)
 {
   quic_stream_data_t *stream_data = (quic_stream_data_t *) stream->data;
   quic_quicly_get_worker_stats (stream_data->thread_index)->n_streams--;
   quic_ctx_t *sctx =
     quic_quicly_get_quic_ctx (stream_data->ctx_id, stream_data->thread_index);
+  app_worker_t *app_wrk =
+    app_worker_get_if_valid (session_get (sctx->c_s_index, sctx->c_thread_index)->app_wrk_index);
 
   QUIC_DBG (2,
 	    "DESTROYED_STREAM: stream_session handle 0x%lx, sctx_index %u, "
@@ -399,15 +427,13 @@ quic_quicly_on_stream_destroy (quicly_stream_t *stream, quicly_error_t err)
   sctx->stream = 0;
   sctx->udp_session_handle = SESSION_INVALID_HANDLE;
 
-  /* free stream only when app already closed, otherwise it might has unread
-   * data, or if we have unsend data (we receive stop sending) */
+  /* peer reset can follow receive side FIN, when reset_notify no longer reach app, stream
+   * destruction must still report full closure and release the transport for app */
   if ((sctx->flags & QUIC_F_APP_CLOSED) ||
+      ((sctx->c_flags & TRANSPORT_CONNECTION_F_ERROR) &&
+       (!app_wrk || app_worker_application_is_builtin (app_wrk))) ||
       svm_fifo_max_dequeue_cons (get_stream_session_and_ctx_from_stream (stream, &sctx)->tx_fifo))
-    {
-      session_transport_closed_notify (&sctx->connection);
-      session_transport_delete_notify (&sctx->connection);
-      quic_ctx_free (quic_quicly_main.qm, sctx);
-    }
+    quic_quicly_stream_delete (sctx);
   else
     session_transport_closing_notify (&sctx->connection);
 
@@ -525,6 +551,7 @@ quic_quicly_on_stop_sending (quicly_stream_t *stream, quicly_error_t quicly_erro
   if (!(sctx->flags & QUIC_F_APP_CLOSED))
     {
       sctx->app_err_code = QUICLY_ERROR_GET_ERROR_CODE (quicly_error);
+      sctx->c_flags |= TRANSPORT_CONNECTION_F_ERROR;
       session_transport_reset_notify (&sctx->connection);
     }
 }
@@ -704,6 +731,7 @@ quic_quicly_on_receive_reset (quicly_stream_t *stream, quicly_error_t quicly_err
   if (!(sctx->flags & (QUIC_F_APP_CLOSED | QUIC_F_APP_CLOSED_RX)))
     {
       sctx->app_err_code = QUICLY_ERROR_GET_ERROR_CODE (quicly_error);
+      sctx->c_flags |= TRANSPORT_CONNECTION_F_ERROR;
       session_transport_reset_notify (&sctx->connection);
     }
 }
@@ -1158,9 +1186,7 @@ quic_quicly_on_app_closed (u32 ctx_index, clib_thread_index_t thread_index)
 	    "thread_index %u",
 	    session_handle (session_get (ctx->c_s_index, ctx->c_thread_index)), ctx->c_c_index,
 	    ctx->c_thread_index);
-	  session_transport_closed_notify (&ctx->connection);
-	  session_transport_delete_notify (&ctx->connection);
-	  quic_ctx_free (quic_quicly_main.qm, ctx);
+	  quic_quicly_stream_delete (ctx);
 	  return;
 	}
       quicly_stream_t *stream = ctx->stream;
@@ -1301,9 +1327,7 @@ quic_quicly_on_app_reset (u32 ctx_index, clib_thread_index_t thread_index)
   /* stream might get destroyed by quicly meanwhile */
   if (!ctx->stream)
     {
-      session_transport_closed_notify (&ctx->connection);
-      session_transport_delete_notify (&ctx->connection);
-      quic_ctx_free (quic_quicly_main.qm, ctx);
+      quic_quicly_stream_delete (ctx);
       return;
     }
   stream = ctx->stream;

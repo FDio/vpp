@@ -4304,6 +4304,7 @@ typedef struct
   transport_connection_t connection;
   u32 app_session_index, old_stream_index, new_session_index;
   u32 rx_cancellations;
+  u64 peer_error_code;
 } http_test_h3_lifecycle_t;
 
 static http_test_h3_lifecycle_t *http_test_h3_lifecycle;
@@ -4350,6 +4351,11 @@ static int
 http_test_h3_attribute (u32 index, clib_thread_index_t thread_index, u8 is_get,
 			transport_endpt_attr_t *attr)
 {
+  if (is_get && attr->type == TRANSPORT_ENDPT_ATTR_APP_PROTO_ERR_CODE)
+    {
+      attr->app_proto_err_code = http_test_h3_lifecycle->peer_error_code;
+      return 0;
+    }
   if (is_get || attr->type != TRANSPORT_ENDPT_ATTR_APP_PROTO_ERR_CODE_RX ||
       attr->app_proto_err_code_rx != HTTP3_ERROR_NO_ERROR)
     return -1;
@@ -4395,7 +4401,230 @@ http_test_h3_take_reuse_rpc (session_worker_t *wrk, u32 session_index, session_e
 }
 
 static int
-http_test_h3_streaming_lifecycle_case (vlib_main_t *vm, u8 queue_data)
+http_test_h3_stream_closed (vlib_main_t *vm, http_test_h3_lifecycle_t *test, http_ctx_t *req,
+			    http_ctx_t *stream, session_t *as, session_t *ts, u8 cleanup_first)
+{
+  static const struct
+  {
+    const char *name;
+    http_req_state_t state;
+    u64 error_code;
+    u8 ignored;
+    u8 after_fin;
+    u8 tx_pending;
+    http_req_flags_t flags;
+  } tests[] = {
+    { "idle NO_ERROR", HTTP_REQ_STATE_WAIT_APP_METHOD, HTTP3_ERROR_NO_ERROR, 1 },
+    { "idle REQUEST_REJECTED", HTTP_REQ_STATE_WAIT_APP_METHOD, HTTP3_ERROR_REQUEST_REJECTED, 1 },
+    { "idle INTERNAL_ERROR", HTTP_REQ_STATE_WAIT_APP_METHOD, HTTP3_ERROR_INTERNAL_ERROR },
+    { "active NO_ERROR", HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY, HTTP3_ERROR_NO_ERROR },
+    { "active REQUEST_REJECTED", HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY,
+      HTTP3_ERROR_REQUEST_REJECTED },
+    { "active cancellation after FIN", HTTP_REQ_STATE_TRANSPORT_IO_MORE_STREAMING_DATA,
+      HTTP3_ERROR_NO_ERROR, 0, 1 },
+    { "idle NO_ERROR after upload", HTTP_REQ_STATE_WAIT_APP_METHOD, HTTP3_ERROR_NO_ERROR, 1, 0, 0,
+      HTTP_REQ_F_TX_STREAMING | HTTP_REQ_F_TX_EOF },
+    { "idle REQUEST_REJECTED after upload", HTTP_REQ_STATE_WAIT_APP_METHOD,
+      HTTP3_ERROR_REQUEST_REJECTED, 1, 0, 0, HTTP_REQ_F_TX_STREAMING | HTTP_REQ_F_TX_EOF },
+    { "upload NO_ERROR after known-length response", HTTP_REQ_STATE_WAIT_APP_METHOD,
+      HTTP3_ERROR_NO_ERROR, 0, 0, 1 },
+    { "upload REQUEST_REJECTED after known-length response", HTTP_REQ_STATE_WAIT_APP_METHOD,
+      HTTP3_ERROR_REQUEST_REJECTED, 0, 0, 1 },
+    { "upload REQUEST_REJECTED after known-length response FIN", HTTP_REQ_STATE_WAIT_APP_METHOD,
+      HTTP3_ERROR_REQUEST_REJECTED, 0, 1, 1 },
+    { "upload NO_ERROR after known-length response FIN", HTTP_REQ_STATE_WAIT_APP_METHOD,
+      HTTP3_ERROR_NO_ERROR, 0, 1, 1 },
+  };
+  application_t *app = application_get (test->hm->app_index);
+  app_worker_t *app_wrk = application_get_default_worker (app);
+  session_event_t *saved_events = app_wrk->wrk_evts[vm->thread_index];
+  u32 saved_app_wrk = as->app_wrk_index;
+  http_ctx_t *parent =
+    pool_elt_at_index (test->hm->wrk[vm->thread_index].ctx_pool, stream->hc_http_conn_index);
+  http_worker_t *wrk = &test->hm->wrk[vm->thread_index];
+  session_worker_t *swrk = &session_main.wrk[vm->thread_index];
+  u32 as_index = as->session_index, stream_index = stream->hc_hc_index;
+  u32 req_index = ((http_req_handle_t) req->hr_req_handle).req_index;
+  u32 parent_index = parent->hc_hc_index;
+  u32 saved_heads[3] = {}, heads[3] = {};
+  u8 isolated_queues = 0;
+  session_evt_elt_t *head, *elt;
+  session_t *parent_ts;
+  vlib_node_t *node;
+  void (*init_tx_buffer) (http_ctx_t *, const http_msg_t *) =
+    vlib_get_plugin_symbol ("http_plugin.so", "http_req_tx_buffer_init");
+  http_msg_t msg = { .data.type = HTTP_MSG_DATA_STREAMING };
+  session_event_t event;
+  int result = 1;
+
+#define CLOSED_TEST(_cond, _comment)                                                               \
+  do                                                                                               \
+    {                                                                                              \
+      if (!HTTP_TEST_I ((_cond), _comment))                                                        \
+	goto done;                                                                                 \
+    }                                                                                              \
+  while (0)
+
+  /* The lifecycle fixture holds the worker barrier. Capture notifications so
+   * the real HTTP app never receives events for these synthetic sessions. */
+  app_wrk->wrk_evts[vm->thread_index] = 0;
+  as->app_wrk_index = app_wrk->wrk_index;
+  CLOSED_TEST (init_tx_buffer != 0, "stream-reset TX buffer initialization resolved");
+  for (u32 is_parent = 0; is_parent < 2; is_parent++)
+    for (u32 i = 0; i < ARRAY_LEN (tests); i++)
+      {
+	session_state_t initial_state = tests[i].after_fin && !tests[i].tx_pending ?
+					  SESSION_STATE_TRANSPORT_CLOSING :
+					  SESSION_STATE_READY;
+	vlib_cli_output (vm, "%s request: %s", is_parent ? "parent" : "child", tests[i].name);
+	http_buffer_free (&req->tx_buf);
+	req->tx_buf.vft = 0;
+	stream->state = HTTP_CONN_STATE_ESTABLISHED;
+	req->req_state = tests[i].state;
+	req->req_flags = tests[i].flags | (is_parent ? HTTP_REQ_F_IS_PARENT : 0) |
+			 (tests[i].after_fin ?
+			    HTTP_REQ_F_PEER_CLOSED | HTTP_REQ_F_RX_EOF | HTTP_REQ_F_TX_STREAMING :
+			    0);
+	if (tests[i].tx_pending)
+	  {
+	    req->req_flags |= HTTP_REQ_F_RX_HEADERS_RECEIVED | HTTP_REQ_F_RX_EOF;
+	    init_tx_buffer (req, &msg);
+	    CLOSED_TEST (req->tx_buf.vft && !svm_fifo_max_dequeue (as->tx_fifo) &&
+			   !svm_fifo_max_dequeue (ts->tx_fifo) &&
+			   !(req->req_flags & HTTP_REQ_F_TX_EOF),
+			 "upload awaits producer EOF with empty application and QUIC TX FIFOs");
+	  }
+	req->c_flags &= ~TRANSPORT_CONNECTION_F_ERROR;
+	as->session_state = initial_state;
+	ts->flags = SESSION_F_APP_CLOSED;
+	test->peer_error_code = tests[i].error_code;
+	/* QUIC suppresses reset_notify after FIN, so exercise full-close
+	 * delivery alone in that case. Other cases receive reset then closed. */
+	if (!tests[i].after_fin)
+	  app->cb_fns.session_reset_callback (ts);
+	CLOSED_TEST (as->session_state == (tests[i].ignored || tests[i].after_fin ?
+					     initial_state :
+					     SESSION_STATE_TRANSPORT_CLOSED),
+		     "reset notification preserves idle sessions and fails active requests");
+	app->cb_fns.session_transport_closed_callback (ts);
+	CLOSED_TEST (as->session_state ==
+		       (tests[i].ignored ? SESSION_STATE_READY : SESSION_STATE_TRANSPORT_CLOSED),
+		     "full closure preserves ignored idle resets but reaches active requests");
+	CLOSED_TEST (
+	  !!(req->req_flags & HTTP_REQ_F_APP_CLOSED) == (is_parent && !tests[i].ignored),
+	  "terminal parent ownership is finalized without closing idle or child requests");
+	CLOSED_TEST (parent->state == HTTP_CONN_STATE_ESTABLISHED &&
+		       stream->http_req_index ==
+			 ((http_req_handle_t) req->hr_req_handle).req_index &&
+		       req->hr_hc_index == stream->hc_hc_index,
+		     "stream closure preserves the parent connection and request association");
+	if (tests[i].ignored)
+	  CLOSED_TEST (clib_fifo_elts (app_wrk->wrk_evts[vm->thread_index]) == 0,
+		       "idle stream reset queues no application close or reset notification");
+	else
+	  {
+	    u8 closing_notification = !tests[i].after_fin || tests[i].tx_pending;
+	    CLOSED_TEST (
+	      clib_fifo_elts (app_wrk->wrk_evts[vm->thread_index]) ==
+		(closing_notification ? 2 : 1),
+	      "active stream cancellation queues the expected application notifications");
+	    if (closing_notification)
+	      {
+		clib_fifo_sub1 (app_wrk->wrk_evts[vm->thread_index], event);
+		CLOSED_TEST (
+		  event.event_type ==
+		    (tests[i].tx_pending ? SESSION_CTRL_EVT_DISCONNECTED : SESSION_CTRL_EVT_RESET),
+		  "completed response is preserved while upload cancellation reaches app");
+	      }
+	    clib_fifo_sub1 (app_wrk->wrk_evts[vm->thread_index], event);
+	    CLOSED_TEST (event.event_type == SESSION_CTRL_EVT_TRANSPORT_CLOSED,
+			 "active request receives full closure even after receive EOF");
+	  }
+      }
+
+  /* The last case is a streaming parent cancelled after response FIN. Drive
+   * its real session-node close confirmation in both cleanup orderings. */
+  parent->hc_parent_req_index = req_index;
+  parent->hc_http_conn_index = parent_index;
+  parent->timer_handle = ~0; /* No timer was allocated for this mock connection. */
+  parent_ts = session_get_from_handle (parent->hc_tc_session_handle);
+  parent_ts->opaque =
+    ((http_conn_handle_t) { .version = HTTP_VERSION_3, .conn_index = parent_index }).as_u32;
+  saved_heads[0] = swrk->ctrl_head;
+  saved_heads[1] = swrk->new_head;
+  saved_heads[2] = swrk->old_head;
+  for (u32 i = 0; i < ARRAY_LEN (heads); i++)
+    heads[i] = clib_llist_make_head (swrk->event_elts, evt_list);
+  swrk->ctrl_head = heads[0];
+  swrk->new_head = heads[1];
+  swrk->old_head = heads[2];
+  isolated_queues = 1;
+  if (cleanup_first)
+    app->cb_fns.session_cleanup_callback (ts, SESSION_CLEANUP_SESSION);
+  node = vlib_get_node (vm, session_queue_node.index);
+  session_half_close (as, 0 /* is_rx */);
+  node->function (vm, vlib_node_get_runtime (vm, node->index), 0);
+  CLOSED_TEST (as->session_state == SESSION_STATE_TRANSPORT_CLOSED && req->tx_buf.vft &&
+		 !(as->flags & SESSION_F_APP_CLOSED),
+	       "late producer EOF is ignored after upload cancellation, even after stream cleanup");
+  session_close (as);
+  node->function (vm, vlib_node_get_runtime (vm, node->index), 0);
+  CLOSED_TEST (as->session_state == SESSION_STATE_CLOSED && (as->flags & SESSION_F_APP_CLOSED),
+	       "session node confirms application close after full transport closure");
+  if (!cleanup_first)
+    app->cb_fns.session_cleanup_callback (ts, SESSION_CLEANUP_SESSION);
+  CLOSED_TEST (pool_is_free_index (wrk->ctx_pool, stream_index) &&
+		 req->hr_hc_index == parent_index && parent->state == HTTP_CONN_STATE_CLOSED,
+	       "stream cleanup retires the stream and disconnects the terminal parent");
+  app->cb_fns.session_cleanup_callback (parent_ts, SESSION_CLEANUP_SESSION);
+  CLOSED_TEST (pool_is_free_index (wrk->ctx_pool, req_index) &&
+		 pool_is_free_index (wrk->ctx_pool, parent_index),
+	       "connection cleanup releases the parent request and connection contexts");
+  CLOSED_TEST (as->session_state == SESSION_STATE_TRANSPORT_DELETED &&
+		 clib_fifo_elts (app_wrk->wrk_evts[vm->thread_index]) == 2,
+	       "parent deletion queues transport and session cleanup after application close");
+  clib_fifo_sub1 (app_wrk->wrk_evts[vm->thread_index], event);
+  CLOSED_TEST (event.event_type == SESSION_CTRL_EVT_CLEANUP &&
+		 event.as_u64[0] >> 32 == SESSION_CLEANUP_TRANSPORT,
+	       "application transport cleanup precedes session cleanup");
+  clib_fifo_sub1 (app_wrk->wrk_evts[vm->thread_index], event);
+  CLOSED_TEST (event.event_type == SESSION_CTRL_EVT_CLEANUP &&
+		 event.as_u64[0] >> 32 == SESSION_CLEANUP_SESSION && event.as_u64[1],
+	       "application session cleanup carries the session destructor");
+  /* The fixture owns its private FIFO segment; as->rx_fifo is null. */
+  uword_to_pointer (event.as_u64[1], void (*) (session_t *)) (as);
+  CLOSED_TEST (pool_is_free_index (swrk->sessions, as_index),
+	       "application session is released after parent cancellation");
+  result = 0;
+
+done:
+  if (isolated_queues)
+    {
+      for (u32 i = 0; i < ARRAY_LEN (heads); i++)
+	{
+	  head = clib_llist_elt (swrk->event_elts, heads[i]);
+	  while (!clib_llist_is_empty (swrk->event_elts, evt_list, head))
+	    {
+	      elt = clib_llist_next (swrk->event_elts, evt_list, head);
+	      clib_llist_remove (swrk->event_elts, evt_list, elt);
+	      clib_llist_put (swrk->event_elts, elt);
+	    }
+	  clib_llist_put (swrk->event_elts, head);
+	}
+      swrk->ctrl_head = saved_heads[0];
+      swrk->new_head = saved_heads[1];
+      swrk->old_head = saved_heads[2];
+    }
+  clib_fifo_free (app_wrk->wrk_evts[vm->thread_index]);
+  app_wrk->wrk_evts[vm->thread_index] = saved_events;
+  if (!pool_is_free_index (swrk->sessions, as_index))
+    session_get (as_index, vm->thread_index)->app_wrk_index = saved_app_wrk;
+  return result;
+#undef CLOSED_TEST
+}
+
+static int
+http_test_h3_streaming_lifecycle_case (vlib_main_t *vm, u8 queue_data, u8 cleanup_first)
 {
   http_test_h3_lifecycle_t test = { .new_session_index = ~0 };
   session_enable_disable_args_t session_args = { .is_en = 1 };
@@ -4500,6 +4729,7 @@ http_test_h3_streaming_lifecycle_case (vlib_main_t *vm, u8 queue_data)
   handle.req_index = req_index;
   as->connection_index = req->hr_req_handle = handle.as_u32;
   req->hr_hc_index = stream_index;
+  req->c_flags = TRANSPORT_CONNECTION_F_NO_LOOKUP;
   req->c_s_index = as_index;
   req->c_thread_index = vm->thread_index;
   req->req_state = HTTP_REQ_STATE_WAIT_APP_METHOD;
@@ -4593,7 +4823,7 @@ http_test_h3_streaming_lifecycle_case (vlib_main_t *vm, u8 queue_data)
 	   "replacement stream retains its own transport after pool relocation");
   if (!queue_data)
     {
-      result = 0;
+      result = http_test_h3_stream_closed (vm, &test, req, stream, as, ts, cleanup_first);
       goto done;
     }
   as->session_state = SESSION_STATE_TRANSPORT_DELETED;
@@ -4656,20 +4886,21 @@ done:
 	    }
 	}));
     }
-  if (as_index != ~0)
+  if (as_index != ~0 && !pool_is_free_index (session_main.wrk[vm->thread_index].sessions, as_index))
     session_get_from_handle (session_make_handle (as_index, vm->thread_index))->session_state =
       SESSION_STATE_TRANSPORT_DELETED;
-  if (req_index != ~0)
+  if (req_index != ~0 && !pool_is_free_index (wrk->ctx_pool, req_index))
     {
       req = pool_elt_at_index (wrk->ctx_pool, req_index);
       http_buffer_free (&req->tx_buf);
-      if (req->hr_hc_index != stream_index)
+      if (req->hr_hc_index != stream_index && req->hr_hc_index != parent_index &&
+	  !pool_is_free_index (wrk->ctx_pool, req->hr_hc_index))
 	pool_put_index (wrk->ctx_pool, req->hr_hc_index);
       pool_put_index (wrk->ctx_pool, req_index);
     }
-  if (stream_index != ~0)
+  if (stream_index != ~0 && !pool_is_free_index (wrk->ctx_pool, stream_index))
     pool_put_index (wrk->ctx_pool, stream_index);
-  if (parent_index != ~0)
+  if (parent_index != ~0 && !pool_is_free_index (wrk->ctx_pool, parent_index))
     pool_put_index (wrk->ctx_pool, parent_index);
   if (wrk)
     wrk->stats = saved_stats;
@@ -4679,7 +4910,7 @@ done:
       segment_manager_dealloc_fifos (ts->rx_fifo, ts->tx_fifo);
       session_free (ts);
     }
-  if (as_index != ~0)
+  if (as_index != ~0 && !pool_is_free_index (session_main.wrk[vm->thread_index].sessions, as_index))
     session_free (session_get (as_index, vm->thread_index));
   if (ts_index != ~0)
     session_free (session_get (ts_index, vm->thread_index));
@@ -4705,8 +4936,9 @@ done:
 static int
 http_test_h3_streaming_lifecycle (vlib_main_t *vm)
 {
-  return http_test_h3_streaming_lifecycle_case (vm, 0) ||
-	 http_test_h3_streaming_lifecycle_case (vm, 1);
+  return http_test_h3_streaming_lifecycle_case (vm, 0, 0) ||
+	 http_test_h3_streaming_lifecycle_case (vm, 0, 1) ||
+	 http_test_h3_streaming_lifecycle_case (vm, 1, 0);
 }
 
 static int

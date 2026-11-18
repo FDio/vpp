@@ -14,6 +14,7 @@ func runUnitTest(s *NoTopoSuite, vppCmd string) {
 	vpp := s.Containers.Vpp.VppInstance
 	o := vpp.Vppctl(vppCmd)
 	Log(o)
+	AssertNotContains(o, "FAIL:")
 	AssertContains(o, "SUCCESS")
 }
 
