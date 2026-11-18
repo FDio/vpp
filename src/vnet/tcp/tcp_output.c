@@ -1639,7 +1639,7 @@ tcp_timer_retransmit_handler (tcp_connection_t *tc)
       /* Peer is dead or network connectivity is lost. Close connection.
        * RFC 1122 section 4.2.3.5 recommends a value of at least 100s. For
        * a min rto of 0.2s we need to retry about 8 times. */
-      if (tc->rto_boff >= TCP_RTO_BOFF_MAX)
+      if (tc->rto_boff >= tcp_cfg.max_rto_backoffs)
 	{
 	  tcp_send_reset (tc);
 	  tcp_connection_set_state (tc, TCP_STATE_CLOSED);
