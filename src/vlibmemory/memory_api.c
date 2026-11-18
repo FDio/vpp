@@ -1139,17 +1139,17 @@ vlibmemory_init (vlib_main_t * vm)
    */
   if (am->root_path == 0)
     {
-      remove_path1 = format (0, "/dev/shm/global_vm%c", 0);
-      remove_path2 = format (0, "/dev/shm/vpe-api%c", 0);
+      remove_path1 = format (0, "/global_vm%c", 0);
+      remove_path2 = format (0, "/vpe-api%c", 0);
     }
   else
     {
-      remove_path1 = format (0, "/dev/shm/%s-global_vm%c", am->root_path, 0);
-      remove_path2 = format (0, "/dev/shm/%s-vpe-api%c", am->root_path, 0);
+      remove_path1 = format (0, "/%s-global_vm%c", am->root_path, 0);
+      remove_path2 = format (0, "/%s-vpe-api%c", am->root_path, 0);
     }
 
-  (void) unlink ((char *) remove_path1);
-  (void) unlink ((char *) remove_path2);
+  (void) shm_unlink ((char *) remove_path1);
+  (void) shm_unlink ((char *) remove_path2);
 
   vec_free (remove_path1);
   vec_free (remove_path2);

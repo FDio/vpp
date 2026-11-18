@@ -20,7 +20,7 @@ int
 ssvm_server_init_shm (ssvm_private_t * ssvm)
 {
   int ssvm_fd;
-  u8 junk = 0, *ssvm_filename;
+  u8 junk = 0, *ssvm_name;
   ssvm_shared_header_t *sh;
   uword page_size, requested_va = 0;
   void *oldheap;
@@ -32,11 +32,10 @@ ssvm_server_init_shm (ssvm_private_t * ssvm)
     clib_warning ("[%d] creating segment '%s'", getpid (), ssvm->name);
 
   ASSERT (vec_c_string_is_terminated (ssvm->name));
-  ssvm_filename = format (0, "/dev/shm/%s%c", ssvm->name, 0);
-  unlink ((char *) ssvm_filename);
-  vec_free (ssvm_filename);
-
-  ssvm_fd = shm_open ((char *) ssvm->name, O_RDWR | O_CREAT | O_EXCL, 0777);
+  ssvm_name = format (0, "/%s%c", ssvm->name, 0);
+  shm_unlink ((char *) ssvm_name);
+  ssvm_fd = shm_open ((char *) ssvm_name, O_RDWR | O_CREAT | O_EXCL, 0777);
+  vec_free (ssvm_name);
   if (ssvm_fd < 0)
     {
       clib_unix_warning ("create segment '%s'", ssvm->name);
@@ -53,9 +52,9 @@ ssvm_server_init_shm (ssvm_private_t * ssvm)
 	clib_unix_warning ("ssvm segment chown");
     }
 
-  if (lseek (ssvm_fd, ssvm->ssvm_size, SEEK_SET) < 0)
+  if (ftruncate (ssvm_fd, ssvm->ssvm_size) < 0)
     {
-      clib_unix_warning ("lseek");
+      clib_unix_warning ("ftruncate");
       close (ssvm_fd);
       return SSVM_API_ERROR_SET_SIZE;
     }
