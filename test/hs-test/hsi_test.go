@@ -718,6 +718,8 @@ func runHsiProxyLiteDrainTransportClosedTest(s *HsiSuite) {
 	s.SetupNginxServer()
 	vpp := s.Containers.Vpp.VppInstance
 	Log(vpp.Vppctl("hsi tcp drain-timeout 300"))
+	// Tcp resets the connection after one retransmit, not after 8, about 100s
+	Log(vpp.Vppctl("set tcp max-rto-backoffs 1"))
 	dropData := s.DropServerDataSegments()
 	defer dropData()
 	unblock := s.BlockServerReplies()
@@ -729,7 +731,7 @@ func runHsiProxyLiteDrainTransportClosedTest(s *HsiSuite) {
 
 	uri := fmt.Sprintf("http://%s:%d/upload/hsi-proxy-lite-transport-closed", s.ServerAddr(),
 		s.Ports.Server)
-	finished := startCurlHttpRequest(uri, s.NetNamespaces.Client, "201", 180,
+	finished := startCurlHttpRequest(uri, s.NetNamespaces.Client, "201", 20,
 		"-T", uploadFileName, "-H", "Expect:", "--limit-rate", "256k")
 
 	// First drained segment must be full size so it is dropped and never acked
@@ -740,7 +742,7 @@ func runHsiProxyLiteDrainTransportClosedTest(s *HsiSuite) {
 	reblock := s.BlockServerReplies()
 	defer reblock()
 
-	hsi := WaitHsiCounterAtLeastWithin(vpp, "tcp-drain-transport-closed", 1, 150*time.Second)
+	hsi := WaitHsiCounterAtLeastWithin(vpp, "tcp-drain-transport-closed", 1, 20*time.Second)
 	Log(hsi)
 	AssertEqual(0, HsiCounterValue(hsi, "tcp-drain-stalled"))
 	AssertNotNil(<-finished)
