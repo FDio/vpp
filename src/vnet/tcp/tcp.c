@@ -1774,6 +1774,7 @@ tcp_configuration_init (void)
   /* Time constants defined as tcp tick (1us) multiples */
   tcp_cfg.syn_rcvd_time = TCP_ESTABLISH_TIME;
   tcp_cfg.syn_sent_time = TCP_ESTABLISH_TIME;
+  tcp_cfg.max_rto_backoffs = TCP_RTO_BOFF_MAX;
 }
 
 static clib_error_t *
