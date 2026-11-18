@@ -2,6 +2,15 @@ name: vpp-verify-docs
 
 on:
   workflow_call:
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: false
+      AWS_SECRET_ACCESS_KEY:
+        required: false
+      AWS_DOCS_7DAY_ACCESS_KEY_ID:
+        required: false
+      AWS_DOCS_7DAY_SECRET_ACCESS_KEY:
+        required: false
     inputs:
       FDIO_NAMESPACE:
         description: "Executor Namespace (prod|sandbox)"
@@ -93,13 +102,18 @@ defaults:
 
 permissions:
   contents: read
-  actions: read
+  actions: read   # Needed to read local actions
+
+concurrency:
+  group: verify-docs-${{ github.workflow }}-${{ inputs.GERRIT_PROJECT }}-${{ inputs.GERRIT_BRANCH }}-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.FDIO_NAMESPACE }}
+  cancel-in-progress: true
 
 jobs:
   verify-docs:
     # yamllint disable-line rule:line-length
     name: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}__${{ inputs.GERRIT_BRANCH }}__${{ inputs.FDIO_NAMESPACE }}
     runs-on:
+      # zizmor: ignore[self-hosted-runner]
       - self-hosted
       - nomad
       - fdio:arch=${{ matrix.executor_arch }}
@@ -108,6 +122,7 @@ jobs:
       - fdio:os=${{ matrix.os }}
       - fdio:workflow=${{ github.run_id }}
 
+    environment: production
     strategy:
       fail-fast: false
       matrix:
@@ -116,6 +131,9 @@ jobs:
         executor_arch: ['x86_64']
 
     env:
+      MATRIX_OS: ${{ matrix.os }}
+      MATRIX_CLASS: ${{ matrix.class }}
+      MATRIX_EXECUTOR_ARCH: ${{ matrix.executor_arch }}
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
       GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
@@ -133,7 +151,9 @@ jobs:
 
     steps:
       - name: Actions Checkout
-        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98  # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Environment
         # yamllint disable-line rule:line-length
@@ -142,7 +162,7 @@ jobs:
       - name: Prepare Log Directory
         run: |
           set -euxo pipefail
-          LOG_NAME="${{ env.LOG_PREFIX }}/verify-docs-${{ matrix.class }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
+          LOG_NAME="${LOG_PREFIX}/verify-docs-${MATRIX_CLASS}-${MATRIX_OS}-${FDIO_NAMESPACE}-${MATRIX_EXECUTOR_ARCH}"
           echo "LOG_NAME=$LOG_NAME" >> "$GITHUB_ENV"
           echo "S3_DOCS_7DAY_PATH=$LOG_NAME/docs" >> "$GITHUB_ENV"
           LOG_DIR="$WORKSPACE/logs/$LOG_NAME"

@@ -2,6 +2,15 @@ name: vpp-merge-docs
 
 on:
   workflow_call:
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: false
+      AWS_SECRET_ACCESS_KEY:
+        required: false
+      AWS_DOCS_ACCESS_KEY_ID:
+        required: false
+      AWS_DOCS_SECRET_ACCESS_KEY:
+        required: false
     inputs:
       FDIO_NAMESPACE:
         description: "Executor Namespace (prod|sandbox)"
@@ -104,13 +113,17 @@ defaults:
 
 permissions:
   contents: read
-  actions: read
+  actions: read   # Needed to read local actions
+
+concurrency:
+  group: vpp-merge-docs-${{ github.workflow }}-${{ inputs.GERRIT_PROJECT }}-${{ inputs.GERRIT_BRANCH }}-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.FDIO_NAMESPACE }}
+  cancel-in-progress: true
 
 jobs:
   merge-docs:
-    # yamllint disable-line rule:line-length
-    name: ${{ inputs.LOG_PREFIX}}__${{ inputs.GERRIT_BRANCH }}__${{ inputs.FDIO_NAMESPACE }}
+    name: ${{ matrix.build_type }}_${{ matrix.os }}_${{ matrix.executor_arch }}
     runs-on:
+      # zizmor: ignore[self-hosted-runner]
       - self-hosted
       - nomad
       - fdio:arch=${{ matrix.executor_arch }}
@@ -119,6 +132,7 @@ jobs:
       - fdio:os=${{ matrix.os }}
       - fdio:workflow=${{ github.run_id }}
 
+    environment: production
     strategy:
       fail-fast: false
       matrix:
@@ -139,7 +153,7 @@ jobs:
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
       GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
       LOG_PREFIX: ${{ inputs.LOG_PREFIX }}
-      LOG_NAME: ""
+      LOG_NAME: "${{ inputs.LOG_PREFIX }}/merge-docs-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
       LOG_DIR: ""
       S3_DOCS_PATH: ""
       S3_DOCS_URL: https://s3-docs.fd.io
@@ -148,7 +162,9 @@ jobs:
 
     steps:
       - name: Actions Checkout
-        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98  # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Environment
         # yamllint disable-line rule:line-length
@@ -157,14 +173,10 @@ jobs:
       - name: Prepare Log Directory
         run: |
           set -euxo pipefail
-          LOG_NAME="${{ env.LOG_PREFIX }}/merge-docs-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
           echo "LOG_NAME=$LOG_NAME" >> "$GITHUB_ENV"
           LOG_DIR="$WORKSPACE/logs/$LOG_NAME"
           echo "LOG_DIR=$LOG_DIR" >> "$GITHUB_ENV"
           mkdir -p "$LOG_DIR"
-          vpp_release="$(${WORKSPACE}/build-root/scripts/version rpm-version)"
-          echo "S3_DOCS_PATH=vpp/$vpp_release" >> "$GITHUB_ENV"
-
       - name: Show Environment
         run: |
           set -euo pipefail
@@ -188,6 +200,8 @@ jobs:
         run: |
           set -euxo pipefail
           cd "$WORKSPACE"
+          vpp_release="$(${WORKSPACE}/build-root/scripts/version rpm-version)"
+          echo "S3_DOCS_PATH=vpp/${vpp_release:0:5}" >> "$GITHUB_ENV"
           make docs | tee "$LOG_DIR/make_docs.log"
 
       - name: AWS S3 Publish Docs
