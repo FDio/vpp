@@ -1034,6 +1034,7 @@ vlib_worker_thread_node_refork (void)
       vec_foreach (rt, nm_clone->nodes_by_type[nt])
 	{
 	  vlib_node_t *n = vlib_get_node (vm, rt->node_index);
+	  rt->stop_timer_handle_plus_1 = 0;
 	  /* copy runtime_data, will be overwritten later for existing rt */
 	  if (n->runtime_data && n->runtime_data_bytes > 0)
 	    clib_memcpy_fast (
@@ -1046,6 +1047,7 @@ vlib_worker_thread_node_refork (void)
 	  rt = vlib_node_get_runtime (vm_clone, old_rt[j].node_index);
 	  rt->state = old_rt[j].state;
 	  rt->flags = old_rt[j].flags;
+	  rt->stop_timer_handle_plus_1 = old_rt[j].stop_timer_handle_plus_1;
 	  clib_memcpy_fast (rt->runtime_data, old_rt[j].runtime_data,
 			    VLIB_NODE_RUNTIME_DATA_SIZE);
 	}
