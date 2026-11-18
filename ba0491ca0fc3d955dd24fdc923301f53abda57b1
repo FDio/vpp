@@ -16,6 +16,24 @@
       "message": "Another patch which is awaiting review/merge will eliminate the need for this change - https://gerrit.fd.io/r/c/vpp/+/47078. It addresses the underlying cause of the problem in FIB code and avoids the FIB lookup for every route addition that would be added by this change.",
       "revId": "ba0491ca0fc3d955dd24fdc923301f53abda57b1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "99a49879_45fd1ec7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-18T17:35:28Z",
+      "side": 1,
+      "message": "Thanks for the pointer. I checked it on current master in a debug build with the linux-cp test module.\n\n- master plus the regression test of this change, without any fix: the test fails; the entry 192.168.53.0/24 keeps an \"exclusive\" drop path next to the Linux path.\n- master plus only the fib_entry_src.c hunk of 47078 and the same test: it passes (33 tests in test_linux_cp).\n\nSo 47078 fixes the cause for this case at the FIB level, and this change is redundant for it. I tested only the IPv4 unicast case, not the MPLS EOS and non-EOS entries this change also touches. I will abandon this change once 47078 is merged. If useful, I can send the regression test as a separate test-only change on top of 47078.\n\nFYI the test hunks of 47078 conflict with current master (test_linux_cp.py, vpp_qemu_utils.py) and need a rebase.",
+      "parentUuid": "27a28f4e_0d831e49",
+      "revId": "ba0491ca0fc3d955dd24fdc923301f53abda57b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
