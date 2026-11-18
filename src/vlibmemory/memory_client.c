@@ -431,6 +431,7 @@ connect_to_vlib_internal (const char *svm_name,
   memory_client_main_t *mm = vlibapi_get_memory_client_main ();
   api_main_t *am = vlibapi_get_main ();
   pthread_attr_t attr;
+  int arg_allocated = 0;
 
   if (do_map && (rv = vl_client_api_map (svm_name)))
     {
@@ -454,25 +455,41 @@ connect_to_vlib_internal (const char *svm_name,
 	{
 	  rx_thread_fn_arg_t *arg;
 	  arg = malloc (sizeof (*arg));
+	  if (arg == 0)
+	    {
+	      clib_warning ("rx thread arg allocation failed");
+	      return -1;
+	    }
 	  arg->am = vlibapi_get_main ();
 	  arg->mm = vlibapi_get_memory_client_main ();
 	  thread_fn_arg = (void *) arg;
+	  arg_allocated = 1;
 	}
 
       rv = pthread_attr_init (&attr);
       if (rv != 0)
 	{
 	  clib_warning ("pthread_attr_init returned %d", rv);
+	  if (arg_allocated)
+	    free (thread_fn_arg);
 	  return -1;
 	}
       if (vl_rx_thread_init_attr (&attr))
-	return -1;
+	{
+	  pthread_attr_destroy (&attr);
+	  if (arg_allocated)
+	    free (thread_fn_arg);
+	  return -1;
+	}
 
       rv = pthread_create (&mm->rx_thread_handle, &attr, thread_fn,
 			   thread_fn_arg);
       if (rv)
 	{
 	  clib_warning ("pthread_create returned %d", rv);
+	  pthread_attr_destroy (&attr);
+	  if (arg_allocated)
+	    free (thread_fn_arg);
 	  return -1;
 	}
       am->rx_thread_handle = mm->rx_thread_handle;
