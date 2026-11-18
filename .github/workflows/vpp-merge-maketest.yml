@@ -2,6 +2,13 @@ name: vpp-merge-maketest
 
 on:
   workflow_call:
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: false
+      AWS_SECRET_ACCESS_KEY:
+        required: false
+      PACKAGECLOUD_TOKEN:
+        required: false
     inputs:
       FDIO_NAMESPACE:
         description: "Executor Namespace (prod|sandbox)"
@@ -104,12 +111,17 @@ defaults:
 
 permissions:
   contents: read
-  actions: read
+  actions: read   # Needed to read local actions
+
+concurrency:
+  group: vpp-merge-maketest-${{ github.workflow }}-${{ inputs.GERRIT_PROJECT }}-${{ inputs.GERRIT_BRANCH }}-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.FDIO_NAMESPACE }}
+  cancel-in-progress: true
 
 jobs:
   merge-maketest:
     name: ${{ matrix.build_type }}_${{ matrix.os }}_${{ matrix.executor_arch }}
     runs-on:
+      # zizmor: ignore[self-hosted-runner]
       - self-hosted
       - nomad
       - fdio:arch=${{ matrix.executor_arch }}
@@ -118,6 +130,8 @@ jobs:
       - fdio:os=${{ matrix.os }}
       - fdio:workflow=${{ github.run_id }}
 
+    environment: production
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
@@ -158,7 +172,9 @@ jobs:
 
     steps:
       - name: Actions Checkout
-        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98  # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Environment
         # yamllint disable-line rule:line-length
@@ -183,7 +199,7 @@ jobs:
 
       - name: Checkout VPP Gerrit Change
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@27fc2aa27f57c8f7055e8f1b6e5a9f41b0315873
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@c7fe56a759efa5ef571795fc7abda9e1a7ebb374
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
@@ -204,6 +220,8 @@ jobs:
 
       - name: Push Packages to Packagecloud
         if: ${{ always() && inputs.FDIO_NAMESPACE == 'prod' }}
+        env:
+          PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
         run: |
           set -euxo pipefail
           pkgcloud_cmd=""
@@ -216,7 +234,7 @@ jobs:
               local downloads_dir="/root/Downloads"
               local pkgcloud_acct="fdio"
 
-              echo '{"url":"https://packagecloud.io","token":"${{ secrets.PACKAGECLOUD_TOKEN }}"}' > /root/.packagecloud
+              echo "{\"url\":\"https://packagecloud.io\",\"token\":\"$PACKAGECLOUD_TOKEN\"}" > /root/.packagecloud
               distro=${distro,,} # to lowercase
               codename=${codename,,} # to lowercase
               pkgcloud_cmd="package_cloud push ${pkgcloud_acct}/${GERRIT_BRANCH/stable\//}/${distro}/${codename}/main/ "
@@ -257,7 +275,7 @@ jobs:
 
       - name: Setup Docker VPP Runtime Environment for 'make test'
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@777792ecef2d5c93ce15fa5b7fdca999f5412c9d
+        uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@09552c71554236d36c1eb51a1740a366019bc1a5
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
