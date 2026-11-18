@@ -2689,16 +2689,22 @@ func Http3UnknownFrameOnReqStreamTest(s *Http3Suite) {
 	Log(vpp.Vppctl("http tps no-zc h3 uri " + uri))
 
 	for _, tc := range []struct {
-		length     uint64
-		payloadLen int
+		length         uint64
+		payloadLen     int
+		closeAfterStop bool
 	}{
-		{16, 16},
-		{1, 0},
-		{1 << 32, 2},
-		{1<<32 + 1, 2},
-		{0x001fffff00000000, 2},
+		{16, 16, false},
+		{1, 0, false},
+		{1 << 32, 2, false},
+		{1<<32 + 1, 2, false},
+		{0x001fffff00000000, 2, false},
+		{16, 16, true},
+		{1, 0, true},
+		{1 << 32, 2, true},
+		{1<<32 + 1, 2, true},
+		{0x001fffff00000000, 2, true},
 	} {
-		By(fmt.Sprintf("discarding an unknown frame of length %d with %d payload bytes received", tc.length, tc.payloadLen))
+		By(fmt.Sprintf("discarding an unknown frame of length %d with %d payload bytes received, close after STOP_SENDING=%t", tc.length, tc.payloadLen, tc.closeAfterStop))
 		frame := quicvarint.Append(nil, 0x21)
 		frame = quicvarint.Append(frame, tc.length)
 		frame = append(frame, make([]byte, tc.payloadLen)...)
@@ -2762,7 +2768,24 @@ func Http3UnknownFrameOnReqStreamTest(s *Http3Suite) {
 		req, err := http.NewRequest(http.MethodGet, uri+"/test_file_64", nil)
 		AssertNil(err)
 		AssertNil(responseStream.SendRequestHeader(req))
-		AssertNil(responseStream.Close())
+		if tc.closeAfterStop {
+			select {
+			case <-responseStream.Context().Done():
+			case <-ctx.Done():
+				Fail("server did not finish request RX before local close")
+			}
+		}
+		// A response can finish request RX before our FIN arrives. Close then
+		// reports cancellation, while the response remains readable.
+		closeErr := responseStream.Close()
+		if tc.closeAfterStop {
+			AssertNotNil(closeErr, "the delayed close must exercise peer cancellation")
+		}
+		if closeErr != nil {
+			AssertMatchError(context.Cause(responseStream.Context()), &quic.StreamError{
+				StreamID: responseStream.StreamID(), ErrorCode: quic.StreamErrorCode(http3.ErrCodeNoError), Remote: true,
+			}, "only a clean peer STOP_SENDING may race with request close")
+		}
 		resp, err := responseStream.ReadResponse()
 		AssertNil(err, "server must remain responsive while discarding a large unknown frame")
 		AssertHttpStatus(resp, http.StatusOK)
