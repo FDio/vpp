@@ -86,7 +86,7 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
   svm_msg_q_t *mq = app_wrk->event_queue;
   u8 ring_index, mq_is_cong;
   session_state_t old_state;
-  session_event_t *evt;
+  session_event_t _evt, *evt = &_evt;
   u32 n_evts = 128, i;
   session_t *s;
   int rv;
@@ -105,7 +105,10 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
 
   for (i = 0; i < n_evts; i++)
     {
-      evt = clib_fifo_head (app_wrk->wrk_evts[thread_index]);
+      /* Work on a copy. Callbacks can add events for this app worker and
+       * thread, which can grow the fifo and move its elements, and some
+       * cases read the event again after the callback */
+      *evt = *clib_fifo_head (app_wrk->wrk_evts[thread_index]);
       if (!is_builtin)
 	{
 	  ring_index = mq_event_ring_index (evt->event_type);
