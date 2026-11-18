@@ -13,6 +13,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
+#include <sys/mman.h>
 
 #include <vppinfra/format.h>
 #include <vppinfra/byte_order.h>
@@ -549,11 +550,11 @@ vl_map_shmem (const char *region_name, int is_vlib)
       /*
        * Clients wait for vpp to set up the root / API regioins
        */
+      /* api_name = shm_name_from_svm_map_region_args (a); */
       if (am->root_path)
-	api_name = format (0, "/dev/shm/%s-%s%c", am->root_path,
-			   region_name + 1, 0);
+	api_name = format (0, "/%s-%s%c", am->root_path, region_name + 1, 0);
       else
-	api_name = format (0, "/dev/shm%s%c", region_name, 0);
+	api_name = format (0, "%s%c", region_name, 0);
 
       /* Wait up to 100 seconds... */
       for (i = 0; i < 10000; i++)
@@ -562,7 +563,7 @@ vl_map_shmem (const char *region_name, int is_vlib)
 	  ts.tv_nsec = 10000 * 1000;	/* 10 ms */
 	  while (nanosleep (&ts, &tsrem) < 0)
 	    ts = tsrem;
-	  tfd = open ((char *) api_name, O_RDWR);
+	  tfd = shm_open ((char *) api_name, O_RDWR, 0);
 	  if (tfd >= 0)
 	    break;
 	}
