@@ -17,6 +17,24 @@
       "parentUuid": "36d6dc3b_110b6490",
       "revId": "8c4904cb0c978116558ca96020591db131c914b8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a1432499_84f3d771",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2687,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-18T15:43:52Z",
+      "side": 1,
+      "message": "Following up with what I could verify.\n\nRFCs: neither RFC 7296 nor RFC 4303 defines a local SA identifier; RFC 4303 section 2.1 calls the mapping of an SPI to an SA \"a local matter\". So both schemes conform. RFC 7296 section 1.3 defines NO_ADDITIONAL_SAS for a responder that is unwilling to accept more Child SAs on the IKE SA, which is the path this change adds, and section 2.21.3 requires an error response after authentication.\n\nPrecedent: strongSwan numbers Child SAs with a global atomic 32-bit counter (child_sa.c, ref_get_nonzero (\u0026unique_id)). As far as I can see there it is the daemon\u0027s own handle (log lines, get_unique_id), not a key shared with another table. Here the ID is the key of ipsec\u0027s sa_index_by_sa_id, so a wrap has to avoid live IDs, and the safe place for that is the main thread, where ipsec_sa_add_and_lock() runs and can see the table. A worker-side counter would need atomics plus handling of ENTRY_ALREADY_EXISTS.\n\nWeighing it: the counter is the better end state (no scan, no limit, no 0x800 alternation). The bitmap is the smaller and safer fix for the collision bug in this change; the scan runs only when a Child is created and is bounded by 256 bytes and the Child count, and the 2,048 limit already comes from the existing 11-bit child index. I would therefore keep the bitmap here and send the main-thread counter as a follow-up change with the test and rekey-mask changes. Is that acceptable?",
+      "parentUuid": "a62a2b10_a0b5c003",
+      "revId": "8c4904cb0c978116558ca96020591db131c914b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
