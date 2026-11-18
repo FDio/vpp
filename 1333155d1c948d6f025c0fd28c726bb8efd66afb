@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "86a2f57f_0b998b73",
+        "filename": "src/vnet/session/session_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-11-18T20:14:09Z",
+      "side": 1,
+      "message": "Can we shorten this and use the 100 column width.",
+      "revId": "1333155d1c948d6f025c0fd28c726bb8efd66afb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
