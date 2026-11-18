@@ -880,6 +880,7 @@ vnet_dev_port_op_no_rv_t vnet_dev_port_free;
 vnet_dev_port_op_with_ptr_t vnet_dev_port_add_sec_if;
 vnet_dev_port_op_with_ptr_t vnet_dev_port_del_sec_if;
 
+__clib_export void vnet_dev_port_set_rx_node (vlib_main_t *, vnet_dev_port_t *, vnet_dev_node_t *);
 __clib_export void vnet_dev_port_add_counters (vlib_main_t *, vnet_dev_port_t *,
 					       vnet_dev_counter_t *, u16);
 vnet_dev_port_op_no_rv_t vnet_dev_port_free_counters;

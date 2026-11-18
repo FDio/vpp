@@ -246,6 +246,27 @@ vnet_dev_port_start_all_tx_queues (vlib_main_t *vm, vnet_dev_port_t *port)
   return rv;
 }
 
+/* only from the port start op, the rx node runs on no thread until it
+ * returns */
+void
+vnet_dev_port_set_rx_node (vlib_main_t *vm, vnet_dev_port_t *port, vnet_dev_node_t *rx_node)
+{
+  vlib_node_function_t *fn;
+  vlib_node_t *n;
+
+  port->rx_node = *rx_node;
+  if (!port->rx_node_assigned)
+    return;
+
+  n = vlib_get_node (vm, vnet_dev_get_port_rx_node_index (port));
+  fn = vlib_node_get_preferred_node_fn_variant (vm, rx_node->registrations);
+  n->node_fn_registrations = rx_node->registrations;
+  n->function = fn;
+  n->format_trace = rx_node->format_trace;
+  foreach_vlib_main ()
+    vlib_node_get_runtime (this_vlib_main, n->index)->function = fn;
+}
+
 vnet_dev_rv_t
 vnet_dev_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 {
