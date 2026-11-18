@@ -16,6 +16,24 @@
       "message": "What is being demonstrated by this assert?",
       "revId": "5190e76bff6a57db9df63a29281fbb94949a42c4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "47561b96_0f21acc2",
+        "filename": "test/test_linux_cp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1365,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-18T21:32:01Z",
+      "side": 1,
+      "message": "It is only a liveness probe. Before the fix, deleting the last MPLS route crashed VPP: mfib_table_find_or_create_and_lock() returns ~0 for FIB_PROTOCOL_MPLS, and the later mfib_table_unlock() dereferences mfib_table_get (~0, MPLS) without a check. A CLI answer after the delete shows that VPP survived.\n\nIt adds little, though. A crash would already break the CLI polls just above it and is caught by the test framework, so I can drop it.\n\nA bigger point: the test skips when the kernel has no mpls_router, and it shows SKIP on every Maketest job of the CI run of this change (debian12, ubuntu 22.04 and 24.04, x86_64 and aarch64). I could not run it locally either, the module is not loaded there. So the test is not an effective regression guard today, and the fix rests on the code path above; I have not re-run the crash in this environment.\n\nProposal: drop the assert, keep the poll on show mpls fib, and say in the commit message that the test runs only where mpls_router is loaded. If you know a way to exercise this path in CI, I am happy to use it. Does that work for you?",
+      "parentUuid": "5f274b9c_022a9bab",
+      "revId": "5190e76bff6a57db9df63a29281fbb94949a42c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
