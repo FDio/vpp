@@ -91,7 +91,7 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   thread_index = vm->thread_index;
 
   vlib_get_buffers (vm, buffer_indices, buffers, n_pkts);
-  b[n_pkts] = b[n_pkts + 1] = b[n_pkts + 2] = b[n_pkts + 3] = b[n_pkts - 1];
+  vlib_buffers_prefetch_pad (b, n_pkts, 4);
 
   for (u32 n_left = n_pkts; n_left > 0; b += 1, next += 1, n_left -= 1)
     {

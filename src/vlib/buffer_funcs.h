@@ -254,6 +254,40 @@ vlib_get_buffers (vlib_main_t *vm, u32 *bi, vlib_buffer_t **b, u32 count)
   vlib_get_buffers_with_offset (vm, bi, (void **) b, count, 0);
 }
 
+/** \brief Pad array of buffer pointers for unconditional prefetch ahead
+
+    Sets b[count] .. b[count + stride - 1] to b[count - 1], so unrolled
+    loops can prefetch stride elements ahead without bounds checks. The
+    array must have room for count + stride elements.
+
+    @param b - (vlib_buffer_t **) array of buffer pointers
+    @param count - (u32) number of valid elements, must be non-zero
+    @param stride - (u32) number of elements to pad, multiple of 4
+*/
+
+static_always_inline void
+vlib_buffers_prefetch_pad (vlib_buffer_t **b, u32 count, u32 stride)
+{
+  ASSERT (count > 0 && (stride & 3) == 0);
+#if defined(CLIB_HAVE_VEC256)
+  /* gcc-13 false positive on b[] filled by vlib_get_buffers () */
+  WARN_OFF (maybe-uninitialized)
+  u64x4 v = u64x4_splat (pointer_to_uword (b[count - 1]));
+  WARN_ON (maybe-uninitialized)
+
+  for (u32 i = 0; i < stride; i += 4)
+    *(u64x4u *) (b + count + i) = v;
+#elif defined(CLIB_HAVE_VEC128)
+  u64x2 v = u64x2_splat (pointer_to_uword (b[count - 1]));
+
+  for (u32 i = 0; i < stride; i += 2)
+    *(u64x2u *) (b + count + i) = v;
+#else
+  for (u32 i = 0; i < stride; i++)
+    b[count + i] = b[count - 1];
+#endif
+}
+
 /** \brief Translate buffer pointer into buffer index
 
     @param vm - (vlib_main_t *) vlib main data structure pointer

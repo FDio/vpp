@@ -173,7 +173,7 @@ qat_enq_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *f
     }
 
   vlib_get_buffers (vm, vlib_frame_vector_args (f), bufs, n_elts);
-  b[n_elts] = b[n_elts + 1] = b[n_elts + 2] = b[n_elts + 3] = b[n_elts - 1];
+  vlib_buffers_prefetch_pad (b, n_elts, 4);
   fe = q->fifo + (q->fifo_tail & q->mask);
   *fe = (qat_frame_entry_t) { .frame = f };
   tail = q->tx_tail;

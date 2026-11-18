@@ -417,7 +417,7 @@ ice_rx_one_queue (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queue_
   if (PREDICT_FALSE (n < n_descs))
     vlib_get_buffers (vm, buffer_indices, bufs + n, n_descs - n);
 
-  bufs[n_descs] = bufs[n_descs + 1] = bufs[n_descs + 2] = bufs[n_descs + 3] = bufs[n_descs - 1];
+  vlib_buffers_prefetch_pad (bufs, n_descs, 4);
 
   for (n_left = n_descs, b = bufs, pl = pkt_lengths; n_left >= 4;
        n_left -= 4, b += 4, pl += 4, f += 4)

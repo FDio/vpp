@@ -213,7 +213,7 @@ mrvl_pp2_rx_inline (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queu
 
   /* Resolve buffer indices once and pad the prefetch tail. */
   vlib_get_buffers (vm, to_next, b, n_desc);
-  b[n_desc] = b[n_desc + 1] = b[n_desc + 2] = b[n_desc + 3] = b[n_desc - 1];
+  vlib_buffers_prefetch_pad (b, n_desc, 4);
 
   /* Initialize received buffers four at a time. */
   bt = if_rt_data->buffer_template;
