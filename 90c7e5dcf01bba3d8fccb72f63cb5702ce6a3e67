@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fc6986a8_d25cfe9f",
+        "filename": "test/test_linux_cp.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1365,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-19T11:11:20Z",
+      "side": 1,
+      "message": "Patch set 2: rebased onto master after 3ba3f207e, which moved the table release into lcp_router_table_free_if_unused(); the MPLS guard now sits there. The assert is dropped and the commit message says the test runs only where mpls_router is loaded.",
+      "parentUuid": "ddf616e9_16e8e579",
+      "revId": "90c7e5dcf01bba3d8fccb72f63cb5702ce6a3e67",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
