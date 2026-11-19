@@ -21,15 +21,14 @@ endif
 
 vpp_cmake_prefix_path  = /opt/vpp/external/$(shell uname -m) /opt/vpp/optional/$(shell uname -m)
 vpp_cmake_prefix_path += $(PACKAGE_INSTALL_DIR)external
+vpp_cmake_prefix_path += $(PACKAGE_INSTALL_DIR)optional
 vpp_cmake_prefix_path := $(subst $() $(),;,$(vpp_cmake_prefix_path))
 
 vpp_cmake_args ?=
 vpp_cmake_args += -DCMAKE_INSTALL_PREFIX:PATH=$(PACKAGE_INSTALL_DIR)
 vpp_cmake_args += -DCMAKE_BUILD_TYPE="$($(TAG)_TAG_BUILD_TYPE)"
 vpp_cmake_args += -DCMAKE_PREFIX_PATH:PATH="$(vpp_cmake_prefix_path)"
-ifeq ("$(V)","1")
 vpp_cmake_args += -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
-endif
 ifneq ($(VPP_PLATFORM),)
 vpp_cmake_args += -DVPP_PLATFORM="$(VPP_PLATFORM)"
 endif
@@ -47,12 +46,12 @@ endif
 vpp_configure_depend += external-install
 vpp_configure = \
   cd $(PACKAGE_BUILD_DIR) && \
-  $(CMAKE) -G Ninja $(vpp_cmake_args) $(call find_source_fn,$(PACKAGE_SOURCE))
-vpp_build = $(CMAKE) --build $(PACKAGE_BUILD_DIR) -- $(MAKE_PARALLEL_FLAGS)
-vpp_install = $(CMAKE) --build $(PACKAGE_BUILD_DIR) -- install | grep -v 'Set runtime path'
+  $(CMAKE) --trace-expand -G Ninja $(vpp_cmake_args) $(call find_source_fn,$(PACKAGE_SOURCE))
+vpp_build = $(CMAKE) --trace-expand $(vpp_cmake_args) --build $(PACKAGE_BUILD_DIR) -- $(MAKE_PARALLEL_FLAGS)
+vpp_install = $(CMAKE) --trace-expand $(vpp_cmake_args) --build $(PACKAGE_BUILD_DIR) -- install | grep -v 'Set runtime path'
 
 vpp-package-deb: vpp-install
-	@$(CMAKE) --build $(PACKAGE_BUILD_DIR)/vpp -- pkg-deb
+	@$(CMAKE) --trace-expand $(vpp_cmake_args) --build $(PACKAGE_BUILD_DIR)/vpp -- pkg-deb
 	@find $(PACKAGE_BUILD_DIR) \
           -maxdepth 2 \
           \( -name '*.changes' -o -name '*.deb' -o -name '*.buildinfo' \) \
