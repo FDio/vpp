@@ -274,7 +274,7 @@ atl_init (vlib_main_t *vm, vnet_dev_t *dev)
 	.deinit = atl_port_deinit,
 	.start = atl_port_start,
 	.stop = atl_port_stop,
-	.format_status = format_atl_port_status,
+	.styled_format_status = styled_format_atl_port_status,
 	.config_change = atl_port_cfg_change,
 	.config_change_validate = atl_port_cfg_change_validate,
       },
@@ -331,7 +331,7 @@ VNET_DEV_REGISTER_DRIVER (atl) = {
     .ops = {
       .init = atl_init,
       .probe = atl_probe,
-      .format_info = format_atl_dev_info,
+      .styled_format_info = styled_format_atl_dev_info,
     },
   },
 };

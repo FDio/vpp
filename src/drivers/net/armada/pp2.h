@@ -245,12 +245,12 @@ void mvpp2_port_restore_fc_isr (vnet_dev_port_t *);
 
 /* format.c */
 format_function_t format_mvpp2_port_link_info;
-format_function_t format_mvpp2_port_status;
-format_function_t format_mvpp2_dev_info;
-format_function_t format_mvpp2_parser_tables;
-format_function_t format_mvpp2_classifier_tables;
-format_function_t format_mvpp2_rxq_info;
-format_function_t format_mvpp2_txq_info;
+styled_format_fn_t styled_format_mvpp2_port_status;
+styled_format_fn_t styled_format_mvpp2_dev_info;
+styled_format_fn_t styled_format_mvpp2_parser_tables;
+styled_format_fn_t styled_format_mvpp2_classifier_tables;
+styled_format_fn_t styled_format_mvpp2_rxq_info;
+styled_format_fn_t styled_format_mvpp2_txq_info;
 format_function_t format_mvpp2_rx_trace;
 format_function_t format_mvpp2_rx_desc;
 format_function_t format_mvpp2_tx_trace;

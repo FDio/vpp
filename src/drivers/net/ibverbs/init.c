@@ -189,7 +189,7 @@ ibv_init (vlib_main_t *vm, vnet_dev_t *dev)
 		  .ops = {
 	    .start = ibv_port_start,
 	    .stop = ibv_port_stop,
-	    .format_status = format_ibv_port_status,
+	    .styled_format_status = styled_format_ibv_port_status,
 	    .config_change_validate = ibv_port_cfg_change_validate,
 	    .config_change = ibv_port_cfg_change,
 	    .get_module_eeprom = ibv_port_get_module_eeprom,
@@ -220,7 +220,7 @@ ibv_init (vlib_main_t *vm, vnet_dev_t *dev)
 		.ops = {
 		  .alloc = ibv_rxq_alloc,
 		  .free = ibv_rxq_free,
-		  .format_info = format_ibv_rxq_info,
+		  .styled_format_info = styled_format_ibv_rxq_info,
 		},
 	      },
 	.tx_queue = {
@@ -317,7 +317,7 @@ VNET_DEV_REGISTER_DRIVER (ibv_generic) = {
       .init = ibv_init,
       .free = ibv_free,
       .probe = ibv_probe,
-      .format_info = format_ibv_dev_info,
+      .styled_format_info = styled_format_ibv_dev_info,
     },
   },
 };

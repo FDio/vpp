@@ -138,8 +138,8 @@ foreach_oct_crypto_enqueue_node
 #undef _
 
   /* format.c */
-  format_function_t format_oct_cpt_dev_info;
-format_function_t format_oct_cpt_queue_info;
+  styled_format_fn_t styled_format_oct_cpt_dev_info;
+styled_format_fn_t styled_format_oct_cpt_queue_info;
 format_function_t format_oct_cpt_enq_trace;
 format_function_t format_oct_cpt_deq_trace;
 

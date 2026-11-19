@@ -655,8 +655,8 @@ format_dev_pci_vendor_name_from_ids (u8 *s, va_list *args)
   return s;
 }
 
-static u8 *
-format_dev_pci_device_info (u8 *s, va_list *args)
+static void
+styled_format_dev_pci_device_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t __clib_unused *a =
     va_arg (*args, vnet_dev_format_args_t *);
@@ -666,23 +666,22 @@ format_dev_pci_device_info (u8 *s, va_list *args)
   vlib_pci_config_t cfg = {};
   clib_error_t *err;
 
-  s = format (s, "PCIe address is %U", format_vlib_pci_addr, &pdd->addr);
+  styled_text_add_marked (st, ST_R_VALUE, "PCIe address is %{%U%}", format_vlib_pci_addr,
+			  &pdd->addr);
 
   if (pdd->is_passive)
-    return s;
+    return;
 
   err = vlib_pci_read_write_config (vm, pdd->handle, VLIB_READ, 0, &cfg,
 				    sizeof (cfg));
   if (!err)
     {
-      s = format (s, ", port is %U, speed is %U (max %U)",
-		  format_vlib_pci_link_port, &cfg, format_vlib_pci_link_speed,
-		  &cfg, format_vlib_pci_link_speed_cap, &cfg);
+      styled_text_add_marked (st, ST_R_VALUE, ", port is %{%U%}, speed is %{%U%} (max %U)",
+			      format_vlib_pci_link_port, &cfg, format_vlib_pci_link_speed, &cfg,
+			      format_vlib_pci_link_speed_cap, &cfg);
     }
   else
     clib_error_free (err);
-
-  return s;
 }
 
 static u8 *
@@ -702,7 +701,7 @@ VNET_DEV_REGISTER_BUS (pci) = {
     .get_device_info = vnet_dev_bus_pci_get_device_info,
     .free_device_info = vnet_dev_bus_pci_free_device_info,
     .dma_mem_map_fn = vnet_dev_bus_pci_dma_mem_map,
-    .format_device_info = format_dev_pci_device_info,
+    .styled_format_device_info = styled_format_dev_pci_device_info,
     .format_device_addr = format_dev_pci_device_addr,
   },
 };

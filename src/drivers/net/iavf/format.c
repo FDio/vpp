@@ -88,24 +88,25 @@ format_iavf_rx_trace (u8 *s, va_list *args)
   return s;
 }
 
-u8 *
-format_iavf_port_status (u8 *s, va_list *args)
+void
+styled_format_iavf_port_status (styled_text_t *st, va_list *args)
 {
-  vnet_dev_format_args_t __clib_unused *a =
-    va_arg (*args, vnet_dev_format_args_t *);
+  vnet_dev_format_args_t __clib_unused *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
   iavf_port_t *ap = vnet_dev_get_port_data (port);
-  u32 indent = format_get_indent (s);
 
-  s = format (s, "caps: %U", format_iavf_vf_cap_flags, ap->vf_cap_flags);
-  s = format (s, "\n%Uvsi is %u, RSS key size is %u, RSS lut size is %u",
-	      format_white_space, indent, ap->vsi_id, ap->rss_key_size,
-	      ap->rss_lut_size);
-  s = format (s, "\n%Uflow offload ", format_white_space, indent);
+  styled_text_add_marked (st, ST_R_VALUE, "caps: %{%U%}", format_iavf_vf_cap_flags,
+			  ap->vf_cap_flags);
+  styled_text_add_marked (st, ST_R_VALUE,
+			  "\nvsi is %{%u%}, RSS key size is %{%u%}, RSS lut size is %{%u%}",
+			  ap->vsi_id, ap->rss_key_size, ap->rss_lut_size);
+  styled_text_add (st, "\nflow offload ");
+
   if (ap->flow_offload)
-    s = format (s, "enabled, %u flows configured",
-		vec_len (ap->flow_lookup_entries));
+    {
+      styled_text_add_marked (st, ST_R_VALUE, "%{enabled%}, %{%u%} flows configured",
+			      vec_len (ap->flow_lookup_entries));
+    }
   else
-    s = format (s, "disabled");
-  return s;
+    styled_text_add_role (st, ST_R_VALUE, "disabled");
 }
