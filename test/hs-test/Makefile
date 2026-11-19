@@ -129,6 +129,7 @@ help:
 	@echo " cleanup-hst              - removes all docker containers and namespaces from last test run"
 	@echo " list-tests               - list all tests"
 	@echo " install-deps             - install software dependencies"
+	@echo " clean-hst-docker-state   - remove all hs-test docker resources"
 	@echo " clean-hst-registry       - delete images and repositories from local registry"
 	@echo
 	@echo "'make build' and 'make test' arguments:"
@@ -319,6 +320,10 @@ cleanup-hst:
 	@echo "****************************"
 	@echo "Done."
 	@echo "****************************"
+
+.PHONY: clear-hst-docker-state
+clear-hst-docker-state:
+       @echo clear-hst-docker-state TBD
 
 .PHONY: clear-hst-registry
 clear-hst-registry:
