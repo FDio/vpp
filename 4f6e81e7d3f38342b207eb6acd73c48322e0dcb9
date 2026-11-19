@@ -16,6 +16,233 @@
       "message": "recheck",
       "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5d960fb3_c8d33741",
+        "filename": "src/plugins/hs_apps/http_cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 445,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-19T09:57:42Z",
+      "side": 1,
+      "message": "for HEAD requests to the echo endpoint, could we drain and count received bytes instead of accumulating them in rx_buf? buffer is transferred to tx_buf and then immediately freed by HEAD handling, byte count would preserve representation length while avoiding allocation and copying of entire payload",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "eaa52496_b36381b2",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 900,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-19T09:57:42Z",
+      "side": 1,
+      "message": "is this still necessary now that h1, h2 and h3 consume informational responses internally? keeping that responsibility in the HTTP layer would let us remove this branch and the read_reply label/backward goto from the client",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d191918f_95199075",
+        "filename": "src/plugins/http/http1/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 969,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-19T09:57:42Z",
+      "side": 1,
+      "message": "this can be be optimized, make one if (!is_server) block",
+      "range": {
+        "startLine": 955,
+        "startChar": 0,
+        "endLine": 969,
+        "endChar": 0
+      },
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4466d5e0_72eb3862",
+        "filename": "src/plugins/http/http2/http2.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1340,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-19T09:57:42Z",
+      "side": 1,
+      "message": "could we calculate local has_body condition for body initialization and scheduling, while preserving msg.data.body_len and msg.data.type? this would make distinction between representation metadata and transmitted payload explicit, and avoid rewriting the message metadata to make subsequent branches skip the body",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d0dc1166_a8dea455",
+        "filename": "src/plugins/http/http2/http2.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1859,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-19T09:57:42Z",
+      "side": 1,
+      "message": "could HEAD and ordinary responses share Content-Length parsing and error-handling block, after informational-response and successful-tunnel cases? parsing is identical, only subsequent body framing differs. also content_len_header_index has already been assigned above, so this assignment is redundant",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8f8d3fba_5457e48f",
+        "filename": "src/plugins/http/http2/http2.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1871,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-19T09:57:42Z",
+      "side": 1,
+      "message": "could we set HTTP_REQ_F_RX_HEADERS_RECEIVED before returning here? if initial headers omit END_STREAM and trailing HEADERS finish response, missing flag bypasses trailer decoding. compressed trailer block instead reaches http2_req_state_transport_io_more_data(), where any nonempty block exceeds to_recv \u003d\u003d 0. this resets valid response and leaves staged reply unpublished, skipped HPACK decoding can also desynchronize dynamic table",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "37e954e4_9b830fb2",
+        "filename": "src/plugins/http/http2/http2.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1872,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-19T09:57:42Z",
+      "side": 1,
+      "message": "could immediate END_STREAM and deferred response completion use the same completion handler? this branch duplicates reset, state-change, publication, and notification logic below, keeping that sequence in one place would also ensure consistent handling of pending request uploads",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "79f79a61_fbde7a15",
+        "filename": "src/plugins/http/http2/http2.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1876,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-19T09:57:42Z",
+      "side": 1,
+      "message": "successful HEAD response can carry END_STREAM while its request upload is still active. this reset frees tx buffer and clears TX_STREAMING, so later producer bytes are treated as new http_msg_t and can trigger assertions. could we check http_req_tx_streaming_pending() and mark RX EOF, as the ordinary response path does at lines 1910–1913?",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "acf0842b_ca57e1cb",
+        "filename": "src/plugins/http/http3/http3.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 628,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-19T09:57:42Z",
+      "side": 1,
+      "message": "same as in http/2\ncould we calculate local has_body condition for body initialization and scheduling, while preserving msg.data.body_len and msg.data.type? this would make distinction between representation metadata and transmitted payload explicit, and avoid rewriting the message metadata to make subsequent branches skip the body",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ddc72cbd_e8677b74",
+        "filename": "src/plugins/http/http3/http3.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 705,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-19T09:57:42Z",
+      "side": 1,
+      "message": "HTTP_REQ_F_RX_HEADERS_RECEIVED and HTTP_REQ_F_PEER_CLOSED were already cleared at the beginning of this function. could we omit those two here and keep their initialization in one place?",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7f385899_1462401a",
+        "filename": "src/plugins/http/http3/http3.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1439,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-19T09:57:42Z",
+      "side": 1,
+      "message": "same as in http/2\ncould HEAD and ordinary responses share Content-Length parsing and error-handling block, after informational-response and successful-tunnel cases? parsing is identical, only subsequent body framing differs. also content_len_header_index has already been assigned above, so this assignment is redundant",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e8c4ee4f_61f99a73",
+        "filename": "src/plugins/http/http3/http3.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2262,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-19T09:57:42Z",
+      "side": 1,
+      "message": "uccessful HEAD response can finish before its request upload completes, this unconditionally replaces the QUIC stream while request retains its active tx buffer and subsequent upload DATA is then directed onto replacement stream, which has no request HEADERS. could we preserve the original stream while http_req_tx_streaming_pending() is true, following ordinary response completion paths?",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fa9297e5_c134995b",
+        "filename": "src/plugins/http/http_private.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-19T09:57:42Z",
+      "side": 1,
+      "message": "Could we rather make req-\u003emethod separate field from status_code and preserve it throughout the exchange? HEAD checks could use req-\u003emethod \u003d\u003d HTTP_REQ_HEAD, avoiding extra flag and its set/clear bookkeeping, this would require consistently storing the method on client tx and server rx paths across all http versions",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
