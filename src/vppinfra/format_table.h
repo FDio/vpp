@@ -5,6 +5,8 @@
 #ifndef __format_table_h__
 #define __format_table_h__
 
+#include <vppinfra/styled_text.h>
+
 typedef enum
 {
   TTAF_RESET = (1 << 0),
@@ -82,6 +84,21 @@ typedef struct
 } table_t;
 
 __clib_export format_function_t format_table;
+
+/*
+ * %T with a table_t *, the table as format_table () lays it out, added to a
+ * styled text:
+ *
+ *   styled_text_add (&st, "%T", format_styled_table, &t);
+ *
+ * The title, the column headings, the row headings and the other cells have a
+ * table role each. Colors and attributes set for the table or for a cell go on
+ * top of the role.
+ * The styled text decides on the profile and the output, no_ansi of the table is
+ * not used. The table is not wrapped, and its lines start at the column it is
+ * added at.
+ */
+__clib_export styled_format_fn_t format_styled_table;
 
 __clib_export void table_format_title (table_t *t, char *fmt, ...);
 __clib_export void table_format_cell (table_t *t, int c, int r, char *fmt,
