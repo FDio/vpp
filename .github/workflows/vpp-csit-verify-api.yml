@@ -1,7 +1,13 @@
+
 name: vpp-csit-verify-api
 
 on:
   workflow_call:
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: false
+      AWS_SECRET_ACCESS_KEY:
+        required: false
     inputs:
       FDIO_NAMESPACE:
         description: "Executor Namespace (prod|sandbox)"
@@ -81,13 +87,17 @@ defaults:
 
 permissions:
   contents: read
-  actions: read
+  actions: read   # Needed to read local actions
+
+concurrency:
+  group: vpp-csit-verify-api-${{ github.workflow }}-${{ inputs.GERRIT_PROJECT }}-${{ inputs.GERRIT_BRANCH }}-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.FDIO_NAMESPACE }}
+  cancel-in-progress: true
 
 jobs:
   csit-verify-api:
-    # yamllint disable-line rule:line-length
-    name: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}__${{ inputs.GERRIT_BRANCH }}__${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}
+    name: ${{ matrix.build_type }}_${{ matrix.os }}_${{ matrix.executor_arch }}
     runs-on:
+      # zizmor: ignore[self-hosted-runner]
       - self-hosted
       - nomad
       - fdio:arch=${{ matrix.executor_arch }}
@@ -97,6 +107,7 @@ jobs:
       - fdio:os=${{ matrix.os }}
       - fdio:workflow=${{ github.run_id }}
 
+    environment: production
     strategy:
       fail-fast: false
       matrix:
@@ -117,13 +128,15 @@ jobs:
       GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
       LOG_PREFIX: ${{ inputs.LOG_PREFIX }}
       FDIO_NAMESPACE: ${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}
-      LOG_NAME: ""
+      LOG_NAME: "${{ inputs.LOG_PREFIX }}/verify-csit-api-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}-${{ matrix.executor_arch }}"
       LOG_DIR: ""
       TUI_LINE: "*******************************************************************"
 
     steps:
       - name: Actions Checkout
-        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98  # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Environment
         # yamllint disable-line rule:line-length
@@ -132,7 +145,6 @@ jobs:
       - name: Prepare Log Directory
         run: |
           set -euxo pipefail
-          LOG_NAME="${{ env.LOG_PREFIX }}/verify-csit-api-${{ matrix.build_type }}-${{ matrix.class }}-${{ matrix.os }}-${{ github.event.inputs.FDIO_NAMESPACE || 'prod' }}-${{ matrix.executor_arch }}"
           echo "LOG_NAME=$LOG_NAME" >> "$GITHUB_ENV"
           LOG_DIR="$WORKSPACE/logs/$LOG_NAME"
           echo "LOG_DIR=$LOG_DIR" >> "$GITHUB_ENV"
@@ -149,7 +161,7 @@ jobs:
 
       - name: Checkout VPP Gerrit Change
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@357504e210181360576779f9123c8590a7d1f8ed
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@f9e0f384d665800c8e580da853e26558dd6d2668
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}

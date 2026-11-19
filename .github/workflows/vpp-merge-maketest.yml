@@ -2,6 +2,13 @@ name: vpp-merge-maketest
 
 on:
   workflow_call:
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: false
+      AWS_SECRET_ACCESS_KEY:
+        required: false
+      PACKAGECLOUD_TOKEN:
+        required: false
     inputs:
       FDIO_NAMESPACE:
         description: "Executor Namespace (prod|sandbox)"
@@ -104,13 +111,17 @@ defaults:
 
 permissions:
   contents: read
-  actions: read
+  actions: read   # Needed to read local actions
+
+concurrency:
+  group: vpp-merge-maketest-${{ github.workflow }}-${{ inputs.GERRIT_PROJECT }}-${{ inputs.GERRIT_BRANCH }}-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.FDIO_NAMESPACE }}
+  cancel-in-progress: true
 
 jobs:
   merge-maketest:
-    # yamllint disable-line rule:line-length
-    name: ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER}}__${{ inputs.GERRIT_BRANCH }}__${{ inputs.FDIO_NAMESPACE }}
+    name: ${{ matrix.build_type }}_${{ matrix.os }}_${{ matrix.executor_arch }}
     runs-on:
+      # zizmor: ignore[self-hosted-runner]
       - self-hosted
       - nomad
       - fdio:arch=${{ matrix.executor_arch }}
@@ -119,12 +130,14 @@ jobs:
       - fdio:os=${{ matrix.os }}
       - fdio:workflow=${{ github.run_id }}
 
+    environment: production
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
         os: ['ubuntu2404', 'ubuntu2204', 'debian12']
         executor_arch: ['x86_64', 'aarch64']
-        build_type: ['rel']
+        build_type: ['release']
         exclude:
           # Exclude debian12 on aarch64 for all builds
           - os: 'debian12'
@@ -142,7 +155,7 @@ jobs:
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
       GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
       LOG_PREFIX: ${{ inputs.LOG_PREFIX }}
-      LOG_NAME: ""
+      LOG_NAME: "${{ inputs.LOG_PREFIX }}/merge-maketest-${{ matrix.build_type }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
       LOG_DIR: ""
       WORKSPACE: /scratch/docker-build/vpp
       CCACHE_DIR: /scratch/ccache/${{ matrix.os }}-${{ matrix.executor_arch }}
@@ -159,7 +172,9 @@ jobs:
 
     steps:
       - name: Actions Checkout
-        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98  # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Environment
         # yamllint disable-line rule:line-length
@@ -168,7 +183,6 @@ jobs:
       - name: Prepare Log Directory
         run: |
           set -euxo pipefail
-          LOG_NAME="${{ env.LOG_PREFIX }}/merge-maketest-${{ matrix.build_type }}-${{ matrix.os }}-${{ inputs.FDIO_NAMESPACE }}-${{ matrix.executor_arch }}"
           echo "LOG_NAME=$LOG_NAME" >> "$GITHUB_ENV"
           LOG_DIR="$WORKSPACE/logs/$LOG_NAME"
           echo "LOG_DIR=$LOG_DIR" >> "$GITHUB_ENV"
@@ -185,7 +199,7 @@ jobs:
 
       - name: Checkout VPP Gerrit Change
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@357504e210181360576779f9123c8590a7d1f8ed
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@f9e0f384d665800c8e580da853e26558dd6d2668
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
@@ -206,6 +220,8 @@ jobs:
 
       - name: Push Packages to Packagecloud
         if: ${{ always() && inputs.FDIO_NAMESPACE == 'prod' }}
+        env:
+          PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
         run: |
           set -euxo pipefail
           pkgcloud_cmd=""
@@ -218,7 +234,7 @@ jobs:
               local downloads_dir="/root/Downloads"
               local pkgcloud_acct="fdio"
 
-              echo '{"url":"https://packagecloud.io","token":"${{ secrets.PACKAGECLOUD_TOKEN }}"}' > /root/.packagecloud
+              echo "{\"url\":\"https://packagecloud.io\",\"token\":\"$PACKAGECLOUD_TOKEN\"}" > /root/.packagecloud
               distro=${distro,,} # to lowercase
               codename=${codename,,} # to lowercase
               pkgcloud_cmd="package_cloud push ${pkgcloud_acct}/${GERRIT_BRANCH/stable\//}/${distro}/${codename}/main/ "
@@ -259,7 +275,7 @@ jobs:
 
       - name: Setup Docker VPP Runtime Environment for 'make test'
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@777792ecef2d5c93ce15fa5b7fdca999f5412c9d
+        uses: fdio/vpp/.github/actions/vpp-docker-runtime-setup@f9e0f384d665800c8e580da853e26558dd6d2668
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
@@ -268,11 +284,12 @@ jobs:
 
       - name: VPP Make Test
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-make-test@de2a820bc83666cbdd149eb0e38bdbb7c84fe70b
+        uses: fdio/vpp/.github/actions/vpp-make-test@f9e0f384d665800c8e580da853e26558dd6d2668
         timeout-minutes: 120
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
           WORKSPACE: ${{ env.WORKSPACE }}
+          BUILD_TYPE: ${{ matrix.build_type }}
           TEST_JOBS: ${{ env.TEST_JOBS }}
           TEST_RETRIES: ${{ env.TEST_RETRIES }}
           MAKE_TEST_OS: ${{ env.MAKE_TEST_OS }}
@@ -301,10 +318,15 @@ jobs:
           unittest_failed_dir="/tmp/vpp-failed-unittests"
           for failed_test in $(ls "$unittest_failed_dir")
           do
-            failed_test_dir="$archives_dir"/"$failed_test"
-            if [ ! -e "$failed_test_dir" ] ; then
-              mkdir -p "$failed_test_dir"
-              cp -a "$unittest_failed_dir"/"$failed_test"/* "$failed_test_dir"
+            unittest_failed_test="$unittest_failed_dir"/"$failed_test"
+            if [ -f "$unittest_failed_test" ] ; then
+              cp -a "$unittest_failed_test" "$archives_dir"
+            else
+              failed_test_dir="$archives_dir"/"$failed_test"
+              if [ ! -e "$failed_test_dir" ] ; then
+                mkdir -p "$failed_test_dir"
+                cp -a "$unittest_failed_test"/* "$failed_test_dir"
+              fi
             fi
           done
           if [[ -d "$archives_dir" ]] && find "$archives_dir" -type f -print -quit | grep -q . ; then

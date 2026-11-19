@@ -142,7 +142,7 @@ jobs:
         id: checkout-vpp
         continue-on-error: true
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@80b812548b0cf87d46fc7a6e0799f91ac4eb9170
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@f9e0f384d665800c8e580da853e26558dd6d2668
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
