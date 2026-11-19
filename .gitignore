@@ -20,6 +20,7 @@
 /build-root/rpmbuild/
 /build-root/test-coverage*/
 /build-root/test/
+/test-env/
 /build-config.mk
 /build/external/*.tar.gz
 /build/external/*.tar.xz

@@ -532,6 +532,8 @@ pr("C compiler" "${CMAKE_C_COMPILER} (${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_
 pr("C flags" ${CMAKE_C_FLAGS}${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE_UC}})
 pr("Linker flags (apps)" ${CMAKE_EXE_LINKER_FLAGS} ${CMAKE_EXE_LINKER_FLAGS_${CMAKE_BUILD_TYPE_UC}})
 pr("Linker flags (libs)" ${CMAKE_SHARED_LINKER_FLAGS} ${CMAKE_SHARED_LINKER_FLAGS_${CMAKE_BUILD_TYPE_UC}})
+include(cmake/test.cmake)
+
 pr("Host processor" ${CMAKE_HOST_SYSTEM_PROCESSOR})
 pr("Target processor" ${CMAKE_SYSTEM_PROCESSOR})
 pr("Prefix path" ${CMAKE_PREFIX_PATH})
