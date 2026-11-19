@@ -241,6 +241,8 @@ $wipe && git clean -fdx --exclude=startup.\*
   cmake ${args[@]} -G Ninja -S ${src_dir}/src -B ${build_dir}
 )
 
+build_dir=$(cd "${build_dir}" && pwd)
+
 cat << __EOF__
 
   Useful build commands:
@@ -252,5 +254,9 @@ cat << __EOF__
   ninja debug             Runs VPP inside GDB using startup.conf in the build directory
   ninja pkg-deb           Create .deb packages
   ninja install           Install VPP to $install_dir
+  ninja test              Run tests (single test file: ninja test-<name>)
+  ninja test-config       Start test configuration TUI
+  ninja docs              Build HTML documentation in $build_dir/.docs/html
+  ninja docs-serve        Build documentation and serve it over HTTP (all interfaces, port 8000)
 
 __EOF__
