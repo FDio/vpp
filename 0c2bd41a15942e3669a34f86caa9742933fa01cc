@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d2087ffb_913596e9",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1021,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-19T13:12:02Z",
+      "side": 1,
+      "message": "This `getattr` is fragile and fugly. I\u0027m not listing all the nasties, but rather a nicer way to do this:\n\n```\n# BFDTestSession.__init__, next to self.state\nself.skip_stale_hello \u003d False\n\n# bfd_session_up, after the event\ntest.test_session.skip_stale_hello \u003d True\n\n# wait_for_bfd_packet\nts \u003d test.test_session\n\ndef is_stale(p):\n    if ts.skip_stale_hello and p[BFD].your_discriminator \u003d\u003d 0:\n        return True\n    return ignore is not None and ignore(p)\n...\nts.skip_stale_hello \u003d False\n```",
+      "revId": "0c2bd41a15942e3669a34f86caa9742933fa01cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "061460fe_7c9e709a",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2130,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-19T13:12:02Z",
+      "side": 1,
+      "message": "`prev_tos !\u003d tos_value and get_tos(p) \u003d\u003d prev_tos` reads better",
+      "revId": "0c2bd41a15942e3669a34f86caa9742933fa01cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
