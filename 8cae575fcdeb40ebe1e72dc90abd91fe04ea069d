@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "903fdb82_263131e7",
+        "filename": "src/plugins/http/http1/http1.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-19T17:38:38Z",
+      "side": 1,
+      "message": "please remove this, we miss cleanup this in 47316",
+      "revId": "8cae575fcdeb40ebe1e72dc90abd91fe04ea069d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "34201837_db131e10",
+        "filename": "src/plugins/http/http_private.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-19T17:38:38Z",
+      "side": 1,
+      "message": "change it back to u16",
+      "revId": "8cae575fcdeb40ebe1e72dc90abd91fe04ea069d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
