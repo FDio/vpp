@@ -35,6 +35,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0b4199da_15b59343",
+        "filename": "src/plugins/hs_apps/http_cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 445,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-19T16:15:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5d960fb3_c8d33741",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "eaa52496_b36381b2",
@@ -48,6 +66,24 @@
       "writtenOn": "2026-11-19T09:57:42Z",
       "side": 1,
       "message": "is this still necessary now that h1, h2 and h3 consume informational responses internally? keeping that responsibility in the HTTP layer would let us remove this branch and the read_reply label/backward goto from the client",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d9a7c85a_0f672500",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 900,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-19T16:15:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "eaa52496_b36381b2",
       "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -75,6 +111,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "01552751_7a28179f",
+        "filename": "src/plugins/http/http1/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 969,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-19T16:15:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d191918f_95199075",
+      "range": {
+        "startLine": 955,
+        "startChar": 0,
+        "endLine": 969,
+        "endChar": 0
+      },
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4466d5e0_72eb3862",
@@ -88,6 +148,24 @@
       "writtenOn": "2026-11-19T09:57:42Z",
       "side": 1,
       "message": "could we calculate local has_body condition for body initialization and scheduling, while preserving msg.data.body_len and msg.data.type? this would make distinction between representation metadata and transmitted payload explicit, and avoid rewriting the message metadata to make subsequent branches skip the body",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d4bd0bd7_d11a870b",
+        "filename": "src/plugins/http/http2/http2.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1340,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-19T16:15:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4466d5e0_72eb3862",
       "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -109,6 +187,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "8247a444_311d7093",
+        "filename": "src/plugins/http/http2/http2.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1859,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-19T16:15:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d0dc1166_a8dea455",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "8f8d3fba_5457e48f",
@@ -122,6 +218,24 @@
       "writtenOn": "2026-11-19T09:57:42Z",
       "side": 1,
       "message": "could we set HTTP_REQ_F_RX_HEADERS_RECEIVED before returning here? if initial headers omit END_STREAM and trailing HEADERS finish response, missing flag bypasses trailer decoding. compressed trailer block instead reaches http2_req_state_transport_io_more_data(), where any nonempty block exceeds to_recv \u003d\u003d 0. this resets valid response and leaves staged reply unpublished, skipped HPACK decoding can also desynchronize dynamic table",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3bcdb508_8a90c181",
+        "filename": "src/plugins/http/http2/http2.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1871,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-19T16:15:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8f8d3fba_5457e48f",
       "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -143,6 +257,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "11172517_aebf2af9",
+        "filename": "src/plugins/http/http2/http2.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1872,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-19T16:15:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "37e954e4_9b830fb2",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "79f79a61_fbde7a15",
@@ -156,6 +288,24 @@
       "writtenOn": "2026-11-19T09:57:42Z",
       "side": 1,
       "message": "successful HEAD response can carry END_STREAM while its request upload is still active. this reset frees tx buffer and clears TX_STREAMING, so later producer bytes are treated as new http_msg_t and can trigger assertions. could we check http_req_tx_streaming_pending() and mark RX EOF, as the ordinary response path does at lines 1910–1913?",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "60120bc1_82afd13c",
+        "filename": "src/plugins/http/http2/http2.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1876,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-19T16:15:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "79f79a61_fbde7a15",
       "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -177,6 +327,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "755b4005_f2ec11fc",
+        "filename": "src/plugins/http/http3/http3.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 628,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-19T16:15:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "acf0842b_ca57e1cb",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ddc72cbd_e8677b74",
@@ -190,6 +358,24 @@
       "writtenOn": "2026-11-19T09:57:42Z",
       "side": 1,
       "message": "HTTP_REQ_F_RX_HEADERS_RECEIVED and HTTP_REQ_F_PEER_CLOSED were already cleared at the beginning of this function. could we omit those two here and keep their initialization in one place?",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "166c544e_d0dd2fb0",
+        "filename": "src/plugins/http/http3/http3.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 705,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-19T16:15:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ddc72cbd_e8677b74",
       "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -211,6 +397,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ed90309b_7a674af7",
+        "filename": "src/plugins/http/http3/http3.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1439,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-19T16:15:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7f385899_1462401a",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "e8c4ee4f_61f99a73",
@@ -228,6 +432,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "926a6466_b8eeb762",
+        "filename": "src/plugins/http/http3/http3.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2262,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-19T16:15:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e8c4ee4f_61f99a73",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "fa9297e5_c134995b",
@@ -241,6 +463,24 @@
       "writtenOn": "2026-11-19T09:57:42Z",
       "side": 1,
       "message": "Could we rather make req-\u003emethod separate field from status_code and preserve it throughout the exchange? HEAD checks could use req-\u003emethod \u003d\u003d HTTP_REQ_HEAD, avoiding extra flag and its set/clear bookkeeping, this would require consistently storing the method on client tx and server rx paths across all http versions",
+      "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "478b56eb_9673d12e",
+        "filename": "src/plugins/http/http_private.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-19T16:15:45Z",
+      "side": 1,
+      "message": "req-\u003emethod \u003d\u003d HTTP_REQ_HEAD used instead of a flag.",
+      "parentUuid": "fa9297e5_c134995b",
       "revId": "4f6e81e7d3f38342b207eb6acd73c48322e0dcb9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
