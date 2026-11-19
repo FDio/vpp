@@ -104,6 +104,7 @@ set(VPPINFRA_SRCS
   random.c
   random_isaac.c
   rbtree.c
+  styled_text.c
   serialize.c
   socket.c
   stack.c
@@ -180,6 +181,7 @@ set(VPPINFRA_HEADERS
   format.h
   format_ansi.h
   format_table.h
+  styled_text.h
   args.h
   hash.h
   heap.h
@@ -340,6 +342,7 @@ set(test_files
   test/aes_ctr.c
   test/aes_gcm.c
   test/poly1305.c
+  test/styled_text.c
   test/array_mask.c
   test/compress.c
   test/count_equal.c
