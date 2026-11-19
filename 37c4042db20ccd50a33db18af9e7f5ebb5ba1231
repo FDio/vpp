@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "721f8aba_d60cc9bd",
+        "filename": "docs/contributing/committer-etiquette.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-11-19T11:17:33Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fe4622e1_a653c1f8",
+      "revId": "37c4042db20ccd50a33db18af9e7f5ebb5ba1231",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "cf306201_59b942ac",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3ac412ea_47bb409c",
+        "filename": "docs/contributing/committer-etiquette.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-11-19T11:17:33Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "cf306201_59b942ac",
+      "revId": "37c4042db20ccd50a33db18af9e7f5ebb5ba1231",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a7c2e69a_6c52b694",
@@ -48,6 +84,24 @@
       "writtenOn": "2026-11-17T10:56:57Z",
       "side": 1,
       "message": "I would add that patch should not be more than N commits or days behind HEAD, Verified date can be misleading if patch was updated couple of times without rebase.",
+      "revId": "37c4042db20ccd50a33db18af9e7f5ebb5ba1231",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0b5ee4bf_4696cf3f",
+        "filename": "docs/contributing/committer-etiquette.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-11-19T11:17:33Z",
+      "side": 1,
+      "message": "this is something IMO we should achieve trough gerrit config/plugin. Autoremoval of verified flag instead on relying to committer to count commits...",
+      "parentUuid": "a7c2e69a_6c52b694",
       "revId": "37c4042db20ccd50a33db18af9e7f5ebb5ba1231",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
