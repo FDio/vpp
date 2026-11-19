@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "66d2b50f_eb4c44c8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 6
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-11-19T10:15:26Z",
+      "side": 1,
+      "message": "as the original author of the eeprom reader, this is a significant improvement. I have also noticed that reading the eeprom halts workers, which makes the feature as-is useless. This gerrit addresses it by making the reads avoid needing the barrier.",
+      "revId": "dfbf0f8d47c71585878c9c022d748261f21d04f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
