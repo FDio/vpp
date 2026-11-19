@@ -632,6 +632,7 @@ class BFDTestSession(object):
         self.diag = BFDDiagCode.no_diagnostic
         self.your_discriminator = None
         self.state = BFDState.down
+        self.skip_stale_hello = False
         self.auth_type = BFDAuthType.no_auth
         self.tunnel_header = tunnel_header
         self.tx_packets = 0
@@ -870,6 +871,7 @@ class BFDTestSession(object):
 
 def bfd_session_up(test):
     """Bring BFD session up"""
+    test.test_session.skip_stale_hello = False
     test.logger.info("BFD: Waiting for slow hello")
     p = wait_for_bfd_packet(test, 2, is_tunnel=test.vpp_session.is_tunnel)
     old_offset = None
@@ -901,6 +903,8 @@ def bfd_session_up(test):
     e = test.vapi.wait_for_event(1, "bfd_udp_session_event")
     verify_event(test, e, expected_state=BFDState.up)
     test.logger.info("BFD: Session is Up")
+    # packets sent before vpp learned our discriminator may still be queued
+    test.test_session.skip_stale_hello = True
     test.test_session.update(state=BFDState.up)
     if (
         test.test_session.sha1_key
@@ -997,17 +1001,31 @@ def verify_event(test, event, expected_state):
 
 
 def wait_for_bfd_packet(
-    test, timeout=2, pcap_time_min=None, is_tunnel=False, expected_tos=None
+    test,
+    timeout=2,
+    pcap_time_min=None,
+    is_tunnel=False,
+    expected_tos=None,
+    ignore=None,
 ):
     """wait for BFD packet and verify its correctness
 
     :param timeout: how long to wait
     :param pcap_time_min: ignore packets with pcap timestamp lower than this
     :param expected_tos: expected TOS/TC value for IP verification
+    :param ignore: ignore packets (tunnel header stripped) for which this
+                   returns True, e.g. sent before a configuration change
 
     :returns: tuple (packet, time spent waiting for packet)
     """
     test.logger.info("BFD: Waiting for BFD packet")
+    ts = test.test_session
+
+    def is_stale(p):
+        if ts.skip_stale_hello and p[BFD].your_discriminator == 0:
+            return True
+        return ignore is not None and ignore(p)
+
     deadline = time.time() + timeout
     counter = 0
     while True:
@@ -1028,8 +1046,11 @@ def wait_for_bfd_packet(
                     p,
                 )
             )
+        elif is_stale(p[IP].payload if is_tunnel else p):
+            test.logger.debug(ppp("BFD: ignoring stale packet:", p))
         else:
             break
+    ts.skip_stale_hello = False
     test.logger.debug(test.vapi.ppcli("show trace"))
     if is_tunnel:
         # strip an IP layer and move to the next
@@ -2090,8 +2111,13 @@ class BFD4TestCase(VppTestCase):
         # Test different TOS values
         test_tos_values = [0, 112, 192, 255]
 
+        if self.vpp_session.af == AF_INET6:
+            get_tos = lambda p: p[IPv6].tc
+        else:
+            get_tos = lambda p: p[IP].tos
         for tos_value in test_tos_values:
             with self.subTest(tos=tos_value):
+                prev_tos = self.vapi.bfd_udp_get_tos().tos
                 self.logger.info(f"Testing BFD traffic with TOS value: {tos_value}")
                 # Set the TOS value
                 self.vapi.bfd_udp_set_tos(tos_value)
@@ -2107,6 +2133,7 @@ class BFD4TestCase(VppTestCase):
                     timeout=2,
                     is_tunnel=self.vpp_session.is_tunnel,
                     expected_tos=tos_value,
+                    ignore=lambda p: prev_tos != tos_value and get_tos(p) == prev_tos,
                 )
                 # Verify the packet has the expected TOS value
                 if self.vpp_session.af == AF_INET6:
@@ -3377,11 +3404,14 @@ class BFDAuthOnOffTestCase(VppTestCase):
             p = wait_for_bfd_packet(self)
             self.assert_equal(p[BFD].state, BFDState.up, BFDState)
             self.test_session.send_packet()
-        self.vpp_session.activate_auth(key2)
+        old_key_id = self.vpp_session.bfd_key_id
+        self.vpp_session.activate_auth(key2, bfd_key_id=old_key_id % 255 + 1)
         self.test_session.bfd_key_id = self.vpp_session.bfd_key_id
         self.test_session.sha1_key = key2
         for dummy in range(self.test_session.detect_mult * 2):
-            p = wait_for_bfd_packet(self)
+            p = wait_for_bfd_packet(
+                self, ignore=lambda p: p[BFD].auth_key_id == old_key_id
+            )
             self.assert_equal(p[BFD].state, BFDState.up, BFDState)
             self.test_session.send_packet()
         self.assert_equal(self.vpp_session.state, BFDState.up, BFDState)
