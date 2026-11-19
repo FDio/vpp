@@ -34,13 +34,12 @@ format_rdma_ibv_wc (u8 *s, va_list *args)
   return s;
 }
 
-u8 *
-format_rdma_port_status (u8 *s, va_list *args)
+void
+styled_format_rdma_port_status (styled_text_t *st, va_list *args)
 {
   struct ibv_context *ctx = va_arg (*args, struct ibv_context *);
   u32 port_id = va_arg (*args, u32);
   u32 netdev_ifindex = va_arg (*args, u32);
-  u32 indent = format_get_indent (s);
   struct ibv_port_attr port_attr = {};
   const char *state = "unknown";
   const char *link_layer = "unknown";
@@ -61,7 +60,10 @@ format_rdma_port_status (u8 *s, va_list *args)
 
   rv_ibv = ibv_query_port (ctx, port_id, &port_attr);
   if (rv_ibv)
-    return format (s, "ibv_query_port failed rv %d", rv_ibv);
+    {
+      styled_text_add_marked (st, ST_R_ERROR, "ibv_query_port failed rv %{%d%}", rv_ibv);
+      return;
+    }
 
   if (port_attr.state < ARRAY_LEN (state_str) && state_str[port_attr.state])
     state = state_str[port_attr.state];
@@ -69,13 +71,14 @@ format_rdma_port_status (u8 *s, va_list *args)
     link_layer = link_layer_str[port_attr.link_layer];
   speed = rdma_port_speed (&port_attr);
 
-  s = format (s, "state %s, link-layer %s", state, link_layer);
+  styled_text_add_marked (st, ST_R_VALUE, "state %{%s%}, link-layer %{%s%}", state, link_layer);
   if (port_attr.active_width)
-    s = format (s, ", active-width %u", port_attr.active_width);
+    styled_text_add_marked (st, ST_R_VALUE, ", active-width %{%u%}", port_attr.active_width);
   if (speed)
-    s = format (s, ", speed %u Mbps", speed / 1000);
+    styled_text_add_marked (st, ST_R_VALUE, ", speed %{%u Mbps%}", speed / 1000);
   else if (port_attr.active_speed || port_attr.active_speed_ex)
-    s = format (s, ", active-speed %u/%u", port_attr.active_speed, port_attr.active_speed_ex);
+    styled_text_add_marked (st, ST_R_VALUE, ", active-speed %{%u/%u%}", port_attr.active_speed,
+			    port_attr.active_speed_ex);
 
   if (netdev_ifindex)
     {
@@ -84,20 +87,17 @@ format_rdma_port_status (u8 *s, va_list *args)
       clib_error_t *err = vnet_netlink_get_link_mtu (netdev_ifindex, &mtu);
 
       clib_error_free (err);
-      s = format_newline (s, indent);
-      s = format (s, "kernel netdev %s (ifindex %u), mtu %u", if_indextoname (netdev_ifindex, name),
-		  netdev_ifindex, mtu);
+      styled_text_add_marked (st, ST_R_VALUE, "\nkernel netdev %{%s%} (ifindex %{%u%}), mtu %{%u%}",
+			      if_indextoname (netdev_ifindex, name), netdev_ifindex, mtu);
     }
-
-  return s;
 }
 
-u8 *
-format_rdma_rss_flows (u8 *s, va_list *args)
+void
+styled_format_rdma_rss_flows (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t __clib_unused *a = va_arg (*args, vnet_dev_format_args_t *);
   rdma_rss_t *rss = va_arg (*args, rdma_rss_t *);
-  u32 row = 0, idx, indent = format_get_indent (s);
+  u32 row = 0, idx;
   table_t t = {};
 
   table_add_hdr_col (&t, 1, "");
@@ -133,15 +133,11 @@ format_rdma_rss_flows (u8 *s, va_list *args)
       }
 
   if (row)
-    {
-      s = format (s, "rx flows:");
-      s = format_newline (s, indent + 2);
-      s = format (s, "%U", format_table, &t);
-    }
+    styled_text_add (st, "rx flows:\n  %T", format_styled_table, &t);
   else
-    s = format (s, "rx flows: none");
+    styled_text_add_marked (st, ST_R_VALUE, "rx flows: %{none%}");
+
   table_free (&t);
-  return s;
 }
 
 static u8 *
@@ -162,7 +158,7 @@ rdma_cap_list_format (u8 *s, const rdma_cap_name_t *caps_list, u32 n_caps, u64 c
       s = format (s, " unknown(%u)+", bit);
     }
 
-  return format_word_wrap_last_line_with_indent (s, 100, 2);
+  return s;
 }
 
 u8 *
@@ -281,147 +277,125 @@ format_rdma_ibv_odp_transport_caps (u8 *s, va_list *args)
   return s;
 }
 
-u8 *
-format_rdma_ibv_dev_info (u8 *s, va_list *args)
+void
+styled_format_rdma_ibv_dev_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
   struct ibv_context *ctx = va_arg (*args, struct ibv_context *);
   struct ibv_device_attr_ex dev_attr_ex = {};
-  u32 indent = format_get_indent (s);
   struct ibv_device_attr *oa;
   int rv_ibv = ibv_query_device_ex (ctx, 0, &dev_attr_ex);
 
   if (rv_ibv)
-    return format (s, "ibv_query_device_ex failed rv %d", rv_ibv);
+    {
+      styled_text_add_marked (st, ST_R_ERROR, "ibv_query_device_ex failed rv %{%d%}", rv_ibv);
+      return;
+    }
 
   oa = &dev_attr_ex.orig_attr;
-  s = format (s, "hw_ver %u, fw_ver %s", oa->hw_ver, oa->fw_ver);
+  styled_text_add_marked (st, ST_R_VALUE, "hw_ver %{%u%}, fw_ver %{%s%}", oa->hw_ver, oa->fw_ver);
 
   if (a->debug > 0)
     {
-      s = format_newline (s, indent);
-      s = format (s, "max_qp %u, max_qp_wr %u, max_sge %u, max_sge_rd %u", oa->max_qp,
-		  oa->max_qp_wr, oa->max_sge, oa->max_sge_rd);
-
-      s = format_newline (s, indent);
-      s = format (s, "max_cq %u, max_cqe %u, max_mr %u, max_pd %u", oa->max_cq, oa->max_cqe,
-		  oa->max_mr, oa->max_pd);
-
-      s = format_newline (s, indent);
-      s = format (s, "max_mr_size %llu, page_size_cap 0x%llx, phys_port_cnt %u",
-		  (unsigned long long) oa->max_mr_size, (unsigned long long) oa->page_size_cap,
-		  oa->phys_port_cnt);
-
-      s = format_newline (s, indent);
-      s = format (s, "completion_timestamp_mask 0x%llx, hca_core_clock %llu",
-		  (unsigned long long) dev_attr_ex.completion_timestamp_mask,
-		  (unsigned long long) dev_attr_ex.hca_core_clock);
-
-      s = format_newline (s, indent);
-      s = format (s, "max_wq_type_rq %u, max_dm_size %llu, phys_port_cnt_ex %u",
-		  dev_attr_ex.max_wq_type_rq, (unsigned long long) dev_attr_ex.max_dm_size,
-		  dev_attr_ex.phys_port_cnt_ex);
+      styled_text_add_marked (
+	st, ST_R_VALUE, "\nmax_qp %{%u%}, max_qp_wr %{%u%}, max_sge %{%u%}, max_sge_rd %{%u%}",
+	oa->max_qp, oa->max_qp_wr, oa->max_sge, oa->max_sge_rd);
+      styled_text_add_marked (st, ST_R_VALUE,
+			      "\nmax_cq %{%u%}, max_cqe %{%u%}, max_mr %{%u%}, max_pd %{%u%}",
+			      oa->max_cq, oa->max_cqe, oa->max_mr, oa->max_pd);
+      styled_text_add_marked (
+	st, ST_R_VALUE, "\nmax_mr_size %{%llu%}, page_size_cap %{0x%llx%}, phys_port_cnt %{%u%}",
+	(unsigned long long) oa->max_mr_size, (unsigned long long) oa->page_size_cap,
+	oa->phys_port_cnt);
+      styled_text_add_marked (st, ST_R_VALUE,
+			      "\ncompletion_timestamp_mask %{0x%llx%}, hca_core_clock %{%llu%}",
+			      (unsigned long long) dev_attr_ex.completion_timestamp_mask,
+			      (unsigned long long) dev_attr_ex.hca_core_clock);
+      styled_text_add_marked (
+	st, ST_R_VALUE, "\nmax_wq_type_rq %{%u%}, max_dm_size %{%llu%}, phys_port_cnt_ex %{%u%}",
+	dev_attr_ex.max_wq_type_rq, (unsigned long long) dev_attr_ex.max_dm_size,
+	dev_attr_ex.phys_port_cnt_ex);
     }
 
   if (dev_attr_ex.device_cap_flags_ex)
-    {
-      s = format_newline (s, indent);
-      s = format (s, "device_cap_flags_ex:");
-      s = format_newline (s, indent + 2);
-      s = format (s, "%U", format_rdma_ibv_device_cap_flags, dev_attr_ex.device_cap_flags_ex);
-    }
+    styled_text_add_marked (st, ST_R_VALUE, "\ndevice_cap_flags_ex:\n  %{%U%}",
+			    format_rdma_ibv_device_cap_flags, dev_attr_ex.device_cap_flags_ex);
 
   if (dev_attr_ex.odp_caps.general_caps)
     {
-      s = format_newline (s, indent);
-      s = format (s, "odp_caps: general_caps 0x%llx",
-		  (unsigned long long) dev_attr_ex.odp_caps.general_caps);
-      s = format_newline (s, indent + 2);
-      s = format (s, "per_transport_caps:");
-      s = format_newline (s, indent + 4);
-      s = format (s, "rc: %U", format_rdma_ibv_odp_transport_caps,
-		  dev_attr_ex.odp_caps.per_transport_caps.rc_odp_caps);
-      s = format_newline (s, indent + 4);
-      s = format (s, "uc: %U", format_rdma_ibv_odp_transport_caps,
-		  dev_attr_ex.odp_caps.per_transport_caps.uc_odp_caps);
-      s = format_newline (s, indent + 4);
-      s = format (s, "ud: %U", format_rdma_ibv_odp_transport_caps,
-		  dev_attr_ex.odp_caps.per_transport_caps.ud_odp_caps);
+      styled_text_add_marked (st, ST_R_VALUE, "\nodp_caps: general_caps %{0x%llx%}",
+			      (unsigned long long) dev_attr_ex.odp_caps.general_caps);
+      styled_text_add_marked (st, ST_R_VALUE, "\n  per_transport_caps:\n    rc: %{%U%}",
+			      format_rdma_ibv_odp_transport_caps,
+			      dev_attr_ex.odp_caps.per_transport_caps.rc_odp_caps);
+      styled_text_add_marked (st, ST_R_VALUE, "\n    uc: %{%U%}",
+			      format_rdma_ibv_odp_transport_caps,
+			      dev_attr_ex.odp_caps.per_transport_caps.uc_odp_caps);
+      styled_text_add_marked (st, ST_R_VALUE, "\n    ud: %{%U%}",
+			      format_rdma_ibv_odp_transport_caps,
+			      dev_attr_ex.odp_caps.per_transport_caps.ud_odp_caps);
     }
 
   if (dev_attr_ex.tm_caps.max_num_tags)
     {
-      s = format_newline (s, indent);
-      s = format (s, "tm_caps: max_num_tags %u, max_ops %u, max_sge %u, flags 0x%x",
-		  dev_attr_ex.tm_caps.max_num_tags, dev_attr_ex.tm_caps.max_ops,
-		  dev_attr_ex.tm_caps.max_sge, dev_attr_ex.tm_caps.flags);
+      styled_text_add_marked (
+	st, ST_R_VALUE,
+	"\ntm_caps: max_num_tags %{%u%}, max_ops %{%u%}, max_sge %{%u%}, flags %{0x%x%}",
+	dev_attr_ex.tm_caps.max_num_tags, dev_attr_ex.tm_caps.max_ops, dev_attr_ex.tm_caps.max_sge,
+	dev_attr_ex.tm_caps.flags);
     }
 
   if (dev_attr_ex.cq_mod_caps.max_cq_count || dev_attr_ex.cq_mod_caps.max_cq_period)
     {
-      s = format_newline (s, indent);
-      s = format (s, "cq_mod_caps: max_count %u, max_period %u",
-		  dev_attr_ex.cq_mod_caps.max_cq_count, dev_attr_ex.cq_mod_caps.max_cq_period);
+      styled_text_add_marked (st, ST_R_VALUE, "\ncq_mod_caps: max_count %{%u%}, max_period %{%u%}",
+			      dev_attr_ex.cq_mod_caps.max_cq_count,
+			      dev_attr_ex.cq_mod_caps.max_cq_period);
     }
 
   if (dev_attr_ex.pci_atomic_caps.fetch_add || dev_attr_ex.pci_atomic_caps.swap ||
       dev_attr_ex.pci_atomic_caps.compare_swap)
     {
-      s = format_newline (s, indent);
-      s = format (s, "pci_atomic_caps: fetch_add 0x%x, swap 0x%x, compare_swap 0x%x",
-		  dev_attr_ex.pci_atomic_caps.fetch_add, dev_attr_ex.pci_atomic_caps.swap,
-		  dev_attr_ex.pci_atomic_caps.compare_swap);
+      styled_text_add_marked (
+	st, ST_R_VALUE,
+	"\npci_atomic_caps: fetch_add %{0x%x%}, swap %{0x%x%}, compare_swap %{0x%x%}",
+	dev_attr_ex.pci_atomic_caps.fetch_add, dev_attr_ex.pci_atomic_caps.swap,
+	dev_attr_ex.pci_atomic_caps.compare_swap);
     }
 
   if (dev_attr_ex.rss_caps.supported_qpts)
     {
-      s = format_newline (s, indent);
-      s = format (s, "rss_caps:");
-      s = format_newline (s, indent + 2);
-      s = format (s, "supported_qpts: %U", format_rdma_ibv_tso_caps,
-		  dev_attr_ex.rss_caps.supported_qpts);
-      s = format_newline (s, indent + 2);
-      s = format (s, "max_rwq_indirection_table_size %u",
-		  dev_attr_ex.rss_caps.max_rwq_indirection_table_size);
-      s = format_newline (s, indent + 2);
-      s = format (s, "rx_hash_fields_mask:");
-      s = format_newline (s, indent + 4);
-      s = format (s, "%U", format_rdma_ibv_rss_caps, dev_attr_ex.rss_caps.rx_hash_fields_mask);
-      s = format_newline (s, indent + 2);
-      s = format (s, "rx_hash_function: %U", format_rdma_ibv_rx_hash_fn,
-		  (u32) dev_attr_ex.rss_caps.rx_hash_function);
+      styled_text_add_marked (st, ST_R_VALUE, "\nrss_caps:\n  supported_qpts: %{%U%}",
+			      format_rdma_ibv_tso_caps, dev_attr_ex.rss_caps.supported_qpts);
+      styled_text_add_marked (st, ST_R_VALUE, "\n  max_rwq_indirection_table_size %{%u%}",
+			      dev_attr_ex.rss_caps.max_rwq_indirection_table_size);
+      styled_text_add_marked (st, ST_R_VALUE, "\n  rx_hash_fields_mask:\n    %{%U%}",
+			      format_rdma_ibv_rss_caps, dev_attr_ex.rss_caps.rx_hash_fields_mask);
+      styled_text_add_marked (st, ST_R_VALUE, "\n  rx_hash_function: %{%U%}",
+			      format_rdma_ibv_rx_hash_fn,
+			      (u32) dev_attr_ex.rss_caps.rx_hash_function);
     }
 
   if (dev_attr_ex.tso_caps.max_tso)
     {
-      s = format_newline (s, indent);
-      s = format (s, "tso_caps:");
-      s = format_newline (s, indent + 2);
-      s = format (s, "max_tso %u", dev_attr_ex.tso_caps.max_tso);
-      s = format_newline (s, indent + 2);
-      s = format (s, "supported_qpts: %U", format_rdma_ibv_tso_caps,
-		  dev_attr_ex.tso_caps.supported_qpts);
+      styled_text_add_marked (st, ST_R_VALUE, "\ntso_caps:\n  max_tso %{%u%}",
+			      dev_attr_ex.tso_caps.max_tso);
+      styled_text_add_marked (st, ST_R_VALUE, "\n  supported_qpts: %{%U%}",
+			      format_rdma_ibv_tso_caps, dev_attr_ex.tso_caps.supported_qpts);
     }
 
   if (dev_attr_ex.packet_pacing_caps.supported_qpts)
     {
-      s = format_newline (s, indent);
-      s = format (s, "packet_pacing_caps:");
-      s = format_newline (s, indent + 2);
-      s = format (s, "qp_rate_limit_min %u, qp_rate_limit_max %u",
-		  dev_attr_ex.packet_pacing_caps.qp_rate_limit_min,
-		  dev_attr_ex.packet_pacing_caps.qp_rate_limit_max);
-      s = format_newline (s, indent + 2);
-      s = format (s, "supported_qpts: %U", format_rdma_ibv_tso_caps,
-		  dev_attr_ex.packet_pacing_caps.supported_qpts);
+      styled_text_add_marked (
+	st, ST_R_VALUE,
+	"\npacket_pacing_caps:\n  qp_rate_limit_min %{%u%}, qp_rate_limit_max %{%u%}",
+	dev_attr_ex.packet_pacing_caps.qp_rate_limit_min,
+	dev_attr_ex.packet_pacing_caps.qp_rate_limit_max);
+      styled_text_add_marked (st, ST_R_VALUE, "\n  supported_qpts: %{%U%}",
+			      format_rdma_ibv_tso_caps,
+			      dev_attr_ex.packet_pacing_caps.supported_qpts);
     }
 
   if (dev_attr_ex.raw_packet_caps)
-    {
-      s = format_newline (s, indent);
-      s = format (s, "raw_packet_caps: %U", format_rdma_ibv_raw_packet_caps,
-		  dev_attr_ex.raw_packet_caps);
-    }
-
-  return s;
+    styled_text_add_marked (st, ST_R_VALUE, "\nraw_packet_caps: %{%U%}",
+			    format_rdma_ibv_raw_packet_caps, dev_attr_ex.raw_packet_caps);
 }

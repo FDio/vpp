@@ -158,7 +158,7 @@ mlx5_add_port (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_port_id_t port_id)
 	.init = mlx5_port_init,
 	.start = mlx5_port_start,
 	.stop = mlx5_port_stop,
-	.format_status = format_mlx5_port_status,
+	.styled_format_status = styled_format_mlx5_port_status,
 	.config_change_validate = mlx5_port_cfg_change_validate,
 	.config_change = mlx5_port_cfg_change,
 	.get_module_eeprom = mlx5_port_get_module_eeprom,
@@ -187,7 +187,7 @@ mlx5_add_port (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_port_id_t port_id)
 	      .ops = {
 		.alloc = mlx5_rxq_alloc,
 		.free = mlx5_rxq_free,
-		.format_info = format_mlx5_rxq_info,
+		.styled_format_info = styled_format_mlx5_rxq_info,
 	      },
 	    },
     .tx_queue = {
@@ -200,7 +200,7 @@ mlx5_add_port (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_port_id_t port_id)
       .ops = {
 	.alloc = mlx5_txq_alloc,
 	.free = mlx5_txq_free,
-	.format_info = format_mlx5_txq_info,
+	.styled_format_info = styled_format_mlx5_txq_info,
       },
     },
   };
@@ -465,7 +465,7 @@ VNET_DEV_REGISTER_DRIVER (mlx5_generic) = {
       .init = mlx5_init,
       .free = mlx5_free,
       .probe = mlx5_probe,
-      .format_info = format_mlx5_dev_info,
+      .styled_format_info = styled_format_mlx5_dev_info,
     },
   },
 };

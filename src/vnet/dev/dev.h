@@ -8,6 +8,7 @@
 #include <vppinfra/clib.h>
 #include <vppinfra/error_bootstrap.h>
 #include <vppinfra/format.h>
+#include <vppinfra/styled_text.h>
 #include <vnet/vnet.h>
 #include <vnet/dev/types.h>
 #include <vnet/crypto/crypto.h>
@@ -130,6 +131,7 @@ typedef struct
   vnet_dev_rx_queue_op_no_rv_t *free;
   vnet_dev_rx_queue_op_no_rv_t *clear_counters;
   format_function_t *format_info;
+  styled_format_fn_t *styled_format_info; /* preferred over format_info */
 } vnet_dev_rx_queue_ops_t;
 
 typedef struct
@@ -140,6 +142,7 @@ typedef struct
   vnet_dev_tx_queue_op_no_rv_t *free;
   vnet_dev_tx_queue_op_no_rv_t *clear_counters;
   format_function_t *format_info;
+  styled_format_fn_t *styled_format_info; /* preferred over format_info */
 } vnet_dev_tx_queue_ops_t;
 
 typedef struct
@@ -271,6 +274,7 @@ typedef struct
   vnet_dev_op_no_rv_t *free;
   u8 *(*probe) (vlib_main_t *, vnet_dev_probe_args_t *);
   format_function_t *format_info;
+  styled_format_fn_t *styled_format_info; /* preferred over format_info */
 } vnet_dev_ops_t;
 
 typedef struct
@@ -289,6 +293,8 @@ typedef struct
   vnet_dev_port_op_with_ptr_t *get_module_eeprom;
   format_function_t *format_status;
   format_function_t *format_flow;
+  styled_format_fn_t *styled_format_status; /* preferred over format_status */
+  styled_format_fn_t *styled_format_flow;   /* preferred over format_flow */
 } vnet_dev_port_ops_t;
 
 typedef vnet_dev_rv_t (vnet_dev_crypto_queue_op_t) (vlib_main_t *, vnet_dev_crypto_queue_t *);
@@ -301,6 +307,7 @@ typedef struct
   vnet_dev_crypto_queue_op_t *start;
   vnet_dev_crypto_queue_op_no_rv_t *stop;
   format_function_t *format_queue_info;
+  styled_format_fn_t *styled_format_queue_info; /* preferred over format_queue_info */
 } vnet_dev_crypto_queue_ops_t;
 
 typedef void (vnet_dev_crypto_free_fn_t) (vlib_main_t *, void *);
@@ -633,6 +640,8 @@ typedef struct
   void *(*get_device_info) (vlib_main_t *, char *);
   void (*free_device_info) (vlib_main_t *, void *);
   format_function_t *format_device_info;
+  /* used instead of format_device_info when set, for styled output */
+  styled_format_fn_t *styled_format_device_info;
   format_function_t *format_device_addr;
 } vnet_dev_bus_ops_t;
 
@@ -961,6 +970,7 @@ vnet_dev_rv_t vnet_dev_rt_exec_ops (vlib_main_t *, vnet_dev_t *,
 				    vnet_dev_rt_op_t *, u32);
 
 /* format.c */
+
 typedef struct
 {
   u8 counters : 1;
@@ -968,13 +978,17 @@ typedef struct
   u8 clear : 1;
   u8 plain_text : 1;
   u8 debug : 3;
+  u16 width;
 } vnet_dev_format_args_t;
 
 __clib_export format_function_t format_vnet_dev_addr;
 format_function_t format_vnet_dev_flags;
 __clib_export format_function_t format_vnet_dev_hw_addr;
 __clib_export u8 *vnet_dev_format_in_process (u8 *, vnet_dev_t *, char *, ...);
+u8 *vnet_dev_styled_format_in_process (u8 *, vnet_dev_format_args_t *, vnet_dev_t *,
+				       styled_format_fn_t *, ...);
 format_function_t format_vnet_dev_info;
+format_function_t format_vnet_dev_value;
 format_function_t format_vnet_dev_interface_info;
 format_function_t format_vnet_dev_interface_name;
 __clib_export format_function_t format_vnet_dev_log;

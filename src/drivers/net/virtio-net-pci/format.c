@@ -70,80 +70,90 @@ format_vnp_status (u8 *s, va_list *args)
   return status ? format (s, ")") : s;
 }
 
-u8 *
-format_vnp_dev_info (u8 *s, va_list *args)
+void
+styled_format_vnp_dev_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t __clib_unused *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
   vnp_dev_t *vd = vnet_dev_get_data (dev);
-  u32 indent = format_get_indent (s);
 
-  s = format (s, "Features offered and not negotiated: %U", format_vnp_features,
-	      vd->offered & ~vd->features);
-  s = format_word_wrap_last_line_with_indent (s, 100, 2);
-  s = format (format_newline (s, indent), "Features offered and negotiated: %U",
-	      format_vnp_features, vd->offered & vd->features);
-  s = format_word_wrap_last_line_with_indent (s, 100, 2);
-  s = format (format_newline (s, indent), "device status %U, %u virtqueues", format_vnp_status,
-	      vnp_reg_rd8 (&vd->common->status), vnp_reg_rd16 (&vd->common->num_queues));
-  s = format (format_newline (s, indent), "%s ring, indirect descriptors %s, control queue %s",
-	      vd->features & VIRTIO_F_RING_PACKED_BIT ? "packed" : "split",
-	      vd->features & VIRTIO_RING_F_INDIRECT_DESC_BIT ? "on" : "off",
-	      vd->control.size ? vd->control.failed ? "failed" : "on" : "off");
+  styled_text_add_marked (st, ST_R_VALUE, "Features offered and not negotiated: %{%U%}",
+			  format_vnp_features, vd->offered & ~vd->features);
+  styled_text_add_marked (st, ST_R_VALUE, "\nFeatures offered and negotiated: %{%U%}",
+			  format_vnp_features, vd->offered & vd->features);
+  styled_text_add_marked (st, ST_R_VALUE, "\ndevice status %{%U%}", format_vnp_status,
+			  vnp_reg_rd8 (&vd->common->status));
+  styled_text_add_marked (st, ST_R_VALUE, ", %{%u%}", vnp_reg_rd16 (&vd->common->num_queues));
+  styled_text_add_marked (
+    st, ST_R_VALUE, " virtqueues\n%{%s%} ring, indirect descriptors %{%s%}, control queue %{%s%}",
+    vd->features & VIRTIO_F_RING_PACKED_BIT ? "packed" : "split",
+    vd->features & VIRTIO_RING_F_INDIRECT_DESC_BIT ? "on" : "off",
+    vd->control.size ? vd->control.failed ? "failed" : "on" : "off");
 
   if (vd->features & VIRTIO_NET_F_MTU_BIT)
-    s = format (format_newline (s, indent), "device MTU %u", vd->config->mtu);
-
-  return s;
+    styled_text_add_marked (st, ST_R_VALUE, "\ndevice MTU %{%u%}", vd->config->mtu);
 }
 
-u8 *
-format_vnp_port_status (u8 *s, va_list *args)
+void
+styled_format_vnp_port_status (styled_text_t *st, va_list *args)
 {
   va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
   vnp_dev_t *vd = vnet_dev_get_data (port->dev);
   vnp_port_t *vp = vnet_dev_get_port_data (port);
-  u32 indent = format_get_indent (s);
+
+  styled_text_add (st, "interrupts ");
 
   if (!vp->irq_registered)
-    s = format (s, "interrupts not available");
+    styled_text_add_role (st, ST_R_VALUE, "not available");
   else if (vp->use_intx)
-    s = format (s, "interrupts INTx");
+    styled_text_add_role (st, ST_R_VALUE, "INTx");
   else
-    s = format (s, "interrupts MSI-X");
+    styled_text_add_role (st, ST_R_VALUE, "MSI-X");
 
   if (port->attr.caps.mac_filter)
-    s = format (format_newline (s, indent),
-		"RX filter: all-multicast, promiscuous %s, %u secondary MAC%s",
-		port->promisc ? "on" : "off", vp->n_macs, vp->n_macs == 1 ? "" : "s");
+    {
+      styled_text_add_marked (
+	st, ST_R_VALUE, "\nRX filter: all-multicast, promiscuous %{%s%}, %{%u%} secondary MAC%s",
+	port->promisc ? "on" : "off", vp->n_macs, vp->n_macs == 1 ? "" : "s");
+    }
   else
-    s = format (format_newline (s, indent), "RX filter: none, destination MAC checked by VPP");
+    {
+      styled_text_add_marked (st, ST_R_VALUE,
+			      "\nRX filter: %{none%}, destination MAC checked by VPP");
+    }
 
   if (vd->features & VIRTIO_NET_F_RSS_BIT)
-    s = format (format_newline (s, indent), "RSS hash types 0x%x, max indirection table length %u",
-		vd->config->supported_hash_types, vd->config->rss_max_indirection_table_length);
-
-  return s;
+    {
+      styled_text_add_marked (
+	st, ST_R_VALUE, "\nRSS hash types %{0x%x%}, max indirection table length %{%u%}",
+	vd->config->supported_hash_types, vd->config->rss_max_indirection_table_length);
+    }
 }
 
-u8 *
-format_vnp_rx_queue (u8 *s, va_list *args)
+void
+styled_format_vnp_rx_queue (styled_text_t *st, va_list *args)
 {
   va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_rx_queue_t *rxq = va_arg (*args, vnet_dev_rx_queue_t *);
   vnp_rxq_t *q = vnet_dev_get_rx_queue_data (rxq);
 
   if (q->packed)
-    return format (s, "packed avail %u used %u free %u", q->packed_avail, q->packed_used,
-		   q->n_free);
+    {
+      styled_text_add_marked (st, ST_R_VALUE, "packed avail %{%u%} used %{%u%}", q->packed_avail,
+			      q->packed_used);
+    }
+  else
+    {
+      styled_text_add_marked (st, ST_R_VALUE, "avail %{%u%} used %{%u%} last-used %{%u%}",
+			      q->avail->idx, q->used->idx, q->last_used);
+    }
 
-  return format (s, "avail %u used %u last-used %u free %u", q->avail->idx, q->used->idx,
-		 q->last_used, q->n_free);
+  styled_text_add_marked (st, ST_R_VALUE, " free %{%u%}", q->n_free);
 }
 
-u8 *
-format_vnp_tx_queue (u8 *s, va_list *args)
+void
+styled_format_vnp_tx_queue (styled_text_t *st, va_list *args)
 {
   va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_tx_queue_t *txq = va_arg (*args, vnet_dev_tx_queue_t *);
@@ -153,7 +163,8 @@ format_vnp_tx_queue (u8 *s, va_list *args)
   for (u32 i = 0; i < txq->size; i++)
     outstanding += q->buffer_indices[i] != VLIB_BUFFER_INVALID_INDEX;
 
-  return format (s, "%u free descriptors, %u outstanding packets", q->n_free, outstanding);
+  styled_text_add_marked (st, ST_R_VALUE, "%{%u%} free descriptors, %{%u%} outstanding packets",
+			  q->n_free, outstanding);
 }
 
 u8 *
