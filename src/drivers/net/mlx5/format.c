@@ -7,38 +7,47 @@
 #include <mlx5.h>
 #include <common.h>
 
-u8 *
-format_mlx5_rxq_info (u8 *s, va_list *args)
+void
+styled_format_mlx5_rxq_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t __clib_unused *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_rx_queue_t *rxq = va_arg (*args, vnet_dev_rx_queue_t *);
   mlx5_rxq_t *mq = vnet_dev_get_rx_queue_data (rxq);
 
   if (mq->log_stride_per_wqe)
-    s = format (s, "striding rq, %u strides of %u bytes per wqe", 1 << mq->log_stride_per_wqe,
-		mq->buf_sz);
+    {
+      styled_text_add_marked (st, ST_R_VALUE, "striding rq, %{%u%} strides of %{%u%}",
+			      1 << mq->log_stride_per_wqe, mq->buf_sz);
+    }
   else
-    s = format (s, "legacy rq, %u buffers of %u bytes per wqe", mq->n_ds_per_wqe, mq->buf_sz);
+    {
+      styled_text_add_marked (st, ST_R_VALUE, "legacy rq, %{%u%} buffers of %{%u%}",
+			      mq->n_ds_per_wqe, mq->buf_sz);
+    }
+
+  styled_text_add (st, " bytes per wqe");
+
   if (mq->single_buffer)
-    s = format (s, ", single buffer");
+    styled_text_add (st, ", single buffer");
   if (mq->q_counter_valid)
-    s = format (s, ", q-counter %u", mq->q_counter_set_id);
-  return s;
+    styled_text_add_marked (st, ST_R_VALUE, ", q-counter %{%u%}", mq->q_counter_set_id);
 }
 
-u8 *
-format_mlx5_txq_info (u8 *s, va_list *args)
+void
+styled_format_mlx5_txq_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t __clib_unused *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_tx_queue_t *txq = va_arg (*args, vnet_dev_tx_queue_t *);
   mlx5_txq_t *tq = vnet_dev_get_tx_queue_data (txq);
 
   if (tq->empw)
-    s =
-      format (s, "enhanced multi-packet send, up to %u packets per wqe", MLX5_TX_EMPW_MAX_PACKETS);
+    {
+      styled_text_add_marked (st, ST_R_VALUE,
+			      "enhanced multi-packet send, up to %{%u%} packets per wqe",
+			      MLX5_TX_EMPW_MAX_PACKETS);
+    }
   else
-    s = format (s, "send wqe per packet");
-  return s;
+    styled_text_add (st, "send wqe per packet");
 }
 
 u8 *
@@ -275,13 +284,12 @@ format_mlx5_tx_trace (u8 *s, va_list *args)
   return s;
 }
 
-u8 *
-format_mlx5_dev_info (u8 *s, va_list *args)
+void
+styled_format_mlx5_dev_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
   mlx5_dev_t *rd = vnet_dev_get_data (dev);
-  u32 indent = format_get_indent (s);
   struct mlx5dv_context c = {
     .comp_mask = MLX5DV_CONTEXT_MASK_CQE_COMPRESION | MLX5DV_CONTEXT_MASK_STRIDING_RQ |
 		 MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS,
@@ -310,68 +318,57 @@ format_mlx5_dev_info (u8 *s, va_list *args)
   };
   int rv;
 
-  s = format (s, "%U", format_rdma_ibv_dev_info, a, rd->ctx);
+  styled_text_add (st, "%T", styled_format_rdma_ibv_dev_info, a, rd->ctx);
 
   rv = mlx5dv_query_device (rd->ctx, &c);
   if (rv)
     {
-      s = format_newline (s, indent);
-      return format (s, "mlx5dv_query_device failed rv %d", rv);
+      styled_text_add_marked (st, ST_R_ERROR, "\nmlx5dv_query_device failed rv %{%d%}", rv);
+      return;
     }
 
-  s = format_newline (s, indent);
-  s = format (s, "mlx5dv flags:");
-  s = format_newline (s, indent + 2);
-  s = format (s, "%U", format_rdma_cap_list, flags, ARRAY_LEN (flags), c.flags);
+  styled_text_add_marked (st, ST_R_VALUE, "\nmlx5dv flags:\n  %{%U%}", format_rdma_cap_list, flags,
+			  ARRAY_LEN (flags), c.flags);
 
   if (c.comp_mask & MLX5DV_CONTEXT_MASK_CQE_COMPRESION)
     {
-      s = format_newline (s, indent);
-      s = format (s, "cqe_comp_caps: max_num %u, supported_format: ", c.cqe_comp_caps.max_num);
-      s = format (s, "%U", format_rdma_cap_list, cqe_formats, ARRAY_LEN (cqe_formats),
-		  (u64) c.cqe_comp_caps.supported_format);
+      styled_text_add_marked (st, ST_R_VALUE,
+			      "\ncqe_comp_caps: max_num %{%u%}, supported_format: %{%U%}",
+			      c.cqe_comp_caps.max_num, format_rdma_cap_list, cqe_formats,
+			      ARRAY_LEN (cqe_formats), (u64) c.cqe_comp_caps.supported_format);
     }
 
   if (c.comp_mask & MLX5DV_CONTEXT_MASK_STRIDING_RQ)
     {
-      s = format_newline (s, indent);
-      s = format (s,
-		  "striding_rq_caps: single stride log bytes %u-%u, single wqe log strides "
-		  "%u-%u, raw-packet%c",
-		  c.striding_rq_caps.min_single_stride_log_num_of_bytes,
-		  c.striding_rq_caps.max_single_stride_log_num_of_bytes,
-		  c.striding_rq_caps.min_single_wqe_log_num_of_strides,
-		  c.striding_rq_caps.max_single_wqe_log_num_of_strides,
-		  c.striding_rq_caps.supported_qpts & (1 << IBV_QPT_RAW_PACKET) ? '+' : '-');
-      s = format_word_wrap_last_line_with_indent (s, 100, 2);
+      styled_text_add_marked (
+	st, ST_R_VALUE,
+	"\nstriding_rq_caps: single stride log bytes %{%u-%u%}, single wqe log strides "
+	"%{%u-%u%}",
+	c.striding_rq_caps.min_single_stride_log_num_of_bytes,
+	c.striding_rq_caps.max_single_stride_log_num_of_bytes,
+	c.striding_rq_caps.min_single_wqe_log_num_of_strides,
+	c.striding_rq_caps.max_single_wqe_log_num_of_strides);
+      styled_text_add_marked (st, ST_R_VALUE, ", raw-packet%{%c%}",
+			      c.striding_rq_caps.supported_qpts & (1 << IBV_QPT_RAW_PACKET) ? '+' :
+											      '-');
     }
 
   if (c.comp_mask & MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS)
-    {
-      s = format_newline (s, indent);
-      s = format (s, "tunnel_offloads_caps: ");
-      s = format (s, "%U", format_rdma_cap_list, tunnels, ARRAY_LEN (tunnels),
-		  (u64) c.tunnel_offloads_caps);
-    }
-
-  return s;
+    styled_text_add_marked (st, ST_R_VALUE, "\ntunnel_offloads_caps: %{%U%}", format_rdma_cap_list,
+			    tunnels, ARRAY_LEN (tunnels), (u64) c.tunnel_offloads_caps);
 }
 
-u8 *
-format_mlx5_port_status (u8 *s, va_list *args)
+void
+styled_format_mlx5_port_status (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
   mlx5_dev_t *rd = vnet_dev_get_data (port->dev);
   mlx5_port_t *mp = vnet_dev_get_port_data (port);
-  u32 indent = format_get_indent (s);
 
-  s = format (s, "%U", format_rdma_port_status, rd->ctx, port->port_id, mp->netdev_ifindex);
+  styled_text_add (st, "%T", styled_format_rdma_port_status, rd->ctx, port->port_id,
+		   mp->netdev_ifindex);
+
   if (mp->rss.rwq_ind_tbl)
-    {
-      s = format_newline (s, indent);
-      s = format (s, "%U", format_rdma_rss_flows, a, &mp->rss);
-    }
-
-  return s;
+    styled_text_add (st, "\n%T", styled_format_rdma_rss_flows, a, &mp->rss);
 }

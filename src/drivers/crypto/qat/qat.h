@@ -293,10 +293,10 @@ extern vnet_dev_node_t qat_enq_combined_enc_node, qat_enq_combined_dec_node;
 extern vnet_dev_node_t qat_deq_node;
 
 /* format.c */
-format_function_t format_qat_dev_info;
+styled_format_fn_t styled_format_qat_dev_info;
 format_function_t format_qat_enq_trace;
 format_function_t format_qat_deq_trace;
-format_function_t format_qat_queue_info;
+styled_format_fn_t styled_format_qat_queue_info;
 format_function_t format_qat_svc;
 format_function_t format_qat_capabilities;
 format_function_t format_qat_pf2vf_msgtype;

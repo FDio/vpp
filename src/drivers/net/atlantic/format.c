@@ -217,8 +217,8 @@ atl_tx_trace (u8 *s, va_list *args)
   return s;
 }
 
-u8 *
-format_atl_dev_info (u8 *s, va_list *args)
+void
+styled_format_atl_dev_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t __clib_unused *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
@@ -229,71 +229,80 @@ format_atl_dev_info (u8 *s, va_list *args)
   atl_reg_aq2_device_caps_t device_caps;
   atl_aq2_management_status_t mgmt_status;
   vnet_dev_rv_t rv;
-  u32 indent = format_get_indent (s);
 
   hwrev.as_u32 = atl_reg_rd_u32 (dev, ATL_REG_HW_REVISION);
   rv = atl_aq2_interface_buffer_read (dev, ATL_REG_AQ2_FW_INTERFACE_OUT_VERSION_IFACE, &v, 1);
-  s = format (s, "Chip: Atlantic2 %U revision 0x%x", format_atl_iface_version, v, hwrev.mif_id);
+  styled_text_add_marked (st, ST_R_VALUE, "Chip: Atlantic2 %{%U%} revision %{0x%x%}",
+			  format_atl_iface_version, v, hwrev.mif_id);
 
   rv = atl_aq2_interface_buffer_read (dev, ATL_REG_AQ2_FW_INTERFACE_OUT_VERSION_BUNDLE, &v, 1);
   if (rv == VNET_DEV_OK)
-    s = format (s, " bundle fw %U", format_atl_fw_version, v);
+    styled_text_add_marked (st, ST_R_VALUE, " bundle fw %{%U%}", format_atl_fw_version, v);
 
-  s = format_newline (s, indent);
   rv = atl_aq2_interface_buffer_read (dev, ATL_REG_AQ2_FW_INTERFACE_OUT_VERSION_MAC, &v, 1);
   if (rv == VNET_DEV_OK)
-    s = format (s, "MAC: fw %U", format_atl_fw_version, v);
+    styled_text_add_marked (st, ST_R_VALUE, "\nMAC: fw %{%U%}", format_atl_fw_version, v);
   else
-    s = format (s, "MAC: fw n/a");
+    styled_text_add_marked (st, ST_R_VALUE, "\nMAC: fw %{n/a%}");
 
   rv = atl_aq2_interface_buffer_read (dev, ATL_REG_AQ2_MAC_HEALTH_MONITOR, &mac_health.as_u32, 1);
   if (rv == VNET_DEV_OK)
-    s = format (s, " ready %u fault %u flashless_done %u temp %u heartbeat %u",
-		mac_health.mac_ready, mac_health.mac_fault, mac_health.mac_flashless_finished,
-		mac_health.mac_temperature, mac_health.mac_heart_beat);
+    {
+      styled_text_add_marked (st, ST_R_VALUE, " ready %{%u%}", mac_health.mac_ready);
+      styled_text_add_marked (st, ST_R_VALUE,
+			      " fault %{%u%} flashless_done %{%u%} temp %{%u%} heartbeat %{%u%}",
+			      mac_health.mac_fault, mac_health.mac_flashless_finished,
+			      mac_health.mac_temperature, mac_health.mac_heart_beat);
+    }
 
-  s = format_newline (s, indent);
   rv = atl_aq2_interface_buffer_read (dev, ATL_REG_AQ2_FW_INTERFACE_OUT_VERSION_PHY, &v, 1);
   if (rv == VNET_DEV_OK)
-    s = format (s, "PHY: fw %U", format_atl_fw_version, v);
+    styled_text_add_marked (st, ST_R_VALUE, "\nPHY: fw %{%U%}", format_atl_fw_version, v);
   else
-    s = format (s, "PHY: fw n/a");
+    styled_text_add_marked (st, ST_R_VALUE, "\nPHY: fw %{n/a%}");
 
   rv = atl_aq2_interface_buffer_read (dev, ATL_REG_AQ2_PHY_HEALTH_MONITOR, &phy_health.as_u32, 1);
   if (rv == VNET_DEV_OK)
-    s = format (s, " ready %u fault %u warn %u temp %u heartbeat %u", phy_health.phy_ready,
-		phy_health.phy_fault, phy_health.phy_hot_warning, phy_health.phy_temperature,
-		phy_health.phy_heart_beat);
+    {
+      styled_text_add_marked (st, ST_R_VALUE, " ready %{%u%}", phy_health.phy_ready);
+      styled_text_add_marked (st, ST_R_VALUE,
+			      " fault %{%u%} warn %{%u%} temp %{%u%} heartbeat %{%u%}",
+			      phy_health.phy_fault, phy_health.phy_hot_warning,
+			      phy_health.phy_temperature, phy_health.phy_heart_beat);
+    }
 
   rv = atl_aq2_interface_buffer_read (dev, ATL_REG_AQ2_FW_INTERFACE_OUT_DEVICE_CAPS,
 				      &device_caps.as_u32, 1);
   if (rv == VNET_DEV_OK)
     {
-      s = format_newline (s, indent);
-      s = format (s, "Device Caps: flashless %u cable_diag %u ncsi %u avb %u",
-		  device_caps.finite_flashless, device_caps.cable_diag, device_caps.ncsi,
-		  device_caps.avb);
+      styled_text_add_marked (
+	st, ST_R_VALUE, "\nDevice Caps: flashless %{%u%} cable_diag %{%u%} ncsi %{%u%} avb %{%u%}",
+	device_caps.finite_flashless, device_caps.cable_diag, device_caps.ncsi, device_caps.avb);
     }
 
   rv = atl_aq2_interface_buffer_read (dev, ATL_REG_AQ2_FW_INTERFACE_OUT_MANAGEMENT_STATUS,
 				      (u32 *) &mgmt_status, sizeof (mgmt_status) / sizeof (u32));
   if (rv == VNET_DEV_OK)
     {
-      s = format_newline (s, indent);
-      s = format (s, "Management Status: mac %U vlan %u enable %u", format_ethernet_address,
-		  mgmt_status.mac, mgmt_status.vlan, mgmt_status.flags & 1);
+      styled_text_add_marked (
+	st, ST_R_VALUE, "\nManagement Status: mac %{%U%} vlan %{%u%} enable %{%u%}",
+	format_ethernet_address, mgmt_status.mac, mgmt_status.vlan, mgmt_status.flags & 1);
     }
-
-  return s;
 }
 
-u8 *
-format_atl_rpf_info (u8 *s, va_list *args)
+/* address and name of a register, then its value */
+static void
+styled_atl_add_reg (styled_text_t *st, u32 addr, char *name, u32 value)
+{
+  styled_text_add_marked (st, ST_R_VALUE, "0x%05x %-24s: %{0x%08x%}", addr, name, value);
+}
+
+void
+styled_format_atl_rpf_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a __clib_unused = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
   vnet_dev_t *dev = port->dev;
-  u32 indent = format_get_indent (s);
   atl_reg_rpf_l2bc_t rpf_l2bc = atl_reg_rd (dev, ATL_REG_RPF_L2BC).rpf_l2bc;
   atl_reg_aq2_rpf_l2bc_tag_t rpf_l2bc_tag =
     atl_reg_rd (dev, ATL_REG_AQ2_RPF_L2BC_TAG).aq2_rpf_l2bc_tag;
@@ -307,110 +316,122 @@ format_atl_rpf_info (u8 *s, va_list *args)
   atl_reg_rx_flr_rss_control1_t rpf_rss_ctrl1 =
     atl_reg_rd (dev, ATL_REG_RX_FLR_RSS_CONTROL1).rx_flr_rss_control1;
   atl_reg_aq2_rpf_redir2_t rpf_redir2 = atl_reg_rd (dev, ATL_REG_AQ2_RPF_REDIR2).aq2_rpf_redir2;
+  struct
+  {
+    char *name;
+    u8 on;
+  } hashes[] = {
+    { "ip", rpf_redir2.hashtype_ip },	      { "tcp4", rpf_redir2.hashtype_tcp4 },
+    { "udp4", rpf_redir2.hashtype_udp4 },     { "ip6", rpf_redir2.hashtype_ip6 },
+    { "tcp6", rpf_redir2.hashtype_tcp6 },     { "udp6", rpf_redir2.hashtype_udp6 },
+    { "ip6ex", rpf_redir2.hashtype_ip6ex },   { "tcp6ex", rpf_redir2.hashtype_tcp6ex },
+    { "udp6ex", rpf_redir2.hashtype_udp6ex },
+  };
 
-  s = format (s, "0x%05x %-24s: 0x%08x (en %u promisc %u action %u threshold 0x%04x)",
-	      ATL_REG_RPF_L2BC, "RPF_L2BC", rpf_l2bc.as_u32, rpf_l2bc.en, rpf_l2bc.promisc,
-	      rpf_l2bc.action, rpf_l2bc.threshold);
-  s = format_newline (s, indent);
-  s = format (s, "0x%05x %-24s: 0x%08x (tag 0x%02x)", ATL_REG_AQ2_RPF_L2BC_TAG, "AQ2_RPF_L2BC_TAG",
-	      rpf_l2bc_tag.as_u32, rpf_l2bc_tag.tag);
-  s = format_newline (s, indent);
-  s = format (s, "0x%05x %-24s: 0x%08x", ATL_REG_RPF_MCAST_FILTER_MASK, "RPF_MCAST_FILTER_MASK",
-	      rpf_mcast_filter_mask);
-  s = format_newline (s, indent);
-  s = format (s, "0x%05x %-24s: 0x%08x (v6_v4_select %u)", ATL_REG_RPF_L3_V6_V4_SELECT,
-	      "RPF_L3_V6_V4_SELECT", rpf_l3_v6_v4_select.as_u32, rpf_l3_v6_v4_select.v6_v4_select);
-  s = format_newline (s, indent);
-  s = format (s, "0x%05x %-24s: 0x%08x (enable %u)", ATL_REG_AQ2_RPF_NEW_CTRL, "AQ2_RPF_NEW_CTRL",
-	      rpf_new_ctrl.as_u32, rpf_new_ctrl.enable);
-  s = format_newline (s, indent);
-  s = format (s, "0x%05x %-24s: 0x%08x (tc0 %u tc1 %u tc2 %u tc3 %u tc4 %u tc5 %u tc6 %u tc7 %u)",
-	      ATL_REG_RPF_RPB_RX_TC_UPT, "RPF_RPB_RX_TC_UPT", rpf_rx_tc_upt,
-	      (rpf_rx_tc_upt >> 0) & 0x7, (rpf_rx_tc_upt >> 4) & 0x7, (rpf_rx_tc_upt >> 8) & 0x7,
-	      (rpf_rx_tc_upt >> 12) & 0x7, (rpf_rx_tc_upt >> 16) & 0x7, (rpf_rx_tc_upt >> 20) & 0x7,
-	      (rpf_rx_tc_upt >> 24) & 0x7, (rpf_rx_tc_upt >> 28) & 0x7);
-  s = format_newline (s, indent);
-  s = format (s, "0x%05x %-24s: 0x%08x (buf_en %u fc_mode %u tc_mode %u)", ATL_REG_RPB_RPF_RX,
-	      "RPB_RPF_RX", rpf_rpb_rx.as_u32, rpf_rpb_rx.buf_en, rpf_rpb_rx.fc_mode,
-	      rpf_rpb_rx.tc_mode);
-  s = format_newline (s, indent);
-  s = format (s, "0x%05x %-24s: 0x%08x (queues 0x%08x en %u)", ATL_REG_RX_FLR_RSS_CONTROL1,
-	      "RX_FLR_RSS_CONTROL1", rpf_rss_ctrl1.as_u32, rpf_rss_ctrl1.queues, rpf_rss_ctrl1.en);
-  s = format_newline (s, indent);
-  s = format (s,
-	      "0x%05x %-24s: 0x%08x (ip%c tcp4%c udp4%c ip6%c tcp6%c udp6%c ip6ex%c tcp6ex%c "
-	      "udp6ex%c index %u)",
-	      ATL_REG_AQ2_RPF_REDIR2, "AQ2_RPF_REDIR2", rpf_redir2.as_u32,
-#define _(n) (rpf_redir2.hashtype_##n ? '+' : '-')
-	      _ (ip), _ (tcp4), _ (udp4), _ (ip6), _ (tcp6), _ (udp6), _ (ip6ex), _ (tcp6ex),
-	      _ (udp6ex),
-#undef _
-	      rpf_redir2.index);
+  styled_atl_add_reg (st, ATL_REG_RPF_L2BC, "RPF_L2BC", rpf_l2bc.as_u32);
+  styled_text_add_marked (st, ST_R_VALUE,
+			  " (en %{%u%} promisc %{%u%} action %{%u%} threshold %{0x%04x%})\n",
+			  rpf_l2bc.en, rpf_l2bc.promisc, rpf_l2bc.action, rpf_l2bc.threshold);
+  styled_atl_add_reg (st, ATL_REG_AQ2_RPF_L2BC_TAG, "AQ2_RPF_L2BC_TAG", rpf_l2bc_tag.as_u32);
+  styled_text_add_marked (st, ST_R_VALUE, " (tag %{0x%02x%})\n", rpf_l2bc_tag.tag);
+  styled_atl_add_reg (st, ATL_REG_RPF_MCAST_FILTER_MASK, "RPF_MCAST_FILTER_MASK",
+		      rpf_mcast_filter_mask);
+  styled_text_add (st, "\n");
+  styled_atl_add_reg (st, ATL_REG_RPF_L3_V6_V4_SELECT, "RPF_L3_V6_V4_SELECT",
+		      rpf_l3_v6_v4_select.as_u32);
+  styled_text_add_marked (st, ST_R_VALUE, " (v6_v4_select %{%u%})\n",
+			  rpf_l3_v6_v4_select.v6_v4_select);
+  styled_atl_add_reg (st, ATL_REG_AQ2_RPF_NEW_CTRL, "AQ2_RPF_NEW_CTRL", rpf_new_ctrl.as_u32);
+  styled_text_add_marked (st, ST_R_VALUE, " (enable %{%u%})\n", rpf_new_ctrl.enable);
+  styled_atl_add_reg (st, ATL_REG_RPF_RPB_RX_TC_UPT, "RPF_RPB_RX_TC_UPT", rpf_rx_tc_upt);
 
-  return s;
+  for (u32 tc = 0; tc < 8; tc++)
+    {
+      styled_text_add_marked (st, ST_R_VALUE, "%stc%u %{%u%}", tc ? " " : " (", tc,
+			      (rpf_rx_tc_upt >> (4 * tc)) & 0x7);
+    }
+
+  styled_text_add (st, ")\n");
+  styled_atl_add_reg (st, ATL_REG_RPB_RPF_RX, "RPB_RPF_RX", rpf_rpb_rx.as_u32);
+  styled_text_add_marked (st, ST_R_VALUE, " (buf_en %{%u%} fc_mode %{%u%} tc_mode %{%u%})\n",
+			  rpf_rpb_rx.buf_en, rpf_rpb_rx.fc_mode, rpf_rpb_rx.tc_mode);
+  styled_atl_add_reg (st, ATL_REG_RX_FLR_RSS_CONTROL1, "RX_FLR_RSS_CONTROL1", rpf_rss_ctrl1.as_u32);
+  styled_text_add_marked (st, ST_R_VALUE, " (queues %{0x%08x%} en %{%u%})\n", rpf_rss_ctrl1.queues,
+			  rpf_rss_ctrl1.en);
+  styled_atl_add_reg (st, ATL_REG_AQ2_RPF_REDIR2, "AQ2_RPF_REDIR2", rpf_redir2.as_u32);
+  styled_text_add (st, " (");
+
+  for (u32 i = 0; i < ARRAY_LEN (hashes); i++)
+    {
+      styled_text_add_marked (st, ST_R_VALUE, "%s%{%c%} ", hashes[i].name,
+			      hashes[i].on ? '+' : '-');
+    }
+
+  styled_text_add_marked (st, ST_R_VALUE, "index %{%u%})", rpf_redir2.index);
 }
 
-u8 *
-format_atl_link_capa (u8 *s, va_list *args)
+void
+styled_format_atl_link_capa (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a __clib_unused = va_arg (*args, vnet_dev_format_args_t *);
   atl_reg_aq2_fw_interface_out_device_link_caps_t *caps =
     va_arg (*args, atl_reg_aq2_fw_interface_out_device_link_caps_t *);
-  u32 indent = format_get_indent (s);
 
 #define ATL_PM(b) ((b) ? '+' : '-')
 
-  s = format (s, "PauseRX%c PauseTX%c PFC%c Downshift%c DownshiftRetries %u IntLoop%c ExtLoop%c",
-	      ATL_PM (caps->pause_rx), ATL_PM (caps->pause_tx), ATL_PM (caps->pfc),
-	      ATL_PM (caps->downshift), caps->downshift_retry, ATL_PM (caps->internal_loopback),
-	      ATL_PM (caps->external_loopback));
-  s = format_newline (s, indent);
-  s = format (s,
-	      "Rates: 10M%c 10M/HD%c 100M%c 100M/HD%c 1G%c 1G/HD%c 2.5G%c N2.5G%c 5G%c N5G%c 10G%c",
-	      ATL_PM (caps->rate_10m), ATL_PM (caps->rate_10m_hd), ATL_PM (caps->rate_100m),
-	      ATL_PM (caps->rate_100m_hd), ATL_PM (caps->rate_1g), ATL_PM (caps->rate_1g_hd),
-	      ATL_PM (caps->rate_2p5g), ATL_PM (caps->rate_n2p5g), ATL_PM (caps->rate_5g),
-	      ATL_PM (caps->rate_n5g), ATL_PM (caps->rate_10g));
-  s = format_newline (s, indent);
-  s =
-    format (s, "EEE: 100M%c 1G%c 2.5G%c 5G%c 10G%c", ATL_PM (caps->eee_100m), ATL_PM (caps->eee_1g),
-	    ATL_PM (caps->eee_2p5g), ATL_PM (caps->eee_5g), ATL_PM (caps->eee_10g));
+  styled_text_add_marked (st, ST_R_VALUE, "PauseRX%{%c%}", ATL_PM (caps->pause_rx));
+  styled_text_add_marked (st, ST_R_VALUE, " PauseTX%{%c%} PFC%{%c%} Downshift%{%c%}",
+			  ATL_PM (caps->pause_tx), ATL_PM (caps->pfc), ATL_PM (caps->downshift));
+  styled_text_add_marked (st, ST_R_VALUE, " DownshiftRetries %{%u%} IntLoop%{%c%} ExtLoop%{%c%}",
+			  caps->downshift_retry, ATL_PM (caps->internal_loopback),
+			  ATL_PM (caps->external_loopback));
+  styled_text_add_marked (st, ST_R_VALUE,
+			  "\nRates: 10M%{%c%} 10M/HD%{%c%} 100M%{%c%} 100M/HD%{%c%}",
+			  ATL_PM (caps->rate_10m), ATL_PM (caps->rate_10m_hd),
+			  ATL_PM (caps->rate_100m), ATL_PM (caps->rate_100m_hd));
+  styled_text_add_marked (st, ST_R_VALUE, " 1G%{%c%} 1G/HD%{%c%} 2.5G%{%c%} N2.5G%{%c%}",
+			  ATL_PM (caps->rate_1g), ATL_PM (caps->rate_1g_hd),
+			  ATL_PM (caps->rate_2p5g), ATL_PM (caps->rate_n2p5g));
+  styled_text_add_marked (st, ST_R_VALUE, " 5G%{%c%} N5G%{%c%} 10G%{%c%}", ATL_PM (caps->rate_5g),
+			  ATL_PM (caps->rate_n5g), ATL_PM (caps->rate_10g));
+  styled_text_add_marked (st, ST_R_VALUE, "\nEEE: 100M%{%c%} 1G%{%c%} 2.5G%{%c%}",
+			  ATL_PM (caps->eee_100m), ATL_PM (caps->eee_1g), ATL_PM (caps->eee_2p5g));
+  styled_text_add_marked (st, ST_R_VALUE, " 5G%{%c%} 10G%{%c%}", ATL_PM (caps->eee_5g),
+			  ATL_PM (caps->eee_10g));
 
 #undef ATL_PM
-
-  return s;
 }
 
-u8 *
-format_atl_partner_link_capa (u8 *s, va_list *args)
+void
+styled_format_atl_partner_link_capa (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a __clib_unused = va_arg (*args, vnet_dev_format_args_t *);
   atl_reg_aq2_fw_interface_out_lkp_link_caps_t *caps =
     va_arg (*args, atl_reg_aq2_fw_interface_out_lkp_link_caps_t *);
-  u32 indent = format_get_indent (s);
 
 #define ATL_PM(b) ((b) ? '+' : '-')
 
-  s = format (s,
-	      "Rates: 10M%c 10M/HD%c 100M%c 100M/HD%c 1G%c 1G/HD%c 2.5G%c N2.5G%c 5G%c N5G%c 10G%c",
-	      ATL_PM (caps->rate_10m), ATL_PM (caps->rate_10m_hd), ATL_PM (caps->rate_100m),
-	      ATL_PM (caps->rate_100m_hd), ATL_PM (caps->rate_1g), ATL_PM (caps->rate_1g_hd),
-	      ATL_PM (caps->rate_2p5g), ATL_PM (caps->rate_n2p5g), ATL_PM (caps->rate_5g),
-	      ATL_PM (caps->rate_n5g), ATL_PM (caps->rate_10g));
-  s = format_newline (s, indent);
-  s =
-    format (s, "EEE: 100M%c 1G%c 2.5G%c 5G%c 10G%c", ATL_PM (caps->eee_100m), ATL_PM (caps->eee_1g),
-	    ATL_PM (caps->eee_2p5g), ATL_PM (caps->eee_5g), ATL_PM (caps->eee_10g));
-  s = format_newline (s, indent);
-  s = format (s, "Pause: TX%c RX%c", ATL_PM (caps->pause_tx), ATL_PM (caps->pause_rx));
+  styled_text_add_marked (st, ST_R_VALUE, "Rates: 10M%{%c%}", ATL_PM (caps->rate_10m));
+  styled_text_add_marked (st, ST_R_VALUE, " 10M/HD%{%c%} 100M%{%c%} 100M/HD%{%c%} 1G%{%c%}",
+			  ATL_PM (caps->rate_10m_hd), ATL_PM (caps->rate_100m),
+			  ATL_PM (caps->rate_100m_hd), ATL_PM (caps->rate_1g));
+  styled_text_add_marked (st, ST_R_VALUE, " 1G/HD%{%c%} 2.5G%{%c%} N2.5G%{%c%} 5G%{%c%}",
+			  ATL_PM (caps->rate_1g_hd), ATL_PM (caps->rate_2p5g),
+			  ATL_PM (caps->rate_n2p5g), ATL_PM (caps->rate_5g));
+  styled_text_add_marked (st, ST_R_VALUE, " N5G%{%c%} 10G%{%c%}", ATL_PM (caps->rate_n5g),
+			  ATL_PM (caps->rate_10g));
+  styled_text_add_marked (st, ST_R_VALUE, "\nEEE: 100M%{%c%} 1G%{%c%} 2.5G%{%c%}",
+			  ATL_PM (caps->eee_100m), ATL_PM (caps->eee_1g), ATL_PM (caps->eee_2p5g));
+  styled_text_add_marked (st, ST_R_VALUE, " 5G%{%c%} 10G%{%c%}", ATL_PM (caps->eee_5g),
+			  ATL_PM (caps->eee_10g));
+  styled_text_add_marked (st, ST_R_VALUE, "\nPause: TX%{%c%} RX%{%c%}", ATL_PM (caps->pause_tx),
+			  ATL_PM (caps->pause_rx));
 
 #undef ATL_PM
-
-  return s;
 }
 
-u8 *
-format_atl_mac_addr_table (u8 *s, va_list *args)
+void
+styled_format_atl_mac_addr_table (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a __clib_unused = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
@@ -419,7 +440,6 @@ format_atl_mac_addr_table (u8 *s, va_list *args)
   u32 l2_base_index = ad->caps.l2_base_index;
   u32 l2_count = ad->caps.l2_count;
   u32 l2_idx, l2uc_lsw, i;
-  u32 indent = format_get_indent (s);
   int first = 1;
   atl_reg_rpf_l2uc_msw_t l2uc_msw;
 
@@ -434,8 +454,8 @@ format_atl_mac_addr_table (u8 *s, va_list *args)
 	continue;
       l2uc_lsw = atl_reg_rd_u32 (dev, ATL_REG_RPF_L2UC_LSW (l2_idx));
       if (!first)
-	s = format_newline (s, indent);
-      s = format (s, "%U", format_atl_l2uc, &l2uc_msw, l2uc_lsw);
+	styled_text_add (st, "\n");
+      styled_text_add_role (st, ST_R_VALUE, "%U", format_atl_l2uc, &l2uc_msw, l2uc_lsw);
       first = 0;
     }
 
@@ -446,16 +466,14 @@ format_atl_mac_addr_table (u8 *s, va_list *args)
 	{
 	  l2uc_lsw = atl_reg_rd_u32 (dev, ATL_REG_RPF_L2UC_LSW (0));
 	  if (!first)
-	    s = format_newline (s, indent);
-	  s = format (s, "%U", format_atl_l2uc, &l2uc_msw, l2uc_lsw);
+	    styled_text_add (st, "\n");
+	  styled_text_add_role (st, ST_R_VALUE, "%U", format_atl_l2uc, &l2uc_msw, l2uc_lsw);
 	}
     }
-
-  return s;
 }
 
-u8 *
-format_atl_cable_diag (u8 *s, va_list *args)
+void
+styled_format_atl_cable_diag (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a __clib_unused = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
@@ -464,34 +482,35 @@ format_atl_cable_diag (u8 *s, va_list *args)
   atl_reg_aq2_cable_diag_lane_data_t lane_data;
   atl_reg_aq2_cable_diag_status_t status;
   u32 cable_diag_words[5];
-  u32 indent = format_get_indent (s);
   u32 lane;
 
   rv = atl_aq2_interface_buffer_read (dev, ATL_REG_AQ2_FW_INTERFACE_OUT_CABLE_DIAG_LANE0,
 				      cable_diag_words, ARRAY_LEN (cable_diag_words));
   if (rv != VNET_DEV_OK)
-    return format (s, "read failed (rv %d)", rv);
+    {
+      styled_text_add_marked (st, ST_R_ERROR, "read failed (rv %{%d%})", rv);
+      return;
+    }
 
   status.as_u32 = cable_diag_words[4];
-  s = format (s, "status %u transact_id %u", status.status, status.transact_id);
+  styled_text_add_marked (st, ST_R_VALUE, "status %{%u%} transact_id %{%u%}", status.status,
+			  status.transact_id);
+
   for (lane = 0; lane < 4; lane++)
     {
       lane_data.as_u32 = cable_diag_words[lane];
-      s = format_newline (s, indent);
-      s = format (s, "lane %u: result %u, distance: %um, far distance %um", lane,
-		  lane_data.result_code, lane_data.dist, lane_data.far_dist);
+      styled_text_add_marked (
+	st, ST_R_VALUE, "\nlane %{%u%}: result %{%u%}, distance: %{%um%}, far distance %{%um%}",
+	lane, lane_data.result_code, lane_data.dist, lane_data.far_dist);
     }
-
-  return s;
 }
 
-u8 *
-format_atl_rss_info (u8 *s, va_list *args)
+void
+styled_format_atl_rss_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a __clib_unused = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
   vnet_dev_t *dev = port->dev;
-  u32 indent = format_get_indent (s);
   u32 rss_ctrl1 = atl_reg_rd_u32 (dev, ATL_REG_RX_FLR_RSS_CONTROL1);
   u32 rpf_redir2 = atl_reg_rd_u32 (dev, ATL_REG_AQ2_RPF_REDIR2);
   u32 rss_key_addr = atl_reg_rd_u32 (dev, ATL_REG_RPF_RSS_KEY_ADDR);
@@ -506,115 +525,99 @@ format_atl_rss_info (u8 *s, va_list *args)
   u32 i;
   u32 tc;
 
-  s = format (s, "0x%05x %-24s: 0x%08x", ATL_REG_RX_FLR_RSS_CONTROL1, "RX_FLR_RSS_CONTROL1",
-	      rss_ctrl1);
-  s = format_newline (s, indent);
-  s = format (s, "0x%05x %-24s: 0x%08x", ATL_REG_AQ2_RPF_REDIR2, "AQ2_RPF_REDIR2", rpf_redir2);
-  s = format_newline (s, indent);
-  s =
-    format (s, "0x%05x %-24s: 0x%08x", ATL_REG_RPF_RSS_KEY_ADDR, "RPF_RSS_KEY_ADDR", rss_key_addr);
-  s = format_newline (s, indent);
-  s = format (s, "0x%05x %-24s: 0x%08x", ATL_REG_RPF_RSS_KEY_WR_DATA, "RPF_RSS_KEY_WR_DATA",
-	      rss_key_wr);
-  s = format_newline (s, indent);
-  s = format (s, "0x%05x %-24s: 0x%08x", ATL_REG_RPF_RSS_KEY_RD_DATA, "RPF_RSS_KEY_RD_DATA",
-	      rss_key_rd);
-  s = format_newline (s, indent);
-  s = format (s, "rss key:");
+  styled_atl_add_reg (st, ATL_REG_RX_FLR_RSS_CONTROL1, "RX_FLR_RSS_CONTROL1", rss_ctrl1);
+  styled_text_add (st, "\n");
+  styled_atl_add_reg (st, ATL_REG_AQ2_RPF_REDIR2, "AQ2_RPF_REDIR2", rpf_redir2);
+  styled_text_add (st, "\n");
+  styled_atl_add_reg (st, ATL_REG_RPF_RSS_KEY_ADDR, "RPF_RSS_KEY_ADDR", rss_key_addr);
+  styled_text_add (st, "\n");
+  styled_atl_add_reg (st, ATL_REG_RPF_RSS_KEY_WR_DATA, "RPF_RSS_KEY_WR_DATA", rss_key_wr);
+  styled_text_add (st, "\n");
+  styled_atl_add_reg (st, ATL_REG_RPF_RSS_KEY_RD_DATA, "RPF_RSS_KEY_RD_DATA", rss_key_rd);
+
   for (i = 0; i < ARRAY_LEN (rss_key_words); i++)
     {
       atl_reg_wr_u32 (dev, ATL_REG_RPF_RSS_KEY_ADDR, i);
       rss_key_words[i] = atl_reg_rd_u32 (dev, ATL_REG_RPF_RSS_KEY_RD_DATA);
     }
-  s = format_newline (s, indent + 2);
-  s = format (s, "%U", format_hex_bytes_no_wrap, (u8 *) rss_key_words, sizeof (rss_key_words));
 
-  s = format_newline (s, indent);
-  s = format (s, "aq2 rss redir:");
+  styled_text_add_marked (st, ST_R_VALUE, "\nrss key:\n  %{%U%}", format_hex_bytes_no_wrap,
+			  (u8 *) rss_key_words, sizeof (rss_key_words));
+
+  styled_text_add (st, "\naq2 rss redir:");
   for (tc = 0; tc < 4; tc++)
     {
-      s = format_newline (s, indent + 2);
-      s = format (s, "tc%u:", tc);
+      styled_text_add (st, "\n  tc%u:", tc);
       for (i = 0; i < 64; i++)
 	{
 	  rss_redir_val = atl_reg_rd_u32 (dev, ATL_REG_AQ2_RPF_RSS_REDIR (i));
 	  if (i == 32)
-	    {
-	      s = format_newline (s, indent + 6);
-	    }
-	  s = format (s, " %u", (rss_redir_val >> (5 * tc)) & 0x1f);
+	    styled_text_add (st, "\n      ");
+	  styled_text_add_marked (st, ST_R_VALUE, " %{%u%}", (rss_redir_val >> (5 * tc)) & 0x1f);
 	}
     }
 
-  s = format_newline (s, indent);
-  s = format (s, "Traffic Classes");
-  s = format_newline (s, indent + 2);
-  s = format (s, "0x%05x %-24s: 0x%08x", ATL_REG_RPF_RPB_RX_TC_UPT, "RPF_RPB_RX_TC_UPT", rx_tc_upt);
-  s = format_newline (s, indent + 2);
-  s = format (s, "0x%05x %-24s: 0x%08x", ATL_REG_RPB_RPF_RX, "RPB_RPF_RX", rpb_rpf_rx);
+  styled_text_add (st, "\nTraffic Classes\n  ");
+  styled_atl_add_reg (st, ATL_REG_RPF_RPB_RX_TC_UPT, "RPF_RPB_RX_TC_UPT", rx_tc_upt);
+  styled_text_add (st, "\n  ");
+  styled_atl_add_reg (st, ATL_REG_RPB_RPF_RX, "RPB_RPF_RX", rpb_rpf_rx);
+
   for (i = 0; i < 4; i++)
     {
       rx_q_tc_map = atl_reg_rd_u32 (dev, ATL_REG_AQ2_RX_Q_TC_MAP (i));
-      s = format_newline (s, indent + 2);
-      s = format (s, "rx_q_tc_map[%u] 0x%08x", i, rx_q_tc_map);
+      styled_text_add_marked (st, ST_R_VALUE, "\n  rx_q_tc_map[%u] %{0x%08x%}", i, rx_q_tc_map);
     }
+
   for (i = 0; i < 8; i++)
     {
       tx_q_tc_map = atl_reg_rd_u32 (dev, ATL_REG_AQ2_TX_Q_TC_MAP (i));
-      s = format_newline (s, indent + 2);
-      s = format (s, "tx_q_tc_map[%u] 0x%08x", i, tx_q_tc_map);
+      styled_text_add_marked (st, ST_R_VALUE, "\n  tx_q_tc_map[%u] %{0x%08x%}", i, tx_q_tc_map);
     }
-
-  return s;
 }
 
-u8 *
-format_atl_port_status (u8 *s, va_list *args)
+void
+styled_format_atl_port_status (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
   vnet_dev_t *dev = port->dev;
   atl_device_t *ad = vnet_dev_get_data (dev);
   vnet_dev_rv_t rv;
-  atl_reg_aq2_fw_interface_out_link_status_t st;
+  atl_reg_aq2_fw_interface_out_link_status_t link;
   atl_reg_aq2_fw_interface_out_device_link_caps_t dev_caps;
   atl_reg_aq2_fw_interface_out_lkp_link_caps_t lkp_caps;
   u32 dev_caps_raw;
   u32 lkp_caps_raw;
-  u32 indent, link_speed;
+  u32 link_speed;
   static const u32 rate_lut[] = {
     0, 10000, 100000, 1000000, 2500000, 5000000, 10000000,
   };
 
-  rv = atl_aq2_interface_buffer_read (dev, ATL_REG_AQ2_FW_INTERFACE_OUT_LINK_STATUS, &st.as_u32, 1);
+  rv =
+    atl_aq2_interface_buffer_read (dev, ATL_REG_AQ2_FW_INTERFACE_OUT_LINK_STATUS, &link.as_u32, 1);
   if (rv != VNET_DEV_OK)
-    return format (s, "link status read failed (rv %d)", rv);
+    {
+      styled_text_add_marked (st, ST_R_ERROR, "link status read failed (rv %{%d%})", rv);
+      return;
+    }
 
-  link_speed = (st.link_rate < ARRAY_LEN (rate_lut)) ? rate_lut[st.link_rate] : 0;
-  indent = format_get_indent (s);
+  link_speed = (link.link_rate < ARRAY_LEN (rate_lut)) ? rate_lut[link.link_rate] : 0;
 
-  s = format (s,
-	      "link state %u link speed %u kbps duplex %s pause rx %u tx %u "
-	      "eee %u",
-	      st.link_state, link_speed, st.duplex ? "full" : "half", st.pause_rx, st.pause_tx,
-	      st.eee);
-
-#define ATL_PM(b) ((b) ? '+' : '-')
+  styled_text_add_marked (st, ST_R_VALUE, "link state %{%u%} link speed %{%u kbps%} duplex %{%s%}",
+			  link.link_state, link_speed, link.duplex ? "full" : "half");
+  styled_text_add_marked (st, ST_R_VALUE, " pause rx %{%u%} tx %{%u%} eee %{%u%}", link.pause_rx,
+			  link.pause_tx, link.eee);
 
   rv = atl_aq2_interface_buffer_read (dev, ATL_REG_AQ2_FW_INTERFACE_OUT_DEVICE_LINK_CAPS,
 				      &dev_caps_raw, 1);
   if (rv == VNET_DEV_OK)
     {
       dev_caps.as_u32 = dev_caps_raw;
-      s = format_newline (s, indent);
-      s = format (s, "Link capabilities:");
-      s = format_newline (s, indent + 2);
-      s = format (s, "%U", format_atl_link_capa, a, &dev_caps);
+      styled_text_add (st, "\nLink capabilities:\n  %T", styled_format_atl_link_capa, a, &dev_caps);
     }
   else
     {
-      s = format_newline (s, indent);
-      s = format (s, "Link capabilities: read failed (rv %d)", rv);
+      styled_text_add_marked (st, ST_R_ERROR, "\nLink capabilities: %{read failed (rv %d)%}", rv);
     }
 
   rv = atl_aq2_interface_buffer_read (dev, ATL_REG_AQ2_FW_INTERFACE_OUT_LKP_LINK_CAPS,
@@ -622,23 +625,16 @@ format_atl_port_status (u8 *s, va_list *args)
   if (rv == VNET_DEV_OK)
     {
       lkp_caps.as_u32 = lkp_caps_raw;
-      s = format_newline (s, indent);
-      s = format (s, "Link partner capabilities:");
-      s = format_newline (s, indent + 2);
-      s = format (s, "%U", format_atl_partner_link_capa, a, &lkp_caps);
+      styled_text_add (st, "\nLink partner capabilities:\n  %T",
+		       styled_format_atl_partner_link_capa, a, &lkp_caps);
     }
   else
     {
-      s = format_newline (s, indent);
-      s = format (s, "Link partner capabilities: read failed (rv %d)", rv);
+      styled_text_add_marked (st, ST_R_ERROR,
+			      "\nLink partner capabilities: %{read failed (rv %d)%}", rv);
     }
 
-#undef ATL_PM
-
-  s = format_newline (s, indent);
-  s = format (s, "Last Cable Diagnostics:");
-  s = format_newline (s, indent + 2);
-  s = format (s, "%U", format_atl_cable_diag, a, port);
+  styled_text_add (st, "\nLast Cable Diagnostics:\n  %T", styled_format_atl_cable_diag, a, port);
 
   if (a->debug > 0)
     {
@@ -649,26 +645,23 @@ format_atl_port_status (u8 *s, va_list *args)
       if (l2_count == 0)
 	l2_count = AQ_HW_MAC_NUM;
 
-      s = format_newline (s, indent);
-      s = format (s, "MAC Address Table:");
-      s = format_newline (s, indent + 2);
-      s = format (s, "%U", format_atl_mac_addr_table, a, port);
-
-      s = format_newline (s, indent);
-      s = format (s, "Receive Packet Filter:");
-      s = format_newline (s, indent + 2);
-      s = format (s, "%U", format_atl_rpf_info, a, port);
+      styled_text_add (st, "\nMAC Address Table:\n  %T", styled_format_atl_mac_addr_table, a, port);
+      styled_text_add (st, "\nReceive Packet Filter:\n  %T", styled_format_atl_rpf_info, a, port);
 
       base = 8 * ad->caps.resolver_base_index;
       n_entries = 8 * ad->caps.resolver_count;
       total_entries = base + n_entries;
 
-      s = format_newline (s, indent + 2);
-      s = format (s, "ART table (base %u count %u resolver_base %u)", base, n_entries,
-		  8 * ad->caps.resolver_base_index);
-      s = format_newline (s, indent + 4);
-      s =
-	format (s, "        tag        mask      action   index rss  enabled    action     match");
+      styled_text_add_marked (st, ST_R_VALUE,
+			      "\n  ART table (base %{%u%} count %{%u%} resolver_base %{%u%})", base,
+			      n_entries, 8 * ad->caps.resolver_base_index);
+
+      /* the columns of the table have to stay under their headings */
+      styled_text_begin (st, (styled_text_style_t) { .wrap = ST_A_OFF });
+      styled_text_add_marked (
+	st, ST_R_TABLE_COL_HEADING,
+	"\n    %{        tag        mask      action   index rss  enabled    action     "
+	"match%}");
 
       for (u32 idx = 0; idx < total_entries; idx++)
 	{
@@ -694,8 +687,8 @@ format_atl_port_status (u8 *s, va_list *args)
 
 	      if (run_end - run_start > 1)
 		{
-		  s = format_newline (s, indent + 10);
-		  s = format (s, "[ entries %u-%u skipped (all zero) ]", run_start, run_end - 1);
+		  styled_text_add (st, "\n          [ entries %u-%u skipped (all zero) ]",
+				   run_start, run_end - 1);
 		  idx = run_end - 1;
 		  continue;
 		}
@@ -706,24 +699,25 @@ format_atl_port_status (u8 *s, va_list *args)
 	  char rss = act.rss ? 'Y' : 'N';
 	  char en = act.enable ? 'Y' : 'N';
 
-	  s = format_newline (s, indent + 4);
 	  action_str = format (0, "%U", format_atl_aq2_art_action, act.action);
 	  action_len = vec_len (action_str);
 	  action_pad = (action_len < 11) ? (11 - action_len) : 1;
-	  s = format (s, "%3u: 0x%08x 0x%08x 0x%08x %4u   %c      %c     %v%U", idx, tag, mask,
-		      action_raw, act.index, rss, en, action_str, format_white_space, action_pad);
+	  styled_text_add_marked (st, ST_R_TABLE_CELL,
+				  "\n    %{%3u: 0x%08x 0x%08x 0x%08x %4u   %c      %c     %v%U%}",
+				  idx, tag, mask, action_raw, act.index, rss, en, action_str,
+				  format_white_space, action_pad);
 	  vec_free (action_str);
 #define _(n, w)                                                                                    \
   if (mask_f.n)                                                                                    \
-    s = format (s, " " #n " %u", match.n);
+    styled_text_add_marked (st, ST_R_VALUE, " " #n " %{%u%}", match.n);
 	  foreach_atl_aq2_art_tag_t_field
 #undef _
 	}
 
-      s = format_newline (s, indent);
-      s = format (s, "Receive Side Scaling");
-      s = format_newline (s, indent + 2);
-      s = format (s, "%U", format_atl_rss_info, a, port);
+      styled_text_end (st);
+
+      styled_text_add (st, "\nReceive Side Scaling\n  %T", styled_format_atl_rss_info, a, port);
+
       foreach_vnet_dev_port_rx_queue (rxq, port)
 	{
 	  u32 qid = rxq->queue_id;
@@ -738,17 +732,19 @@ format_atl_port_status (u8 *s, va_list *args)
 	  atl_reg_rx_dma_desc_data_hdr_size_t hdr =
 	    atl_reg_rd (dev, ATL_REG_RX_DMA_DESC_DATA_HDR_SIZE (qid)).rx_dma_desc_data_hdr_size;
 
-	  s = format_newline (s, indent + 2);
-	  s = format (s, "RXQ[%u] size %u en %u len %u hdr_split %u vlan_strip %u tc_map 0x%08x",
-		      qid, rxq->size, desc_len.en, desc_len.len, desc_len.header_split,
-		      desc_len.vlan_strip, tc_map);
-	  s = format_newline (s, indent + 4);
-	  s = format (s, "base 0x%08x%08x head %u tail %u stat 0x%08x data_sz %u hdr_sz %u",
-		      base_msw, base_lsw, head, tail, stat, hdr.data_size, hdr.hdr_size);
+	  styled_text_add_marked (st, ST_R_VALUE,
+				  "\n  RXQ[%{%u%}] size %{%u%} en %{%u%} len %{%u%}", qid,
+				  rxq->size, desc_len.en, desc_len.len);
+	  styled_text_add_marked (st, ST_R_VALUE,
+				  " hdr_split %{%u%} vlan_strip %{%u%} tc_map %{0x%08x%}",
+				  desc_len.header_split, desc_len.vlan_strip, tc_map);
+	  styled_text_add_marked (st, ST_R_VALUE,
+				  "\n    base %{0x%08x%08x%} head %{%u%} tail %{%u%}", base_msw,
+				  base_lsw, head, tail);
+	  styled_text_add_marked (st, ST_R_VALUE, " stat %{0x%08x%} data_sz %{%u%} hdr_sz %{%u%}",
+				  stat, hdr.data_size, hdr.hdr_size);
 	}
     }
-
-  return s;
 }
 
 u8 *

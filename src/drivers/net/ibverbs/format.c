@@ -7,17 +7,18 @@
 #include <rdma/common.h>
 #include <ibverbs.h>
 
-u8 *
-format_ibv_rxq_info (u8 *s, va_list *args)
+void
+styled_format_ibv_rxq_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t __clib_unused *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_rx_queue_t *rxq = va_arg (*args, vnet_dev_rx_queue_t *);
   ibv_rxq_t *iq = vnet_dev_get_rx_queue_data (rxq);
 
-  s = format (s, "%u buffers of %u bytes per wqe", iq->n_ds, iq->buf_sz);
+  styled_text_add_marked (st, ST_R_VALUE, "%{%u%} buffers of %{%u%} bytes per wqe", iq->n_ds,
+			  iq->buf_sz);
+
   if (iq->single_buffer)
-    s = format (s, ", single buffer");
-  return s;
+    styled_text_add (st, ", single buffer");
 }
 
 u8 *
@@ -87,31 +88,27 @@ format_ibv_tx_trace (u8 *s, va_list *args)
   return s;
 }
 
-u8 *
-format_ibv_port_status (u8 *s, va_list *args)
+void
+styled_format_ibv_port_status (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
   ibv_dev_t *rd = vnet_dev_get_data (port->dev);
   ibv_port_t *ip = vnet_dev_get_port_data (port);
-  u32 indent = format_get_indent (s);
 
-  s = format (s, "%U", format_rdma_port_status, rd->ctx, port->port_id, ip->netdev_ifindex);
+  styled_text_add (st, "%T", styled_format_rdma_port_status, rd->ctx, port->port_id,
+		   ip->netdev_ifindex);
+
   if (ip->rss.rwq_ind_tbl)
-    {
-      s = format_newline (s, indent);
-      s = format (s, "%U", format_rdma_rss_flows, a, &ip->rss);
-    }
-
-  return s;
+    styled_text_add (st, "\n%T", styled_format_rdma_rss_flows, a, &ip->rss);
 }
 
-u8 *
-format_ibv_dev_info (u8 *s, va_list *args)
+void
+styled_format_ibv_dev_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
   ibv_dev_t *rd = vnet_dev_get_data (dev);
 
-  return format (s, "%U", format_rdma_ibv_dev_info, a, rd->ctx);
+  styled_text_add (st, "%T", styled_format_rdma_ibv_dev_info, a, rd->ctx);
 }

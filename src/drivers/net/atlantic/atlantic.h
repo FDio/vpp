@@ -336,17 +336,17 @@ void atl_port_counter_poll (vlib_main_t *vm, vnet_dev_port_t *port);
 void atl_port_status_poll (vlib_main_t *vm, vnet_dev_port_t *port);
 vnet_dev_rv_t atl_aq2_interface_buffer_read (vnet_dev_t *dev, u32 reg0, u32 *data0, u32 n_dwords);
 vnet_dev_rv_t atl_fw_mbox_read (vnet_dev_t *dev, u32 offset, u32 *val);
-format_function_t format_atl_port_status;
+styled_format_fn_t styled_format_atl_port_status;
 format_function_t format_atl_l2uc;
-format_function_t format_atl_dev_info;
+styled_format_fn_t styled_format_atl_dev_info;
 format_function_t format_atl_fw_version;
 format_function_t format_atl_iface_version;
 format_function_t format_atl_regs;
 format_function_t format_atl_aq2_art_action;
-format_function_t format_atl_rpf_info;
-format_function_t format_atl_mac_addr_table;
-format_function_t format_atl_cable_diag;
-format_function_t format_atl_rss_info;
+styled_format_fn_t styled_format_atl_rpf_info;
+styled_format_fn_t styled_format_atl_mac_addr_table;
+styled_format_fn_t styled_format_atl_cable_diag;
+styled_format_fn_t styled_format_atl_rss_info;
 static_always_inline u32
 atl_rx_buf_units (u32 data_size)
 {
@@ -357,8 +357,8 @@ atl_rx_buf_units (u32 data_size)
 #define ATL_RSS_LUT_SIZE 64
 
 vnet_dev_rv_t atl_get_speed_caps (vnet_dev_t *dev, u32 *speed_caps);
-format_function_t format_atl_link_capa;
-format_function_t format_atl_partner_link_capa;
+styled_format_fn_t styled_format_atl_link_capa;
+styled_format_fn_t styled_format_atl_partner_link_capa;
 format_function_t atl_rx_trace;
 format_function_t atl_tx_trace;
 format_function_t format_atl_rx_wb_desc;

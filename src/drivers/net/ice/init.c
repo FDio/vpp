@@ -388,7 +388,7 @@ ice_init (vlib_main_t *vm, vnet_dev_t *dev)
         .deinit = ice_port_deinit,
         .start = ice_port_start,
         .stop = ice_port_stop,
-        .format_status = format_ice_port_status,
+        .styled_format_status = styled_format_ice_port_status,
         .config_change = ice_port_cfg_change,
         .config_change_validate = ice_port_cfg_change_validate,
         .get_module_eeprom = ice_port_get_module_eeprom,
@@ -419,7 +419,7 @@ ice_init (vlib_main_t *vm, vnet_dev_t *dev)
       .ops = {
 	.alloc = ice_rx_queue_alloc,
 	.free = ice_rx_queue_free,
-	.format_info = format_ice_rx_queue_info,
+	.styled_format_info = styled_format_ice_rx_queue_info,
       },
     },
     .tx_queue = {
@@ -433,7 +433,7 @@ ice_init (vlib_main_t *vm, vnet_dev_t *dev)
       .ops = {
 	.alloc = ice_tx_queue_alloc,
 	.free = ice_tx_queue_free,
-	.format_info = format_ice_tx_queue_info,
+	.styled_format_info = styled_format_ice_tx_queue_info,
       },
     },
   };
@@ -512,7 +512,7 @@ VNET_DEV_REGISTER_DRIVER (ice) = {
       .deinit = ice_deinit,
       .free = ice_aq_free,
       .probe = ice_probe,
-      .format_info = format_ice_dev_info,
+      .styled_format_info = styled_format_ice_dev_info,
     },
   },
 };

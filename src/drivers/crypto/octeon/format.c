@@ -40,8 +40,8 @@ format_oct_cpt_eng_caps (u8 *s, va_list *args)
   return s;
 }
 
-u8 *
-format_oct_cpt_dev_info (u8 *s, va_list *args)
+void
+styled_format_oct_cpt_dev_info (styled_text_t *st, va_list *args)
 {
   __clib_unused vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
@@ -51,70 +51,67 @@ format_oct_cpt_dev_info (u8 *s, va_list *args)
     [CPT_ENG_TYPE_IE] = "IE",
     [CPT_ENG_TYPE_RE] = "RE",
   };
-  u32 indent = format_get_indent (s);
   oct_crypto_device_t *cd = vnet_dev_get_data (dev);
   struct roc_cpt *rc = cd->roc_cpt;
 
   if (rc == 0)
-    return s;
+    return;
 
-  s = format (s, "CPT revision %u, %u LFs in use, %u available", rc->cpt_revision, rc->nb_lf,
-	      rc->nb_lf_avail);
+  styled_text_add_marked (st, ST_R_VALUE,
+			  "CPT revision %{%u%}, %{%u%} LFs in use, %{%u%} available",
+			  rc->cpt_revision, rc->nb_lf, rc->nb_lf_avail);
 
   for (u32 t = CPT_ENG_TYPE_AE; t < CPT_MAX_ENG_TYPES; t++)
     {
       if (rc->hw_caps[t].u == 0)
 	continue;
 
-      s = format_newline (s, indent);
-      s = format (s, "%s engines: group %u, capabilities:%U", eng_names[t], rc->eng_grp[t],
-		  format_oct_cpt_eng_caps, rc->hw_caps + t);
-      s = format_word_wrap_last_line_with_indent (s, 100, 2);
+      styled_text_add_marked (st, ST_R_VALUE, "\n%{%s%} engines: group %{%u%}, capabilities:%{%U%}",
+			      eng_names[t], rc->eng_grp[t], format_oct_cpt_eng_caps,
+			      rc->hw_caps + t);
     }
-
-  return s;
 }
 
-u8 *
-format_oct_cpt_queue_info (u8 *s, va_list *args)
+void
+styled_format_oct_cpt_queue_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_crypto_queue_t *cq = va_arg (*args, vnet_dev_crypto_queue_t *);
   oct_crypto_queue_t *q = vnet_dev_get_crypto_queue_data (cq);
-  u32 indent = format_get_indent (s);
   struct roc_cpt_lf *lf = q->lf;
   union cpt_lf_inprog inprog;
 
   if (lf == 0)
-    return s;
+    return;
 
-  s = format (s, "lf %u, %u requests in flight, %u frames", lf->lf_id,
-	      (u16) (q->elt_tail - q->elt_head), (u16) (q->frame_tail - q->frame_head));
-  s = format_newline (s, indent);
-  s = format (s, "elt head %u tail %u, frame head %u tail %u", q->elt_head, q->elt_tail,
-	      q->frame_head, q->frame_tail);
+  styled_text_add_marked (st, ST_R_VALUE, "lf %{%u%}, %{%u%} requests in flight, %{%u%} frames",
+			  lf->lf_id, (u16) (q->elt_tail - q->elt_head),
+			  (u16) (q->frame_tail - q->frame_head));
+  styled_text_add_marked (st, ST_R_VALUE,
+			  "\nelt head %{%u%} tail %{%u%}, frame head %{%u%} tail %{%u%}",
+			  q->elt_head, q->elt_tail, q->frame_head, q->frame_tail);
 
   if (a->debug == 0)
-    return s;
+    return;
 
-  s = format_newline (s, indent);
 #ifdef PLATFORM_OCTEON9
-  s = format (s, "pf_func 0x%x, lmt base 0x%lx, io addr 0x%lx", lf->pf_func, lf->lmt_base,
-	      lf->io_addr);
+  styled_text_add_marked (st, ST_R_VALUE, "\npf_func %{0x%x%}", lf->pf_func);
+  styled_text_add_marked (st, ST_R_VALUE, ", lmt base %{0x%lx%}, io addr %{0x%lx%}", lf->lmt_base,
+			  lf->io_addr);
 #else
-  s = format (s, "pf_func 0x%x, lmt base 0x%lx, io addr 0x%lx", lf->pf_func, q->lmtline.lmt_base,
-	      q->lmtline.io_addr);
+  styled_text_add_marked (st, ST_R_VALUE, "\npf_func %{0x%x%}", lf->pf_func);
+  styled_text_add_marked (st, ST_R_VALUE, ", lmt base %{0x%lx%}, io addr %{0x%lx%}",
+			  q->lmtline.lmt_base, q->lmtline.io_addr);
 #endif
-  s = format_newline (s, indent);
-  s = format (s, "meta %p", q->meta);
+  styled_text_add_marked (st, ST_R_VALUE, "\nmeta %{%p%}", q->meta);
 
   inprog.u = plt_read64 (lf->rbase + CPT_LF_INPROG);
-  s = format_newline (s, indent);
-  s = format (s, "hw: inflight %u, eena %u, grb cnt %u, gwb cnt %u, ctl 0x%lx, q size 0x%lx",
-	      inprog.s.inflight, inprog.s.eena, inprog.s.grb_cnt, inprog.s.gwb_cnt,
-	      plt_read64 (lf->rbase + CPT_LF_CTL), plt_read64 (lf->rbase + CPT_LF_Q_SIZE));
-
-  return s;
+  styled_text_add_marked (st, ST_R_VALUE,
+			  "\nhw: inflight %{%u%}, eena %{%u%}, grb cnt %{%u%}, gwb cnt %{%u%}",
+			  inprog.s.inflight, inprog.s.eena, inprog.s.grb_cnt, inprog.s.gwb_cnt);
+  styled_text_add_marked (st, ST_R_VALUE, ", ctl %{0x%lx%}", plt_read64 (lf->rbase + CPT_LF_CTL));
+  styled_text_add_marked (st, ST_R_VALUE, ", q size %{0x%lx%}",
+			  plt_read64 (lf->rbase + CPT_LF_Q_SIZE));
 }
 
 u8 *

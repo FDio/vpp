@@ -180,7 +180,7 @@ qat_queue_group_add (vlib_main_t *vm, vnet_dev_t *dev)
       .deinit = qat_queue_deinit,
       .start = qat_queue_start,
       .stop = qat_queue_stop,
-      .format_queue_info = format_qat_queue_info,
+      .styled_format_queue_info = styled_format_qat_queue_info,
     },
     .config = {
       .data_size = sizeof (qat_queue_t),
@@ -328,7 +328,7 @@ VNET_DEV_REGISTER_DRIVER (qat) = {
       .init = qat_init,
       .deinit = qat_deinit,
       .probe = qat_probe,
-      .format_info = format_qat_dev_info,
+      .styled_format_info = styled_format_qat_dev_info,
     },
   },
   .driver = {

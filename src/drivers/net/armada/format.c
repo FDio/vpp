@@ -218,8 +218,8 @@ mvpp2_port_bpool_hw_status_read (vnet_dev_port_t *port, mvpp2_bpool_hw_status_t 
   return 0;
 }
 
-static u8 *
-format_mvpp2_bpool_table (u8 *s, va_list *args)
+static void
+styled_format_mvpp2_bpool_table (styled_text_t *st, va_list *args)
 {
   vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
   mvpp22_bm_pool_base_addr_high_reg_t base_high = {
@@ -262,9 +262,8 @@ format_mvpp2_bpool_table (u8 *s, va_list *args)
     }
 
   table_format_title (&table, "Buffer pools (%u)", n_pools);
-  s = format (s, "%U", format_table, &table);
+  styled_text_add (st, "%T", format_styled_table, &table);
   table_free (&table);
-  return s;
 }
 
 static u32
@@ -423,8 +422,8 @@ mvpp2_cls_format_qos_table (table_t *table, vnet_dev_port_t *port, const char *n
     }
 }
 
-u8 *
-format_mvpp2_parser_tables (u8 *s, va_list *args)
+void
+styled_format_mvpp2_parser_tables (styled_text_t *st, va_list *args)
 {
   vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
   int level = va_arg (*args, int);
@@ -433,7 +432,6 @@ format_mvpp2_parser_tables (u8 *s, va_list *args)
   table_t parser = {};
   table_t uc = {};
   table_t mc = {};
-  u32 indent = format_get_indent (s);
   u32 n_parser = 0;
   u32 n_uc = 0;
   u32 n_mc = 0;
@@ -487,29 +485,26 @@ format_mvpp2_parser_tables (u8 *s, va_list *args)
 
   table_format_title (&uc, "UC filters (%u)", n_uc);
   table_format_title (&mc, "MC filters (%u)", n_mc);
-  s = format (s, "%U", format_table, &uc);
-  s = format (s, "\n%U%U", format_white_space, indent, format_table, &mc);
+  styled_text_add (st, "%T\n%T", format_styled_table, &uc, format_styled_table, &mc);
   if (level > 1)
     {
       table_format_title (&parser, "Active parser entries (%u)", n_parser);
-      s = format (s, "\n%U%U", format_white_space, indent, format_table, &parser);
+      styled_text_add (st, "\n%T", format_styled_table, &parser);
     }
 
   table_free (&parser);
   table_free (&uc);
   table_free (&mc);
-  return s;
 }
 
-u8 *
-format_mvpp2_classifier_tables (u8 *s, va_list *args)
+void
+styled_format_mvpp2_classifier_tables (styled_text_t *st, va_list *args)
 {
   vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
   int level = va_arg (*args, int);
   struct mv_pp2x_cls_c2_entry c2 = {};
   table_t c2_table = {};
   table_t qos_table = {};
-  u32 indent = format_get_indent (s);
   u32 n_c2 = 0;
   u32 n_qos = 0;
   const char *queue_source;
@@ -557,7 +552,7 @@ format_mvpp2_classifier_tables (u8 *s, va_list *args)
       }
 
   table_format_title (&c2_table, "Active C2 classifier entries (%u)", n_c2);
-  s = format (s, "%U", format_table, &c2_table);
+  styled_text_add (st, "%T", format_styled_table, &c2_table);
 
   if (level > 1)
     {
@@ -570,12 +565,11 @@ format_mvpp2_classifier_tables (u8 *s, va_list *args)
 				      MVPP2_QOS_TBL_LINE_NUM_DSCP, &n_qos);
 	}
       table_format_title (&qos_table, "QoS classifier tables");
-      s = format (s, "\n%U%U", format_white_space, indent, format_table, &qos_table);
+      styled_text_add (st, "\n%T", format_styled_table, &qos_table);
     }
 
   table_free (&c2_table);
   table_free (&qos_table);
-  return s;
 }
 
 u8 *
@@ -592,8 +586,8 @@ format_mvpp2_port_link_info (u8 *s, va_list *args)
   return s;
 }
 
-u8 *
-format_mvpp2_port_status (u8 *s, va_list *args)
+void
+styled_format_mvpp2_port_status (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t __clib_unused *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
@@ -605,7 +599,6 @@ format_mvpp2_port_status (u8 *s, va_list *args)
   vnet_dev_rv_t promisc_rv;
   vnet_dev_rv_t rss_rv;
   char ifname[IFNAMSIZ];
-  u32 indent = format_get_indent (s);
   u32 n_mc;
   u32 n_uc;
   int promisc;
@@ -618,57 +611,61 @@ format_mvpp2_port_status (u8 *s, va_list *args)
   filter_rv = mvpp2_parser_get_filter_counts (port, &n_uc, &n_mc);
   rss_rv = mvpp2_cls_rss_is_enabled (port, &rss);
 
-  s = format (s, "netdev %s ifindex %u, GOP %u", ifname[0] ? ifname : "unknown", mp->if_index,
-	      mp->gop_index);
-  if (mac.valid)
-    s = format (s, " %s, mode %s", mac.name, mac.mode);
-  else
-    s = format (s, ", MAC disabled");
-
-  s = format_newline (s, indent);
-  s = format (s, "state: %s %s", mp->is_open ? "open" : "closed",
-	      mp->is_enabled ? "enabled" : "disabled");
+  styled_text_add_marked (st, ST_R_VALUE, "netdev %{%s%} ifindex %{%u%}, GOP %{%u%}",
+			  ifname[0] ? ifname : "unknown", mp->if_index, mp->gop_index);
   if (mac.valid)
     {
-      s = format (s, ", link %s", mac.link.up ? "up" : "down");
+      styled_text_add_marked (st, ST_R_VALUE, " %{%s%}, mode %{%s%}", mac.name, mac.mode);
+    }
+  else
+    styled_text_add (st, ", MAC disabled");
+
+  styled_text_add_marked (st, ST_R_VALUE, "\nstate: %{%s%} %{%s%}", mp->is_open ? "open" : "closed",
+			  mp->is_enabled ? "enabled" : "disabled");
+  if (mac.valid)
+    {
+      styled_text_add_marked (st, ST_R_VALUE, ", link %{%s%}", mac.link.up ? "up" : "down");
       if (mac.link.speed)
 	{
-	  s = format (s, ", %U", format_mvpp2_link_speed, mac.link.speed);
+	  styled_text_add_marked (st, ST_R_VALUE, ", %{%U%}", format_mvpp2_link_speed,
+				  mac.link.speed);
 	  if (mac.duplex_known)
-	    s = format (s, " %s-duplex", mac.link.full_duplex ? "full" : "half");
+	    styled_text_add_marked (st, ST_R_VALUE, " %{%s-duplex%}",
+				    mac.link.full_duplex ? "full" : "half");
 	}
     }
 
-  s = format_newline (s, indent);
-  s = format (s, "config: promisc %s, rx-pause %s, loopback %s",
-	      promisc_rv == VNET_DEV_OK ? promisc ? "on" : "off" : "unknown",
-	      mac.valid ? mac.rx_pause ? "on" : "off" : "unknown",
-	      mac.valid ? mac.loopback ? "on" : "off" : "unknown");
+  styled_text_add_marked (st, ST_R_VALUE,
+			  "\nconfig: promisc %{%s%}, rx-pause %{%s%}, loopback %{%s%}",
+			  promisc_rv == VNET_DEV_OK ? promisc ? "on" : "off" : "unknown",
+			  mac.valid ? mac.rx_pause ? "on" : "off" : "unknown",
+			  mac.valid ? mac.loopback ? "on" : "off" : "unknown");
   if (mac.valid)
-    s = format (s, ", max-rx-frame %u", mac.max_rx_frame_size);
+    styled_text_add_marked (st, ST_R_VALUE, ", max-rx-frame %{%u%}", mac.max_rx_frame_size);
 
-  s = format_newline (s, indent);
-  s = format (s, "parser: MH %s, DSA %s", mh.mh_enable ? "on" : "off",
-	      mvpp2_dsa_mode_name (mh.dsa_mode));
+  styled_text_add_marked (st, ST_R_VALUE, "\nparser: MH %{%s%}, DSA %{%s%}",
+			  mh.mh_enable ? "on" : "off", mvpp2_dsa_mode_name (mh.dsa_mode));
   if (filter_rv == VNET_DEV_OK)
-    s = format (s, ", UC filters %u/%u, MC filters %u/%u", n_uc, MVPP2_PORT_MAX_UC_ADDR, n_mc,
-		MVPP2_PORT_MAX_MC_ADDR);
+    {
+      styled_text_add_marked (st, ST_R_VALUE, ", UC filters %{%u/%u%}, MC filters %{%u/%u%}", n_uc,
+			      MVPP2_PORT_MAX_UC_ADDR, n_mc, MVPP2_PORT_MAX_MC_ADDR);
+    }
   else
-    s = format (s, ", filters unavailable");
-  s = format (s, ", RSS %s", rss_rv == VNET_DEV_OK ? rss ? "enabled" : "none" : "unknown");
+    styled_text_add (st, ", filters unavailable");
+  styled_text_add_marked (st, ST_R_VALUE, ", RSS %{%s%}",
+			  rss_rv == VNET_DEV_OK ? rss ? "enabled" : "none" : "unknown");
 
   if (mvpp2_port_bpool_hw_status_read (port, &bpool))
     {
-      s = format_newline (s, indent);
-      s = format (s, "bpool %u: buffer-size %u buffers %u%s", bpool.id, bpool.buffer_size,
-		  bpool.n_buffers, bpool.active ? "" : " stopped");
+      styled_text_add_marked (st, ST_R_VALUE, "\nbpool %{%u%}: buffer-size %{%u%} buffers %{%u%}",
+			      bpool.id, bpool.buffer_size, bpool.n_buffers);
+      if (!bpool.active)
+	styled_text_add (st, " stopped");
     }
-
-  return s;
 }
 
-u8 *
-format_mvpp2_dev_info (u8 *s, va_list *args)
+void
+styled_format_mvpp2_dev_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
@@ -676,11 +673,13 @@ format_mvpp2_dev_info (u8 *s, va_list *args)
   mvpp22_bm_pool_base_addr_high_reg_t bppe_high;
   const char *version_name;
   u32 classifier;
-  u32 indent = format_get_indent (s);
   u32 parser;
 
   if (!md->pp_base)
-    return format (s, "hardware not mapped");
+    {
+      styled_text_add (st, "hardware not mapped");
+      return;
+    }
 
   parser = mvpp2_dev_reg_rd (dev, MVPP2_PRS_TCAM_CTRL_REG);
   classifier = mvpp2_dev_reg_rd (dev, MVPP2_CLS_MODE_REG);
@@ -698,44 +697,39 @@ format_mvpp2_dev_info (u8 *s, va_list *args)
       break;
     }
 
-  s = format (s, "packet processor %s", version_name);
-  s = format_newline (s, indent);
-  s = format (s, "parser TCAM %s, classifier %s",
-	      parser & MVPP2_PRS_TCAM_EN_MASK ? "enabled" : "disabled",
-	      classifier ? "enabled" : "disabled");
+  styled_text_add_marked (st, ST_R_VALUE, "packet processor %{%s%}", version_name);
+  styled_text_add_marked (st, ST_R_VALUE, "\nparser TCAM %{%s%}, classifier %{%s%}",
+			  parser & MVPP2_PRS_TCAM_EN_MASK ? "enabled" : "disabled",
+			  classifier ? "enabled" : "disabled");
 
   if (a->debug)
     {
       bppe_high.as_u32 = mvpp2_dev_reg_rd (dev, MVPP22_BM_POOL_BASE_ADDR_HIGH_REG);
-      s = format_newline (s, indent);
-      s = format (s, "BPPE_A_HIGH 0x%08x: window 0x%02x00000000-0x%02xffffffff, 8-pool mode %s",
-		  bppe_high.as_u32, bppe_high.addr, bppe_high.addr,
-		  bppe_high.mode_8pool ? "enabled" : "disabled");
-      s = format (s, "\n%U%U", format_white_space, indent, format_mvpp2_bpool_table, dev);
-      s =
-	format (s, "\n%U%U", format_white_space, indent, format_mvpp2_parser_tables, dev, a->debug);
-      s = format (s, "\n%U%U", format_white_space, indent, format_mvpp2_classifier_tables, dev,
-		  a->debug);
+      styled_text_add_marked (st, ST_R_VALUE,
+			      "\nBPPE_A_HIGH %{0x%08x%}: window %{0x%02x00000000-0x%02xffffffff%}",
+			      bppe_high.as_u32, bppe_high.addr, bppe_high.addr);
+      styled_text_add_marked (st, ST_R_VALUE, ", 8-pool mode %{%s%}",
+			      bppe_high.mode_8pool ? "enabled" : "disabled");
+      styled_text_add (st, "\n%T", styled_format_mvpp2_bpool_table, dev);
+      styled_text_add (st, "\n%T", styled_format_mvpp2_parser_tables, dev, a->debug);
+      styled_text_add (st, "\n%T", styled_format_mvpp2_classifier_tables, dev, a->debug);
     }
-
-  return s;
 }
 
-u8 *
-format_mvpp2_rxq_info (u8 *s, va_list *args)
+void
+styled_format_mvpp2_rxq_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_rx_queue_t *q = va_arg (*args, vnet_dev_rx_queue_t *);
   mvpp2_rxq_t *rxq = vnet_dev_get_rx_queue_data (q);
   vnet_dev_t *dev = q->port->dev;
-  u32 indent = format_get_indent (s);
   mvpp22_rxq_config_reg_t config;
   mvpp22_rxq_status_reg_t status;
   u32 status_update;
   u32 desc_addr, desc_size, desc_index;
 
   if (!a->debug)
-    return s;
+    return;
 
   config.as_u32 = mvpp2_dev_reg_rd (dev, MVPP2_RXQ_CONFIG_REG (rxq->hw_id));
   status.as_u32 = mvpp2_dev_reg_rd (dev, MVPP2_RXQ_STATUS_REG (rxq->hw_id));
@@ -745,34 +739,31 @@ format_mvpp2_rxq_info (u8 *s, va_list *args)
   desc_size = mvpp2_dev_reg_rd (dev, MVPP2_RXQ_DESC_SIZE_REG);
   desc_index = mvpp2_dev_reg_rd (dev, MVPP2_RXQ_INDEX_REG);
 
-  s = format (s, "Hardware queue ID is %u", rxq->hw_id);
-  s = format_newline (s, indent + 2);
-  s = format (s,
-	      "RXQ config 0x%08x: disable %u offset %u short-pool %u long-pool %u "
-	      "snoop-size %u snoop-header %u",
-	      config.as_u32, config.disable, config.packet_offset, config.short_pool,
-	      config.long_pool, config.snoop_pkt_size, config.snoop_buf_hdr);
-  s = format_newline (s, indent + 2);
-  s = format (s, "RXQ status 0x%08x: occupied %u available %u", status.as_u32, status.occupied,
-	      status.available);
-  s = format_newline (s, indent + 2);
-  s = format (s,
-	      "RXQ status-update 0x%08x descriptor-address 0x%08x descriptor-size %u "
-	      "index %u",
-	      status_update, desc_addr, desc_size, desc_index);
-  return s;
+  styled_text_add_marked (st, ST_R_VALUE, "Hardware queue ID is %{%u%}", rxq->hw_id);
+  styled_text_add_marked (
+    st, ST_R_VALUE, "\n  RXQ config %{0x%08x%}: disable %{%u%} offset %{%u%} short-pool %{%u%}",
+    config.as_u32, config.disable, config.packet_offset, config.short_pool);
+  styled_text_add_marked (st, ST_R_VALUE, " long-pool %{%u%} snoop-size %{%u%} snoop-header %{%u%}",
+			  config.long_pool, config.snoop_pkt_size, config.snoop_buf_hdr);
+  styled_text_add_marked (st, ST_R_VALUE,
+			  "\n  RXQ status %{0x%08x%}: occupied %{%u%} available %{%u%}",
+			  status.as_u32, status.occupied, status.available);
+  styled_text_add_marked (st, ST_R_VALUE,
+			  "\n  RXQ status-update %{0x%08x%} descriptor-address %{0x%08x%}",
+			  status_update, desc_addr);
+  styled_text_add_marked (st, ST_R_VALUE, " descriptor-size %{%u%} index %{%u%}", desc_size,
+			  desc_index);
 }
 
-u8 *
-format_mvpp2_txq_info (u8 *s, va_list *args)
+void
+styled_format_mvpp2_txq_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_tx_queue_t *q = va_arg (*args, vnet_dev_tx_queue_t *);
   mvpp2_txq_t *txq = vnet_dev_get_tx_queue_data (q);
 
-  if (!a->debug)
-    return s;
-  return format (s, "Hardware queue ID is %u", txq->hw_id);
+  if (a->debug)
+    styled_text_add_marked (st, ST_R_VALUE, "Hardware queue ID is %{%u%}", txq->hw_id);
 }
 
 u8 *
