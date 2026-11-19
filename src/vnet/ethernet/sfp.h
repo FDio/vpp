@@ -8,6 +8,7 @@
 #include <math.h>
 #include <vlib/vlib.h>
 #include <vppinfra/format.h>
+#include <vppinfra/styled_text.h>
 #include <vnet/interface.h>
 
 #define foreach_sfp_id                                                                             \
@@ -476,8 +477,18 @@ format_function_t format_sfp_connector;
 format_function_t format_sff8636_transmitter_tech;
 format_function_t format_sff8472_compliance;
 format_function_t format_sff8636_compliance;
-format_function_t format_sff8472_diagnostics;
-format_function_t format_sff8636_diagnostics;
-format_function_t format_sfp_eeprom_base;
+styled_format_fn_t styled_format_sff8472_diagnostics;
+styled_format_fn_t styled_format_sff8636_diagnostics;
+__clib_export styled_format_fn_t styled_format_sfp_eeprom_module;
 __clib_export format_function_t format_sfp_eeprom_module;
-format_function_t format_sfp_eeprom_diagnostics;
+styled_format_fn_t styled_format_sfp_eeprom_diagnostics;
+
+/* diagnostic values, all take a f64 */
+format_function_t format_sfp_temperature;
+format_function_t format_sfp_voltage;
+format_function_t format_sfp_current;
+format_function_t format_sfp_power; /* mW */
+
+/* lines of the diagnostics, each on a new line at indent, f formats the values */
+void styled_sfp_add_value (styled_text_t *, u32, char *, format_function_t *, f64);
+void styled_sfp_add_range (styled_text_t *, u32, char *, format_function_t *, f64, f64);

@@ -79,6 +79,13 @@ format_ice_sw_recipe (u8 *s, va_list *args)
     return format (s, "unknown (%u)", recipe);
 }
 
+/* what could not be read, and why */
+static void
+ice_styled_add_unavailable (styled_text_t *st, char *what, vnet_dev_rv_t rv)
+{
+  styled_text_add_marked (st, ST_R_ERROR, "%s unavailable: %{%U%}", what, format_vnet_dev_rv, rv);
+}
+
 vnet_dev_rv_t
 ice_dump_capabilities (vlib_main_t *vm, vnet_dev_t *dev, void *data)
 {
@@ -121,31 +128,34 @@ ice_dump_capabilities (vlib_main_t *vm, vnet_dev_t *dev, void *data)
   return VNET_DEV_OK;
 }
 
-u8 *
-format_ice_dev_info (u8 *s, va_list *args)
+void
+styled_format_ice_dev_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
   ice_dev_t *id = vnet_dev_get_data (dev);
   vnet_dev_port_t *port = vnet_dev_get_port_by_id (dev, 0);
   ice_port_t *ip = vnet_dev_get_port_data (port);
-  u32 indent = format_get_indent (s);
   ice_dev_info_t info = {};
   vnet_dev_rv_t rv;
 
+  styled_text_add_marked (st, ST_R_VALUE, "family %{%U%}", format_ice_family, id->family);
+
   rv = vnet_dev_process_call_op_with_ptr (vlib_get_main (), dev, ice_aq_get_dev_info, &info);
   if (rv != VNET_DEV_OK)
-    return format (s, "family %U, device information unavailable: %U", format_ice_family,
-		   id->family, format_vnet_dev_rv, rv);
+    {
+      ice_styled_add_unavailable (st, ", device information", rv);
+      return;
+    }
 
-  s = format (s, "family %U FW %u.%u.%u (branch %u build 0x%08x) API %u.%u.%u (branch %u)",
-	      format_ice_family, id->family, info.fw_major, info.fw_minor, info.fw_patch,
-	      info.fw_branch, info.fw_build, info.api_major, info.api_minor, info.api_patch,
-	      info.api_branch);
-  s = format_word_wrap_last_line (s, 100);
-  s = format (format_newline (s, indent), "NVM %x.%02x DDP %u.%u.%u.%u ROM ID 0x%08x",
-	      info.nvm_major, info.nvm_minor, info.ddp_ver.major, info.ddp_ver.minor,
-	      info.ddp_ver.update, info.ddp_ver.draft, info.rom_ver);
+  styled_text_add_marked (st, ST_R_VALUE,
+			  " FW %{%u.%u.%u%} (branch %{%u%} build %{0x%08x%}) API %{%u.%u.%u%}",
+			  info.fw_major, info.fw_minor, info.fw_patch, info.fw_branch,
+			  info.fw_build, info.api_major, info.api_minor, info.api_patch);
+  styled_text_add_marked (
+    st, ST_R_VALUE, " (branch %{%u%})\nNVM %{%x.%02x%} DDP %{%u.%u.%u.%u%} ROM ID %{0x%08x%}",
+    info.api_branch, info.nvm_major, info.nvm_minor, info.ddp_ver.major, info.ddp_ver.minor,
+    info.ddp_ver.update, info.ddp_ver.draft, info.rom_ver);
 
   for (u32 i = 0; i < vec_len (info.dev_caps); i++)
     if (info.dev_caps[i].cap == ICE_AQC_CAPS_SENSOR_READING && (info.dev_caps[i].number & 1))
@@ -156,13 +166,15 @@ format_ice_dev_info (u8 *s, va_list *args)
 						&reading);
 
 	if (rv == VNET_DEV_OK)
-	  s = format (format_newline (s, indent),
-		      "Temperature %d °C (warning %u °C, critical %u °C, fatal %u °C)",
-		      reading.temp, reading.temp_warning_threshold, reading.temp_critical_threshold,
-		      reading.temp_fatal_threshold);
+	  {
+	    styled_text_add_marked (
+	      st, ST_R_VALUE,
+	      "\nTemperature %{%d °C%} (warning %{%u °C%}, critical %{%u °C%}, fatal %{%u °C%})",
+	      reading.temp, reading.temp_warning_threshold, reading.temp_critical_threshold,
+	      reading.temp_fatal_threshold);
+	  }
 	else
-	  s = format (format_newline (s, indent), "Temperature unavailable: %U", format_vnet_dev_rv,
-		      rv);
+	  ice_styled_add_unavailable (st, "\nTemperature", rv);
 
 	break;
       }
@@ -171,11 +183,11 @@ format_ice_dev_info (u8 *s, va_list *args)
     {
       vec_free (info.dev_caps);
       vec_free (info.pkg_info);
-      return s;
+      return;
     }
 
-  s =
-    format (format_newline (s, indent), "PF %u, TX parent TEID %u", id->pf_id, ip->tx_parent_teid);
+  styled_text_add_marked (st, ST_R_VALUE, "\nPF %{%u%}, TX parent TEID %{%u%}", id->pf_id,
+			  ip->tx_parent_teid);
 
   if (vec_len (info.pkg_info))
     {
@@ -200,10 +212,7 @@ format_ice_dev_info (u8 *s, va_list *args)
 	  table_set_cell_align (&packages, i, 0, TTAA_LEFT);
 	}
 
-      s = format_newline (s, indent);
-      s = format (s, "Package info entries:");
-      s = format_newline (s, indent + 2);
-      s = format (s, "%U", format_table, &packages);
+      styled_text_add (st, "\nPackage info entries:\n  %T", format_styled_table, &packages);
       table_free (&packages);
     }
 
@@ -280,15 +289,9 @@ format_ice_dev_info (u8 *s, va_list *args)
     }
 
   if (mdd_row)
-    {
-      s = format_newline (s, indent);
-      s = format (s, "MDD TX events:");
-      s = format_newline (s, indent + 2);
-      s = format (s, "%U", format_table, &mdd);
-      table_free (&mdd);
-    }
-  else
-    table_free (&mdd);
+    styled_text_add (st, "\nMDD TX events:\n  %T", format_styled_table, &mdd);
+
+  table_free (&mdd);
 
   if (tdpuc.malformed_length || tdpuc.malformed_command || tdpuc.ttl_drop ||
       tdpuc.unsupported_request_drop || tdpuc.big_packet_size || tdpuc.l2_accept_fail ||
@@ -320,10 +323,7 @@ format_ice_dev_info (u8 *s, va_list *args)
       table_format_cell (&status, 9, 1, "%u", tdpuc.nic_dsi);
       table_format_cell (&status, 10, 0, "NIC IPsec");
       table_format_cell (&status, 10, 1, "%u", tdpuc.nic_ipsec);
-      s = format_newline (s, indent);
-      s = format (s, "TDPU status:");
-      s = format_newline (s, indent + 2);
-      s = format (s, "%U", format_table, &status);
+      styled_text_add (st, "\nTDPU status:\n  %T", format_styled_table, &status);
       table_free (&status);
     }
 
@@ -373,10 +373,7 @@ format_ice_dev_info (u8 *s, va_list *args)
   table_format_cell (&aq, 1, 3, "%u", ice_reg_read (dev, ICE_PF_FW_ARQH));
   table_format_cell (&aq, 1, 4, "%u", ice_reg_read (dev, ICE_PF_FW_ARQT));
   table_format_cell (&aq, 1, 5, "%u", arq_len.enable);
-  s = format_newline (s, indent);
-  s = format (s, "AdminQ rings:");
-  s = format_newline (s, indent + 2);
-  s = format (s, "%U", format_table, &aq);
+  styled_text_add (st, "\nAdminQ rings:\n  %T", format_styled_table, &aq);
   table_free (&aq);
 
   if (vec_len (ip->vsi.sw_rules))
@@ -406,21 +403,15 @@ format_ice_dev_info (u8 *s, va_list *args)
 	    table_format_cell (&rules, i, 7, "-");
 	}
 
-      s = format_newline (s, indent);
-      s = format (s, "Programmed switch rules:");
-      s = format_newline (s, indent + 2);
-      s = format (s, "%U", format_table, &rules);
+      styled_text_add (st, "\nProgrammed switch rules:\n  %T", format_styled_table, &rules);
       table_free (&rules);
     }
-
-  return s;
 }
 
-static u8 *
-format_ice_port_diagnostics (u8 *s, va_list *args)
+static void
+styled_format_ice_port_diagnostics (styled_text_t *st, va_list *args)
 {
   ice_port_status_t *status = va_arg (*args, ice_port_status_t *);
-  u32 indent = format_get_indent (s);
   static const char *lane_speeds[] = {
     "100M", "1G", "2.5G", "5G", "10G", "25G", "50G", "100G", "200G", "40G",
   };
@@ -428,27 +419,31 @@ format_ice_port_diagnostics (u8 *s, va_list *args)
   table_t options = {};
 
   if (status->link_rv != VNET_DEV_OK)
-    s = format (s, "Link diagnostics unavailable: %U", format_vnet_dev_rv, status->link_rv);
+    ice_styled_add_unavailable (st, "Link diagnostics", status->link_rv);
   else
     {
       u8 faults = 0;
-      s = format (s, "Link: %s, media %s, signal %s, max frame %u",
-		  link->link_info.link_up ? "up" : "down",
-		  link->link_info.media_available ? "present" : "absent",
-		  link->link_info.signal_detect ? "detected" : "absent", link->max_frame_size);
-      s = format (
-	format_newline (s, indent), "Autonegotiation: %s, partner ability %u, pause TX %u RX %u",
+
+      styled_text_add_marked (
+	st, ST_R_VALUE, "Link: %{%s%}, media %{%s%}, signal %{%s%}, max frame %{%u%}",
+	link->link_info.link_up ? "up" : "down",
+	link->link_info.media_available ? "present" : "absent",
+	link->link_info.signal_detect ? "detected" : "absent", link->max_frame_size);
+      styled_text_add_marked (
+	st, ST_R_VALUE,
+	"\nAutonegotiation: %{%s%}, partner ability %{%u%}, pause TX %{%u%} RX %{%u%}",
 	link->an_info.completed ? "complete" : "incomplete", link->an_info.link_partner_ability,
 	link->an_info.pause_tx, link->an_info.pause_rx);
-      s = format (format_newline (s, indent),
-		  "Active FEC: enabled %u, BASE-R %u, RS-528 %u, RS-544 %u, RS-272 %u",
-		  link->an_info.fec_enabled, link->cfg.kr_25g_fec, link->cfg.rs_528_fec,
-		  link->cfg.rs_544_fec, link->ext_fec_status.rs_272_fec);
-      s = format (format_newline (s, indent), "Link faults:");
+      styled_text_add_marked (
+	st, ST_R_VALUE, "\nActive FEC: enabled %{%u%}, BASE-R %{%u%}, RS-528 %{%u%}",
+	link->an_info.fec_enabled, link->cfg.kr_25g_fec, link->cfg.rs_528_fec);
+      styled_text_add_marked (st, ST_R_VALUE, ", RS-544 %{%u%}, RS-272 %{%u%}",
+			      link->cfg.rs_544_fec, link->ext_fec_status.rs_272_fec);
+      styled_text_add (st, "\nLink faults:");
 #define _(member, label)                                                                           \
   if (link->member)                                                                                \
     {                                                                                              \
-      s = format (s, " %s", label);                                                                \
+      styled_text_add_marked (st, ST_R_ERROR, " %{%s%}", label);                                   \
       faults = 1;                                                                                  \
     }
       _ (link_info.link_fault, "link")
@@ -472,14 +467,14 @@ format_ice_port_diagnostics (u8 *s, va_list *args)
       _ (link_cfg_err.invalid_max_power_limit, "invalid-power-limit")
 #undef _
       if (!faults)
-	s = format (s, " none");
-
-      s = format_word_wrap_last_line (s, 100);
+	styled_text_add_marked (st, ST_R_VALUE, " %{none%}");
     }
 
   if (status->options_rv != VNET_DEV_OK)
-    return format (format_newline (s, indent), "Port options unavailable: %U", format_vnet_dev_rv,
-		   status->options_rv);
+    {
+      ice_styled_add_unavailable (st, "\nPort options", status->options_rv);
+      return;
+    }
 
   table_add_hdr_col (&options, 1, "");
   table_add_hdr_row (&options, 6, "option", "active", "pending", "PMDs", "PMD width",
@@ -510,44 +505,36 @@ format_ice_port_diagnostics (u8 *s, va_list *args)
 	table_format_cell (&options, i, 4, "unknown (%u)", p->max_lane_speed);
     }
 
-  s = format_newline (s, indent);
-  s = format (s, "Port options:");
-  s = format_newline (s, indent + 2);
-  s = format (s, "%U", format_table, &options);
+  styled_text_add (st, "\nPort options:\n  %T", format_styled_table, &options);
   table_free (&options);
-  return s;
 }
 
-u8 *
-format_ice_port_status (u8 *s, va_list *args)
+void
+styled_format_ice_port_status (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
   ice_port_t *ip = vnet_dev_get_port_data (port);
-  u32 indent = format_get_indent (s);
   ice_port_status_t status = {
     .lport = ip->lport,
   };
   vnet_dev_rv_t rv;
 
-  s = format (s, "vsi %u, lport %u", ip->vsi.num, ip->lport);
+  styled_text_add_marked (st, ST_R_VALUE, "vsi %{%u%}, lport %{%u%}", ip->vsi.num, ip->lport);
   rv = vnet_dev_process_call_op_with_ptr (vlib_get_main (), port->dev, ice_aq_get_port_status,
 					  &status);
 
   if (rv == VNET_DEV_OK)
-    s = format (format_newline (s, indent), "%U", format_ice_port_diagnostics, &status);
+    styled_text_add (st, "\n%T", styled_format_ice_port_diagnostics, &status);
   else
-    s = format (format_newline (s, indent), "Port diagnostics unavailable: %U", format_vnet_dev_rv,
-		rv);
+    ice_styled_add_unavailable (st, "\nPort diagnostics", rv);
 
-  if (a->debug == 0)
-    return s;
-
-  return format (format_newline (s, indent), "%U", format_ice_vsi_summary, port);
+  if (a->debug)
+    styled_text_add (st, "\n%T", styled_format_ice_vsi_summary, port);
 }
 
-u8 *
-format_ice_rx_queue_info (u8 *s, va_list *args)
+void
+styled_format_ice_rx_queue_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_rx_queue_t *rxq = va_arg (*args, vnet_dev_rx_queue_t *);
@@ -557,18 +544,20 @@ format_ice_rx_queue_info (u8 *s, va_list *args)
   u16 q = rxq->queue_id;
 
   if (a->debug == 0)
-    return s;
+    return;
 
   ctrl.as_u32 = ice_reg_read (dev, ICE_QRX_CTRL (q));
 
   for (u32 i = 0; i < ARRAY_LEN (ctx.as_u32); i++)
     ctx.as_u32[i] = ice_reg_read (dev, ICE_QRX_CONTEXT (i, q));
 
-  return format (s,
-		 "hw queue ID is %u, enabled %u, head %u, descriptors %u, buffer size %u, "
-		 "max frame %u, CRC strip %u, L2 %u, prefetch %u",
-		 q, ctrl.enable_status, ctx.head, ctx.qlen, ctx.dbuf << 7, ctx.rxmax, ctx.crcstrip,
-		 ctx.l2tsel, ctx.prefena);
+  styled_text_add_marked (st, ST_R_VALUE, "hw queue ID is %{%u%}, enabled %{%u%}, head %{%u%}", q,
+			  ctrl.enable_status, ctx.head);
+  styled_text_add_marked (st, ST_R_VALUE,
+			  ", descriptors %{%u%}, buffer size %{%u%}, max frame %{%u%}", ctx.qlen,
+			  ctx.dbuf << 7, ctx.rxmax);
+  styled_text_add_marked (st, ST_R_VALUE, ", CRC strip %{%u%}, L2 %{%u%}, prefetch %{%u%}",
+			  ctx.crcstrip, ctx.l2tsel, ctx.prefena);
 }
 
 u8 *
@@ -665,8 +654,8 @@ ice_read_tx_queue_context (vlib_main_t *vm, vnet_dev_t *dev, void *data)
   return VNET_DEV_OK;
 }
 
-u8 *
-format_ice_tx_queue_info (u8 *s, va_list *args)
+void
+styled_format_ice_tx_queue_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_tx_queue_t *txq = va_arg (*args, vnet_dev_tx_queue_t *);
@@ -680,28 +669,36 @@ format_ice_tx_queue_info (u8 *s, va_list *args)
   vnet_dev_rv_t rv;
 
   if (a->debug == 0)
-    return s;
+    return;
 
-  s = format (s, "hw queue ID is %u", q);
+  styled_text_add_marked (st, ST_R_VALUE, "hw queue ID is %{%u%}", q);
 
   if (!iq->started)
-    return format (s, ", queue not started");
+    {
+      styled_text_add (st, ", queue not started");
+      return;
+    }
 
   hw_head.as_u32 = ice_reg_read (txq->port->dev, ICE_QTX_COMM_HEAD (q));
 
   if (iq->head != iq->tail)
     head_cmd = iq->descs[iq->head & (txq->size - 1)].cmd;
 
-  s = format (s, ", head %u, tail %u, hw head %u, descriptor type %u", iq->head, iq->tail,
-	      hw_head.head, head_cmd.descriptor_type);
+  styled_text_add_marked (st, ST_R_VALUE,
+			  ", head %{%u%}, tail %{%u%}, hw head %{%u%}, descriptor type %{%u%}",
+			  iq->head, iq->tail, hw_head.head, head_cmd.descriptor_type);
 
   rv = vnet_dev_process_call_op_with_ptr (vlib_get_main (), txq->port->dev,
 					  ice_read_tx_queue_context, &query);
   if (rv != VNET_DEV_OK)
-    return format (s, ", context unavailable: %U", format_vnet_dev_rv, rv);
+    {
+      ice_styled_add_unavailable (st, ", context", rv);
+      return;
+    }
 
-  return format (s, ", descriptors %u, TSO %u, legacy interrupt %u", query.ctx.qlen,
-		 query.ctx.tso_ena, query.ctx.legacy_int);
+  styled_text_add_marked (st, ST_R_VALUE,
+			  ", descriptors %{%u%}, TSO %{%u%}, legacy interrupt %{%u%}",
+			  query.ctx.qlen, query.ctx.tso_ena, query.ctx.legacy_int);
 }
 
 u8 *

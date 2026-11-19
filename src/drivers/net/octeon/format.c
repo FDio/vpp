@@ -9,10 +9,9 @@
 #include <vnet/dev/dev.h>
 #include <octeon.h>
 
-u8 *
-format_oct_port_status (u8 *s, va_list *args)
+void
+styled_format_oct_port_status (styled_text_t *st __clib_unused, va_list *args __clib_unused)
 {
-  return s;
 }
 
 u8 *
@@ -163,8 +162,8 @@ format_oct_tx_trace (u8 *s, va_list *args)
   return s;
 }
 
-u8 *
-format_oct_port_flow (u8 *s, va_list *args)
+void
+styled_format_oct_port_flow (styled_text_t *st, va_list *args)
 {
   vlib_main_t *vm = vlib_get_main ();
   vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
@@ -173,10 +172,10 @@ format_oct_port_flow (u8 *s, va_list *args)
   u64 hits;
 
   if (flow_index == ~0)
-    return s;
+    return;
 
   if (oct_flow_query (vm, port, flow_index, flow_entry_index, &hits) == VNET_DEV_OK)
-    s = format (s, "flow (%u) hit count: %lu", flow_index, hits);
-
-  return s;
+    {
+      styled_text_add_marked (st, ST_R_VALUE, "flow (%{%u%}) hit count: %{%lu%}", flow_index, hits);
+    }
 }

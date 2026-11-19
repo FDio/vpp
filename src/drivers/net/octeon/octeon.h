@@ -156,10 +156,10 @@ typedef struct
 extern oct_main_t oct_main;
 
 /* format.c */
-format_function_t format_oct_port_status;
+styled_format_fn_t styled_format_oct_port_status;
 format_function_t format_oct_rx_trace;
 format_function_t format_oct_tx_trace;
-format_function_t format_oct_port_flow;
+styled_format_fn_t styled_format_oct_port_flow;
 
 /* port.c */
 vnet_dev_rv_t oct_port_init (vlib_main_t *, vnet_dev_port_t *);
@@ -181,8 +181,8 @@ vnet_dev_rv_t oct_txq_init (vlib_main_t *, vnet_dev_tx_queue_t *);
 void oct_rxq_deinit (vlib_main_t *, vnet_dev_rx_queue_t *);
 int oct_drain_queue (vlib_main_t *vm, vnet_dev_rx_queue_t *rxq);
 void oct_txq_deinit (vlib_main_t *, vnet_dev_tx_queue_t *);
-format_function_t format_oct_rxq_info;
-format_function_t format_oct_txq_info;
+styled_format_fn_t styled_format_oct_rxq_info;
+styled_format_fn_t styled_format_oct_txq_info;
 
 /* flow.c */
 vnet_dev_rv_t oct_flow_ops_fn (vlib_main_t *, vnet_dev_port_t *, vnet_dev_port_cfg_type_t, u32);

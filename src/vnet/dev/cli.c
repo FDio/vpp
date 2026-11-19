@@ -445,6 +445,7 @@ show_devices_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
   cli_value_t *v;
 
   fa.plain_text = ctx->plain_text_only;
+  fa.width = ctx->terminal_width;
 
   if ((v = cli_get (ctx, "debug-level")))
     fa.debug = v->u64;
@@ -453,29 +454,29 @@ show_devices_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 
   vec_foreach_pointer (dev, devs)
     {
-      vlib_cli_output (vm, "device '%s':", dev->device_id);
+      vlib_cli_output (vm, "device '%U':", format_vnet_dev_value, a, "%s", dev->device_id);
       vlib_cli_output (vm, "  %U", format_vnet_dev_info, a, dev);
       foreach_vnet_dev_port (p, dev)
 	{
-	  vlib_cli_output (vm, "  Port %u:", p->port_id);
+	  vlib_cli_output (vm, "  Port %U:", format_vnet_dev_value, a, "%u", p->port_id);
 	  vlib_cli_output (vm, "    %U", format_vnet_dev_port_info, a, p);
 
 	  foreach_vnet_dev_port_rx_queue (q, p)
 	    {
-	      vlib_cli_output (vm, "    RX queue %u:", q->queue_id);
+	      vlib_cli_output (vm, "    RX queue %U:", format_vnet_dev_value, a, "%u", q->queue_id);
 	      vlib_cli_output (vm, "      %U", format_vnet_dev_rx_queue_info, a, q);
 	    }
 
 	  foreach_vnet_dev_port_tx_queue (q, p)
 	    {
-	      vlib_cli_output (vm, "    TX queue %u:", q->queue_id);
+	      vlib_cli_output (vm, "    TX queue %U:", format_vnet_dev_value, a, "%u", q->queue_id);
 	      vlib_cli_output (vm, "      %U", format_vnet_dev_tx_queue_info, a, q);
 	    }
 	}
 
       vec_foreach_pointer (cq, dev->crypto_queues)
 	{
-	  vlib_cli_output (vm, "  Crypto queue %u:", cq->index);
+	  vlib_cli_output (vm, "  Crypto queue %U:", format_vnet_dev_value, a, "%u", cq->index);
 	  vlib_cli_output (vm, "    %U", format_vnet_dev_crypto_queue_info, a, cq);
 	}
     }
@@ -499,26 +500,29 @@ static clib_error_t *
 show_device_counters_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vnet_dev_format_args_t fa = { .show_zero_counters = cli_flag (ctx, "all"),
-				.clear = cli_flag (ctx, "clear") };
+				.clear = cli_flag (ctx, "clear"),
+				.plain_text = ctx->plain_text_only };
   vnet_dev_t **devs = dev_vector_from_ctx (ctx);
 
   vec_foreach_pointer (dev, devs)
     {
-      vlib_cli_output (vm, "device '%s':", dev->device_id);
+      vlib_cli_output (vm, "device '%U':", format_vnet_dev_value, &fa, "%s", dev->device_id);
       foreach_vnet_dev_port (p, dev)
 	{
-	  vlib_cli_output (vm, "  Port %u:", p->port_id);
+	  vlib_cli_output (vm, "  Port %U:", format_vnet_dev_value, &fa, "%u", p->port_id);
 	  vlib_cli_output (vm, "    %U", format_vnet_dev_counters, &fa, p->counter_main);
 
 	  foreach_vnet_dev_port_rx_queue (q, p)
 	    {
-	      vlib_cli_output (vm, "    RX queue %u:", q->queue_id);
+	      vlib_cli_output (vm, "    RX queue %U:", format_vnet_dev_value, &fa, "%u",
+			       q->queue_id);
 	      vlib_cli_output (vm, "      %U", format_vnet_dev_counters, &fa, q->counter_main);
 	    }
 
 	  foreach_vnet_dev_port_tx_queue (q, p)
 	    {
-	      vlib_cli_output (vm, "    TX queue %u:", q->queue_id);
+	      vlib_cli_output (vm, "    TX queue %U:", format_vnet_dev_value, &fa, "%u",
+			       q->queue_id);
 	      vlib_cli_output (vm, "      %U", format_vnet_dev_counters, &fa, q->counter_main);
 	    }
 	  if (fa.clear)
@@ -527,7 +531,7 @@ show_device_counters_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 
       vec_foreach_pointer (cq, dev->crypto_queues)
 	{
-	  vlib_cli_output (vm, "  Crypto queue %u:", cq->index);
+	  vlib_cli_output (vm, "  Crypto queue %U:", format_vnet_dev_value, &fa, "%u", cq->index);
 	  vlib_cli_output (vm, "    %U", format_vnet_dev_crypto_queue_counters, &fa, cq);
 	  if (fa.clear)
 	    vnet_dev_crypto_queue_clear_counters (cq);
@@ -633,8 +637,12 @@ show_device_drivers_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
       return cli_emit_table (ctx, &j, show_device_drivers_columns);
     }
 
-  vlib_cli_output (vm, "%U", format_table, t);
+  styled_text_t st = { .output = ctx->plain_text_only ? ST_O_PLAIN : ST_O_UNKNOWN };
 
+  styled_text_add (&st, "%T", format_styled_table, t);
+  vlib_cli_output (vm, "%U", format_styled_text, &st);
+
+  styled_text_free (&st);
   table_free (t);
   return 0;
 }

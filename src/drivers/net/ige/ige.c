@@ -203,7 +203,7 @@ ige_init (vlib_main_t *vm, vnet_dev_t *dev)
         .deinit = ige_port_deinit,
         .start = ige_port_start,
         .stop = ige_port_stop,
-        .format_status = format_ige_port_status,
+        .styled_format_status = styled_format_ige_port_status,
         .config_change = ige_port_cfg_change,
         .config_change_validate = ige_port_cfg_change_validate,
       },

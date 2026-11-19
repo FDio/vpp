@@ -142,72 +142,79 @@ format_qat_capabilities (u8 *s, va_list *args)
   return s;
 }
 
-u8 *
-format_qat_dev_info (u8 *s, va_list *args)
+void
+styled_format_qat_dev_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
   qat_device_t *qd = vnet_dev_get_data (dev);
   qat_blkmsg_caps_t *caps = &qd->caps;
   vlib_main_t *vm = vlib_get_main ();
-  u32 indent = format_get_indent (s);
   vlib_pci_config_hdr_t cfg = {};
   clib_error_t *err;
 
-  s = format (s, "PF/VF protocol version %u", qd->pf_version);
+  styled_text_add_marked (st, ST_R_VALUE, "PF/VF protocol version %{%u%}", qd->pf_version);
 
-  s = format_newline (s, indent);
   if (caps->len < QAT_BLKMSG_CAPS_V2_LEN)
-    s = format (s, "capabilities: not provided by PF");
+    styled_text_add_marked (st, ST_R_VALUE, "\ncapabilities: %{not provided by PF%}");
   else
-    s = format (s, "capabilities: %U", format_qat_capabilities, caps->capabilities);
+    styled_text_add_marked (st, ST_R_VALUE, "\ncapabilities: %{%U%}", format_qat_capabilities,
+			    caps->capabilities);
 
   if (caps->len >= QAT_BLKMSG_CAPS_V3_LEN)
-    {
-      s = format_newline (s, indent);
-      s = format (s, "engine clock: %u MHz", caps->frequency / 1000000);
-    }
+    styled_text_add_marked (st, ST_R_VALUE, "\nengine clock: %{%u MHz%}",
+			    caps->frequency / 1000000);
 
-  s = format_newline (s, indent);
   if (qd->gen == QAT_GEN2)
     {
-      s = format (s, "symmetric crypto rings:");
+      styled_text_add (st, "\nsymmetric crypto rings:");
       for (u32 i = 0; i < qd->n_sym_ring_pairs; i++)
-	s = format (s, " %u/%u", qd->sym_ring_pairs[i].tx_ring, qd->sym_ring_pairs[i].rx_ring);
+	styled_text_add_marked (st, ST_R_VALUE, " %{%u/%u%}", qd->sym_ring_pairs[i].tx_ring,
+				qd->sym_ring_pairs[i].rx_ring);
     }
   else
-    s = format (s, "ring pairs: %U", format_qat_ring_to_svc_map, qd->ring_to_svc_map.as_u16);
+    styled_text_add_marked (st, ST_R_VALUE, "\nring pairs: %{%U%}", format_qat_ring_to_svc_map,
+			    qd->ring_to_svc_map.as_u16);
 
   if (a->debug == 0)
-    return s;
+    return;
 
-  s = format_newline (s, indent);
   err = vlib_pci_read_write_config (vm, vnet_dev_get_pci_handle (dev), VLIB_READ, 0, &cfg,
 				    sizeof (cfg));
   if (err)
     {
-      s = format (s, "PCI config read failed: %U", format_clib_error, err);
+      styled_text_add_marked (st, ST_R_ERROR, "\nPCI config read failed: %{%U%}", format_clib_error,
+			      err);
       clib_error_free (err);
     }
   else
-    s = format (s, "PCI device %04x:%04x, command 0x%04x, status 0x%04x", cfg.vendor_id,
-		cfg.device_id, cfg.command.as_u16, cfg.status.as_u16);
-  if (qd->gen != QAT_GEN2)
     {
-      s = format_newline (s, indent);
-      s = format (s, "ring to service map 0x%04x", qd->ring_to_svc_map.as_u16);
+      styled_text_add_marked (st, ST_R_VALUE,
+			      "\nPCI device %{%04x:%04x%}, command %{0x%04x%}, status %{0x%04x%}",
+			      cfg.vendor_id, cfg.device_id, cfg.command.as_u16, cfg.status.as_u16);
     }
-  s = format_newline (s, indent);
-  s = format (s,
-	      "capability summary: version %u length %u capabilities 0x%08x ext-dc 0x%08x "
-	      "frequency %u",
-	      caps->version, caps->len, caps->capabilities, caps->ext_dc_caps, caps->frequency);
-  s = format_newline (s, indent);
+
+  if (qd->gen != QAT_GEN2)
+    styled_text_add_marked (st, ST_R_VALUE, "\nring to service map %{0x%04x%}",
+			    qd->ring_to_svc_map.as_u16);
+
+  styled_text_add_marked (
+    st, ST_R_VALUE, "\ncapability summary: version %{%u%} length %{%u%} capabilities %{0x%08x%}",
+    caps->version, caps->len, caps->capabilities);
+  styled_text_add_marked (st, ST_R_VALUE, " ext-dc %{0x%08x%} frequency %{%u%}", caps->ext_dc_caps,
+			  caps->frequency);
+
   if (qd->gen == QAT_GEN2)
-    return format (s, "mailbox: 0x%08x", qat_reg_read (qd->bar2, QAT_GEN2_VF_PFVF));
-  return format (s, "mailbox: pf2vm 0x%08x vm2pf 0x%08x",
-		 qat_reg_read (qd->bar2, QAT_GEN4_VF_PF2VM),
-		 qat_reg_read (qd->bar2, QAT_GEN4_VF_VM2PF));
+    {
+      styled_text_add_marked (st, ST_R_VALUE, "\nmailbox: %{0x%08x%}",
+			      qat_reg_read (qd->bar2, QAT_GEN2_VF_PFVF));
+      return;
+    }
+
+  styled_text_add_marked (st, ST_R_VALUE, "\nmailbox: pf2vm %{0x%08x%}",
+			  qat_reg_read (qd->bar2, QAT_GEN4_VF_PF2VM));
+  styled_text_add_marked (st, ST_R_VALUE, " vm2pf %{0x%08x%}",
+			  qat_reg_read (qd->bar2, QAT_GEN4_VF_VM2PF));
 }
 
 u8 *
@@ -231,15 +238,14 @@ format_qat_ring_csrs (u8 *s, va_list *args)
 }
 
 /* called from the device process */
-u8 *
-format_qat_queue_info (u8 *s, va_list *args)
+void
+styled_format_qat_queue_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_crypto_queue_t *cq = va_arg (*args, vnet_dev_crypto_queue_t *);
   qat_queue_t *q = vnet_dev_get_crypto_queue_data (cq);
   qat_device_t *qd = vnet_dev_get_data (cq->dev);
   qat_ring_pair_t *rp = &q->rp;
-  u32 indent = format_get_indent (s);
   u32 tx_head =
     qat_reg_read (qd->bar0, qat_bank_reg (qd, rp->bank, QAT_RING_CSR_HEAD (rp->tx_ring)));
   u32 tx_tail =
@@ -251,23 +257,25 @@ format_qat_queue_info (u8 *s, va_list *args)
   u32 tx_sz = cq->size * QAT_TX_MSG_SIZE, rx_sz = cq->size * QAT_RX_MSG_SIZE;
 
   if (qd->gen == QAT_GEN2)
-    s = format (s, "rings %u/%u", rp->tx_ring, rp->rx_ring);
+    styled_text_add_marked (st, ST_R_VALUE, "rings %{%u/%u%}", rp->tx_ring, rp->rx_ring);
   else
-    s = format (s, "ring pair %u", rp->bank);
-  s = format (s, ", %u requests pending in hardware, %u responses not consumed",
-	      ((tx_tail - tx_head) & (tx_sz - 1)) / QAT_TX_MSG_SIZE,
-	      ((rx_tail - rx_head) & (rx_sz - 1)) / QAT_RX_MSG_SIZE);
+    styled_text_add_marked (st, ST_R_VALUE, "ring pair %{%u%}", rp->bank);
+
+  styled_text_add_marked (st, ST_R_VALUE,
+			  ", %{%u%} requests pending in hardware, %{%u%} responses not consumed",
+			  ((tx_tail - tx_head) & (tx_sz - 1)) / QAT_TX_MSG_SIZE,
+			  ((rx_tail - rx_head) & (rx_sz - 1)) / QAT_RX_MSG_SIZE);
 
   if (a->debug == 0)
-    return s;
+    return;
 
-  s = format_newline (s, indent);
-  s = format (s, "tx: %U", format_qat_ring_csrs, qd, rp->bank, rp->tx_ring);
-  s = format_newline (s, indent);
-  s = format (s, "rx: %U", format_qat_ring_csrs, qd, rp->bank, rp->rx_ring);
-  s = format_newline (s, indent);
-  return format (s, "arbiter enable 0x%x",
-		 qat_reg_read (qd->bar0, qat_bank_reg (qd, rp->bank, QAT_RING_CSR_SRV_ARB_EN)));
+  styled_text_add_marked (st, ST_R_VALUE, "\ntx: %{%U%}", format_qat_ring_csrs, qd, rp->bank,
+			  rp->tx_ring);
+  styled_text_add_marked (st, ST_R_VALUE, "\nrx: %{%U%}", format_qat_ring_csrs, qd, rp->bank,
+			  rp->rx_ring);
+  styled_text_add_marked (
+    st, ST_R_VALUE, "\narbiter enable %{0x%x%}",
+    qat_reg_read (qd->bar0, qat_bank_reg (qd, rp->bank, QAT_RING_CSR_SRV_ARB_EN)));
 }
 
 u8 *
@@ -278,6 +286,7 @@ format_qat_ring_dump (u8 *s, va_list *args)
   qat_queue_t *q = vnet_dev_get_crypto_queue_data (cq);
   qat_device_t *qd = vnet_dev_get_data (cq->dev);
   vnet_dev_format_args_t fa = { .debug = 1 };
+  styled_text_t st = { .output = ST_O_PLAIN };
   u32 tx_tail, rx_head;
 
   tx_tail =
@@ -288,7 +297,9 @@ format_qat_ring_dump (u8 *s, va_list *args)
   rx_head /= QAT_RX_MSG_SIZE;
   count = clib_min (count, cq->size);
 
-  s = format (s, "%U", format_qat_queue_info, &fa, cq);
+  styled_text_add (&st, "%T", styled_format_qat_queue_info, &fa, cq);
+  s = format (s, "%U", format_styled_text, &st);
+  styled_text_free (&st);
 
   s = format (s, "\nlast %u requests before hardware tail:", count);
   for (u32 i = count; i > 0; i--)

@@ -61,8 +61,8 @@ format_sfp_encoding (u8 *s, va_list *args)
   return format (s, "%s", t);
 }
 
-u8 *
-format_sfp_eeprom_base (u8 *s, va_list *args)
+static void
+styled_format_sfp_eeprom_base (styled_text_t *st, va_list *args)
 {
   sfp_eeprom_t *se = va_arg (*args, sfp_eeprom_t *);
   u8 is_terse = va_arg (*args, u32);
@@ -256,38 +256,101 @@ format_sfp_eeprom_base (u8 *s, va_list *args)
       row++;
     }
 
-  s = format (s, "%U", format_table, &table);
+  styled_text_add (st, "%T", format_styled_table, &table);
   table_free (&table);
-  return s;
+}
+
+__clib_export void
+styled_format_sfp_eeprom_module (styled_text_t *st, va_list *args)
+{
+  vnet_interface_eeprom_t *eeprom = va_arg (*args, vnet_interface_eeprom_t *);
+  u8 is_terse = va_arg (*args, u32);
+  sfp_eeprom_t *se = (sfp_eeprom_t *) eeprom->eeprom_raw;
+
+  if (eeprom->eeprom_type == VNET_INTERFACE_EEPROM_TYPE_SFF8636 ||
+      eeprom->eeprom_type == VNET_INTERFACE_EEPROM_TYPE_SFF8436)
+    se = (sfp_eeprom_t *) (eeprom->eeprom_raw + 0x80);
+
+  styled_text_add (st, "%T", styled_format_sfp_eeprom_base, se, is_terse, eeprom->eeprom_type);
 }
 
 u8 *
 format_sfp_eeprom_module (u8 *s, va_list *args)
 {
   vnet_interface_eeprom_t *eeprom = va_arg (*args, vnet_interface_eeprom_t *);
-  u8 is_terse = va_arg (*args, u32);
-  sfp_eeprom_t *se = (sfp_eeprom_t *) eeprom->eeprom_raw;
-  if (eeprom->eeprom_type == VNET_INTERFACE_EEPROM_TYPE_SFF8636 ||
-      eeprom->eeprom_type == VNET_INTERFACE_EEPROM_TYPE_SFF8436)
-    se = (sfp_eeprom_t *) (eeprom->eeprom_raw + 0x80);
+  u32 is_terse = va_arg (*args, u32);
+  styled_text_t st = {};
 
-  return format (s, "%U", format_sfp_eeprom_base, se, is_terse, eeprom->eeprom_type);
+  styled_text_add (&st, "%T", styled_format_sfp_eeprom_module, eeprom, is_terse);
+  s = format (s, "%U", format_styled_text, &st);
+  styled_text_free (&st);
+
+  return s;
 }
 
 u8 *
-format_sfp_eeprom_diagnostics (u8 *s, va_list *args)
+format_sfp_temperature (u8 *s, va_list *args)
+{
+  f64 v = va_arg (*args, f64);
+
+  return format (s, "%.2f °C", v);
+}
+
+u8 *
+format_sfp_voltage (u8 *s, va_list *args)
+{
+  f64 v = va_arg (*args, f64);
+
+  return format (s, "%.4f V", v);
+}
+
+u8 *
+format_sfp_current (u8 *s, va_list *args)
+{
+  f64 v = va_arg (*args, f64);
+
+  return format (s, "%.2f mA", v);
+}
+
+u8 *
+format_sfp_power (u8 *s, va_list *args)
+{
+  f64 v = va_arg (*args, f64);
+
+  return format (s, "%.4f mW (%.2f dBm)", v, sfp_sff_mw_to_dbm (v));
+}
+
+void
+styled_sfp_add_value (styled_text_t *st, u32 indent, char *label, format_function_t *f, f64 value)
+{
+  styled_text_add_marked (st, ST_R_VALUE, "\n%U%s: %{%U%}", format_white_space, indent, label, f,
+			  value);
+}
+
+void
+styled_sfp_add_range (styled_text_t *st, u32 indent, char *label, format_function_t *f, f64 high,
+		      f64 low)
+{
+  styled_text_add_marked (st, ST_R_VALUE, "\n%U%s High: %{%U%}, Low: %{%U%}", format_white_space,
+			  indent, label, f, high, f, low);
+}
+
+void
+styled_format_sfp_eeprom_diagnostics (styled_text_t *st, va_list *args)
 {
   vnet_interface_eeprom_t *eeprom = va_arg (*args, vnet_interface_eeprom_t *);
-  u8 is_terse = va_arg (*args, u32);
+  u32 is_terse = va_arg (*args, u32);
 
   switch (eeprom->eeprom_type)
     {
     case VNET_INTERFACE_EEPROM_TYPE_SFF8472:
-      return format (s, "%U", format_sff8472_diagnostics, eeprom, is_terse);
+      styled_text_add (st, "%T", styled_format_sff8472_diagnostics, eeprom, is_terse);
+      break;
     case VNET_INTERFACE_EEPROM_TYPE_SFF8436:
     case VNET_INTERFACE_EEPROM_TYPE_SFF8636:
-      return format (s, "%U", format_sff8636_diagnostics, eeprom, is_terse);
+      styled_text_add (st, "%T", styled_format_sff8636_diagnostics, eeprom, is_terse);
+      break;
     default:
-      return format (s, "not available");
+      styled_text_add (st, "not available");
     }
 }

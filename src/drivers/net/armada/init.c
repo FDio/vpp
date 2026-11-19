@@ -424,7 +424,7 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
             .stop = mvpp2_port_stop,
             .config_change = mvpp2_port_cfg_change,
             .config_change_validate = mvpp2_port_cfg_change_validate,
-            .format_status = format_mvpp2_port_status,
+            .styled_format_status = styled_format_mvpp2_port_status,
 	    .clear_counters = mvpp2_port_clear_counters,
           },
           .data_size = sizeof (mvpp2_port_t),
@@ -443,7 +443,7 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
       },
       .ops = {
 	  .clear_counters = mvpp2_rxq_clear_counters,
-	  .format_info = format_mvpp2_rxq_info,
+	  .styled_format_info = styled_format_mvpp2_rxq_info,
       },
     },
     .tx_queue = {
@@ -459,7 +459,7 @@ mvpp2_init (vlib_main_t *vm, vnet_dev_t *dev)
 	  .alloc = mvpp2_txq_alloc,
 	  .free = mvpp2_txq_free,
 	  .clear_counters = mvpp2_txq_clear_counters,
-	  .format_info = format_mvpp2_txq_info,
+	  .styled_format_info = styled_format_mvpp2_txq_info,
       },
         },
       };
@@ -487,7 +487,7 @@ VNET_DEV_REGISTER_DRIVER (pp2) = {
       .init = mvpp2_init,
       .deinit = mvpp2_deinit,
       .probe = mvpp2_probe,
-      .format_info = format_mvpp2_dev_info,
+      .styled_format_info = styled_format_mvpp2_dev_info,
     },
   },
 };

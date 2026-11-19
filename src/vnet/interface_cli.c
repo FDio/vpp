@@ -2184,9 +2184,8 @@ VLIB_CLI_COMMAND (cmd_show_tx_hash, static) = {
 };
 
 static void
-show_interface_transceiver_output (vlib_main_t *vm, vnet_hw_interface_t *hi,
-				   u8 show_module, u8 show_diag,
-				   u8 show_eeprom, u8 is_terse)
+show_interface_transceiver_output (vlib_main_t *vm, cli_ctx_t *ctx, vnet_hw_interface_t *hi,
+				   u8 show_module, u8 show_diag, u8 show_eeprom, u8 is_terse)
 {
   clib_error_t *error = 0;
   vnet_main_t *vnm = vnet_get_main ();
@@ -2194,6 +2193,10 @@ show_interface_transceiver_output (vlib_main_t *vm, vnet_hw_interface_t *hi,
   vnet_interface_main_t *im = &vnm->interface_main;
   vnet_device_class_t *dc =
     vec_elt_at_index (im->device_classes, hi->dev_class_index);
+  styled_text_t st = {
+    .output = ctx->plain_text_only ? ST_O_PLAIN : ST_O_UNKNOWN,
+    .width = ctx->terminal_width,
+  };
   u32 hw_if_index;
 
   if (!dc->eeprom_read_function)
@@ -2220,9 +2223,9 @@ show_interface_transceiver_output (vlib_main_t *vm, vnet_hw_interface_t *hi,
       goto done;
     }
 
-  vlib_cli_output (vm, "Interface: %v", hi->name);
-  vlib_cli_output (vm, "  EEPROM Type: 0x%02x (%U)", eeprom->eeprom_type,
-		   format_vnet_interface_eeprom_type, eeprom->eeprom_type);
+  styled_text_add_marked (&st, ST_R_VALUE, "Interface: %{%v%}", hi->name);
+  styled_text_add_marked (&st, ST_R_VALUE, "\n  EEPROM Type: %{0x%02x (%U)%}", eeprom->eeprom_type,
+			  format_vnet_interface_eeprom_type, eeprom->eeprom_type);
 
   /* Default to module if none are set */
   if (!show_module && !show_diag && !show_eeprom)
@@ -2230,53 +2233,51 @@ show_interface_transceiver_output (vlib_main_t *vm, vnet_hw_interface_t *hi,
 
   if (show_eeprom)
     {
-      vlib_cli_output (vm, "  EEPROM Length: %u bytes", eeprom->eeprom_len);
-      vlib_cli_output (vm, "  EEPROM Data:");
+      styled_text_add_marked (&st, ST_R_VALUE, "\n  EEPROM Length: %{%u bytes%}",
+			      eeprom->eeprom_len);
+      styled_text_add (&st, "\n  EEPROM Data:");
 
-      /* Print hexdump */
+      /* Print hexdump, its columns have to stay in place */
+      styled_text_begin (&st, (styled_text_style_t) { .wrap = ST_A_OFF });
       for (u32 offset = 0; offset < eeprom->eeprom_len; offset += 16)
 	{
-	  u8 *line = format (0, "    %04x: ", offset);
+	  styled_text_add (&st, "\n    %04x: ", offset);
 
 	  /* Print hex bytes */
 	  for (u32 j = 0; j < 16 && (offset + j) < eeprom->eeprom_len; j++)
-	    {
-	      line = format (line, "%02x ", eeprom->eeprom_raw[offset + j]);
-	    }
+	    styled_text_add (&st, "%02x ", eeprom->eeprom_raw[offset + j]);
 
 	  /* Pad to align ASCII section */
-	  for (u32 j = (offset + 16 > eeprom->eeprom_len) ?
-			 eeprom->eeprom_len - offset :
-			 16;
+	  for (u32 j = (offset + 16 > eeprom->eeprom_len) ? eeprom->eeprom_len - offset : 16;
 	       j < 16; j++)
-	    {
-	      line = format (line, "   ");
-	    }
+	    styled_text_add (&st, "   ");
 
-	  line = format (line, " |");
+	  styled_text_add (&st, " |");
 
 	  /* Print ASCII representation */
 	  for (u32 j = 0; j < 16 && (offset + j) < eeprom->eeprom_len; j++)
 	    {
 	      u8 c = eeprom->eeprom_raw[offset + j];
-	      line = format (line, "%c", (c >= 32 && c <= 126) ? c : '.');
+	      styled_text_add (&st, "%c", (c >= 32 && c <= 126) ? c : '.');
 	    }
 
-	  line = format (line, "|");
-	  vlib_cli_output (vm, "%v", line);
-	  vec_free (line);
+	  styled_text_add (&st, "|");
 	}
+      styled_text_end (&st);
 
-      vlib_cli_output (vm, "");
+      /* an empty line follows the dump */
+      styled_text_add (&st, show_module || show_diag ? "\n" : "\n ");
     }
 
   if (show_module)
-    vlib_cli_output (vm, "  Module Base Information:\n%U%U", format_white_space, 4,
-		     format_sfp_eeprom_module, eeprom, is_terse);
+    styled_text_add (&st, "\n  Module Base Information:\n    %T", styled_format_sfp_eeprom_module,
+		     eeprom, is_terse);
 
   if (show_diag)
-    vlib_cli_output (vm, "  Module Diagnostics:\n%U%U", format_white_space, 4,
-		     format_sfp_eeprom_diagnostics, eeprom, is_terse);
+    styled_text_add (&st, "\n  Module Diagnostics:\n    %T", styled_format_sfp_eeprom_diagnostics,
+		     eeprom, is_terse);
+
+  vlib_cli_output (vm, "%U", format_styled_text, &st);
 
 done:
   if (error)
@@ -2286,6 +2287,7 @@ done:
     }
   if (eeprom)
     clib_mem_free (eeprom);
+  styled_text_free (&st);
 }
 
 static clib_error_t *
@@ -2320,7 +2322,8 @@ show_interface_transceiver (vlib_main_t *vm, cli_ctx_t *ctx)
     {
       hi = vnet_get_hw_interface_or_null (vnm, *idx);
       if (hi)
-	show_interface_transceiver_output (vm, hi, show_module, show_diag, show_eeprom, is_terse);
+	show_interface_transceiver_output (vm, ctx, hi, show_module, show_diag, show_eeprom,
+					   is_terse);
     }
   vec_free (hw_if_indices);
   return 0;
