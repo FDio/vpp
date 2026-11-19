@@ -246,6 +246,8 @@ tap_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	    args.tap_flags |= TAP_FLAG_IN_ORDER;
 	  else if (unformat (line_input, "consistent-qp"))
 	    args.tap_flags |= TAP_FLAG_CONSISTENT_QP;
+	  else if (unformat (line_input, "vdpa %s", &args.vdpa_path))
+	    ;
 	  else if (unformat (line_input, "hw-addr %U",
 			     unformat_ethernet_address, args.mac_addr.bytes))
 	    args.mac_addr_set = 1;
@@ -273,21 +275,21 @@ tap_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
   vec_free (args.host_if_name);
   vec_free (args.host_namespace);
   vec_free (args.host_bridge);
+  vec_free (args.vdpa_path);
 
   return args.error;
 }
 
 VLIB_CLI_COMMAND (tap_create_command, static) = {
   .path = "create tap",
-  .short_help =
-    "create tap {id <if-id>} [hw-addr <mac-address>] [if-name <if-name>] "
-    "[num-rx-queues <n>] [num-tx-queues <n>] [rx-ring-size <size>] "
-    "[tx-ring-size <size>] [host-ns <netns>] [host-bridge <bridge-name>] "
-    "[host-ip4-addr <ip4addr/mask>] [host-ip6-addr <ip6-addr>] "
-    "[host-ip4-gw <ip4-addr>] [host-ip6-gw <ip6-addr>] "
-    "[host-mac-addr <host-mac-address>] [host-if-name <name>] "
-    "[host-mtu-size <size>] [no-gso|gso [gro-coalesce]|csum-offload] "
-    "[persist] [attach] [tun] [packed] [in-order]",
+  .short_help = "create tap {id <if-id>} [hw-addr <mac-address>] [if-name <if-name>] "
+		"[num-rx-queues <n>] [num-tx-queues <n>] [rx-ring-size <size>] "
+		"[tx-ring-size <size>] [host-ns <netns>] [host-bridge <bridge-name>] "
+		"[host-ip4-addr <ip4addr/mask>] [host-ip6-addr <ip6-addr>] "
+		"[host-ip4-gw <ip4-addr>] [host-ip6-gw <ip6-addr>] "
+		"[host-mac-addr <host-mac-address>] [host-if-name <name>] "
+		"[host-mtu-size <size>] [no-gso|gso [gro-coalesce]|csum-offload] "
+		"[persist] [attach] [tun] [packed] [in-order] [vdpa <vhost-vdpa-dev>]",
   .function = tap_create_command_fn,
 };
 

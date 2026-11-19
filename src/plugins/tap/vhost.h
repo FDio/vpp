@@ -66,6 +66,8 @@ typedef struct
 #define VHOST_SET_VRING_CALL  _IOW (VHOST_VIRTIO, 0x21, vhost_vring_file_t)
 #define VHOST_SET_VRING_ERR   _IOW (VHOST_VIRTIO, 0x22, vhost_vring_file_t)
 #define VHOST_NET_SET_BACKEND _IOW (VHOST_VIRTIO, 0x30, vhost_vring_file_t)
+#define VHOST_SET_BACKEND_FEATURES _IOW (VHOST_VIRTIO, 0x25, u64)
+#define VHOST_GET_BACKEND_FEATURES _IOR (VHOST_VIRTIO, 0x26, u64)
 
 /* vhost worker fork mode control (kernel >= 6.12 with
  * CONFIG_VHOST_ENABLE_FORK_OWNER_CONTROL=y) */
@@ -73,3 +75,55 @@ typedef struct
 #define VHOST_FORK_OWNER_TASK	  1
 #define VHOST_SET_FORK_FROM_OWNER _IOW (VHOST_VIRTIO, 0x84, u8)
 #define VHOST_GET_FORK_FROM_OWNER _IOR (VHOST_VIRTIO, 0x85, u8)
+
+/* vhost-vdpa */
+typedef struct
+{
+  u64 iova;
+  u64 size;
+  u64 uaddr;
+  u8 perm;
+  u8 type;
+} vhost_iotlb_msg_t;
+
+typedef struct
+{
+  u32 type;
+  u32 asid;
+  union
+  {
+    vhost_iotlb_msg_t iotlb;
+    u8 padding[64];
+  };
+} vhost_msg_v2_t;
+
+typedef struct
+{
+  u32 off;
+  u32 len;
+  u8 buf[];
+} vhost_vdpa_config_t;
+
+typedef struct
+{
+  u64 first;
+  u64 last;
+} vhost_vdpa_iova_range_t;
+
+#define VHOST_IOTLB_UPDATE	     2
+#define VHOST_IOTLB_BATCH_BEGIN	     5
+#define VHOST_IOTLB_BATCH_END	     6
+#define VHOST_IOTLB_MSG_V2	     2
+#define VHOST_ACCESS_RW		     3
+#define VHOST_BACKEND_F_IOTLB_MSG_V2 1
+#define VHOST_BACKEND_F_IOTLB_BATCH  2
+
+#define VHOST_VDPA_GET_DEVICE_ID    _IOR (VHOST_VIRTIO, 0x70, u32)
+#define VHOST_VDPA_GET_STATUS	    _IOR (VHOST_VIRTIO, 0x71, u8)
+#define VHOST_VDPA_SET_STATUS	    _IOW (VHOST_VIRTIO, 0x72, u8)
+#define VHOST_VDPA_GET_CONFIG	    _IOR (VHOST_VIRTIO, 0x73, vhost_vdpa_config_t)
+#define VHOST_VDPA_SET_VRING_ENABLE _IOW (VHOST_VIRTIO, 0x75, vhost_vring_state_t)
+#define VHOST_VDPA_GET_VRING_NUM    _IOR (VHOST_VIRTIO, 0x76, u16)
+#define VHOST_VDPA_SET_CONFIG_CALL  _IOW (VHOST_VIRTIO, 0x77, int)
+#define VHOST_VDPA_GET_IOVA_RANGE   _IOR (VHOST_VIRTIO, 0x78, vhost_vdpa_iova_range_t)
+#define VHOST_VDPA_GET_VQS_COUNT    _IOR (VHOST_VIRTIO, 0x80, u32)

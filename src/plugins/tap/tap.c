@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
+#include <sys/mman.h>
 #include <linux/ethtool.h>
 #include <net/if_arp.h>
 #include <errno.h>
@@ -94,6 +95,23 @@ virtio_eth_set_max_frame_size (vnet_main_t *vnm, vnet_hw_interface_t *hi,
 {
   /* nothing for now */
   return 0;
+}
+
+static void *
+tap_ring_alloc (tap_if_t *tif, uword size)
+{
+  if (tif->is_vdpa)
+    return vlib_physmem_alloc_aligned (vlib_get_main (), size, CLIB_CACHE_LINE_BYTES);
+  return clib_mem_alloc_aligned (size, CLIB_CACHE_LINE_BYTES);
+}
+
+static void
+tap_ring_free (tap_if_t *tif, void *p)
+{
+  if (tif->is_vdpa)
+    vlib_physmem_free (vlib_get_main (), p);
+  else
+    clib_mem_free (p);
 }
 
 static void
@@ -222,6 +240,9 @@ tap_rxq_free (vlib_main_t *vm, tap_if_t *tif, u32 queue_id)
 
   clib_file_del_by_index (&file_main, rxq->call_file_index);
 
+  if (rxq->notify)
+    munmap (rxq->notify, clib_mem_get_page_size ());
+
   close (rxq->kick_fd);
   close (rxq->call_fd);
 
@@ -234,12 +255,12 @@ tap_rxq_free (vlib_main_t *vm, tap_if_t *tif, u32 queue_id)
 	  vlib_buffer_free_from_ring (vm, rxq->buffers, start, rxq->queue_size,
 				      used);
 	}
-      clib_mem_free (rxq->used);
+      tap_ring_free (tif, rxq->used);
     }
   if (rxq->desc)
-    clib_mem_free (rxq->desc);
+    tap_ring_free (tif, rxq->desc);
   if (rxq->avail)
-    clib_mem_free (rxq->avail);
+    tap_ring_free (tif, rxq->avail);
   vec_free (rxq->buffers);
 }
 
@@ -248,14 +269,16 @@ tap_txq_free (tap_if_t *tif, u32 queue_id)
 {
   tap_txq_t *txq = tap_get_tx_queue (tif, queue_id);
 
+  if (txq->notify)
+    munmap (txq->notify, clib_mem_get_page_size ());
   close (txq->kick_fd);
 
   if (txq->used)
-    clib_mem_free (txq->used);
+    tap_ring_free (tif, txq->used);
   if (txq->desc)
-    clib_mem_free (txq->desc);
+    tap_ring_free (tif, txq->desc);
   if (txq->avail)
-    clib_mem_free (txq->avail);
+    tap_ring_free (tif, txq->avail);
   vec_free (txq->buffers);
   gro_flow_table_free (txq->flow_table);
 }
@@ -276,6 +299,7 @@ tap_free (vlib_main_t *vm, tap_if_t *tif)
     tap_rxq_free (vm, tif, i);
   vec_foreach_index (i, tif->tx_queues)
     tap_txq_free (tif, i);
+  tap_vdpa_free (vm, tif);
 
   if (tif->tap_fds)
     {
@@ -300,7 +324,7 @@ error:
   pool_put (tm->interfaces, tif);
 }
 
-static clib_error_t *
+clib_error_t *
 tap_rxq_init (tap_if_t *tif, u16 idx, u16 sz)
 {
   tap_rxq_t *rxq;
@@ -322,18 +346,22 @@ tap_rxq_init (tap_if_t *tif, u16 idx, u16 sz)
   i = round_pow2 (i, CLIB_CACHE_LINE_BYTES);
 
   rxq->offset = tif->is_tun ? TUN_DATA_OFFSET : 0;
-  rxq->desc = clib_mem_alloc_aligned (i, CLIB_CACHE_LINE_BYTES);
+  rxq->desc = tap_ring_alloc (tif, i);
 
   i = sizeof (vnet_virtio_vring_avail_t) + sz * sizeof (rxq->avail->ring[0]);
   i = round_pow2 (i, CLIB_CACHE_LINE_BYTES);
-  rxq->avail = clib_mem_alloc_aligned (i, CLIB_CACHE_LINE_BYTES);
+  rxq->avail = tap_ring_alloc (tif, i);
+  if (rxq->desc == 0 || rxq->avail == 0)
+    return clib_error_return (0, "rxq %u ring alloc failed", idx);
   clib_memset (rxq->avail, 0, i);
   rxq->avail->flags = VRING_AVAIL_F_NO_INTERRUPT;
 
   i = sizeof (vnet_virtio_vring_used_t) +
       sz * sizeof (vnet_virtio_vring_used_elem_t);
   i = round_pow2 (i, CLIB_CACHE_LINE_BYTES);
-  rxq->used = clib_mem_alloc_aligned (i, CLIB_CACHE_LINE_BYTES);
+  rxq->used = tap_ring_alloc (tif, i);
+  if (rxq->used == 0)
+    return clib_error_return (0, "rxq %u ring alloc failed", idx);
   clib_memset (rxq->used, 0, i);
 
   rxq->queue_id = idx;
@@ -351,7 +379,7 @@ tap_rxq_init (tap_if_t *tif, u16 idx, u16 sz)
   return 0;
 }
 
-static clib_error_t *
+clib_error_t *
 tap_tx_vring_init (tap_if_t *tif, u16 idx, u16 sz)
 {
   tap_txq_t *txq;
@@ -372,21 +400,27 @@ tap_tx_vring_init (tap_if_t *tif, u16 idx, u16 sz)
   i = sizeof (vnet_virtio_vring_desc_t) * sz;
   i = round_pow2 (i, CLIB_CACHE_LINE_BYTES);
 
-  txq->desc = clib_mem_alloc_aligned (i, CLIB_CACHE_LINE_BYTES);
+  txq->desc = tap_ring_alloc (tif, i);
+  if (txq->desc == 0)
+    return clib_error_return (0, "txq %u ring alloc failed", idx);
   for (u32 di = 0; di < sz; di++)
     txq->desc[di] = (vnet_virtio_vring_desc_t){ .next = di - 1 };
   txq->desc_freelist_head = sz - 1;
 
   i = sizeof (vnet_virtio_vring_avail_t) + sz * sizeof (txq->avail->ring[0]);
   i = round_pow2 (i, CLIB_CACHE_LINE_BYTES);
-  txq->avail = clib_mem_alloc_aligned (i, CLIB_CACHE_LINE_BYTES);
+  txq->avail = tap_ring_alloc (tif, i);
+  if (txq->avail == 0)
+    return clib_error_return (0, "txq %u ring alloc failed", idx);
   clib_memset (txq->avail, 0, i);
   txq->avail->flags = VRING_AVAIL_F_NO_INTERRUPT;
 
   i = sizeof (vnet_virtio_vring_used_t) +
       sz * sizeof (vnet_virtio_vring_used_elem_t);
   i = round_pow2 (i, CLIB_CACHE_LINE_BYTES);
-  txq->used = clib_mem_alloc_aligned (i, CLIB_CACHE_LINE_BYTES);
+  txq->used = tap_ring_alloc (tif, i);
+  if (txq->used == 0)
+    return clib_error_return (0, "txq %u ring alloc failed", idx);
   clib_memset (txq->used, 0, i);
 
   txq->queue_id = idx;
@@ -497,6 +531,36 @@ tap_create_if (vlib_main_t *vm, tap_create_if_args_t *args)
 
   if (args->tap_flags & TAP_FLAG_CONSISTENT_QP)
     tif->consistent_qp = 1;
+
+  if (args->vdpa_path)
+    {
+      if (is_tun)
+	{
+	  args->rv = VNET_API_ERROR_INVALID_ARGUMENT;
+	  args->error = clib_error_return (0, "vdpa doesn't support tun mode");
+	  goto error;
+	}
+
+      if (args->host_if_name || args->host_namespace || args->host_bridge ||
+	  !mac_address_is_zero (&args->host_mac_addr) || args->host_ip4_prefix_len ||
+	  args->host_ip6_prefix_len || args->host_ip4_gw_set || args->host_ip6_gw_set ||
+	  args->host_mtu_set || (args->tap_flags & (TAP_FLAG_PERSIST | TAP_FLAG_ATTACH)))
+	{
+	  args->rv = VNET_API_ERROR_INVALID_ARGUMENT;
+	  args->error =
+	    clib_error_return (0, "host-*, persist and attach options don't apply to vdpa");
+	  goto error;
+	}
+
+      tif->is_vdpa = 1;
+      args->error = tap_vdpa_init (vm, tif, args);
+      if (args->error)
+	{
+	  args->rv = VNET_API_ERROR_INIT_FAILED;
+	  goto error;
+	}
+      goto register_if;
+    }
 
   /* if namespace is specified, all further netlink messages should be executed
    * after we change our net namespace */
@@ -919,9 +983,8 @@ tap_create_if (vlib_main_t *vm, tap_create_if_args_t *args)
 	  _IOCTL (fd, VHOST_SET_VRING_ADDR, &addr);
 
 	  file.fd = txq->kick_fd;
-	  log_dbg (tif,
-		   "VHOST_SET_VRING_KICK txq %u fd %d index %u kick_fd %d",
-		   txq->queue_id, fd, file.index, file.fd);
+	  log_dbg (tif, "VHOST_SET_VRING_KICK txq %u fd %d index %u kick_fd %d", txq->queue_id, fd,
+		   file.index, file.fd);
 	  _IOCTL (fd, VHOST_SET_VRING_KICK, &file);
 
 	  file.fd = tif->tap_fds[i % n_rxqs];
@@ -932,6 +995,7 @@ tap_create_if (vlib_main_t *vm, tap_create_if_args_t *args)
 	}
     }
 
+register_if:
   if (!tif->is_tun)
     {
       if (!args->mac_addr_set)
@@ -941,7 +1005,8 @@ tap_create_if (vlib_main_t *vm, tap_create_if_args_t *args)
       if (args->host_bridge)
 	tif->host_bridge = format (0, "%s%c", args->host_bridge, 0);
     }
-  tif->host_if_name = format (0, "%s%c", host_if_name, 0);
+  if (host_if_name)
+    tif->host_if_name = format (0, "%s%c", host_if_name, 0);
   if (args->host_namespace)
     tif->net_ns = format (0, "%s%c", args->host_namespace, 0);
   tif->host_mtu_size = args->host_mtu_size;
@@ -1036,8 +1101,10 @@ tap_create_if (vlib_main_t *vm, tap_create_if_args_t *args)
     }
   tap_template_update (tif);
 
-  vnet_hw_interface_set_flags (vnm, tif->hw_if_index,
-			       VNET_HW_INTERFACE_FLAG_LINK_UP);
+  if (tif->is_vdpa)
+    tap_vdpa_set_link_flags (tif);
+  else
+    vnet_hw_interface_set_flags (vnm, tif->hw_if_index, VNET_HW_INTERFACE_FLAG_LINK_UP);
   /*
    * Host tun/tap driver link carrier state is "up" at creation. The
    * driver never changes this unless the backend (VPP) changes it using
@@ -1376,17 +1443,26 @@ tap_interface_admin_up_down (vnet_main_t *vnm, u32 hw_if_index, u32 flags)
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   tap_if_t *tif = pool_elt_at_index (tm->interfaces, hw->dev_instance);
 
-  if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
-    {
-      tif->admin_up = 1;
-      vnet_hw_interface_set_flags (vnm, tif->hw_if_index,
-				   VNET_HW_INTERFACE_FLAG_LINK_UP);
-    }
+  tif->admin_up = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) != 0;
+
+  if (tif->is_vdpa)
+    tap_vdpa_set_link_flags (tif);
   else
-    {
-      tif->admin_up = 0;
-      vnet_hw_interface_set_flags (vnm, tif->hw_if_index, 0);
-    }
+    vnet_hw_interface_set_flags (vnm, tif->hw_if_index,
+				 tif->admin_up ? VNET_HW_INTERFACE_FLAG_LINK_UP : 0);
+  return 0;
+}
+
+static clib_error_t *
+tap_mac_addr_change (vnet_hw_interface_t *hi, const u8 *old_address, const u8 *new_address)
+{
+  tap_if_t *tif = pool_elt_at_index (tap_main.interfaces, hi->dev_instance);
+  clib_error_t *err;
+
+  if (tif->is_vdpa && (err = tap_vdpa_set_mac (tif, new_address)))
+    return err;
+
+  clib_memcpy (tif->mac_addr, new_address, sizeof (tif->mac_addr));
   return 0;
 }
 
@@ -1406,6 +1482,7 @@ VNET_DEVICE_CLASS (tap_device_class) = {
   .rx_redirect_to_node = tap_set_interface_next_node,
   .clear_counters = tap_clear_hw_interface_counters,
   .admin_up_down_function = tap_interface_admin_up_down,
+  .mac_addr_change_function = tap_mac_addr_change,
   .rx_mode_change_function = tap_interface_rx_mode_change,
 };
 

@@ -78,7 +78,13 @@ more:
        VRING_USED_F_NO_NOTIFY) == 0)
     {
       ssize_t __clib_unused rv;
-      rv = write (rxq->kick_fd, &(u64){ 1 }, sizeof (u64));
+      if (rxq->notify)
+	{
+	  CLIB_MMIO_WMB ();
+	  *(volatile u16 *) rxq->notify = rxq->notify_data;
+	}
+      else
+	rv = write (rxq->kick_fd, &(u64) { 1 }, sizeof (u64));
     }
   goto more;
 }

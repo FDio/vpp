@@ -56,6 +56,7 @@ typedef struct
   u8 host_ip6_gw_set;
   u8 host_mtu_set;
   u32 host_mtu_size;
+  u8 *vdpa_path;
 
   /* return */
   u32 sw_if_index;
