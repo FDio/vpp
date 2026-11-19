@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2e9b6d91_dfc54105",
+        "filename": "src/plugins/http/http1/http1.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 1879,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-19T17:53:52Z",
+      "side": 1,
+      "message": "could we centralize final-response framing in small inline helper shared by all http versions? Preserve msg.data.body_len as metadata and derive actual body presence, streaming, and Content-Length emission separately from the method and status. in particular, HTTP_MSG_DATA_STREAMING on HEAD response means unknown representation length, with no body or EOF wait. HEAD 304 without Content-Length should therefore complete after headers instead of hitting the generic streaming-status rejection. this would remove duplicated checks and the HTTP/1 mutation of body_len, keeping metadata and payload accounting explicit.\nhttp2.c:1312\nhttp3.c:601",
+      "range": {
+        "startLine": 1878,
+        "startChar": 3,
+        "endLine": 1879,
+        "endChar": 40
+      },
+      "revId": "98865dc5616091081a941ffa42518d045fda57a4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
