@@ -1,0 +1,140 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "28533985_9a3f0850",
+        "filename": "src/plugins/sfdp_services_sample/CMakeLists.txt",
+        "patchSetId": 3
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-19T16:23:33Z",
+      "side": 1,
+      "message": "For clarity, would it make more sense to use the term \u0027pre_filter\u0027 here ?\n\nEspecially since this is not a filter that applies to existing SFDP sessions within the infrastructure, but rather as a filter gate that applies before any session is created.",
+      "revId": "2be4d068dfe6db938afa235982abc79360d37afb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "78f88dce_44d849e1",
+        "filename": "src/plugins/sfdp_services_sample/filter.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-19T16:23:33Z",
+      "side": 1,
+      "message": "nit: could we use a helper to check if the packet is IP4/IP6, rather than checking with a manual operation ?\n\nI don\u0027t consider it a blocker as it is just sample code.",
+      "revId": "2be4d068dfe6db938afa235982abc79360d37afb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3248d2c7_7e3f5897",
+        "filename": "src/plugins/sfdp_services_sample/filter.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-19T16:23:33Z",
+      "side": 1,
+      "message": "Same comment on hardcoded value.",
+      "revId": "2be4d068dfe6db938afa235982abc79360d37afb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b52df4b6_a81c1892",
+        "filename": "src/plugins/sfdp_services_sample/filter.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-19T16:23:33Z",
+      "side": 1,
+      "message": "Rather than using a hardcoded value directly in the function of the sample, could we rather use a define or have a configurable value that\u0027s set in `sample_filter_init` ? (either is fine, as it is just sample code).",
+      "revId": "2be4d068dfe6db938afa235982abc79360d37afb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b69843ae_a8364f8c",
+        "filename": "src/vnet/sfdp/sfdp.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 176,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-19T16:23:33Z",
+      "side": 1,
+      "message": "Could there be an additional API to get the list of available/registered filters ?",
+      "revId": "2be4d068dfe6db938afa235982abc79360d37afb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2bb10a21_35fd0143",
+        "filename": "src/vnet/sfdp/sfdp.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-19T16:23:33Z",
+      "side": 1,
+      "message": "I\u0027m wondering if re-using `vl_api_sfdp_service_name_t` here might be confusing, as it is usually used to pass a SFDP service name through the API as a char string.\n\nHaving a separate similar typedef would help with clarity ? e.g. `sfdp_pre_filter_name` (mapping to `vl_api_sfdp_pre_filter_name_t`)",
+      "revId": "2be4d068dfe6db938afa235982abc79360d37afb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "52e4f478_6735c12a",
+        "filename": "src/vnet/sfdp/sfdp.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 406,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-19T16:23:33Z",
+      "side": 1,
+      "message": "Wondering if (1) rather than passing the thread_index, could we pass the `vlib_main_t vm*` and get the thread_index and potentially other context directly from it within the filter function, (2) also could we pass a parameter `is_ip6` so that the filter function does not need to parse / identify IP4/IP6 traffic ?",
+      "revId": "2be4d068dfe6db938afa235982abc79360d37afb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3da59e85_415b9e93",
+        "filename": "src/vnet/sfdp/sfdp.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 449,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-19T16:23:33Z",
+      "side": 1,
+      "message": "The current implementation supports specifying multiple filters per-tenant.\n\nIMO I think it would be enough to support a single filter per-tenant, what is your opinion on this ?\n\nRather than storing a list of filters in each `sfdp_tenant_t` instance, we could store a single vector mapping each tenant to its unique filter in `sfdp_main_t\n\ne.g.\n\n```\ntypedef struct {\n  ...\n\n  /* Vector of pre-filter per-tenant pool index. */\n  sfdp_pre_filter_registration_t **tenant_pre_filters;\n\n} sfdp_main_t;\n```",
+      "revId": "2be4d068dfe6db938afa235982abc79360d37afb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
