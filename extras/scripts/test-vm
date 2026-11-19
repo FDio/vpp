@@ -1,0 +1,605 @@
+#!/bin/bash
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Damjan Marion
+
+# test-vm <cmd> - build a minimal, virtio-only guest kernel and initramfs
+# which can be used to run VPP inside QEMU.
+#
+# Everything is created in $PWD/vm (override with -d):
+#   linux/             shallow (--depth=1) git clone of the kernel release
+#   build/             out-of-tree kernel build
+#   kernel             minimal kernel image (tinyconfig + virtio, vfio, uio, iommu)
+#   initramfs.cpio.gz  busybox based initramfs, mounts host rootfs over 9p
+#                      and chroots into it
+#   kernel.config      final kernel config
+#   run                generated script which boots the VM
+#
+# The guest has the same architecture as the host (x86_64 and aarch64 are
+# supported) and runs under KVM.
+#
+# The guest uses the host root filesystem (read-only, via virtio-9p) so
+# nothing needs to be installed into the guest. The directory which contains
+# vm (normally the VPP build directory) is shared read-write at the same
+# path as on the host.
+#
+# Kernel cmdline parameters understood by the initramfs:
+#   vm.root=<tag>     9p tag of the root filesystem (default: hostroot)
+#   vm.mounts=<list>  extra 9p mounts, tag:/guest/path,...
+#   vm.exec=<path>    script (path inside guest root) to run; if not set an
+#                     interactive shell is started
+#   vm.tty=1          run vm.exec with a controlling terminal (job control,
+#                     ctrl-c), needed for interactive programs like gdb
+#   vm.bind=<driver>  rebind data virtio-net devices to <driver> (vfio-pci, ...)
+#   vm.noiommu=1      enable vfio unsafe no-iommu mode
+#   vm.term=<type>    TERM for the guest shell/command (default: linux)
+#   vm.hugepages=<n>  number of 2MB hugepages to reserve (default: 256)
+
+set -euo pipefail
+
+VM_DIR="${VM_DIR:-$PWD/vm}"
+KERNEL_REPO="${KERNEL_REPO:-https://github.com/gregkh/linux.git}"
+KERNEL_VERSION="${KERNEL_VERSION:-}"
+JOBS="${JOBS:-$(nproc)}"
+
+# guest architecture = host architecture
+case "$(uname -m)" in
+  x86_64)
+    ARCH=x86_64 KARCH=x86 KIMAGE=arch/x86/boot/bzImage KTARGET=bzImage
+    CONSOLE=ttyS0 QEMU=qemu-system-x86_64
+    KCONFIG_ARCH=(
+      X86_64 X86_X2APIC X86_MPPARSE HYPERVISOR_GUEST PARAVIRT KVM_GUEST ACPI
+      INTEL_IOMMU INTEL_IOMMU_SVM IRQ_REMAP
+      SERIAL_8250 SERIAL_8250_CONSOLE
+    )
+    KCHECK_ARCH=(INTEL_IOMMU SERIAL_8250_CONSOLE)
+    ;;
+  aarch64|arm64)
+    ARCH=aarch64 KARCH=arm64 KIMAGE=arch/arm64/boot/Image KTARGET=Image
+    CONSOLE=ttyAMA0 QEMU=qemu-system-aarch64
+    KCONFIG_ARCH=(
+      ARM64 OF ARM_GIC_V3 ARM_ARCH_TIMER ARM_PSCI_FW PCI_HOST_COMMON
+      PCI_HOST_GENERIC ARM_SMMU_V3 SERIAL_AMBA_PL011 SERIAL_AMBA_PL011_CONSOLE
+    )
+    KCHECK_ARCH=(ARM_SMMU_V3 SERIAL_AMBA_PL011_CONSOLE PCI_HOST_GENERIC)
+    ;;
+  *)
+    echo "error: unsupported architecture $(uname -m)" >&2; exit 1 ;;
+esac
+
+# ---------------------------------------------------------------------------
+# run mode: this script is symlinked as <vm dir>/run and boots the VM
+# Boots the test VM under QEMU/KVM.
+#
+# The host root filesystem is visible (read-only) in the guest, the directory
+# which contains vm is shared read-write at the same path, and the
+# command is run from the current directory (which must be below it).
+# QEMU is started with sudo (tap interfaces, kvm); it drops to the current
+# user once the devices are open.
+# Press ctrl-a x to terminate QEMU.
+# Passwordless ssh into the guest: ssh -F vm/ssh/config vm
+# ---------------------------------------------------------------------------
+vm_run() {
+  local OPTIND=1 o
+  VM_DIR=$(cd "$(dirname "$0")" && pwd)
+  ROOT=$(dirname "$VM_DIR")
+
+mem=4G cpus=4 nics=1 iommu=0 hugepages=256 bind=vfio-pci ssh_port=2222 fwd=(5001:5001) extra=()
+run_vpp=0 run_gdb=0 vhost=0
+vm_usage() {
+  cat <<EOF
+Usage: $0 [options] [--] [command [args...]]
+
+Without a command (and without -r or -d) an interactive shell is started in
+the guest. The command is run from the current directory.
+
+Options:
+  -m <size>   guest memory (default: $mem)
+  -c <n>      guest cpus (default: $cpus)
+  -n <n>      number of data virtio-net-pci devices, attached to host tap
+              interfaces vpp-vm0, vpp-vm1, ... (default: $nics)
+  -i          emulate an iommu (intel-iommu on x86_64, smmuv3 on aarch64) and
+              set iommu_platform=on on the NICs
+  -H <n>      2MB hugepages to reserve in guest (default: $hugepages)
+  -b <driver> rebind the -n data NICs in the guest to vfio-pci or
+              uio_pci_generic, vfio-pci uses no-iommu mode unless -i
+              (default: $bind, "none" leaves the NICs to the guest kernel)
+  -v          use the kernel vhost-net backend for the data NICs
+  -r          run VPP: bin/vpp -c startup.conf
+  -d          run VPP under gdb: gdb -ex run --args bin/vpp -c startup.conf
+  -p <port>   host port forwarded to guest sshd (default: $ssh_port)
+  -f <h:g>    forward host tcp port h to guest port g (can be repeated,
+              default: ${fwd[*]}); replaces the default list
+  -q <arg>    extra argument passed to qemu (can be repeated)
+  -h          this help
+EOF
+}
+fwd_set=0
+while getopts "m:c:n:iH:b:p:f:q:vrdh" o; do
+  case $o in
+    m) mem=$OPTARG ;;
+    c) cpus=$OPTARG ;;
+    n) nics=$OPTARG ;;
+    i) iommu=1 ;;
+    H) hugepages=$OPTARG ;;
+    b) bind=$OPTARG ;;
+    p) ssh_port=$OPTARG ;;
+    f) [ $fwd_set = 1 ] || fwd=(); fwd_set=1; fwd+=("$OPTARG") ;;
+    q) extra+=("$OPTARG") ;;
+    v) vhost=1 ;;
+    r) run_vpp=1 ;;
+    d) run_gdb=1 ;;
+    h) vm_usage; exit 0 ;;
+    *) vm_usage; exit 1 ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+[ "$bind" != none ] || bind=
+if [ $run_vpp = 1 ] || [ $run_gdb = 1 ]; then
+  [ $run_vpp = 0 ] || [ $run_gdb = 0 ] || { echo "error: -r and -d are exclusive" >&2; exit 1; }
+  [ $# -eq 0 ] || { echo "error: -r and -d do not take a command" >&2; exit 1; }
+  if [ $run_gdb = 1 ]; then
+    set -- gdb -ex run --args bin/vpp -c startup.conf
+  else
+    set -- bin/vpp -c startup.conf
+  fi
+fi
+
+[ -e /dev/kvm ] || { echo "error: /dev/kvm not found" >&2; exit 1; }
+[ $vhost = 0 ] || [ -e /dev/vhost-net ] || { echo "error: /dev/vhost-net not found" >&2; exit 1; }
+
+cmdline="console=$CONSOLE panic=-1 loglevel=4 vm.hugepages=$hugepages"
+if [ $iommu = 1 ] && [ $ARCH = x86_64 ]; then cmdline+=" intel_iommu=on"; fi
+if [ -n "$bind" ]; then
+  cmdline+=" vm.bind=$bind"
+  [ $iommu = 1 ] || cmdline+=" vm.noiommu=1"
+fi
+cmdline+=" vm.mounts=work:$ROOT vm.term=${TERM:-xterm}"
+
+# ssh: authorize the user's public keys, start sshd in guest
+if [ -f "$VM_DIR/ssh/sshd_config" ]; then
+  # keys: ~/.ssh/*.pub plus whatever is loaded in ssh-agent
+  { cat "$HOME"/.ssh/*.pub; ssh-add -L; } > "$VM_DIR/ssh/authorized_keys" 2>/dev/null || true
+  cmdline+=" vm.sshd=$VM_DIR/ssh/sshd_config"
+  # client config: ssh -F vm/ssh/config vm   (no host key / password prompts)
+  cat > "$VM_DIR/ssh/config" <<EOF
+Host vm
+  HostName 127.0.0.1
+  Port $ssh_port
+  User $(id -un)
+  UserKnownHostsFile /dev/null
+  StrictHostKeyChecking no
+  LogLevel ERROR
+  PasswordAuthentication no
+EOF
+fi
+
+if [ $# -gt 0 ]; then
+  # run script lives in the shared dir, so the guest can see it
+  { echo "cd $(printf %q "$PWD")"; printf 'exec'; printf ' %q' "$@"; echo; } > "$VM_DIR/exec.sh"
+  cmdline+=" vm.exec=$VM_DIR/exec.sh"
+  # vpp and gdb are interactive, they need a controlling terminal
+  if [ $run_vpp = 1 ] || [ $run_gdb = 1 ]; then cmdline+=" vm.tty=1"; fi
+else
+  echo "cd $(printf %q "$PWD") 2>/dev/null" > "$VM_DIR/cwd.sh"
+  cmdline+=" vm.cwd=$VM_DIR/cwd.sh"
+fi
+
+args=(sudo "$QEMU")
+case $ARCH in
+  x86_64)
+    machine=q35
+    [ $iommu = 1 ] && machine+=,kernel-irqchip=split
+    ;;
+  aarch64)
+    machine=virt,gic-version=host
+    [ $iommu = 1 ] && machine+=,iommu=smmuv3
+    ;;
+esac
+args+=(-machine "$machine")
+args+=(-run-with user="$(id -un)")   # drop root once taps/kvm are open
+args+=(-accel kvm)
+args+=(-cpu host)
+args+=(-m "$mem")
+args+=(-smp "$cpus")
+args+=(-nographic)
+args+=(-no-reboot)
+args+=(-kernel "$VM_DIR/kernel")
+args+=(-initrd "$VM_DIR/initramfs.cpio.gz")
+args+=(-append "$cmdline")
+args+=(-virtfs "local,path=/,mount_tag=hostroot,security_model=none,readonly=on")
+args+=(-virtfs "local,path=$ROOT,mount_tag=work,security_model=none")
+
+# management nic (user-mode network, port forwards to guest)
+hostfwd="hostfwd=tcp:127.0.0.1:$ssh_port-:22"
+for f in "${fwd[@]}"; do hostfwd+=",hostfwd=tcp:127.0.0.1:${f%%:*}-:${f#*:}"; done
+args+=(-netdev "user,id=mgmt,$hostfwd")
+args+=(-device virtio-net-pci,netdev=mgmt,mac=52:54:00:00:00:00)
+
+# data nics: host tap interfaces vpp-vm0, vpp-vm1, ... (created and brought
+# up here if they do not exist yet; they stay until removed with
+# "sudo ip link del vpp-vmN")
+for ((i = 0; i < nics; i++)); do
+  tap=vpp-vm$i
+  if ! ip link show "$tap" >/dev/null 2>&1; then
+    sudo ip tuntap add dev "$tap" mode tap user "$(id -un)"
+  fi
+  sudo ip link set "$tap" up
+  dev="virtio-net-pci,netdev=n$i,mac=52:54:00:00:00:$(printf %02x $((i + 1)))"
+  [ $iommu = 1 ] && dev+=",iommu_platform=on,ats=off,disable-legacy=on"
+  netdev="tap,id=n$i,ifname=$tap,script=no,downscript=no"
+  [ $vhost = 0 ] || netdev+=,vhost=on,vhostforce=on
+  args+=(-netdev "$netdev")
+  args+=(-device "$dev")
+done
+
+if [ $iommu = 1 ] && [ $ARCH = x86_64 ]; then
+  args+=(-device intel-iommu,intremap=on,caching-mode=on)
+fi
+args+=("${extra[@]}")
+
+# show the final command line, one option per line, quoting only if needed
+quote() {
+  case $1 in
+    *[!A-Za-z0-9_@%+=:,./-]*) printf "'%s'" "${1//\'/\'\\\'\'}" ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+printf '%s' "${args[0]}"
+for ((i = 1; i < ${#args[@]}; i++)); do
+  case ${args[i]} in
+    -*) printf ' \\\n  ' ;;
+    *)  printf ' ' ;;
+  esac
+  quote "${args[i]}"
+done
+echo
+
+exec "${args[@]}"
+}
+
+if [ "$(basename "$0")" = run ]; then
+  vm_run "$@"
+  exit
+fi
+
+usage() {
+  cat <<EOF
+Usage: $0 <cmd> [options]
+
+Commands:
+  build     download and build kernel, initramfs and the run script
+  update    regenerate initramfs, ssh config and run link (no kernel rebuild)
+  help      this help
+
+'build' Options:
+  -d <dir>      VM directory (default: $VM_DIR)
+  -k <version>  kernel version, e.g. 6.12.40 (default: latest stable)
+  -j <n>        make jobs (default: $JOBS)
+
+'update' Options:
+  -d <dir>      VM directory (default: $VM_DIR)
+EOF
+}
+
+cmd=${1:-help}
+[ $# -eq 0 ] || shift
+
+build_opts=0
+while getopts "d:k:j:h" opt; do
+  case $opt in
+    d) VM_DIR="$OPTARG" ;;
+    k) KERNEL_VERSION="${OPTARG#v}"; build_opts=1 ;;
+    j) JOBS="$OPTARG"; build_opts=1 ;;
+    h) usage; exit 0 ;;
+    *) usage; exit 1 ;;
+  esac
+done
+
+log() { echo "==> $*"; }
+die() { echo "error: $*" >&2; exit 1; }
+
+check_tools() {
+  local missing=() t
+  for t in git make gcc flex bison bc cpio gzip; do
+    command -v "$t" >/dev/null || missing+=("$t")
+  done
+  [ ${#missing[@]} -eq 0 ] || \
+    die "missing tools: ${missing[*]} (Debian/Ubuntu: apt install build-essential flex bison bc libelf-dev libssl-dev cpio git)"
+  [ -f /usr/include/libelf.h ] || [ -f /usr/include/gelf.h ] || \
+    log "warning: libelf headers not found, kernel build may fail (apt install libelf-dev)"
+}
+
+# use ccache for the kernel build if available (CCACHE=0 to disable)
+kmake() {
+  local cc=()
+  if [ "${CCACHE:-1}" != 0 ] && command -v ccache >/dev/null; then
+    cc=(CC="ccache gcc" HOSTCC="ccache gcc")
+  fi
+  make "${cc[@]}" "$@"
+}
+
+find_busybox() {
+  local b
+  for b in "${BUSYBOX:-}" /usr/bin/busybox /bin/busybox /usr/lib/initramfs-tools/bin/busybox; do
+    [ -n "$b" ] && [ -x "$b" ] || continue
+    # must be statically linked
+    if ! ldd "$b" >/dev/null 2>&1; then echo "$b"; return; fi
+  done
+  die "static busybox not found (apt install busybox-static, or set BUSYBOX=)"
+}
+
+# latest stable release = highest vX.Y[.Z] tag without -rc
+resolve_version() {
+  [ -z "$KERNEL_VERSION" ] || return 0
+  log "looking up latest stable kernel release in $KERNEL_REPO"
+  KERNEL_VERSION=$(git ls-remote --tags --refs "$KERNEL_REPO" 'v*' |
+    sed 's|.*refs/tags/v||' | grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?$' |
+    sort -V | tail -1)
+  [ -n "$KERNEL_VERSION" ] || die "cannot find latest stable kernel release"
+}
+
+fetch_kernel() {
+  local src="$VM_DIR/linux"
+  if [ -d "$src/.git" ] &&
+     [ "$(git -C "$src" describe --tags --exact-match 2>/dev/null)" = "v$KERNEL_VERSION" ]; then
+    log "kernel source v$KERNEL_VERSION already present"
+    return
+  fi
+  log "cloning $KERNEL_REPO v$KERNEL_VERSION (--depth=1)"
+  rm -rf "$src"
+  git -c advice.detachedHead=false clone --depth=1 --branch "v$KERNEL_VERSION" "$KERNEL_REPO" "$src"
+}
+
+# Minimal config: tinyconfig plus only what is needed to boot, talk virtio,
+# and run VPP (hugepages, vfio/uio, iommu, tun, unix/inet sockets).
+KCONFIG_ENABLE=(
+  64BIT SMP PCI PCI_MSI PCI_QUIRKS
+  PRINTK TTY
+  BLK_DEV_INITRD RD_GZIP
+  BINFMT_ELF BINFMT_SCRIPT MULTIUSER
+  PROC_FS PROC_SYSCTL SYSFS TMPFS DEVTMPFS DEVTMPFS_MOUNT
+  SHMEM POSIX_TIMERS HIGH_RES_TIMERS FUTEX EPOLL EVENTFD TIMERFD SIGNALFD
+  ADVISE_SYSCALLS FILE_LOCKING MMU
+  NET NETDEVICES NET_CORE UNIX INET PACKET TUN VETH
+  BPF_SYSCALL BPF_JIT XDP_SOCKETS
+  VIRTIO_MENU VIRTIO VIRTIO_PCI VIRTIO_PCI_LIB VIRTIO_PCI_LEGACY
+  VIRTIO_NET VIRTIO_CONSOLE VIRTIO_BALLOON
+  BLOCK VIRTIO_BLK SCSI_LOWLEVEL=n
+  NETWORK_FILESYSTEMS 9P_FS NET_9P NET_9P_VIRTIO
+  HUGETLBFS HUGETLB_PAGE TRANSPARENT_HUGEPAGE
+  NUMA
+  UIO UIO_PCI_GENERIC
+  IOMMU_SUPPORT IOMMU_API IOMMU_DEFAULT_PASSTHROUGH VIRTIO_IOMMU
+  VFIO VFIO_PCI VFIO_PCI_CORE VFIO_NOIOMMU
+  PCI_MSI_IRQ_DOMAIN
+  HW_RANDOM HW_RANDOM_VIRTIO
+  MAGIC_SYSRQ
+)
+
+KCONFIG_DISABLE=(
+  MODULES  # everything is built in, no module loading in guest
+)
+
+configure_kernel() {
+  local src="$VM_DIR/linux"
+  local out="$VM_DIR/build"
+  mkdir -p "$out"
+  log "configuring kernel ($KERNEL_VERSION)"
+  command -v ccache >/dev/null && [ "${CCACHE:-1}" != 0 ] && log "using ccache"
+  kmake -C "$src" O="$out" ARCH=$KARCH -s tinyconfig
+
+  local o
+  for o in "${KCONFIG_ENABLE[@]}" "${KCONFIG_ARCH[@]}"; do
+    case $o in
+      *=n) "$src/scripts/config" --file "$out/.config" --disable "${o%=n}" ;;
+      *)   "$src/scripts/config" --file "$out/.config" --enable "$o" ;;
+    esac
+  done
+  for o in "${KCONFIG_DISABLE[@]}"; do
+    "$src/scripts/config" --file "$out/.config" --disable "$o"
+  done
+  "$src/scripts/config" --file "$out/.config" \
+    --set-str DEFAULT_HOSTNAME "vpp-test-vm"
+  kmake -C "$src" O="$out" ARCH=$KARCH -s olddefconfig
+
+  # make sure the important ones survived dependency resolution
+  local missing=() c
+  for c in VIRTIO_PCI VIRTIO_NET NET_9P_VIRTIO 9P_FS VFIO_PCI UIO_PCI_GENERIC \
+           HUGETLBFS DEVTMPFS TUN PACKET BPF_SYSCALL XDP_SOCKETS VETH "${KCHECK_ARCH[@]}"; do
+    grep -q "^CONFIG_$c=y" "$out/.config" || missing+=("$c")
+  done
+  [ ${#missing[@]} -eq 0 ] || die "kernel config options not enabled: ${missing[*]}"
+}
+
+build_kernel() {
+  local src="$VM_DIR/linux"
+  local out="$VM_DIR/build"
+  log "building kernel with -j$JOBS"
+  kmake -C "$src" O="$out" ARCH=$KARCH -j"$JOBS" $KTARGET
+  cp "$out/$KIMAGE" "$VM_DIR/kernel"
+  cp "$out/.config" "$VM_DIR/kernel.config"
+  echo "$KERNEL_VERSION" > "$VM_DIR/kernel.version"
+}
+
+build_initramfs() {
+  local bb root="$VM_DIR/initramfs"
+  bb=$(find_busybox)
+  log "building initramfs (busybox: $bb)"
+  rm -rf "$root"
+  mkdir -p "$root"/{bin,sbin,dev,proc,sys,mnt/root,tmp,etc}
+  cp "$bb" "$root/bin/busybox"
+  ln -s busybox "$root/bin/sh"
+
+  cat > "$root/init" <<'EOF'
+#!/bin/busybox sh
+/bin/busybox --install -s /bin
+export PATH=/bin:/sbin
+
+mount -t devtmpfs devtmpfs /dev
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+
+root_tag=hostroot; mounts=; exec_path=; cwd_path=; sshd_cfg=; term=linux; bind=; noiommu=0; hugepages=256; tty=0
+for a in $(cat /proc/cmdline); do
+  case $a in
+    vm.root=*)      root_tag=${a#vm.root=} ;;
+    vm.mounts=*)    mounts=${a#vm.mounts=} ;;
+    vm.exec=*)      exec_path=${a#vm.exec=} ;;
+    vm.tty=*)       tty=${a#vm.tty=} ;;
+    vm.cwd=*)       cwd_path=${a#vm.cwd=} ;;
+    vm.term=*)      term=${a#vm.term=} ;;
+    vm.bind=*)      bind=${a#vm.bind=} ;;
+    vm.noiommu=*)   noiommu=${a#vm.noiommu=} ;;
+    vm.sshd=*)      sshd_cfg=${a#vm.sshd=} ;;
+    vm.hugepages=*) hugepages=${a#vm.hugepages=} ;;
+  esac
+done
+
+die() { echo "init: $*"; exec sh; }
+
+R=/mnt/root
+mount -t 9p -o trans=virtio,version=9p2000.L,msize=524288,ro "$root_tag" $R ||
+  die "cannot mount 9p root '$root_tag'"
+
+# writable scratch areas on top of the read-only root
+for d in tmp run var/tmp var/run var/log root; do
+  [ -d $R/$d ] && mount -t tmpfs tmpfs $R/$d
+done
+# extra shares (tag:/guest/path), read-write
+for m in $(echo "$mounts" | tr ',' ' '); do
+  tag=${m%%:*}; path=${m#*:}
+  mkdir -p "$R$path" 2>/dev/null
+  mount -t 9p -o trans=virtio,version=9p2000.L,msize=524288 "$tag" "$R$path" ||
+    echo "init: cannot mount 9p '$tag' on $path"
+done
+
+mount -t devtmpfs devtmpfs $R/dev
+mount -t proc proc $R/proc
+mount -t sysfs sysfs $R/sys
+mkdir -p $R/dev/shm $R/dev/pts $R/dev/hugepages
+mount -t tmpfs tmpfs $R/dev/shm
+mount -t devpts devpts $R/dev/pts
+mount -t hugetlbfs none $R/dev/hugepages
+echo "$hugepages" > /proc/sys/vm/nr_hugepages
+ip link set lo up 2>/dev/null
+hostname vpp-test-vm
+
+# rebind data virtio-net devices (all but the management one) to vfio-pci /
+# uio_pci_generic, so that VPP can drive them
+if [ -n "$bind" ]; then
+  [ "$noiommu" = 1 ] && echo 1 > /sys/module/vfio/parameters/enable_unsafe_noiommu_mode
+  for d in /sys/bus/pci/devices/*; do
+    case "$(cat $d/vendor):$(cat $d/device)" in 0x1af4:0x1041|0x1af4:0x1000) ;; *) continue ;; esac
+    [ "$(cat $d/virtio*/net/*/address 2>/dev/null)" = "52:54:00:00:00:00" ] && continue
+    b=${d##*/}
+    echo "$bind" > $d/driver_override
+    [ -e $d/driver ] && echo $b > $d/driver/unbind
+    echo $b > /sys/bus/pci/drivers_probe
+    echo "init: $b -> $(basename $(readlink $d/driver 2>/dev/null) 2>/dev/null)"
+  done
+fi
+
+# management nic (fixed MAC), qemu user-mode network defaults
+for d in /sys/class/net/*; do
+  [ "$(cat $d/address 2>/dev/null)" = "52:54:00:00:00:00" ] || continue
+  n=${d##*/}
+  ip link set $n up
+  ip addr add 10.0.2.15/24 dev $n
+  ip route add default via 10.0.2.2
+  echo "nameserver 10.0.2.3" > $R/run/resolv.conf 2>/dev/null
+done
+
+if [ -n "$sshd_cfg" ] && [ -x $R/usr/sbin/sshd ]; then
+  mkdir -p $R/run/sshd
+  chroot $R /usr/sbin/sshd -f "$sshd_cfg" || echo "init: sshd failed to start"
+fi
+
+export HOME=/root TERM=$term
+if [ -n "$exec_path" ]; then
+  if [ "$tty" = 1 ]; then
+    setsid cttyhack chroot $R /bin/sh "$exec_path"
+  else
+    chroot $R /bin/sh "$exec_path"
+  fi
+  echo "init: vm.exec exited with $?"
+  sync
+  poweroff -f
+fi
+# shell aliases (picked up by interactive sh via $ENV)
+cat > $R/run/vm-aliases <<'EOA'
+alias r='bin/vpp -c startup.conf'
+alias d='gdb --args bin/vpp -c startup.conf'
+alias q=exit
+EOA
+export ENV=/run/vm-aliases
+echo "init: dropping to shell, ctrl-a x to quit qemu"
+# not exec'ed: init must never exit, power off when the shell does
+setsid cttyhack chroot $R /bin/sh -c ". ${cwd_path:-/dev/null}; exec /bin/sh -l"
+sync
+poweroff -f
+EOF
+  chmod +x "$root/init"
+
+  (cd "$root" && find . | cpio -o -H newc --quiet | gzip -9) > "$VM_DIR/initramfs.cpio.gz"
+}
+
+gen_ssh_config() {
+  command -v ssh-keygen >/dev/null || { log "ssh-keygen not found, ssh into VM disabled"; return; }
+  mkdir -p "$VM_DIR/ssh"
+  [ -f "$VM_DIR/ssh/host_key" ] || ssh-keygen -q -t ed25519 -N "" -C test-vm -f "$VM_DIR/ssh/host_key"
+  cat > "$VM_DIR/ssh/sshd_config" <<EOF
+Port 22
+HostKey $VM_DIR/ssh/host_key
+AuthorizedKeysFile $VM_DIR/ssh/authorized_keys
+PidFile /run/sshd.pid
+PermitRootLogin yes
+PasswordAuthentication no
+UsePAM no
+StrictModes no
+PrintMotd no
+AcceptEnv LANG LC_*
+EOF
+}
+
+gen_run_script() {
+  log "linking $VM_DIR/run"
+  ln -sf "$(readlink -f "$0")" "$VM_DIR/run"
+}
+
+if [ $build_opts -eq 1 ] && [ "$cmd" != build ]; then
+  echo "error: -k and -j are only valid for 'build'" >&2
+  exit 1
+fi
+
+cmd_build() {
+  mkdir -p "$VM_DIR"
+  VM_DIR=$(readlink -f "$VM_DIR")
+  check_tools
+  resolve_version
+  log "kernel $KERNEL_VERSION, output $VM_DIR"
+  fetch_kernel
+  configure_kernel
+  build_kernel
+  build_initramfs
+  gen_ssh_config
+  gen_run_script
+  log "done: $VM_DIR/run"
+  ls -la "$VM_DIR/kernel" "$VM_DIR/initramfs.cpio.gz"
+}
+
+cmd_update() {
+  [ -f "$VM_DIR/kernel" ] || die "no VM in $VM_DIR, run \"$0 build\" first"
+  VM_DIR=$(readlink -f "$VM_DIR")
+  build_initramfs
+  gen_ssh_config
+  gen_run_script
+  log "updated $VM_DIR"
+}
+
+case $cmd in
+  build)  cmd_build ;;
+  update) cmd_update ;;
+  help|-h|--help) usage ;;
+  *) echo "error: unknown command '$cmd'" >&2; usage; exit 1 ;;
+esac
