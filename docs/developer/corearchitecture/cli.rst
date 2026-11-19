@@ -473,6 +473,8 @@ it. An indentation of 0 gives text without white space.
 ``| where``, and ``cli_is_json (ctx)`` if the output has to be JSON. A handler
 builds the table only then, and prints text otherwise.
 
+.. _cli_plain_text:
+
 Plain text
 ----------
 

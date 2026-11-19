@@ -36,14 +36,39 @@ table_format_spaces (u8 *s, int n_spaces)
   return s;
 }
 
+/* spaces on both sides of a cell which is to take size columns */
+static void
+table_cell_padding (table_cell_t *c, table_text_attr_t *def, int size, int *left_pad,
+		    int *right_pad)
+{
+  table_text_attr_align_t align = c->attr.align;
+  int visible_len = format_get_visible_length (c->text);
+
+  *left_pad = *right_pad = 0;
+
+  if (align == TTAA_DEFAULT)
+    align = def->align;
+
+  if (visible_len >= size)
+    return;
+
+  if (align == TTAA_LEFT)
+    *right_pad = size - visible_len;
+  else if (align == TTAA_CENTER)
+    {
+      *left_pad = (size - visible_len) / 2;
+      *right_pad = size - visible_len - *left_pad;
+    }
+  else
+    *left_pad = size - visible_len;
+}
+
 u8 *
 format_text_cell (table_t *t, u8 *s, table_cell_t *c, table_text_attr_t *def,
 		  int size)
 {
   table_text_attr_t _a = {}, *a = &_a;
-  table_text_attr_align_t align;
-  int visible_len;
-  int left_pad = 0, right_pad = 0;
+  int left_pad, right_pad;
 
   if (c == 0)
     return format (s, t->no_ansi ? "" : "\x1b[0m");
@@ -97,22 +122,7 @@ format_text_cell (table_t *t, u8 *s, table_cell_t *c, table_text_attr_t *def,
 	}
     }
 
-  align = c->attr.align;
-  if (align == TTAA_DEFAULT)
-    align = a->align;
-  visible_len = format_get_visible_length (c->text);
-  if (visible_len < size)
-    {
-      if (align == TTAA_LEFT)
-	right_pad = size - visible_len;
-      else if (align == TTAA_CENTER)
-	{
-	  left_pad = (size - visible_len) / 2;
-	  right_pad = size - visible_len - left_pad;
-	}
-      else
-	left_pad = size - visible_len;
-    }
+  table_cell_padding (c, a, size, &left_pad, &right_pad);
 
   s = table_format_spaces (s, left_pad);
   s = format (s, "%v", c->text);
@@ -171,6 +181,98 @@ format_table (u8 *s, va_list *args)
     }
 
   return s;
+}
+
+static void
+table_apply_attr (styled_text_style_t *style, table_text_attr_t a)
+{
+  if (a.flags & TTAF_BOLD)
+    style->bold = ST_A_ON;
+
+  if (a.flags & TTAF_UNDERLINE)
+    style->underline = ST_A_ON;
+
+  if (a.flags & TTAF_FG_COLOR_SET)
+    style->fg = ST_C_BLACK + (a.fg_color | (a.flags & TTAF_FG_COLOR_BRIGHT ? 8 : 0));
+
+  if (a.flags & TTAF_BG_COLOR_SET)
+    style->bg = ST_C_BLACK + (a.bg_color | (a.flags & TTAF_BG_COLOR_BRIGHT ? 8 : 0));
+}
+
+/*
+ * own is what the user of the table set for this kind of cell, builtin is used
+ * for the alignment when nothing was set. The colors of the builtin one are not
+ * used, the role stands for them.
+ */
+static void
+table_add_styled_cell (styled_text_t *st, table_cell_t *c, styled_text_role_t role,
+		       table_text_attr_t *own, table_text_attr_t *builtin, int size)
+{
+  styled_text_style_t style = { .role = role };
+  int left_pad, right_pad;
+
+  if (own->as_u32)
+    table_apply_attr (&style, *own);
+
+  table_apply_attr (&style, c->attr);
+  table_cell_padding (c, own->as_u32 ? own : builtin, size, &left_pad, &right_pad);
+
+  styled_text_add_styled (st, style, "%U%v%U", format_white_space, left_pad, c->text,
+			  format_white_space, right_pad);
+}
+
+__clib_export void
+format_styled_table (styled_text_t *st, va_list *args)
+{
+  table_t *t = va_arg (*args, table_t *);
+  int table_width = 0;
+
+  for (int i = 0; i < vec_len (t->row_sizes); i++)
+    table_width += t->row_sizes[i];
+
+  styled_text_begin (st, (styled_text_style_t) { .wrap = ST_A_OFF });
+
+  if (t->title)
+    {
+      table_cell_t title_cell = { .text = t->title };
+
+      table_width = clib_max (format_get_visible_length (t->title), table_width);
+      table_add_styled_cell (st, &title_cell, ST_R_TABLE_TITLE, &t->default_title, &default_title,
+			     table_width);
+      styled_text_add (st, "\n");
+    }
+
+  for (int c = 0; c < vec_len (t->cells); c++)
+    {
+      for (int r = 0; r < vec_len (t->cells[c]); r++)
+	{
+	  styled_text_role_t role = ST_R_TABLE_CELL;
+	  table_text_attr_t *own = &t->default_body, *builtin = &default_body;
+
+	  if (c < t->n_header_cols)
+	    {
+	      role = ST_R_TABLE_COL_HEADING;
+	      own = &t->default_header_col;
+	      builtin = &default_header_col;
+	    }
+	  else if (r < t->n_header_rows)
+	    {
+	      role = ST_R_TABLE_ROW_HEADING;
+	      own = &t->default_header_row;
+	      builtin = &default_header_row;
+	    }
+
+	  if (r)
+	    styled_text_add (st, " ");
+
+	  table_add_styled_cell (st, &t->cells[c][r], role, own, builtin, t->row_sizes[r]);
+	}
+
+      if (c + 1 < vec_len (t->cells))
+	styled_text_add (st, "\n");
+    }
+
+  styled_text_end (st);
 }
 
 void

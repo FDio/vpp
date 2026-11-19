@@ -587,6 +587,281 @@ Here’s a bit of code which shows the required mechanics, in full:
         .function = my_command_fn",
       };
 
+.. _styled_text:
+
+Styled text
+-----------
+
+``styled_text_t`` (``vppinfra/styled_text.h``) is plain text plus a list of
+places where the formatting changes. The text never contains escape
+sequences, so its length and column positions are what they look like. The
+same object is rendered as plain text, or with colors, depending on the
+output it is asked for. It also wraps lines at spaces at a given width.
+
+It is meant for output of the CLI commands, for example ``show device``. It
+allocates, do not use it in the data path.
+
+Building the text
+~~~~~~~~~~~~~~~~~
+
+.. code-block:: c
+
+   styled_text_t st = { .width = 100, };
+
+   styled_text_add (&st, "interface ");
+   styled_text_add_role (&st, ST_R_VALUE, "%s", name);
+
+   s = format (s, "%U", format_styled_text, &st);
+   styled_text_free (&st);
+
+``styled_text_add ()`` takes everything ``format ()`` takes. The text added
+between ``styled_text_begin_role ()`` and the matching ``styled_text_end ()``
+has the role, ``styled_text_add_role ()`` does the three in one call. Pairs nest
+and the inner style is merged on top of the enclosing ones, a style which is
+left open ends with the text. ``styled_text_append ()`` adds the text of another
+object together with its styles, and ``styled_text_free ()`` empties the object
+so it can be used again.
+
+``styled_text_add_marked ()`` gives a role to parts of a format string, which
+saves splitting a line into several calls. It takes the role, and the parts
+between ``%{`` and ``%}`` get it:
+
+.. code-block:: c
+
+   styled_text_add_marked (&st, ST_R_VALUE, "rx %{%u%}, tx %{%u%}", n_rx,
+			   n_tx);
+
+``%{`` and ``%}`` take no argument. They are the same as
+``styled_text_begin_role ()`` and ``styled_text_end ()``, and the pairs nest
+with each other and with those. ``%}`` only closes a ``%{`` of the same format
+string, and a ``%{`` which is not closed ends with the call. The other functions
+and ``format ()`` don't know them, text which needs two roles is added with two
+calls.
+
+Roles and profiles
+~~~~~~~~~~~~~~~~~~
+
+Text is marked with what it is, not with how it looks. A profile
+(``styled_text_profile_t``) has a style for every role and is applied when the
+text is rendered:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 35 30
+
+   * - Role
+     - Use
+     - Default profile
+   * - ``ST_R_VALUE``
+     - a value, as opposed to the text around it
+     - light blue, color 153
+   * - ``ST_R_HEADING``
+     - a heading
+     - bold
+   * - ``ST_R_SUCCESS``
+     - a good state
+     - green
+   * - ``ST_R_WARNING``
+     - a state which needs attention
+     - yellow
+   * - ``ST_R_ERROR``
+     - a failure
+     - light red, color 211
+   * - ``ST_R_TABLE_TITLE``
+     - title of a table
+     - bold
+   * - ``ST_R_TABLE_COL_HEADING``
+     - heading of a table column
+     - bold
+   * - ``ST_R_TABLE_ROW_HEADING``
+     - heading of a table row
+     - bold
+   * - ``ST_R_TABLE_CELL``
+     - other cells of a table
+     - light blue, color 153
+
+An object uses ``styled_text_default_profile`` unless its ``profile`` member
+points to another one. A role for which a profile has no style looks like the
+text around it.
+
+.. code-block:: c
+
+   static const styled_text_profile_t profile = {
+     .role = {
+       [ST_R_VALUE] = { .bold = ST_A_ON, },
+     },
+   };
+
+   styled_text_t st = { .profile = &profile, };
+
+Styles
+~~~~~~
+
+A ``styled_text_style_t`` is what a profile is made of. It can be used directly
+too, with ``styled_text_begin ()`` and ``styled_text_add_styled ()``, when no
+role fits:
+
+.. code-block:: c
+
+   styled_text_add_styled (&st,
+			   (styled_text_style_t){
+			     .fg = ST_C_GREEN,
+			     .bold = ST_A_ON,
+			   },
+			   "%s", name);
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Member
+     - Meaning
+   * - ``fg``, ``bg``
+     - foreground and background color
+   * - ``bold``, ``italic``, ``underline``, ``reverse``
+     - ``ST_A_ON`` or ``ST_A_OFF``
+   * - ``wrap``
+     - ``ST_A_OFF`` keeps lines of the text from being wrapped
+   * - ``role``
+     - take the style of the role from the profile, other members which are
+       set go on top of it
+
+A member which is zero changes nothing. It keeps the value of the enclosing
+style, so inner text can switch off what an outer style turned on.
+
+A color is one of the base colors (``ST_C_GREEN`` and the others in
+``styled_text_color_t``), ``styled_text_color256 (n)`` or
+``styled_text_rgb (r, g, b)``. Where the functions can't be called, as in a static
+profile, color ``n`` of the 256 color palette is written as
+``ST_C_256_BASE + n``. ``ST_C_INHERIT``, which is zero, keeps the color of the
+enclosing style, while ``ST_C_DEFAULT`` is the terminal's own color. Colors are
+mapped down to what the output supports, see below.
+
+Output
+~~~~~~
+
+``styled_text_set_output ()`` sets what the output may use. It is a cap, styles
+which ask for more are mapped to the nearest color and styles which ask for
+less are left alone:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Output
+     - Meaning
+   * - ``ST_O_UNKNOWN``
+     - no cap, every color is written as it was asked for (default)
+   * - ``ST_O_PLAIN``
+     - no escape sequences at all
+   * - ``ST_O_16``
+     - the 16 base colors
+   * - ``ST_O_256``
+     - the 256 color palette
+
+Handlers which get ``cli_ctx_t`` set ``ST_O_PLAIN`` when
+``ctx->plain_text_only`` is set, see :ref:`cli_plain_text`.
+
+Wrapping
+~~~~~~~~
+
+When ``width`` is not zero, lines which are longer than that are wrapped at
+spaces. A line which continues gets the indent of the line it is part of,
+spaces at the start of a line included. A word longer than the width is not
+cut. A CLI command passes the width of the terminal of its session. Text which
+has to keep its lines, for example a table, has ``wrap`` set to
+``ST_A_OFF`` in its style.
+
+The width is counted in terminal columns of UTF-8 characters, not in bytes.
+Characters like ``é`` take one column, wide characters (for example Chinese
+or emoji) take two and combining characters take none. A byte which is not
+valid UTF-8 is one column and is written as it is.
+
+``format_styled_text`` renders the object with its own profile, output and
+width. A newline in the text is followed by the indent of the line where the text
+started, the way ``format_get_indent ()`` sees it, so multi line text lines up
+wherever it is put.
+
+Tables
+~~~~~~
+
+``format_styled_table`` adds a ``table_t`` (``vppinfra/format_table.h``) to a
+styled text, through ``%T`` (see below). The table is built the same way as for
+``format_table``:
+
+.. code-block:: c
+
+   table_t t = {};
+   styled_text_t st = {};
+
+   table_add_hdr_row (&t, 2, "Name", "Size");
+   table_format_cell (&t, 0, 0, "%s", name);
+   table_format_cell (&t, 0, 1, "%u", size);
+
+   styled_text_add (&st, "%T", format_styled_table, &t);
+   vlib_cli_output (vm, "%U", format_styled_text, &st);
+
+   styled_text_free (&st);
+   table_free (&t);
+
+The title, the column headings, the row headings and the other cells have a
+table role each, so they follow the profile of the styled text. Colors and
+attributes set for the table or for a cell go on top of the role. Whether the
+output has colors is decided by the styled text too, ``no_ansi`` of the table is not used. A table
+is not wrapped, and its lines start at the column it is added at.
+
+Functions which style their output
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A ``styled_format_fn_t`` is a format function which gets the object to add to.
+It is called by ``styled_text_add ()`` for ``%T``, the way ``%U`` calls a format
+function:
+
+.. code-block:: c
+
+   static void
+   styled_format_thing (styled_text_t *st, va_list *args)
+   {
+     char *name = va_arg (*args, char *);
+
+     styled_text_add_role (st, ST_R_VALUE, "%s", name);
+   }
+
+   styled_text_add (&st, "%u %T", count, styled_format_thing, name);
+
+``%T`` is not known to ``format ()``, it can be used only in the
+``styled_text_add`` functions. A styled function can call
+``styled_text_add ()`` on its object, with ``%T`` or ``%U`` inside, so they
+nest.
+
+Indentation
+^^^^^^^^^^^
+
+The object is empty when a styled function is called, and what it adds is then
+appended at the place of the ``%T``. Every line the function starts is indented
+to that column, so a function does not have to know where it is used: ``\n``
+starts a line at the indent of the function and ``\n`` followed by two spaces
+starts one two columns deeper.
+
+.. code-block:: c
+
+   static void
+   styled_format_queues (styled_text_t *st, va_list *args)
+   {
+     u32 n_rx = va_arg (*args, u32);
+     u32 n_tx = va_arg (*args, u32);
+
+     styled_text_add_marked (st, ST_R_VALUE, "rx %{%u%}\ntx %{%u%}", n_rx,
+			     n_tx);
+   }
+
+   styled_text_add (&st, "queues: %T", styled_format_queues, 4, 2);
+
+.. code-block:: text
+
+   queues: rx 4
+           tx 2
+
 Vppinfra errors and warnings
 ----------------------------
 

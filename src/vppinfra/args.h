@@ -9,6 +9,7 @@
 #include <vppinfra/clib_error.h>
 #include <vppinfra/bitmap.h>
 #include <vppinfra/format.h>
+#include <vppinfra/styled_text.h>
 #include <vppinfra/vec.h>
 
 #define foreach_clib_arg_type                                                 \
@@ -108,6 +109,7 @@ clib_error_t *clib_args_parse (clib_args_handle_t h, u8 *str);
 format_function_t format_clib_arg_type;
 format_function_t format_clib_arg_value;
 format_function_t format_clib_args;
+styled_format_fn_t styled_format_clib_args; /* %T with a clib_args_handle_t */
 clib_args_handle_t clib_args_init (clib_arg_t *args);
 clib_args_handle_t clib_args_clone (clib_args_handle_t h);
 void clib_args_free (clib_args_handle_t h);

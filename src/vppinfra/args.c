@@ -310,12 +310,12 @@ format_clib_arg_value (u8 *s, va_list *args)
   return s;
 }
 
-__clib_export u8 *
-format_clib_args (u8 *s, va_list *va)
+__clib_export void
+styled_format_clib_args (styled_text_t *st, va_list *va)
 {
   clib_args_handle_t h = va_arg (*va, clib_args_handle_t);
   clib_arg_t *a, *args = h ? h->args : 0;
-  table_t t = { .no_ansi = 1 };
+  table_t t = {};
 
   table_add_hdr_row (&t, 4, "Name", "Value", "Default", "Description");
   table_set_cell_align (&t, -1, 0, TTAA_LEFT);
@@ -337,9 +337,21 @@ format_clib_args (u8 *s, va_list *va)
       table_set_cell_align (&t, r, 3, TTAA_LEFT);
     }
 
-  s = format (s, "%U", format_table, &t);
+  styled_text_add (st, "%T", format_styled_table, &t);
 
   table_free (&t);
+}
+
+__clib_export u8 *
+format_clib_args (u8 *s, va_list *va)
+{
+  clib_args_handle_t h = va_arg (*va, clib_args_handle_t);
+  styled_text_t st = { .output = ST_O_PLAIN };
+
+  styled_text_add (&st, "%T", styled_format_clib_args, h);
+  s = format (s, "%U", format_styled_text, &st);
+  styled_text_free (&st);
+
   return s;
 }
 
