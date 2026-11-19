@@ -15,6 +15,7 @@ typedef struct
   u32 sw_if_index;
   u8 new_src_mac[6];
   u8 new_dst_mac[6];
+  u32 sampled_packet_size;
 } sflow_trace_t;
 
 #ifndef CLIB_MARCH_VARIANT
@@ -36,8 +37,9 @@ format_sflow_trace (u8 *s, va_list *args)
 
   s = format (s, "SFLOW: sw_if_index %d, next index %d\n", t->sw_if_index,
 	      t->next_index);
-  s = format (s, "  src %U -> dst %U", my_format_mac_address, t->new_src_mac,
+  s = format (s, "  src %U -> dst %U\n", my_format_mac_address, t->new_src_mac,
 	      my_format_mac_address, t->new_dst_mac);
+  s = format (s, "  sampled-packet-size %u", t->sampled_packet_size);
   return s;
 }
 
@@ -126,8 +128,7 @@ sflow_node_ingress_egress (vlib_main_t *vm, vlib_node_runtime_t *node,
 	    .samplingN = sfwk->smpN,
 	    .input_if_index = if_index,
 	    .output_if_index = if_index_out,
-	    .sampled_packet_size =
-	      bN->current_length + bN->total_length_not_including_first_buffer,
+	    .sampled_packet_size = vlib_buffer_length_in_chain (vm, bN),
 	    .header_bytes = hdr
 	  };
 
@@ -247,6 +248,7 @@ sflow_node_ingress_egress (vlib_main_t *vm, vlib_node_runtime_t *node,
 			   sizeof (t->new_src_mac));
 	      clib_memcpy (t->new_dst_mac, en0->dst_address,
 			   sizeof (t->new_dst_mac));
+	      t->sampled_packet_size = vlib_buffer_length_in_chain (vm, b0);
 	    }
 
 	  if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
@@ -258,6 +260,7 @@ sflow_node_ingress_egress (vlib_main_t *vm, vlib_node_runtime_t *node,
 			   sizeof (t->new_src_mac));
 	      clib_memcpy (t->new_dst_mac, en1->dst_address,
 			   sizeof (t->new_dst_mac));
+	      t->sampled_packet_size = vlib_buffer_length_in_chain (vm, b1);
 	    }
 
 	  if (PREDICT_FALSE (b2->flags & VLIB_BUFFER_IS_TRACED))
@@ -269,6 +272,7 @@ sflow_node_ingress_egress (vlib_main_t *vm, vlib_node_runtime_t *node,
 			   sizeof (t->new_src_mac));
 	      clib_memcpy (t->new_dst_mac, en2->dst_address,
 			   sizeof (t->new_dst_mac));
+	      t->sampled_packet_size = vlib_buffer_length_in_chain (vm, b2);
 	    }
 
 	  if (PREDICT_FALSE (b3->flags & VLIB_BUFFER_IS_TRACED))
@@ -280,6 +284,7 @@ sflow_node_ingress_egress (vlib_main_t *vm, vlib_node_runtime_t *node,
 			   sizeof (t->new_src_mac));
 	      clib_memcpy (t->new_dst_mac, en3->dst_address,
 			   sizeof (t->new_dst_mac));
+	      t->sampled_packet_size = vlib_buffer_length_in_chain (vm, b3);
 	    }
 
 	  /* verify speculative enqueues, maybe switch current next frame */
@@ -325,6 +330,7 @@ sflow_node_ingress_egress (vlib_main_t *vm, vlib_node_runtime_t *node,
 			   sizeof (t->new_src_mac));
 	      clib_memcpy (t->new_dst_mac, en0->dst_address,
 			   sizeof (t->new_dst_mac));
+	      t->sampled_packet_size = vlib_buffer_length_in_chain (vm, b0);
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
@@ -419,8 +425,7 @@ VLIB_NODE_FN (sflow_drop_node)
       sflow_sample_t discard = { .sample_type = SFLOW_SAMPLETYPE_DISCARD,
 				 .input_if_index = if_index,
 				 .sampled_packet_size =
-				   bN->current_length +
-				   bN->total_length_not_including_first_buffer,
+				   vlib_buffer_length_in_chain (vm, bN),
 				 .header_bytes = hdr,
 				 // .header_protocol = 0,
 				 .drop_reason = bN->error };
