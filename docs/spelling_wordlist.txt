@@ -316,6 +316,7 @@ dstPortDefinition
 DT
 dumpxml
 DX
+Dx
 e.g.
 eal
 eb
@@ -358,6 +359,7 @@ eos
 epoll
 Erns
 ESP
+eswitch
 et
 etcd
 eth
@@ -1016,6 +1018,7 @@ rekey
 rekeying
 repo
 repos
+representor
 requeue
 requeued
 requeueing
@@ -1179,6 +1182,7 @@ svm
 svs
 sw
 Sw
+switchdev
 symlink
 syntaxes
 sys
@@ -1196,6 +1200,7 @@ tabula
 Tahhan
 Tahr
 tapcli
+tc
 tcp
 tcpcontrolbits
 taskset
@@ -1305,6 +1310,7 @@ unwritable
 upf
 upgradability
 upgradable
+uplink
 upstreamed
 uptime
 uri
@@ -1333,6 +1339,8 @@ Valgrind
 vapi
 Vbox
 vcl
+vdpa
+vDPA
 ve
 vec
 vectorized

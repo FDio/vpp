@@ -13,6 +13,7 @@ add_vpp_plugin(tap
     tx_node.c
     rx_node.c
     tapv2_api.c
+    vdpa.c
 
   MULTIARCH_SOURCES
     rx_node.c

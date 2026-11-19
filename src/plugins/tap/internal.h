@@ -77,6 +77,8 @@ typedef struct
   i8 offset;
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   u32 queue_index;
+  u16 notify_data;
+  u16 *notify;
 } tap_rxq_t;
 
 typedef struct
@@ -98,7 +100,9 @@ typedef struct
   u8 tx_is_scheduled : 1;
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   u16 queue_id;
+  u16 notify_data;
   u32 queue_index;
+  u16 *notify;
 } tap_txq_t;
 
 STATIC_ASSERT_SIZEOF (tap_rxq_t, 2 * CLIB_CACHE_LINE_BYTES);
@@ -136,6 +140,12 @@ typedef struct
   u32 id;
   u32 host_mtu_size;
   u32 tap_flags;
+  u8 is_vdpa;
+  void *vdpa_cvq;
+  int vdpa_cvq_kick_fd;
+  int vdpa_config_fd;
+  u32 vdpa_config_file_index;
+  u8 vdpa_link_up;
 
   /* error */
   clib_error_t *error;
@@ -203,6 +213,12 @@ tap_get_tx_queue (tap_if_t *tif, u16 qid)
 void tap_pre_input_node_enable (vlib_main_t *vm, tap_if_t *tif);
 void tap_pre_input_node_disable (vlib_main_t *vm, tap_if_t *tif);
 int tap_dump_ifs (tap_interface_details_t **out_tapids);
+clib_error_t *tap_rxq_init (tap_if_t *tif, u16 idx, u16 sz);
+clib_error_t *tap_tx_vring_init (tap_if_t *tif, u16 idx, u16 sz);
+clib_error_t *tap_vdpa_init (vlib_main_t *vm, tap_if_t *tif, tap_create_if_args_t *args);
+void tap_vdpa_free (vlib_main_t *vm, tap_if_t *tif);
+void tap_vdpa_set_link_flags (tap_if_t *tif);
+clib_error_t *tap_vdpa_set_mac (tap_if_t *tif, const u8 *mac);
 
 format_function_t format_tx_node_name;
 format_function_t format_tap_log_name;

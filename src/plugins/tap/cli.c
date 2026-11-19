@@ -233,6 +233,7 @@ tap_create_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 
   args.if_name = tap_cli_string (ctx, "if-name");
   args.host_if_name = tap_cli_string (ctx, "host-if-name");
+  args.vdpa_path = tap_cli_string (ctx, "vdpa");
   args.host_namespace = tap_cli_string (ctx, "host-ns");
   args.host_bridge = tap_cli_string (ctx, "host-bridge");
 
@@ -297,6 +298,7 @@ done:
   vec_free (args.host_if_name);
   vec_free (args.host_namespace);
   vec_free (args.host_bridge);
+  vec_free (args.vdpa_path);
 
   return err;
 }
@@ -330,7 +332,8 @@ VLIB_CLI_COMMAND (tap_create_command, static) = {
     CLI_FLAG ("attach", .help = "attach to an existing host interface"),
     CLI_FLAG ("tun", .help = "create a tun interface"), CLI_FLAG ("packed", .help = "packed rings"),
     CLI_FLAG ("in-order", .help = "in-order descriptor use"),
-    CLI_FLAG ("consistent-qp", .help = "consistent queue pair to thread mapping")),
+    CLI_FLAG ("consistent-qp", .help = "consistent queue pair to thread mapping"),
+    CLI_OPT_KEYWORD ("vdpa", cli_type_file, .help = "vhost-vdpa device to use as backend")),
   .handler = tap_create_command_fn,
 };
 

@@ -6,6 +6,7 @@ features:
   - Persistence
   - Attach to an existing tap at host
   - Filter packet dump output with SW if index
+  - vhost-vdpa backend (experimental)
 description: "Create a tap v2 device interface, which connects to a
               tap interface on the host system."
 state: production

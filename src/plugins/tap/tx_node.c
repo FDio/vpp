@@ -63,7 +63,7 @@ tap_free_used_device_desc (vlib_main_t *vm, tap_txq_t *txq)
 {
   u16 sz = txq->queue_size;
   u32 to_free[sz];
-  u16 n_left, n_free = 0;
+  u16 n_left, n_free = 0, n_desc = 0;
   u16 mask = sz - 1;
   u16 last = txq->last_used_idx;
   vnet_virtio_vring_used_elem_t *ring = txq->used->ring;
@@ -90,6 +90,7 @@ tap_free_used_device_desc (vlib_main_t *vm, tap_txq_t *txq)
       next = d->next;
       d->next = desc_freelist;
       desc_freelist = desc_index;
+      n_desc++;
       if (d->flags & VRING_DESC_F_NEXT)
 	{
 	  desc_index = next;
@@ -100,7 +101,7 @@ tap_free_used_device_desc (vlib_main_t *vm, tap_txq_t *txq)
   vlib_buffer_free (vm, to_free, n_free);
 
   txq->desc_freelist_head = desc_freelist;
-  txq->desc_in_use -= n_free;
+  txq->desc_in_use -= n_desc;
   txq->last_used_idx = last;
 }
 
@@ -228,24 +229,38 @@ tap_if_tx_inline (vlib_main_t *vm, vlib_node_runtime_t *node, tap_if_t *tif,
   u16 drop_reasons[TAP_TX_N_ERROR] = {};
   u32 to_drop[VLIB_FRAME_SIZE], n_drop = 0;
   int hdr_sz = VIRTIO_NET_HDR_SZ;
+  int indirect = (tif->features & VIRTIO_RING_F_INDIRECT_DESC_BIT) != 0;
   u32 n_enq = 0;
+  u16 n_desc_used = 0;
 
   avail = txq->avail->idx;
   u16 n_desc = sz - txq->desc_in_use;
 
-  while (n_buffers && n_enq < n_desc)
+  while (n_buffers && n_desc_used < n_desc)
     {
       vnet_virtio_vring_desc_t d = {}, *dp;
       u32 bi;
       vlib_buffer_t *b;
       vnet_virtio_net_hdr_v1_t *hdr;
       typeof (b->flags) flags;
-      u16 desc_index;
+      u16 desc_index, n_seg = 1;
 
-      bi = buffers++[0];
-      n_buffers--;
+      bi = buffers[0];
       b = vlib_get_buffer (vm, bi);
       flags = b->flags;
+
+      if (PREDICT_FALSE ((flags & VLIB_BUFFER_NEXT_PRESENT) && !indirect))
+	{
+	  for (vlib_buffer_t *s = b; s->flags & VLIB_BUFFER_NEXT_PRESENT;
+	       s = vlib_get_buffer (vm, s->next_buffer))
+	    n_seg++;
+
+	  if (n_desc_used + n_seg > n_desc)
+	    break;
+	}
+
+      buffers++;
+      n_buffers--;
       hdr = vlib_buffer_get_current (b) - hdr_sz;
       *hdr = (vnet_virtio_net_hdr_v1_t){};
 
@@ -274,6 +289,31 @@ tap_if_tx_inline (vlib_main_t *vm, vlib_node_runtime_t *node, tap_if_t *tif,
 
       if (PREDICT_FALSE (flags & VLIB_BUFFER_IS_TRACED))
 	tap_tx_trace (vm, node, b, bi, is_tun);
+
+      if (PREDICT_FALSE ((flags & VLIB_BUFFER_NEXT_PRESENT) && !indirect))
+	{
+	  desc_index = desc_freelist_head;
+	  dp = desc + desc_index;
+	  dp->addr = pointer_to_uword (hdr);
+	  dp->len = b->current_length + hdr_sz;
+	  dp->flags = VRING_DESC_F_NEXT;
+
+	  for (u16 i = 1; i < n_seg; i++)
+	    {
+	      b = vlib_get_buffer (vm, b->next_buffer);
+	      dp = desc + dp->next;
+	      dp->addr = pointer_to_uword (vlib_buffer_get_current (b));
+	      dp->len = b->current_length;
+	      dp->flags = i < n_seg - 1 ? VRING_DESC_F_NEXT : 0;
+	    }
+
+	  desc_freelist_head = dp->next;
+	  vring_buffers[desc_index] = bi;
+	  avail_ring[avail++ & mask] = desc_index;
+	  n_desc_used += n_seg;
+	  n_enq++;
+	  continue;
+	}
 
       if (PREDICT_FALSE (flags & VLIB_BUFFER_NEXT_PRESENT))
 	{
@@ -338,6 +378,7 @@ tap_if_tx_inline (vlib_main_t *vm, vlib_node_runtime_t *node, tap_if_t *tif,
       /* enqueue */
       vring_buffers[desc_index] = bi;
       avail_ring[avail++ & mask] = desc_index;
+      n_desc_used++;
       n_enq++;
     }
 
@@ -345,13 +386,19 @@ tap_if_tx_inline (vlib_main_t *vm, vlib_node_runtime_t *node, tap_if_t *tif,
     {
       __atomic_store_n (&txq->avail->idx, avail, __ATOMIC_RELEASE);
       txq->desc_freelist_head = desc_freelist_head;
-      txq->desc_in_use += n_enq;
+      txq->desc_in_use += n_desc_used;
       txq->total_packets += n_enq;
       if ((__atomic_load_n (&txq->used->flags, __ATOMIC_ACQUIRE) &
 	   VRING_USED_F_NO_NOTIFY) == 0)
 	{
 	  ssize_t __clib_unused rv;
-	  rv = write (txq->kick_fd, &(u64){ 1 }, sizeof (u64));
+	  if (txq->notify)
+	    {
+	      CLIB_MMIO_WMB ();
+	      *(volatile u16 *) txq->notify = txq->notify_data;
+	    }
+	  else
+	    rv = write (txq->kick_fd, &(u64) { 1 }, sizeof (u64));
 	}
     }
 
