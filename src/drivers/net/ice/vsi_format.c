@@ -137,25 +137,25 @@ ice_dump_vsi (vlib_main_t *vm, vnet_dev_t *dev, void *data)
   return VNET_DEV_OK;
 }
 
-u8 *
-format_ice_vsi_summary (u8 *s, va_list *args)
+void
+styled_format_ice_vsi_summary (styled_text_t *st, va_list *args)
 {
   vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
   ice_port_t *ip = vnet_dev_get_port_data (port);
-  u32 indent = format_get_indent (s);
 
-  s = format (s, "programmed VSI: switch %u, valid sections 0x%04x, LAN %u, RX queues %u-%u",
-	      ip->vsi.props.sw_id, ip->vsi.props.valid_sections.as_u16,
-	      ip->vsi.props.sw_flags2.lan_enable, ip->vsi.props.q_mapping[0],
-	      ip->vsi.props.q_mapping[0] + ip->vsi.props.q_mapping[1] - 1);
-  s = format_word_wrap_last_line (s, 100);
-  s = format (format_newline (s, indent),
-	      "features: loopback %u, local loopback %u, source prune %u, "
-	      "destination override %u",
-	      ip->vsi.props.sw_flags.allow_loopback, ip->vsi.props.sw_flags.local_loopback,
-	      ip->vsi.props.sw_flags.source_prune, ip->vsi.props.sec_flags.allow_dest_override);
-  s = format_word_wrap_last_line (s, 100);
-  return format (format_newline (s, indent), "VLAN: TX mode %u, egress mode %u",
-		 ip->vsi.props.inner_vlan_flags.tx_mode,
-		 ip->vsi.props.inner_vlan_flags.egress_mode);
+  styled_text_add_marked (st, ST_R_VALUE,
+			  "programmed VSI: switch %{%u%}, valid sections %{0x%04x%}",
+			  ip->vsi.props.sw_id, ip->vsi.props.valid_sections.as_u16);
+  styled_text_add_marked (st, ST_R_VALUE, ", LAN %{%u%}, RX queues %{%u-%u%}",
+			  ip->vsi.props.sw_flags2.lan_enable, ip->vsi.props.q_mapping[0],
+			  ip->vsi.props.q_mapping[0] + ip->vsi.props.q_mapping[1] - 1);
+  styled_text_add_marked (st, ST_R_VALUE, "\nfeatures: loopback %{%u%}, local loopback %{%u%}",
+			  ip->vsi.props.sw_flags.allow_loopback,
+			  ip->vsi.props.sw_flags.local_loopback);
+  styled_text_add_marked (st, ST_R_VALUE, ", source prune %{%u%}, destination override %{%u%}",
+			  ip->vsi.props.sw_flags.source_prune,
+			  ip->vsi.props.sec_flags.allow_dest_override);
+  styled_text_add_marked (st, ST_R_VALUE, "\nVLAN: TX mode %{%u%}, egress mode %{%u%}",
+			  ip->vsi.props.inner_vlan_flags.tx_mode,
+			  ip->vsi.props.inner_vlan_flags.egress_mode);
 }

@@ -103,7 +103,7 @@ A driver registers itself with ``VNET_DEV_REGISTER_DRIVER``:
          .deinit = ice_deinit,
          .free = ice_aq_free,
          .probe = ice_probe,
-         .format_info = format_ice_dev_info,
+         .styled_format_info = styled_format_ice_dev_info,
        },
      },
    };
@@ -152,8 +152,64 @@ The device operations (``vnet_dev_ops_t``) are:
 ``config_args``
    Optional, called when the ``driver`` startup configuration is parsed.
 
-``format_info``
-   Format function used by ``show device`` for device specific information.
+``styled_format_info`` / ``format_info``
+   Used by ``show device`` for device specific information, see
+   :ref:`dev_format`.
+
+.. _dev_format:
+
+Driver output
+-------------
+
+A driver adds its own information to the output of the framework. For each of
+these there are two hooks: a styled function (``styled_format_fn_t``, see
+:ref:`styled_text`) and a plain format function. New code provides the styled
+one, so that its output follows the profile and the colors setting of the rest
+and is wrapped at the width of the terminal. When both are set only the styled
+one is called.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 30 48
+
+   * - Operations
+     - Styled hook
+     - Arguments
+   * - device
+     - ``styled_format_info``
+     - ``vnet_dev_format_args_t *``, ``vnet_dev_t *``
+   * - port
+     - ``styled_format_status``
+     - ``vnet_dev_format_args_t *``, ``vnet_dev_port_t *``
+   * - port
+     - ``styled_format_flow``
+     - ``vnet_dev_port_t *``, ``u32`` flow index, ``uword`` private data
+   * - RX queue
+     - ``styled_format_info``
+     - ``vnet_dev_format_args_t *``, ``vnet_dev_rx_queue_t *``
+   * - TX queue
+     - ``styled_format_info``
+     - ``vnet_dev_format_args_t *``, ``vnet_dev_tx_queue_t *``
+   * - crypto queue
+     - ``styled_format_queue_info``
+     - ``vnet_dev_format_args_t *``, ``vnet_dev_crypto_queue_t *``
+
+The plain hook has the same name without ``styled_`` and gets the same
+arguments. Both are called from the device process, so they can access the
+hardware. ``styled_text_add_marked ()`` adds text with values marked in the
+format string with ``%{`` and ``%}``, see :ref:`styled_text`.
+
+.. code-block:: c
+
+   static void
+   styled_format_foo_port_status (styled_text_t *st, va_list *args)
+   {
+     vnet_dev_format_args_t __clib_unused *a = va_arg (*args, vnet_dev_format_args_t *);
+     vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
+     foo_port_t *fp = vnet_dev_get_port_data (port);
+
+     styled_text_add_marked (st, ST_R_VALUE, "VSI index is %{%u%}", fp->vsi_index);
+   }
 
 Device lifecycle
 ================
@@ -627,7 +683,8 @@ queue group (``vnet_dev_crypto_queue_group_t``)
    algorithms with ``vnet_crypto`` as queues start and stop.
 
 queue operations
-   ``init``, ``deinit``, ``start``, ``stop`` and ``format_queue_info``.
+   ``init``, ``deinit``, ``start``, ``stop``, ``styled_format_queue_info`` and
+   ``format_queue_info`` (see :ref:`dev_format`).
 
 Queues are added with ``vnet_dev_crypto_queue_add`` (group name, initial private
 data, size limits). The framework validates the requested configuration against

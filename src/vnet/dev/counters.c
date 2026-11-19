@@ -189,10 +189,13 @@ format_vnet_dev_counters (u8 *s, va_list *va)
 
   if (row)
     {
+      styled_text_t st = { .output = a->plain_text ? ST_O_PLAIN : ST_O_UNKNOWN };
+
       if (line)
 	s = format (s, "\n%U", format_white_space, indent);
-      s = format (s, "Hardware Counters:\n%U%U", format_white_space, indent + 2, format_table,
-		  &table);
+      styled_text_add (&st, "Hardware Counters:\n  %T", format_styled_table, &table);
+      s = format (s, "%U", format_styled_text, &st);
+      styled_text_free (&st);
     }
   else if (line == 0)
     s = format (s, "none");

@@ -1049,7 +1049,12 @@ format_vnet_dev_crypto_queue_info (u8 *s, va_list *args)
   s = format (s, "size %u, %s", cq->size, cq->started ? "started" : "stopped");
   s = format_newline (s, indent);
   s = format (s, "threads: %U", format_bitmap_list, cq->assigned_threads);
-  if (ops->format_queue_info)
+  if (ops->styled_format_queue_info)
+    {
+      s = format_newline (s, indent);
+      s = vnet_dev_styled_format_in_process (s, a, cq->dev, ops->styled_format_queue_info, a, cq);
+    }
+  else if (ops->format_queue_info)
     {
       s = format_newline (s, indent);
       s = vnet_dev_format_in_process (s, cq->dev, "%U", ops->format_queue_info, a, cq);

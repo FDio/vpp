@@ -109,7 +109,7 @@ format_function_t format_virtchnl_status;
 /* format.c */
 format_function_t format_iavf_vf_cap_flags;
 format_function_t format_iavf_rx_trace;
-format_function_t format_iavf_port_status;
+styled_format_fn_t styled_format_iavf_port_status;
 
 /* port.c */
 vnet_dev_rv_t iavf_port_init (vlib_main_t *, vnet_dev_port_t *);

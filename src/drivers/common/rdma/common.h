@@ -126,7 +126,7 @@ vnet_dev_rv_t rdma_rss_program_flows (rdma_rss_t *rss, vnet_dev_port_t *port,
 				      vnet_dev_port_cfg_change_req_t *req);
 vnet_dev_rv_t rdma_rss_cfg_validate (const rdma_rss_caps_t *caps, const vnet_dev_rss_config_t *req);
 void rdma_rss_cfg_merge (vnet_dev_rss_config_t *cfg, const vnet_dev_rss_config_t *req);
-format_function_t format_rdma_rss_flows;
+styled_format_fn_t styled_format_rdma_rss_flows;
 vnet_dev_rv_t rdma_netdev_set_mtu (u32 ifindex, u32 max_rx_frame_size, clib_error_t **errp);
 
 u32 rdma_port_speed (struct ibv_port_attr *attr);
@@ -163,9 +163,9 @@ void rdma_rxq_remove_flow_index (rdma_rx_flow_t ***flows, u32 idx);
 void rdma_rxq_destroy_flows (rdma_rx_flow_t ***flows);
 
 format_function_t format_rdma_ibv_wc;
-format_function_t format_rdma_ibv_dev_info;
+styled_format_fn_t styled_format_rdma_ibv_dev_info;
 format_function_t format_rdma_cap_list;
-format_function_t format_rdma_port_status;
+styled_format_fn_t styled_format_rdma_port_status;
 enum
 {
   RDMA_RX_FLOW_INDEX_INVALID = ~0,
