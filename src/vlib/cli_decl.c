@@ -184,7 +184,8 @@ clib_error_t *
 cli_dispatch (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *c)
 {
   const vlib_cli_command_t *cmd = (vlib_cli_command_t *) c->function_arg;
-  cli_ctx_t ctx = { .plain_text_only = vlib_unix_cli_plain_text_only () };
+  cli_ctx_t ctx = { .plain_text_only = vlib_unix_cli_plain_text_only (),
+		    .terminal_width = vlib_unix_cli_terminal_width () };
   u8 *line = 0, *captured = 0, *out;
   clib_error_t *error;
   uword ch;

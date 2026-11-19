@@ -3369,6 +3369,15 @@ vlib_unix_cli_enable_disable_pager (u8 enable)
   return old;
 }
 
+u32
+vlib_unix_cli_terminal_width (void)
+{
+  unix_cli_main_t *cm = &unix_cli_main;
+  unix_cli_file_t *cf = unix_cli_file_if_interactive (cm);
+
+  return cf ? cf->width : 0;
+}
+
 u8
 vlib_unix_cli_ansi_capable (void)
 {
