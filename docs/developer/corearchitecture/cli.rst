@@ -487,6 +487,10 @@ same value:
 
    table_t table = { .no_ansi = ctx->plain_text_only };
 
+``ctx->terminal_width`` is the width of the terminal of the session, 0 if it
+has none. Handlers which wrap their own output, for example with
+``styled_text``, wrap at this width.
+
 Conventions for the keys and values
 -----------------------------------
 

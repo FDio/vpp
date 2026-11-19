@@ -129,6 +129,9 @@ void vlib_unix_cli_set_session_size (u32 session, u16 width, u16 height);
  * terminal is not ANSI capable (set terminal ansi) or unix { nocolor } is set */
 u8 vlib_unix_cli_plain_text_only (void);
 
+/* Returns the width of the terminal of the current CLI session, 0 if it has none. */
+u32 vlib_unix_cli_terminal_width (void);
+
 static inline unix_main_t *
 vlib_unix_get_main (void)
 {
