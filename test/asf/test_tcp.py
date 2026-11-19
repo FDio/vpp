@@ -157,6 +157,7 @@ class TestTCPUnitTests(VppAsfTestCase):
             "tamper lost-rxt",
             "tamper lost-rxt-late",
             "tamper lost-rxt-evidence",
+            "tamper rescue",
             "tamper rto",
             "tamper rto-head",
             "tamper dupack-run",
