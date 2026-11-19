@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "70704c60_47ece89e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2352
+      },
+      "writtenOn": "2026-11-19T15:35:35Z",
+      "side": 1,
+      "message": "Relaying +1 from Neil on vpp-dev mailinglist.",
+      "revId": "cdc11837e3361caae41ff3b3f9dc34ccbba0df20",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
