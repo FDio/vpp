@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3952a739_e03d50ba",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 2740,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-19T11:50:23Z",
+      "side": 1,
+      "message": "Patch set 10: on a REKEY_SA only the rekeyed Child is replaced now and its siblings stay installed, so the allocation scan sees every installed ID. Added TestResponderRekeySiblingChild: two Children, rekey the first one; it fails without the change (the sibling Child is dropped) and passes with it. The whole test_ikev2 module passes on this patch set. Rebased onto master together with the changes that depend on it.",
+      "parentUuid": "56510cb2_a0cc88c5",
+      "revId": "0992c71eb4439dc6a1369807ad067c7fcb22f846",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
