@@ -47,6 +47,11 @@ jobs:
         executor_arch: ['x86_64', 'aarch64']
         os: ['ubuntu2604']
         class: ['builder']
+        include:
+          - build_type: 'release'
+            executor_arch: 'aarch64'
+            os: 'ubuntu2204'
+            class: 'builder'
 
     env:
       MATRIX_BUILD_TYPE: ${{ matrix.build_type }}
@@ -59,7 +64,8 @@ jobs:
       WORKSPACE: /scratch/docker-build/vpp
       CCACHE_DIR: /scratch/ccache/${{ matrix.os }}-${{ matrix.executor_arch }}
       MAKE_PARALLEL_JOBS: 16
-      MAKE_TEST_OS: 'ubuntu-26.04'
+      MAKE_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || 'ubuntu-26.04' }}
+      VPPAPIGEN_TEST_OS: ${{ matrix.os == 'ubuntu2204' && 'ubuntu-22.04' || 'ubuntu-26.04' }}
       TEST_JOBS: 4
       SHM_SIZE: ${{ matrix.executor_arch == 'aarch64' && '4096M' || '2048M' }}
       TUI_LINE: "*******************************************************************"
@@ -151,6 +157,7 @@ jobs:
           BUILD_TYPE: ${{ matrix.build_type }}
           TEST_JOBS: ${{ env.TEST_JOBS }}
           MAKE_TEST_OS: ${{ env.MAKE_TEST_OS }}
+          VPPAPIGEN_TEST_OS: ${{ env.VPPAPIGEN_TEST_OS }}
           TUI_LINE: ${{ env.TUI_LINE }}
 
       - name: AWS S3 Publish Logs
