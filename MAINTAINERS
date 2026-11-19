@@ -499,6 +499,11 @@ I:	qat
 M:	Damjan Marion <dmarion@0xa5.net>
 F:	src/drivers/crypto/qat/
 
+Virtio PCI Ethernet device driver
+I:	virtio-net-pci
+M:	Damjan Marion <dmarion@0xa5.net>
+F:	src/drivers/net/virtio-net-pci/
+
 Plugin - Dispatch Trace PCAP
 I:	dispatch-trace
 M:	Dave Barach <vpp@barachs.net>
