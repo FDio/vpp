@@ -53,25 +53,29 @@ runs:
             BUILD_RESULT="SUCCESSFULLY COMPLETED"
             BUILD_ERROR=""
             RETVAL="0"
+            MW_PARALLEL="false"
+            if [ "$TEST_JOBS" = "auto" ] ; then
+                MW_PARALLEL="true"
+            fi
 
             hst_debug_build_run() {
-                if ! make VERBOSE=true VPPSRC="$WORKSPACE" PARALLEL="${TEST_JOBS}" -C "$HS_TEST_DIR" build-debug ; then
-                    BUILD_ERROR="FAILED 'make VERBOSE=true VPPSRC=$WORKSPACE PARALLEL="${TEST_JOBS}" -C $HS_TEST_DIR build-debug'"
+                if ! make VPPSRC="$WORKSPACE" PARALLEL="${TEST_JOBS}" -C "$HS_TEST_DIR" build-debug ; then
+                    BUILD_ERROR="FAILED 'make VPPSRC=$WORKSPACE PARALLEL="${TEST_JOBS}" -C $HS_TEST_DIR build-debug'"
                     return
                 fi
-                if ! make VERBOSE=true VPPSRC="$WORKSPACE" PARALLEL="${TEST_JOBS}" -C "$HS_TEST_DIR" test-debug ; then
-                    BUILD_ERROR="FAILED 'make VERBOSE=true VPPSRC=$WORKSPACE PARALLEL="${TEST_JOBS}" -C $HS_TEST_DIR test-debug'"
+                if ! make VERBOSE=1 VPPSRC="$WORKSPACE" PARALLEL="${TEST_JOBS}" MW_PARALLEL="${MW_PARALLEL}" -C "$HS_TEST_DIR" test-debug ; then
+                    BUILD_ERROR="FAILED 'make VERBOSE=1 VPPSRC=$WORKSPACE PARALLEL=${TEST_JOBS} MW_PARALLEL=${MW_PARALLEL} -C $HS_TEST_DIR test-debug'"
                     return
                 fi
             }
 
             hst_build_run() {
-                if ! make VERBOSE=true VPPSRC="$WORKSPACE" PARALLEL="${TEST_JOBS}" -C "$HS_TEST_DIR" build ; then
-                    BUILD_ERROR="FAILED 'make VERBOSE=true VPPSRC=$WORKSPACE PARALLEL="${TEST_JOBS}" -C $HS_TEST_DIR build'"
+                if ! make VPPSRC="$WORKSPACE" PARALLEL="${TEST_JOBS}" -C "$HS_TEST_DIR" build ; then
+                    BUILD_ERROR="FAILED 'make VPPSRC=$WORKSPACE PARALLEL="${TEST_JOBS}" -C $HS_TEST_DIR build'"
                     return
                 fi
-                if ! make VERBOSE=true VPPSRC="$WORKSPACE" PARALLEL="${TEST_JOBS}" -C "$HS_TEST_DIR" test ; then
-                    BUILD_ERROR="FAILED 'make VERBOSE=true VPPSRC=$WORKSPACE PARALLEL="${TEST_JOBS}" -C $HS_TEST_DIR test'"
+                if ! make VERBOSE=1 VPPSRC="$WORKSPACE" PARALLEL="${TEST_JOBS}" MW_PARALLEL="${MW_PARALLEL}" -C "$HS_TEST_DIR" test ; then
+                    BUILD_ERROR="FAILED 'make VERBOSE=1 VPPSRC=$WORKSPACE PARALLEL=${TEST_JOBS} MW_PARALLEL=${MW_PARALLEL} -C $HS_TEST_DIR test'"
                     return
                 fi
             }
@@ -102,5 +106,8 @@ runs:
             fi
             echo -e "\n$TUI_LINE\n* VPP ${BUILD_TYPE^^} ${OS_ID^^}-${OS_VERSION_ID}-${OS_ARCH^^}" \
                     "\n* HST $BUILD_RESULT\n$TUI_LINE\n"
+            if ! make -C "$HS_TEST_DIR" clean-hst-docker-state ; then
+                echo "FAILED 'make -C $HS_TEST_DIR clean-hst-docker-state'"
+            fi
             exit $RETVAL
           } | tee "$LOG_FILE"
