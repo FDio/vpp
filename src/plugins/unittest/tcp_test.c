@@ -8670,8 +8670,8 @@ tcp_test_sack_tx_e2e (vlib_main_t *vm, u8 verbose)
   return rv;
 }
 
-/* Ack base + ack and sack [base + start, base + end), through the established node. With
- * timestamps on, the ack echoes tsecr */
+/* Ack base + ack and sack [base + start, base + end), or no block if the range is empty, through
+ * the established node. With timestamps on, the ack echoes tsecr */
 static int
 tcp_test_lost_rxt_inject (vlib_main_t *vm, tcp_connection_t *tc, u32 base, u32 ack, u32 start,
 			  u32 end, u32 tsecr)
@@ -8688,7 +8688,8 @@ tcp_test_lost_rxt_inject (vlib_main_t *vm, tcp_connection_t *tc, u32 base, u32 a
   b = vlib_get_buffer (vm, bi);
   vlib_buffer_reset (b);
   /* nop, nop and one sack block, after nop, nop and a timestamp if on */
-  b->current_length = sizeof (*th) + 12 + (tcp_opts_tstamp (&tc->rcv_opts) ? 12 : 0);
+  b->current_length =
+    sizeof (*th) + (start != end ? 12 : 0) + (tcp_opts_tstamp (&tc->rcv_opts) ? 12 : 0);
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
   vnet_buffer (b)->tcp.seq_number = tc->rcv_nxt;
   vnet_buffer (b)->tcp.seq_end = tc->rcv_nxt;
@@ -8718,12 +8719,15 @@ tcp_test_lost_rxt_inject (vlib_main_t *vm, tcp_connection_t *tc, u32 base, u32 a
       *(u32 *) (opts + 8) = clib_host_to_net_u32 (tsecr);
       opts += 12;
     }
-  opts[0] = TCP_OPTION_NOOP;
-  opts[1] = TCP_OPTION_NOOP;
-  opts[2] = TCP_OPTION_SACK_BLOCK;
-  opts[3] = 2 + TCP_OPTION_LEN_SACK_BLOCK;
-  *(u32 *) (opts + 4) = clib_host_to_net_u32 (base + start);
-  *(u32 *) (opts + 8) = clib_host_to_net_u32 (base + end);
+  if (start != end)
+    {
+      opts[0] = TCP_OPTION_NOOP;
+      opts[1] = TCP_OPTION_NOOP;
+      opts[2] = TCP_OPTION_SACK_BLOCK;
+      opts[3] = 2 + TCP_OPTION_LEN_SACK_BLOCK;
+      *(u32 *) (opts + 4) = clib_host_to_net_u32 (base + start);
+      *(u32 *) (opts + 8) = clib_host_to_net_u32 (base + end);
+    }
 
   frame = vlib_get_frame_to_node (vm, tcp4_established_node.index);
   to = vlib_frame_vector_args (frame);
@@ -8880,8 +8884,10 @@ tcp_test_tamper_lost_rxt_evidence (vlib_main_t *vm)
  * retransmit of the recovery. All data is sent and the tail is not sacked, so
  * once the lost head is resent only a rescue could send more. It waits while
  * the head's copy is in flight, even if more data is sacked, and goes out once
- * the head is acked. Runs on the connection's thread, see
- * tcp_e2e_call_on_thread */
+ * the head is acked. If the head's copy is lost instead, the rto recovers the
+ * tail: it presumes all unsacked data lost, so the tail goes out as soon as the
+ * rto copy is acked, without waiting for more timeouts. Runs on the
+ * connection's thread, see tcp_e2e_call_on_thread */
 static int
 tcp_test_rescue_steps (void *arg)
 {
@@ -8894,14 +8900,17 @@ tcp_test_rescue_steps (void *arg)
   const char *name;
   u8 payload[1000] = {};
   tcp_ack_ctx_t ac;
-  u32 base;
+  u32 base, i;
+  u8 head_lost;
   int ok = 1;
 
   if (!TCP_TEST_I ((!sb->holes && !tc->rcv_opts.sacks && !tc->bt), "rescue: fresh connection"))
     return 1;
 
-  for (backend = 0; ok && backend < TCP_TEST_N_SACK_BACKENDS; backend++)
+  for (i = 0; ok && i < 2 * TCP_TEST_N_SACK_BACKENDS; i++)
     {
+      backend = i % TCP_TEST_N_SACK_BACKENDS;
+      head_lost = i >= TCP_TEST_N_SACK_BACKENDS;
       name = tcp_test_sack_backend_names[backend];
       base = tc->snd_una;
       ok = svm_fifo_enqueue (tx_fifo, sizeof (payload), payload) == (int) sizeof (payload);
@@ -8932,24 +8941,47 @@ tcp_test_rescue_steps (void *arg)
 		       "rxt %u)",
 		       name, tc->snd_rxt_bytes, sb->rescue_rxt - base);
 
-      /* The peer sacks the sixth while the head's copy is in flight */
-      ok = ok && !tcp_test_lost_rxt_inject (vm, tc, base, 0, 100, 600, 0);
-      if (ok)
-	tcp_test_sack_tx_acks (vm, tc, 0);
-      ok = TCP_TEST_I ((ok && tc->snd_rxt_bytes == 100 && sb->rescue_rxt == base + 100),
-		       "rescue: %s: no rescue while the head's copy is unacked (rxt %u, rescue "
-		       "rxt %u)",
-		       name, tc->snd_rxt_bytes, sb->rescue_rxt - base);
+      if (head_lost)
+	{
+	  /* The head's copy is lost too and the rto fires */
+	  tcp_timer_retransmit_handler (tc);
+	  tcp_test_sack_tx_acks (vm, tc, 0);
+	  ok = TCP_TEST_I ((ok && sb->lost_bytes == 600 && tc->snd_rxt_bytes == 200 &&
+			    tcp_flight_size (tc) == 100),
+			   "rescue: %s: the rto presumes the tail lost and resends the head (lost "
+			   "%u, rxt %u, in flight %u)",
+			   name, sb->lost_bytes, tc->snd_rxt_bytes, tcp_flight_size (tc));
 
-      /* The head's copy is acked with the sixth, and the seventh is sacked */
-      ok = ok && !tcp_test_lost_rxt_inject (vm, tc, base, 600, 600, 700, 0);
-      if (ok)
-	tcp_test_sack_tx_acks (vm, tc, 0);
-      ok = TCP_TEST_I ((ok && tcp_in_fastrecovery (tc) && tc->snd_rxt_bytes == 200 &&
-			sb->rescue_rxt == tc->snd_congestion),
-		       "rescue: %s: the rescue goes out once an ack passes the head's copy (rxt "
-		       "%u, rescue rxt %u)",
-		       name, tc->snd_rxt_bytes, sb->rescue_rxt - base);
+	  /* The rto copy of the head is acked */
+	  ok = ok && !tcp_test_lost_rxt_inject (vm, tc, base, 500, 0, 0, 0);
+	  if (ok)
+	    tcp_test_sack_tx_acks (vm, tc, 0);
+	  ok = TCP_TEST_I ((ok && tcp_in_recovery (tc) && tc->snd_rxt_bytes > 200),
+			   "rescue: %s: the tail is resent once the rto copy is acked (rxt %u, in "
+			   "flight %u, cwnd %u)",
+			   name, tc->snd_rxt_bytes, tcp_flight_size (tc), tc->cwnd);
+	}
+      else
+	{
+	  /* The peer sacks the sixth while the head's copy is in flight */
+	  ok = ok && !tcp_test_lost_rxt_inject (vm, tc, base, 0, 100, 600, 0);
+	  if (ok)
+	    tcp_test_sack_tx_acks (vm, tc, 0);
+	  ok = TCP_TEST_I ((ok && tc->snd_rxt_bytes == 100 && sb->rescue_rxt == base + 100),
+			   "rescue: %s: no rescue while the head's copy is unacked (rxt %u, rescue "
+			   "rxt %u)",
+			   name, tc->snd_rxt_bytes, sb->rescue_rxt - base);
+
+	  /* The head's copy is acked with the sixth, and the seventh is sacked */
+	  ok = ok && !tcp_test_lost_rxt_inject (vm, tc, base, 600, 600, 700, 0);
+	  if (ok)
+	    tcp_test_sack_tx_acks (vm, tc, 0);
+	  ok = TCP_TEST_I ((ok && tcp_in_fastrecovery (tc) && tc->snd_rxt_bytes == 200 &&
+			    sb->rescue_rxt == tc->snd_congestion),
+			   "rescue: %s: the rescue goes out once an ack passes the head's "
+			   "copy (rxt %u, rescue rxt %u)",
+			   name, tc->snd_rxt_bytes, sb->rescue_rxt - base);
+	}
 
       tcp_connection_timers_reset (tc);
       tcp_test_sack_backend_cleanup (tc, backend);
