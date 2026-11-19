@@ -35,6 +35,24 @@
       "parentUuid": "a62a2b10_a0b5c003",
       "revId": "8c4904cb0c978116558ca96020591db131c914b8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "56510cb2_a0cc88c5",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2740,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-19T11:11:39Z",
+      "side": 1,
+      "message": "Could we preserve sibling Child records before this allocation scan during REKEY_SA? With two installed Children in slots 0 and 1, the rekey caller frees the entire `sa-\u003echilds` vector before calling here. The bitmap therefore reserves the old local slot 0 but misses the still-installed sibling in slot 1 and selects that occupied ID. `ipsec_sa_add_and_lock` rejects it after the tunnel protection and old outbound SA have already been removed, while the peer still receives a successful SA response. A focused packet test on the captured debug/ASAN build reproduces this: four SAD entries become three, the replacement SPI is absent, and GRE protection becomes empty. Previously this rekey reused the released local slot 0. Preserve the other Children and replace only the requested Child, or otherwise include all still-installed IDs in the allocation scan; add a regression that rekeys while a sibling remains live.",
+      "tag": "prview:bffbbc2f18c7a8b29a8263005cf2b653:8c4904cb0c978116558ca96020591db131c914b8",
+      "revId": "8c4904cb0c978116558ca96020591db131c914b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
