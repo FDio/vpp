@@ -94,7 +94,7 @@ runs:
             }
 
             check_for_core_files || true
-            if [ "${{ inputs.BUILD_TYPE }}" == "debug" ] ; then
+            if [ "$BUILD_TYPE" == "debug" ] ; then
                 hst_debug_build_run || true
             else
                 hst_build_run || true
