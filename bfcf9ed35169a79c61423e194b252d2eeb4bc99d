@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "1e8eb894_9f2e4aa5",
+        "filename": "src/plugins/nsh/nsh-md2-ioam/nsh_md2_ioam_util.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2026-11-19T13:59:35Z",
+      "side": 0,
+      "message": "Done",
+      "parentUuid": "b5225ba3_af71b195",
+      "revId": "bfcf9ed35169a79c61423e194b252d2eeb4bc99d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "91b24fd1_11477deb",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-11-06T03:02:19Z",
       "side": 0,
       "message": "Should this be `((u8 *) hbh0 + t-\u003etrace_len)`?\n\nI think vxlan_gpe_ioam_util.h:40 and ioam_pop.c:58 both need the fix as well",
+      "revId": "bfcf9ed35169a79c61423e194b252d2eeb4bc99d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1a61e9b8_47d61d4d",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 2317,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2026-11-19T13:59:35Z",
+      "side": 0,
+      "message": "Done",
+      "parentUuid": "91b24fd1_11477deb",
       "revId": "bfcf9ed35169a79c61423e194b252d2eeb4bc99d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }

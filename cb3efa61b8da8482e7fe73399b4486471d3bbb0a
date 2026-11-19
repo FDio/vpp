@@ -16,6 +16,24 @@
       "message": "Is this malformed? 194 bytes inside a 16-byte header?",
       "revId": "cb3efa61b8da8482e7fe73399b4486471d3bbb0a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "52069ca0_91a33b28",
+        "filename": "test/test_ip6.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 3224,
+      "author": {
+        "id": 3139
+      },
+      "writtenOn": "2026-11-19T13:59:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "998a6a95_51ffc4e1",
+      "revId": "cb3efa61b8da8482e7fe73399b4486471d3bbb0a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
