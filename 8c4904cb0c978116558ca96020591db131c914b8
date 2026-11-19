@@ -37,6 +37,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9238970f_cfe61587",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2687,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-19T11:29:34Z",
+      "side": 1,
+      "message": "Thanks. Resolving this one.",
+      "parentUuid": "55427215_aa7d3157",
+      "revId": "8c4904cb0c978116558ca96020591db131c914b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "56510cb2_a0cc88c5",
@@ -51,6 +69,24 @@
       "side": 1,
       "message": "Could we preserve sibling Child records before this allocation scan during REKEY_SA? With two installed Children in slots 0 and 1, the rekey caller frees the entire `sa-\u003echilds` vector before calling here. The bitmap therefore reserves the old local slot 0 but misses the still-installed sibling in slot 1 and selects that occupied ID. `ipsec_sa_add_and_lock` rejects it after the tunnel protection and old outbound SA have already been removed, while the peer still receives a successful SA response. A focused packet test on the captured debug/ASAN build reproduces this: four SAD entries become three, the replacement SPI is absent, and GRE protection becomes empty. Previously this rekey reused the released local slot 0. Preserve the other Children and replace only the requested Child, or otherwise include all still-installed IDs in the allocation scan; add a regression that rekeys while a sibling remains live.",
       "tag": "prview:bffbbc2f18c7a8b29a8263005cf2b653:8c4904cb0c978116558ca96020591db131c914b8",
+      "revId": "8c4904cb0c978116558ca96020591db131c914b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "109e36b8_4d5a10fc",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 2740,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-19T11:29:34Z",
+      "side": 1,
+      "message": "Thanks, keeping the bitmap then.\n\nOn the REKEY_SA case: confirmed by reading this patch set. The dispatcher calls ikev2_sa_free_all_child_sa() on sa-\u003echilds and keeps only childs[0]\u0027s IDs as the old IDs, so a sibling Child in slot 1 is neither kept nor scanned, and the allocator can pick its still-installed ID. Later changes of this chain (the rekey fixes behind it) replace only the named Child, which is why it does not show there, but this change must not depend on them.\n\nI will fix it here: on a rekey, replace only the rekeyed Child and keep the others, so the scan sees every installed ID, and add the regression you describe (rekey while a sibling Child stays live, IDs distinct, SAD entries and the replacement SPI present). I will send a new patch set once it is verified.",
+      "parentUuid": "56510cb2_a0cc88c5",
       "revId": "8c4904cb0c978116558ca96020591db131c914b8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
