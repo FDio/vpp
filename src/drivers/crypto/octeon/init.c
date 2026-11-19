@@ -71,7 +71,7 @@ oct_crypto_queue_group_add (vlib_main_t *vm, vnet_dev_t *dev, struct roc_cpt *rc
       .init = oct_crypto_queue_init,
       .deinit = oct_crypto_queue_deinit,
       .stop = oct_crypto_queue_stop,
-      .format_queue_info = format_oct_cpt_queue_info,
+      .styled_format_queue_info = styled_format_oct_cpt_queue_info,
     },
     .config = {
       .data_size = sizeof (oct_crypto_queue_t),
@@ -192,7 +192,7 @@ VNET_DEV_REGISTER_DRIVER (octeon_cpt) = {
       .init = oct_crypto_init,
       .deinit = oct_crypto_deinit,
       .probe = oct_crypto_probe,
-      .format_info = format_oct_cpt_dev_info,
+      .styled_format_info = styled_format_oct_cpt_dev_info,
     },
   },
   .driver = {

@@ -267,7 +267,7 @@ vnp_init (vlib_main_t *vm, vnet_dev_t *dev)
         .caps.change_max_rx_frame_size = 1,
       },
       .ops = { .init = vnp_port_init, .deinit = vnp_port_deinit, .start = vnp_port_start, .stop = vnp_port_stop, .config_change_validate = vnp_port_cfg_validate,
-        .config_change = vnp_port_cfg_change, .format_status = format_vnp_port_status, },
+        .config_change = vnp_port_cfg_change, .styled_format_status = styled_format_vnp_port_status, },
       .data_size = sizeof (vnp_port_t),
     },
     .rx_node = &vnp_rx_node,
@@ -275,12 +275,12 @@ vnp_init (vlib_main_t *vm, vnet_dev_t *dev)
     .rx_queue = {
       .config = { .data_size = sizeof (vnp_rxq_t), .default_size = 256,
                   .min_size = 64, .max_size = 256, .size_is_power_of_two = 1, },
-      .ops = { .alloc = vnp_rxq_alloc, .free = vnp_rxq_free, .format_info = format_vnp_rx_queue, },
+      .ops = { .alloc = vnp_rxq_alloc, .free = vnp_rxq_free, .styled_format_info = styled_format_vnp_rx_queue, },
     },
     .tx_queue = {
       .config = { .data_size = sizeof (vnp_txq_t), .default_size = 256,
                   .min_size = 64, .max_size = 256, .size_is_power_of_two = 1, },
-      .ops = { .alloc = vnp_txq_alloc, .free = vnp_txq_free, .format_info = format_vnp_tx_queue, },
+      .ops = { .alloc = vnp_txq_alloc, .free = vnp_txq_free, .styled_format_info = styled_format_vnp_tx_queue, },
     },
   };
 
@@ -413,6 +413,6 @@ VNET_DEV_REGISTER_DRIVER (virtio_net_pci) = {
   .device = {
     .data_sz = sizeof (vnp_dev_t),
     .args = vnp_device_args,
-    .ops = { .probe = vnp_probe, .init = vnp_init, .deinit = vnp_deinit, .format_info = format_vnp_dev_info, },
+    .ops = { .probe = vnp_probe, .init = vnp_init, .deinit = vnp_deinit, .styled_format_info = styled_format_vnp_dev_info, },
   },
 };

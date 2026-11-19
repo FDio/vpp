@@ -319,29 +319,26 @@ oct_txq_deinit (vlib_main_t *vm, vnet_dev_tx_queue_t *txq)
     }
 }
 
-u8 *
-format_oct_rxq_info (u8 *s, va_list *args)
+void
+styled_format_oct_rxq_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_rx_queue_t *rxq = va_arg (*args, vnet_dev_rx_queue_t *);
   oct_rxq_t *crq = vnet_dev_get_rx_queue_data (rxq);
-  u32 indent = format_get_indent (s);
 
   if (a->debug)
     {
-      s = format (s, "n_enq %u cq_nb_desc %u", crq->n_enq, crq->cq.nb_desc);
-      s = format (s, "\n%Uaura: id 0x%x count %u limit %u avail %u",
-		  format_white_space, indent,
-		  roc_npa_aura_handle_to_aura (crq->aura_handle),
-		  roc_npa_aura_op_cnt_get (crq->aura_handle),
-		  roc_npa_aura_op_limit_get (crq->aura_handle),
-		  roc_npa_aura_op_available (crq->aura_handle));
+      styled_text_add_marked (st, ST_R_VALUE, "n_enq %{%u%} cq_nb_desc %{%u%}", crq->n_enq,
+			      crq->cq.nb_desc);
+      styled_text_add_marked (
+	st, ST_R_VALUE, "\naura: id %{0x%x%} count %{%u%} limit %{%u%} avail %{%u%}",
+	roc_npa_aura_handle_to_aura (crq->aura_handle), roc_npa_aura_op_cnt_get (crq->aura_handle),
+	roc_npa_aura_op_limit_get (crq->aura_handle), roc_npa_aura_op_available (crq->aura_handle));
     }
-  return s;
 }
 
-u8 *
-format_oct_txq_info (u8 *s, va_list *args)
+void
+styled_format_oct_txq_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_tx_queue_t *txq = va_arg (*args, vnet_dev_tx_queue_t *);
@@ -349,9 +346,8 @@ format_oct_txq_info (u8 *s, va_list *args)
 
   if (a->debug)
     {
-      s = format (s, "n_enq %u sq_nb_desc %u io_addr %p lmt_addr %p", ctq->n_enq, ctq->sq.nb_desc,
-		  ctq->io_addr, ctq->lmt_addr);
+      styled_text_add_marked (st, ST_R_VALUE,
+			      "n_enq %{%u%} sq_nb_desc %{%u%} io_addr %{%p%} lmt_addr %{%p%}",
+			      ctq->n_enq, ctq->sq.nb_desc, ctq->io_addr, ctq->lmt_addr);
     }
-
-  return s;
 }

@@ -106,26 +106,27 @@ format_ige_rss_type (u8 *s, va_list *args)
   return format (s, "0x%x", rss_type);
 }
 
-u8 *
-format_ige_port_status (u8 *s, va_list *args)
+void
+styled_format_ige_port_status (styled_text_t *st, va_list *args)
 {
-  vnet_dev_format_args_t __clib_unused *a =
-    va_arg (*args, vnet_dev_format_args_t *);
+  vnet_dev_format_args_t __clib_unused *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
   ige_port_t *ip = vnet_dev_get_port_data (port);
   ige_device_t *id = vnet_dev_get_data (port->dev);
   u32 speed = 0;
+
   if (id->config.supports_2_5g && ip->last_status.speed_2p5)
     speed = 2500;
   else if (ip->last_status.speed < 3)
     speed = (u32[]){ 10, 100, 1000 }[ip->last_status.speed];
 
   if (ip->last_status.link_up)
-    s = format (s, "Link up, speed %u Mbps, duplex %s", speed,
-		ip->last_status.full_duplex ? "full" : "half");
+    {
+      styled_text_add_marked (st, ST_R_VALUE, "Link %{up%}, speed %{%u Mbps%}, duplex %{%s%}",
+			      speed, ip->last_status.full_duplex ? "full" : "half");
+    }
   else
-    s = format (s, "Link down");
-  return s;
+    styled_text_add_marked (st, ST_R_VALUE, "Link %{down%}");
 }
 
 u8 *

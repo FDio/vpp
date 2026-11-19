@@ -234,7 +234,7 @@ void ige_port_counter_poll (vlib_main_t *, vnet_dev_port_t *);
 format_function_t format_ige_reg_write;
 format_function_t format_ige_reg_read;
 format_function_t format_ige_reg_diff;
-format_function_t format_ige_port_status;
+styled_format_fn_t styled_format_ige_port_status;
 format_function_t format_ige_rx_desc;
 format_function_t format_ige_rx_trace;
 format_function_t format_ige_tx_desc;
