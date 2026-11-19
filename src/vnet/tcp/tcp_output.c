@@ -2146,10 +2146,10 @@ tcp_retransmit_sack_inline (tcp_worker_ctx_t *wrk, tcp_connection_t *tc, u32 bur
 	  if (!can_rescue || scoreboard_rescue_rxt_valid (sb, tc))
 	    break;
 
-	  /* If rescue rxt undefined or less than snd_una then one segment of
-	   * up to SMSS octets that MUST include the highest outstanding
-	   * unSACKed sequence number SHOULD be returned, and RescueRxt set to
-	   * RecoveryPoint. HighRxt MUST NOT be updated.
+	  /* Once an ack passed RescueRxt, one segment of up to SMSS octets
+	   * that MUST include the highest outstanding unSACKed sequence number
+	   * SHOULD be returned, and RescueRxt set to RecoveryPoint. HighRxt
+	   * MUST NOT be updated.
 	   */
 	  range = tcp_rxt_last_range (tc, backend, &cursor);
 	  if (!range)
@@ -2193,6 +2193,11 @@ tcp_retransmit_sack_inline (tcp_worker_ctx_t *wrk, tcp_connection_t *tc, u32 bur
 
       sb->high_rxt += n_written;
       ASSERT (seq_leq (sb->high_rxt, tc->snd_nxt));
+
+      /* The recovery's first retransmit holds off the rescue until an ack
+       * passes its end (RFC 6675, 4.3) */
+      if (tc->snd_rxt_bytes == n_written)
+	sb->rescue_rxt = sb->high_rxt;
 
       snd_space -= n_written;
       n_segs += 1;
