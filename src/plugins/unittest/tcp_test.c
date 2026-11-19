@@ -1345,7 +1345,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tc->snd_una = 0;
   tc->snd_nxt = 3000;
   sb->high_rxt = sb->rxt_frontier = 0;
-  /* scoreboard_init_rxt sentinel: no rescue retransmit fired this episode */
+  /* No rescue retransmit fired this episode */
   sb->rescue_rxt = tc->snd_una - 1;
   TCP_TEST ((sb->reorder == TCP_DUPACK_THRESHOLD), "reorder at floor %u", sb->reorder);
 
@@ -8667,6 +8667,116 @@ tcp_test_tamper_lost_rxt_evidence (vlib_main_t *vm)
   return rv;
 }
 
+/* RFC 6675 (4.3): no rescue retransmit before an ack passes the first
+ * retransmit of the recovery. All data is sent and the tail is not sacked, so
+ * once the lost head is resent only a rescue could send more. It waits while
+ * the head's copy is in flight, even if more data is sacked, and goes out once
+ * the head is acked. Runs on the connection's thread, see
+ * tcp_e2e_call_on_thread */
+static int
+tcp_test_rescue_steps (void *arg)
+{
+  tcp_test_e2e_steps_args_t *a = arg;
+  vlib_main_t *vm = vlib_get_main ();
+  tcp_connection_t *tc = a->ctx->client_tc, saved = *tc;
+  svm_fifo_t *tx_fifo = a->ctx->client_s->tx_fifo;
+  sack_scoreboard_t *sb = &tc->sack_sb;
+  tcp_test_sack_backend_t backend;
+  const char *name;
+  u8 payload[1000] = {};
+  tcp_ack_ctx_t ac;
+  u32 base;
+  int ok = 1;
+
+  if (!TCP_TEST_I ((!sb->holes && !tc->rcv_opts.sacks && !tc->bt), "rescue: fresh connection"))
+    return 1;
+
+  for (backend = 0; ok && backend < TCP_TEST_N_SACK_BACKENDS; backend++)
+    {
+      name = tcp_test_sack_backend_names[backend];
+      base = tc->snd_una;
+      ok = svm_fifo_enqueue (tx_fifo, sizeof (payload), payload) == (int) sizeof (payload);
+
+      /* 10 segments out, nothing left to send. The peer sacks the second to
+       * the fifth, so the first is lost and the tail is not */
+      tc->snd_nxt = base + 1000;
+      tc->bytes_out += 1000;
+      tc->snd_mss = 100;
+      tc->snd_wnd = tc->snd_wnd_max = 4000;
+      tc->cwnd = 1000;
+      tc->cc_algo = tcp_cc_algo_get (TCP_CC_NEWRENO);
+      tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED | TCP_OPTS_FLAG_SACK;
+      tc->connection.flags &= ~TRANSPORT_CONNECTION_F_IS_TX_PACED;
+      tcp_test_sack_backend_init (tc, backend);
+      vec_add1 (tc->rcv_opts.sacks, ((sack_block_t) { base + 100, base + 500 }));
+      tc->rcv_opts.n_sack_blocks = 1;
+      tcp_test_rcv_sacks (tc, base, &ac);
+      ok = ok && sb->lost_bytes == 100;
+      tcp_loss_enter_recovery (tc);
+
+      /* Room for three segments, as if data was delivered */
+      tc->ssthresh = 8 * tc->snd_mss;
+      tc->prr_delivered = 2 * tc->snd_mss;
+      tcp_test_sack_tx_acks (vm, tc, 0);
+      ok = TCP_TEST_I ((ok && tc->snd_rxt_bytes == 100 && sb->rescue_rxt == base + 100),
+		       "rescue: %s: only the head is resent at recovery entry (rxt %u, rescue "
+		       "rxt %u)",
+		       name, tc->snd_rxt_bytes, sb->rescue_rxt - base);
+
+      /* The peer sacks the sixth while the head's copy is in flight */
+      ok = ok && !tcp_test_lost_rxt_inject (vm, tc, base, 0, 100, 600, 0);
+      if (ok)
+	tcp_test_sack_tx_acks (vm, tc, 0);
+      ok = TCP_TEST_I ((ok && tc->snd_rxt_bytes == 100 && sb->rescue_rxt == base + 100),
+		       "rescue: %s: no rescue while the head's copy is unacked (rxt %u, rescue "
+		       "rxt %u)",
+		       name, tc->snd_rxt_bytes, sb->rescue_rxt - base);
+
+      /* The head's copy is acked with the sixth, and the seventh is sacked */
+      ok = ok && !tcp_test_lost_rxt_inject (vm, tc, base, 600, 600, 700, 0);
+      if (ok)
+	tcp_test_sack_tx_acks (vm, tc, 0);
+      ok = TCP_TEST_I ((ok && tcp_in_fastrecovery (tc) && tc->snd_rxt_bytes == 200 &&
+			sb->rescue_rxt == tc->snd_congestion),
+		       "rescue: %s: the rescue goes out once an ack passes the head's copy (rxt "
+		       "%u, rescue rxt %u)",
+		       name, tc->snd_rxt_bytes, sb->rescue_rxt - base);
+
+      tcp_connection_timers_reset (tc);
+      tcp_test_sack_backend_cleanup (tc, backend);
+      svm_fifo_dequeue_drop_all (tx_fifo);
+      *tc = saved;
+    }
+  return !ok;
+}
+
+static int
+tcp_test_tamper_rescue (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "rescue",
+    .client_addr = 0x32323201,
+    .server_addr = 0x33333301,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2285,
+    .secret = 2284,
+  };
+  tcp_test_e2e_steps_args_t args;
+  tcp_e2e_ctx_t ctx;
+  int rv = 1;
+
+  if (TCP_TEST_I (!tcp_e2e_setup (vm, &ctx, &params), "rescue: e2e setup"))
+    {
+      args = (tcp_test_e2e_steps_args_t) { .ctx = &ctx };
+      rv = tcp_e2e_call_on_thread (vm, ctx.client_tc->c_thread_index, tcp_test_rescue_steps, &args);
+    }
+
+  if (!tcp_e2e_teardown (vm, &ctx))
+    rv = 1;
+  return rv;
+}
+
 /* The dsack the connection reports next: the pending one, else the newest postponed ack's, see
  * tcp_ack_sacks */
 static sack_block_t *
@@ -10047,6 +10157,7 @@ tcp_test_tamper (vlib_main_t *vm, unformat_input_t *input)
     { "lost-rxt", tcp_test_tamper_lost_rxt },
     { "lost-rxt-late", tcp_test_tamper_lost_rxt_late },
     { "lost-rxt-evidence", tcp_test_tamper_lost_rxt_evidence },
+    { "rescue", tcp_test_tamper_rescue },
     { "rto", tcp_test_tamper_rto },
     { "rto-head", tcp_test_tamper_rto_head },
     { "dupack-run", tcp_test_tamper_dupack_run },

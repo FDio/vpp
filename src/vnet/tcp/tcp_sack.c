@@ -296,7 +296,8 @@ scoreboard_init_rxt (sack_scoreboard_t *sb, u32 snd_una)
     }
   sb->high_rxt = snd_una;
   sb->rxt_frontier = snd_una;
-  sb->rescue_rxt = snd_una - 1;
+  /* No rescue before an ack passes the first retransmit (RFC 6675, 4.3) */
+  sb->rescue_rxt = snd_una;
 }
 
 static void

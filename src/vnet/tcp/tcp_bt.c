@@ -1488,7 +1488,8 @@ tcp_bt_init_rxt (tcp_connection_t *tc, u32 snd_una)
 
   tc->sack_sb.high_rxt = snd_una;
   bt->cur_rxt_end = snd_una;
-  tc->sack_sb.rescue_rxt = snd_una - 1;
+  /* No rescue before an ack passes the first retransmit (RFC 6675, 4.3) */
+  tc->sack_sb.rescue_rxt = snd_una;
 }
 
 u32
