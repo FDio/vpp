@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2f2ab506_b2d85a66",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1021,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-11-19T20:08:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d2087ffb_913596e9",
+      "revId": "0c2bd41a15942e3669a34f86caa9742933fa01cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "061460fe_7c9e709a",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-11-19T13:12:02Z",
       "side": 1,
       "message": "`prev_tos !\u003d tos_value and get_tos(p) \u003d\u003d prev_tos` reads better",
+      "revId": "0c2bd41a15942e3669a34f86caa9742933fa01cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a1ec32cb_6f5b041c",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2130,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-11-19T20:08:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "061460fe_7c9e709a",
       "revId": "0c2bd41a15942e3669a34f86caa9742933fa01cc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
