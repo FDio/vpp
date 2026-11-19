@@ -3,6 +3,40 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "fe4622e1_a653c1f8",
+        "filename": "docs/contributing/committer-etiquette.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-19T08:58:29Z",
+      "side": 1,
+      "message": "I would also keep an exception for trivial bugfixes. Of course this means committers must have judgement but I think we should trust committers to behave somehow.",
+      "revId": "37c4042db20ccd50a33db18af9e7f5ebb5ba1231",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cf306201_59b942ac",
+        "filename": "docs/contributing/committer-etiquette.rst",
+        "patchSetId": 3
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-19T08:58:29Z",
+      "side": 1,
+      "message": "I agree we should always try to get maintainer feedback, but as we all know, some maintainers are not very active, and even for active maintainers it is not always easy to get feedback.\nSo I\u0027d add a section in the maintainer etiquette that a maintainer must answer in a reasonable time frame (like 2 weeks) - even just to state \"I do not have time right now\".",
+      "revId": "37c4042db20ccd50a33db18af9e7f5ebb5ba1231",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "a7c2e69a_6c52b694",
         "filename": "docs/contributing/committer-etiquette.rst",
         "patchSetId": 3
