@@ -128,6 +128,10 @@ class TestNsimCli(VppTestCase):
         self.pg0.add_stream(packets)
         self.pg1.enable_capture()
         self.pg_start()
+        # The driver shares the VPP main core and get_capture wakes on every
+        # pcap write. Sleep while nsim releases so that the polling wheel is
+        # not descheduled and the departure gaps are not stretched
+        self.sleep(0.2, "nsim release window")
         return self.pg1.get_capture(count, timeout=timeout)
 
     def send_plain_and_capture(self, count, expected_count=None, timeout=2):
