@@ -669,11 +669,10 @@ quic_common_get_transport_endpoint (quic_ctx_t *ctx,
 				    transport_endpoint_t *tep_lcl)
 {
   session_t *udp_session;
-  if (!quic_ctx_is_stream (ctx))
-    {
-      udp_session = session_get_from_handle (ctx->udp_session_handle);
-      session_get_endpoint (udp_session, tep_rmt, tep_lcl);
-    }
+  if (quic_ctx_is_stream (ctx))
+    ctx = quic_ctx_get (ctx->quic_connection_ctx_id, ctx->c_thread_index);
+  udp_session = session_get_from_handle (ctx->udp_session_handle);
+  session_get_endpoint (udp_session, tep_rmt, tep_lcl);
 }
 
 static void
