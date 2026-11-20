@@ -2722,12 +2722,73 @@ tcp_test_cwnd_limited_marking (void)
   tcp_cc_update_cwnd_limited (tc, cwnd);
   TCP_TEST ((tc->cwnd_limited_seq == tc->snd_nxt), "backlogged flight is marked cwnd-limited");
 
-  /* Sub-MSS headroom cannot be used for another full segment. */
+  /* Sub-MSS headroom cannot be used for another full segment. If the receive
+   * window has no room for one either, it limits the sender as much as cwnd */
   tc->cwnd_limited_seq = tc->snd_una;
   tc->snd_nxt = tc->snd_una + cwnd - snd_mss / 2;
   tcp_cc_update_cwnd_limited (tc, cwnd - snd_mss / 2 + 1);
+  TCP_TEST ((tc->cwnd_limited_seq == tc->snd_una),
+	    "queued flight with sub-mss headroom in cwnd and the receive window is not marked "
+	    "cwnd-limited");
+  tc->snd_wnd = cwnd + snd_mss;
+  tcp_cc_update_cwnd_limited (tc, cwnd - snd_mss / 2 + 1);
   TCP_TEST ((tc->cwnd_limited_seq == tc->snd_nxt),
 	    "queued flight with sub-mss headroom is marked cwnd-limited");
+  tc->snd_wnd = cwnd;
+
+  /* With sack, the flight is the pipe. Sacked bytes do not use cwnd, so a
+   * flight that spans cwnd, partly sacked, is application limited if nothing
+   * is left to send */
+  tc->rcv_opts.flags = TCP_OPTS_FLAG_SACK_PERMITTED;
+  tc->cwnd_limited_seq = tc->snd_una;
+  tc->snd_nxt = tc->snd_una + cwnd;
+  tc->sack_sb.sacked_bytes = 4 * snd_mss;
+  tcp_cc_update_cwnd_limited (tc, cwnd);
+  TCP_TEST ((tc->cwnd_limited_seq == tc->snd_una),
+	    "partly sacked flight with nothing left to send is not marked cwnd-limited");
+
+  /* Sacked bytes still use the receive window, so data queued past it cannot
+   * refill the pipe */
+  tcp_cc_update_cwnd_limited (tc, cwnd + 4 * snd_mss);
+  TCP_TEST ((tc->cwnd_limited_seq == tc->snd_una),
+	    "partly sacked flight with the receive window full is not marked cwnd-limited");
+
+  /* Data the receive window lets refill the pipe to cwnd makes it cwnd-limited */
+  tc->snd_wnd = cwnd + 4 * snd_mss;
+  tcp_cc_update_cwnd_limited (tc, cwnd + 4 * snd_mss);
+  TCP_TEST ((tc->cwnd_limited_seq == tc->snd_nxt),
+	    "partly sacked flight with data to refill the pipe is marked cwnd-limited");
+
+  /* Sub-MSS cwnd headroom and less queued than it, with less than a segment
+   * of receive window room left: the window, not cwnd, stops the next segment */
+  tc->cwnd_limited_seq = tc->snd_una;
+  tc->snd_nxt = tc->snd_una + cwnd + snd_mss / 2;
+  tc->snd_wnd = cwnd + 7 * snd_mss / 10;
+  tc->sack_sb.sacked_bytes = snd_mss;
+  tcp_cc_update_cwnd_limited (tc, cwnd + 8 * snd_mss / 10);
+  TCP_TEST ((tc->cwnd_limited_seq == tc->snd_una),
+	    "sub-mss headroom with a sub-mss receive window room is not marked cwnd-limited");
+  tc->snd_wnd = cwnd + 2 * snd_mss;
+  tcp_cc_update_cwnd_limited (tc, cwnd + 8 * snd_mss / 10);
+  TCP_TEST ((tc->cwnd_limited_seq == tc->snd_nxt),
+	    "sub-mss headroom with receive window room for a segment is marked cwnd-limited");
+  tc->snd_nxt = tc->snd_una + cwnd;
+  tc->snd_wnd = cwnd;
+
+  /* Lost bytes do not use cwnd either, their retransmissions do */
+  tc->cwnd_limited_seq = tc->snd_una;
+  tc->sack_sb.sacked_bytes = 0;
+  tc->sack_sb.lost_bytes = 2 * snd_mss;
+  tcp_cc_update_cwnd_limited (tc, cwnd);
+  TCP_TEST ((tc->cwnd_limited_seq == tc->snd_una),
+	    "flight with lost bytes not resent is not marked cwnd-limited");
+  tc->snd_rxt_bytes = 2 * snd_mss;
+  tcp_cc_update_cwnd_limited (tc, cwnd);
+  TCP_TEST ((tc->cwnd_limited_seq == tc->snd_nxt),
+	    "flight whose retransmissions fill the pipe is marked cwnd-limited");
+  clib_memset (&tc->sack_sb, 0, sizeof (tc->sack_sb));
+  tc->snd_rxt_bytes = 0;
+  tc->rcv_opts.flags = 0;
 
   /* An ACK that starts before the marker covers data from a cwnd-limited
    * flight even if it cumulatively acknowledges data beyond the marker. */
@@ -12808,8 +12869,9 @@ tcp_test_bt (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST (!tc->app_limited, "burst that leaves a segment unsent is not app limited");
 
   /* Sub-MSS headroom, not the application, stopped this burst even though
-   * less than a segment remains queued. */
+   * less than a segment remains queued. The receive window has room for one */
   tc->cwnd_limited_seq = tc->snd_una;
+  tc->snd_wnd = tc->cwnd + tc->snd_mss;
   tc->snd_nxt = tc->snd_una + tc->cwnd - tc->snd_mss / 2;
   tcp_cc_check_limited (tc, tc->cwnd);
   TCP_TEST (!tc->app_limited && tc->cwnd_limited_seq == tc->snd_nxt,
