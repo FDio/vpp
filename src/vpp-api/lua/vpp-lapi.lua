@@ -422,7 +422,7 @@ end
 function vpp.init(vpp, args)
   local vac_api = args.vac_api or [[
  int cough_vac_attach(char *vac_path, char *cough_path);
- int vac_connect(char *name, char *chroot_prefix, void *cb);
+ int vac_connect(char *name, char *socket_path, void *cb);
  int vac_disconnect(void);
  int vac_read(char **data, int *l);
  int vac_write(char *data, int len);

@@ -4,472 +4,493 @@
  */
 
 #include <assert.h>
+#include <errno.h>
+#include <poll.h>
+#include <stdbool.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stddef.h>
-#include <sys/types.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/eventfd.h>
 #include <sys/socket.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
+#include <sys/un.h>
 #include <netinet/in.h>
-#include <netdb.h>
-#include <signal.h>
-#include <stdbool.h>
-#include <vnet/vnet.h>
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
+#include <vppinfra/clib.h>
+#include <vppinfra/error.h>
+#include <vppinfra/format.h>
+#include <vppinfra/hash.h>
+#include <vppinfra/mem.h>
 
-#include <vlibmemory/memclnt.api_enum.h>
-#include <vlibmemory/memclnt.api_types.h>
+#include <vlibapi/api_types.h>
+#include <vlibmemory/vl_memory_msg_enum.h>
+
+#define vl_typedefs
+#include <vlibmemory/vl_memory_api_h.h>
+#undef vl_typedefs
 
 #include "vppapiclient.h"
 
-bool timeout_cancelled;
-bool timeout_in_progress;
-bool rx_thread_done;
+#define VAC_DEFAULT_SOCKET "/run/vpp/api.sock"
+
+/* Same layout as msgbuf_t, which prefixes every message on the socket */
+typedef struct
+{
+  u64 q;
+  u32 data_len;
+  u32 gc_mark_timestamp;
+} vac_msgbuf_t;
 
 /*
  * Asynchronous mode:
  *  Client registers a callback. All messages are sent to the callback.
  * Synchronous mode:
- *  Client calls blocking read().
- *  Clients are expected to collate events on a queue.
- *  vac_write() -> suspends RX thread
- *  vac_read() -> resumes RX thread
+ *  Client calls blocking vac_read().
  */
 
-typedef struct {
-  u8 connected_to_vlib;
-  pthread_t rx_thread_handle;
-  pthread_t timeout_thread_handle;
-  pthread_mutex_t queue_lock;
-  pthread_cond_t suspend_cv;
-  pthread_cond_t resume_cv;
-  pthread_mutex_t timeout_lock;
-  u8 timeout_loop;
-  pthread_cond_t timeout_cv;
-  pthread_cond_t timeout_cancel_cv;
-  pthread_cond_t terminate_cv;
+typedef struct
+{
+  int fd;
+  int wake_fd;
+  u32 client_index;
+  uword *msg_index_by_name;
+  u16 max_msg_index;
+  vac_callback_t callback;
+  pthread_t rx_thread;
+  pthread_mutex_t lock;
+  pthread_cond_t state_cv;
+  u8 rx_thread_started;
+  u8 suspend_requested;
+  u8 suspended;
+  u8 terminate;
 } vac_main_t;
 
-vac_main_t vac_main;
-vac_callback_t vac_callback;
-u16 read_timeout = 0;
-bool rx_is_running = false;
-bool timeout_thread_cancelled = false;
+static vac_main_t vac_main = {
+  .fd = -1,
+  .wake_fd = -1,
+  .lock = PTHREAD_MUTEX_INITIALIZER,
+  .state_cv = PTHREAD_COND_INITIALIZER,
+};
 
 /* Only ever allocate one heap */
-bool mem_initialized = false;
-
-static void
-init (void)
-{
-  vac_main_t *pm = &vac_main;
-  clib_memset(pm, 0, sizeof(*pm));
-  pthread_mutex_init(&pm->queue_lock, NULL);
-  pthread_cond_init(&pm->suspend_cv, NULL);
-  pthread_cond_init(&pm->resume_cv, NULL);
-  pthread_mutex_init(&pm->timeout_lock, NULL);
-  pm->timeout_loop = 1;
-  pthread_cond_init(&pm->timeout_cv, NULL);
-  pthread_cond_init(&pm->timeout_cancel_cv, NULL);
-  pthread_cond_init(&pm->terminate_cv, NULL);
-}
-
-static void
-cleanup (void)
-{
-  vac_main_t *pm = &vac_main;
-  pthread_mutex_destroy(&pm->queue_lock);
-  pthread_cond_destroy(&pm->suspend_cv);
-  pthread_cond_destroy(&pm->resume_cv);
-  pthread_mutex_destroy(&pm->timeout_lock);
-  pthread_cond_destroy(&pm->timeout_cv);
-  pthread_cond_destroy(&pm->timeout_cancel_cv);
-  pthread_cond_destroy(&pm->terminate_cv);
-  clib_memset(pm, 0, sizeof(*pm));
-}
+static bool mem_initialized = false;
 
 void
-vac_free (void * msg)
+vac_free (void *msg)
 {
-  vl_msg_api_free (msg);
+  free (msg);
 }
 
-static void
-vac_api_handler (void *msg)
+static int
+vac_write_all (int fd, const void *buf, size_t len)
 {
-  u16 id = ntohs(*((u16 *)msg));
-  msgbuf_t *msgbuf = (msgbuf_t *)(((u8 *)msg) - offsetof(msgbuf_t, data));
-  int l = ntohl(msgbuf->data_len);
-  if (l == 0)
-    clib_warning("Message ID %d has wrong length: %d\n", id, l);
+  const u8 *p = buf;
 
-  /* Call Python callback */
-  ASSERT(vac_callback);
-  (vac_callback)(msg, l);
-  vac_free(msg);
+  while (len)
+    {
+      ssize_t n = send (fd, p, len, MSG_NOSIGNAL);
+
+      if (n < 0 && errno == EINTR)
+	continue;
+      if (n <= 0)
+	return -1;
+      p += n;
+      len -= n;
+    }
+
+  return 0;
+}
+
+/* Wait for data, timeout in milliseconds, -1 is forever */
+static int
+vac_wait_readable (int fd, int wake_fd, int timeout_ms)
+{
+  struct pollfd pfd[2] = {
+    {
+      .fd = fd,
+      .events = POLLIN,
+    },
+    {
+      .fd = wake_fd,
+      .events = POLLIN,
+    },
+  };
+  int rv;
+
+  do
+    rv = poll (pfd, wake_fd < 0 ? 1 : 2, timeout_ms);
+  while (rv < 0 && errno == EINTR);
+
+  if (rv < 0)
+    return -1;
+  if (rv == 0)
+    return VAC_TIMEOUT;
+  if (pfd[0].revents)
+    return 0;
+  return 1;
+}
+
+static int
+vac_read_all (int fd, void *buf, size_t len)
+{
+  u8 *p = buf;
+
+  while (len)
+    {
+      ssize_t n = recv (fd, p, len, 0);
+
+      if (n < 0 && errno == EINTR)
+	continue;
+      if (n <= 0)
+	return -1;
+      p += n;
+      len -= n;
+    }
+
+  return 0;
+}
+
+/* Read one message, the caller owns the returned buffer */
+static int
+vac_read_msg (int fd, char **p, int *l)
+{
+  vac_msgbuf_t hdr;
+  u32 len;
+  char *msg;
+
+  if (vac_read_all (fd, &hdr, sizeof (hdr)))
+    return VAC_NOT_CONNECTED;
+
+  len = ntohl (hdr.data_len);
+  msg = malloc (len ? len : 1);
+  if (!msg)
+    return -1;
+
+  if (vac_read_all (fd, msg, len))
+    {
+      free (msg);
+      return VAC_NOT_CONNECTED;
+    }
+
+  *p = msg;
+  *l = len;
+  return 0;
+}
+
+static int
+vac_send_msg (int fd, const char *p, int l)
+{
+  vac_msgbuf_t hdr = {
+    .data_len = htonl (l),
+  };
+
+  if (vac_write_all (fd, &hdr, sizeof (hdr)))
+    return -1;
+  return vac_write_all (fd, p, l);
 }
 
 static void *
 vac_rx_thread_fn (void *arg)
 {
-  svm_queue_t *q;
-  vl_api_memclnt_keepalive_t *mp;
-  vl_api_memclnt_keepalive_reply_t *rmp;
   vac_main_t *pm = &vac_main;
-  api_main_t *am = vlibapi_get_main();
-  vl_shmem_hdr_t *shmem_hdr;
-  uword msg;
-
-  q = am->vl_input_queue;
 
   while (1)
-    while (!svm_queue_sub(q, (u8 *)&msg, SVM_Q_WAIT, 0))
-      {
-        VL_MSG_API_UNPOISON((void *)msg);
-	u16 id = ntohs(*((u16 *)msg));
-	switch (id) {
-	case VL_API_RX_THREAD_EXIT:
-	  vl_msg_api_free((void *) msg);
-	  /* signal waiting threads that this thread is about to terminate */
-	  pthread_mutex_lock(&pm->queue_lock);
-	  rx_thread_done = true;
-	  pthread_cond_signal(&pm->terminate_cv);
-	  pthread_mutex_unlock(&pm->queue_lock);
-	  pthread_exit(0);
-	  return 0;
-	  break;
-
-	case VL_API_MEMCLNT_RX_THREAD_SUSPEND:
-	  vl_msg_api_free((void * )msg);
-	  /* Suspend thread and signal reader */
-	  pthread_mutex_lock(&pm->queue_lock);
-	  pthread_cond_signal(&pm->suspend_cv);
-	  /* Wait for the resume signal */
-	  pthread_cond_wait (&pm->resume_cv, &pm->queue_lock);
-	  pthread_mutex_unlock(&pm->queue_lock);
-	  break;
-
-	case VL_API_MEMCLNT_READ_TIMEOUT:
-	  clib_warning("Received read timeout in async thread\n");
-	  vl_msg_api_free((void *) msg);
-	  break;
-
-        case VL_API_MEMCLNT_KEEPALIVE:
-          mp = (void *)msg;
-          rmp = vl_msg_api_alloc (sizeof (*rmp));
-          clib_memset (rmp, 0, sizeof (*rmp));
-          rmp->_vl_msg_id = ntohs(VL_API_MEMCLNT_KEEPALIVE_REPLY);
-          rmp->context = mp->context;
-          shmem_hdr = am->shmem_hdr;
-          vl_msg_api_send_shmem(shmem_hdr->vl_input_queue, (u8 *)&rmp);
-          vl_msg_api_free((void *) msg);
-	  break;
-
-	default:
-	  vac_api_handler((void *)msg);
-	}
-      }
-}
-
-static void *
-vac_timeout_thread_fn (void *arg)
-{
-  vl_api_memclnt_read_timeout_t *ep;
-  vac_main_t *pm = &vac_main;
-  api_main_t *am = vlibapi_get_main();
-  struct timespec ts;
-  struct timeval tv;
-  int rv;
-
-  while (pm->timeout_loop)
     {
-      /* Wait for poke */
-      pthread_mutex_lock(&pm->timeout_lock);
-      while (!timeout_in_progress)
-	pthread_cond_wait (&pm->timeout_cv, &pm->timeout_lock);
+      char *msg;
+      int rv, l;
 
-      /* Starting timer */
-      gettimeofday(&tv, NULL);
-      ts.tv_sec = tv.tv_sec + read_timeout;
-      ts.tv_nsec = 0;
+      pthread_mutex_lock (&pm->lock);
+      while (pm->suspend_requested && !pm->terminate)
+	{
+	  uint64_t junk;
 
-      if (!timeout_cancelled) {
-	rv = pthread_cond_timedwait (&pm->timeout_cancel_cv,
-				     &pm->timeout_lock, &ts);
-	if (rv == ETIMEDOUT && !timeout_thread_cancelled) {
-	  ep = vl_msg_api_alloc (sizeof (*ep));
-	  ep->_vl_msg_id = ntohs(VL_API_MEMCLNT_READ_TIMEOUT);
-	  vl_msg_api_send_shmem(am->vl_input_queue, (u8 *)&ep);
+	  if (read (pm->wake_fd, &junk, sizeof (junk)) < 0 && errno != EAGAIN)
+	    clib_warning ("wake fd read failed");
+	  pm->suspended = 1;
+	  pthread_cond_broadcast (&pm->state_cv);
+	  pthread_cond_wait (&pm->state_cv, &pm->lock);
 	}
-      }
+      pm->suspended = 0;
+      if (pm->terminate)
+	{
+	  pthread_mutex_unlock (&pm->lock);
+	  return 0;
+	}
+      pthread_mutex_unlock (&pm->lock);
 
-      pthread_mutex_unlock(&pm->timeout_lock);
+      rv = vac_wait_readable (pm->fd, pm->wake_fd, -1);
+      if (rv < 0)
+	return 0;
+      if (rv == 1)
+	{
+	  uint64_t junk;
+
+	  if (read (pm->wake_fd, &junk, sizeof (junk)) < 0 && errno != EAGAIN)
+	    clib_warning ("wake fd read failed");
+	  continue;
+	}
+
+      if (vac_read_msg (pm->fd, &msg, &l))
+	return 0;
+      if (l == 0)
+	fprintf (stderr, "Unregistered API message of length 0\n");
+      else
+	pm->callback ((unsigned char *) msg, l);
+      free (msg);
     }
-  pthread_exit(0);
 }
 
 void
 vac_rx_suspend (void)
 {
-  api_main_t *am = vlibapi_get_main();
   vac_main_t *pm = &vac_main;
-  vl_api_memclnt_rx_thread_suspend_t *ep;
+  uint64_t one = 1;
 
-  if (!pm->rx_thread_handle) return;
-  pthread_mutex_lock(&pm->queue_lock);
-  if (rx_is_running)
+  if (!pm->rx_thread_started)
+    return;
+
+  pthread_mutex_lock (&pm->lock);
+  if (!pm->suspend_requested)
     {
-      ep = vl_msg_api_alloc (sizeof (*ep));
-      ep->_vl_msg_id = ntohs(VL_API_MEMCLNT_RX_THREAD_SUSPEND);
-      vl_msg_api_send_shmem(am->vl_input_queue, (u8 *)&ep);
-      /* Wait for RX thread to tell us it has suspended */
-      pthread_cond_wait(&pm->suspend_cv, &pm->queue_lock);
-      rx_is_running = false;
+      pm->suspend_requested = 1;
+      if (write (pm->wake_fd, &one, sizeof (one)) < 0)
+	clib_warning ("wake fd write failed");
     }
-  pthread_mutex_unlock(&pm->queue_lock);
+  while (!pm->suspended)
+    pthread_cond_wait (&pm->state_cv, &pm->lock);
+  pthread_mutex_unlock (&pm->lock);
 }
 
 void
 vac_rx_resume (void)
 {
   vac_main_t *pm = &vac_main;
-  if (!pm->rx_thread_handle) return;
-  pthread_mutex_lock(&pm->queue_lock);
-  if (rx_is_running) goto unlock;
-  pthread_cond_signal(&pm->resume_cv);
-  rx_is_running = true;
- unlock:
-  pthread_mutex_unlock(&pm->queue_lock);
-}
 
-static uword *
-vac_msg_table_get_hash (void)
-{
-  api_main_t *am = vlibapi_get_main();
-  return (am->msg_index_by_name_and_crc);
+  if (!pm->rx_thread_started)
+    return;
+
+  pthread_mutex_lock (&pm->lock);
+  pm->suspend_requested = 0;
+  pthread_cond_broadcast (&pm->state_cv);
+  pthread_mutex_unlock (&pm->lock);
 }
 
 int
-vac_msg_table_size(void)
+vac_msg_table_size (void)
 {
-  api_main_t *am = vlibapi_get_main();
-  return hash_elts(am->msg_index_by_name_and_crc);
+  return hash_elts (vac_main.msg_index_by_name);
 }
 
 int
-vac_connect (char * name, char * chroot_prefix, vac_callback_t cb,
-             int rx_qlen)
+vac_msg_table_max_index (void)
 {
-  rx_thread_done = false;
-  int rv = 0;
+  return vac_main.max_msg_index;
+}
+
+int
+vac_get_msg_index (char *name)
+{
+  uword *p = hash_get_mem (vac_main.msg_index_by_name, name);
+
+  return p ? p[0] : ~0;
+}
+
+static void
+vac_msg_table_free (vac_main_t *pm)
+{
+  hash_pair_t *hp;
+
+  hash_foreach_pair (hp, pm->msg_index_by_name, ({ free ((void *) hp->key); }));
+  hash_free (pm->msg_index_by_name);
+  pm->msg_index_by_name = 0;
+  pm->max_msg_index = 0;
+}
+
+static int
+vac_create_client (vac_main_t *pm, char *name)
+{
+  vl_api_sockclnt_create_t mp = {
+    ._vl_msg_id = htons (VL_API_SOCKCLNT_CREATE),
+    .context = htonl (124),
+  };
+  vl_api_sockclnt_create_reply_t *rmp;
+  char *reply;
+  int l, rv;
+  u16 count;
+
+  strncpy ((char *) mp.name, name, sizeof (mp.name) - 1);
+  if (vac_send_msg (pm->fd, (char *) &mp, sizeof (mp)))
+    return -1;
+
+  rv = vac_read_msg (pm->fd, &reply, &l);
+  if (rv)
+    return rv;
+
+  rmp = (void *) reply;
+  if (l < sizeof (*rmp) || ntohs (rmp->_vl_msg_id) != VL_API_SOCKCLNT_CREATE_REPLY ||
+      ntohl (rmp->response) < 0)
+    {
+      free (reply);
+      return -1;
+    }
+
+  count = ntohs (rmp->count);
+  if (l < sizeof (*rmp) + count * sizeof (rmp->message_table[0]))
+    {
+      free (reply);
+      return -1;
+    }
+
+  pm->client_index = ntohl (rmp->index);
+  pm->msg_index_by_name = hash_create_string (0, sizeof (uword));
+  for (int i = 0; i < count; i++)
+    {
+      u16 index = ntohs (rmp->message_table[i].index);
+      char *key =
+	strndup ((char *) rmp->message_table[i].name, sizeof (rmp->message_table[i].name));
+
+      hash_set_mem (pm->msg_index_by_name, key, index);
+      if (index > pm->max_msg_index)
+	pm->max_msg_index = index;
+    }
+
+  free (reply);
+  return 0;
+}
+
+int
+vac_connect (char *name, char *socket_path, vac_callback_t cb, int rx_qlen)
+{
   vac_main_t *pm = &vac_main;
+  struct sockaddr_un addr = {
+    .sun_family = AF_UNIX,
+  };
+  int rv;
 
   assert (clib_mem_get_heap ());
-  init();
-  if (chroot_prefix != NULL)
-    vl_set_memory_root_path (chroot_prefix);
 
-  if ((rv = vl_client_api_map("/vpe-api"))) {
-    clib_warning ("vl_client_api_map returned %d", rv);
-    return rv;
-  }
+  if (pm->fd >= 0)
+    return -1;
 
-  if (vl_client_connect(name, 0, rx_qlen) < 0) {
-    vl_client_api_unmap();
-    return (-1);
-  }
+  if (!socket_path)
+    socket_path = VAC_DEFAULT_SOCKET;
+  if (strlen (socket_path) >= sizeof (addr.sun_path))
+    return -1;
+  strcpy (addr.sun_path, socket_path);
 
-  if (cb) {
-    /* Start the rx queue thread */
-    rv = pthread_create(&pm->rx_thread_handle, NULL, vac_rx_thread_fn, 0);
-    if (rv) {
-      clib_warning("pthread_create returned %d", rv);
-      vl_client_api_unmap();
-      return (-1);
+  pm->fd = socket (AF_UNIX, SOCK_STREAM, 0);
+  if (pm->fd < 0)
+    return -1;
+
+  if (connect (pm->fd, (struct sockaddr *) &addr, sizeof (addr)) < 0)
+    {
+      clib_warning ("connect to %s failed: %s", socket_path, strerror (errno));
+      goto error;
     }
-    vac_callback = cb;
-    rx_is_running = true;
-  }
 
-  /* Start read timeout thread */
-  timeout_in_progress = false;
-  timeout_thread_cancelled = false;
-  rv = pthread_create(&pm->timeout_thread_handle, NULL,
-		      vac_timeout_thread_fn, 0);
-  if (rv) {
-    clib_warning("pthread_create returned %d", rv);
-    vl_client_api_unmap();
-    return (-1);
-  }
+  rv = vac_create_client (pm, name);
+  if (rv)
+    goto error;
 
-  pm->connected_to_vlib = 1;
+  pm->callback = cb;
+  pm->suspend_requested = pm->suspended = pm->terminate = 0;
+  if (cb)
+    {
+      pm->wake_fd = eventfd (0, EFD_NONBLOCK);
+      if (pm->wake_fd < 0)
+	goto error;
 
-  return (0);
-}
-static void
-set_timeout (unsigned short timeout)
-{
-  vac_main_t *pm = &vac_main;
-  pthread_mutex_lock(&pm->timeout_lock);
-  read_timeout = timeout;
-  timeout_in_progress = true;
-  timeout_cancelled = false;
-  pthread_cond_signal(&pm->timeout_cv);
-  pthread_mutex_unlock(&pm->timeout_lock);
-}
+      rv = pthread_create (&pm->rx_thread, NULL, vac_rx_thread_fn, 0);
+      if (rv)
+	{
+	  clib_warning ("pthread_create returned %d", rv);
+	  goto error;
+	}
+      pm->rx_thread_started = 1;
+    }
 
-static void
-unset_timeout (void)
-{
-  vac_main_t *pm = &vac_main;
-  pthread_mutex_lock(&pm->timeout_lock);
-  timeout_in_progress = false;
-  timeout_cancelled = true;
-  pthread_cond_signal(&pm->timeout_cancel_cv);
-  pthread_mutex_unlock(&pm->timeout_lock);
+  return 0;
+
+error:
+  if (pm->wake_fd >= 0)
+    close (pm->wake_fd);
+  pm->wake_fd = -1;
+  close (pm->fd);
+  pm->fd = -1;
+  vac_msg_table_free (pm);
+  return -1;
 }
 
 int
 vac_disconnect (void)
 {
-  api_main_t *am = vlibapi_get_main();
   vac_main_t *pm = &vac_main;
-  uword junk;
-  int rv = 0;
+  vl_api_sockclnt_delete_t mp = {
+    ._vl_msg_id = htons (VL_API_SOCKCLNT_DELETE),
+    .client_index = htonl (pm->client_index),
+    .index = htonl (pm->client_index),
+  };
 
-  if (!pm->connected_to_vlib) return 0;
+  if (pm->fd < 0)
+    return 0;
 
-  if (pm->rx_thread_handle) {
-    vl_api_rx_thread_exit_t *ep;
-    ep = vl_msg_api_alloc (sizeof (*ep));
-    ep->_vl_msg_id = ntohs(VL_API_RX_THREAD_EXIT);
-    vl_msg_api_send_shmem(am->vl_input_queue, (u8 *)&ep);
+  /* Best effort, vpp also cleans up when the socket goes away */
+  vac_send_msg (pm->fd, (char *) &mp, sizeof (mp));
 
-    /* wait (with timeout) until RX thread has finished */
-    struct timespec ts;
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    ts.tv_sec = tv.tv_sec + 5;
-    ts.tv_nsec = 0;
+  if (pm->rx_thread_started)
+    {
+      uint64_t one = 1;
 
-    pthread_mutex_lock(&pm->queue_lock);
-    if (rx_thread_done == false)
-      rv = pthread_cond_timedwait(&pm->terminate_cv, &pm->queue_lock, &ts);
-    pthread_mutex_unlock(&pm->queue_lock);
+      pthread_mutex_lock (&pm->lock);
+      pm->terminate = 1;
+      pthread_cond_broadcast (&pm->state_cv);
+      pthread_mutex_unlock (&pm->lock);
+      if (write (pm->wake_fd, &one, sizeof (one)) < 0)
+	clib_warning ("wake fd write failed");
+      shutdown (pm->fd, SHUT_RDWR);
+      pthread_join (pm->rx_thread, 0);
+      pm->rx_thread_started = 0;
+    }
 
-    /* now join so we wait until thread has -really- finished */
-    if (rv == ETIMEDOUT)
-      pthread_cancel(pm->rx_thread_handle);
-    else
-      pthread_join(pm->rx_thread_handle, (void **) &junk);
-  }
-  if (pm->timeout_thread_handle) {
-    /* cancel, wake then join the timeout thread */
-    pm->timeout_loop = 0;
-    timeout_thread_cancelled = true;
-    set_timeout(0);
-    pthread_join(pm->timeout_thread_handle, (void **) &junk);
-  }
+  close (pm->fd);
+  pm->fd = -1;
+  if (pm->wake_fd >= 0)
+    close (pm->wake_fd);
+  pm->wake_fd = -1;
+  vac_msg_table_free (pm);
 
-  vl_client_disconnect();
-  vl_client_api_unmap();
-  //vac_callback = 0;
-
-  cleanup();
-
-  return (0);
+  return 0;
 }
 
 int
 vac_read (char **p, int *l, u16 timeout)
 {
-  svm_queue_t *q;
-  api_main_t *am = vlibapi_get_main();
   vac_main_t *pm = &vac_main;
-  vl_api_memclnt_keepalive_t *mp;
-  vl_api_memclnt_keepalive_reply_t *rmp;
-  uword msg;
-  msgbuf_t *msgbuf;
   int rv;
-  vl_shmem_hdr_t *shmem_hdr;
-
-  /* svm_queue_sub(below) returns {-1, -2} */
-  if (!pm->connected_to_vlib)
-    return VAC_NOT_CONNECTED;
 
   *l = 0;
 
-  /* svm_queue_sub(below) returns {-1, -2} */
-  if (am->our_pid == 0)
-    return (VAC_SHM_NOT_READY);
+  if (pm->fd < 0)
+    return VAC_NOT_CONNECTED;
 
-  /* Poke timeout thread */
-  if (timeout)
-    set_timeout(timeout);
+  while (1)
+    {
+      rv = vac_wait_readable (pm->fd, -1, timeout ? timeout * 1000 : -1);
+      if (rv)
+	{
+	  vac_rx_resume ();
+	  return rv < 0 ? VAC_NOT_CONNECTED : rv;
+	}
 
-  q = am->vl_input_queue;
+      rv = vac_read_msg (pm->fd, p, l);
+      if (rv)
+	return rv;
+      if (*l)
+	return 0;
 
- again:
-  rv = svm_queue_sub(q, (u8 *)&msg, SVM_Q_WAIT, 0);
-
-  if (rv == 0) {
-    VL_MSG_API_UNPOISON((void *)msg);
-    u16 msg_id = ntohs(*((u16 *)msg));
-    switch (msg_id) {
-    case VL_API_RX_THREAD_EXIT:
-      vl_msg_api_free((void *) msg);
-      goto error;
-    case VL_API_MEMCLNT_RX_THREAD_SUSPEND:
-      goto error;
-    case VL_API_MEMCLNT_READ_TIMEOUT:
-      goto error;
-    case VL_API_MEMCLNT_KEEPALIVE:
-      /* Handle an alive-check ping from vpp. */
-      mp = (void *)msg;
-      rmp = vl_msg_api_alloc (sizeof (*rmp));
-      clib_memset (rmp, 0, sizeof (*rmp));
-      rmp->_vl_msg_id = ntohs(VL_API_MEMCLNT_KEEPALIVE_REPLY);
-      rmp->context = mp->context;
-      shmem_hdr = am->shmem_hdr;
-      vl_msg_api_send_shmem(shmem_hdr->vl_input_queue, (u8 *)&rmp);
-      vl_msg_api_free((void *) msg);
-      /*
-       * Python code is blissfully unaware of these pings, so
-       * act as if it never happened...
-       */
-      goto again;
-
-    default:
-      msgbuf = (msgbuf_t *)(((u8 *)msg) - offsetof(msgbuf_t, data));
-      *l = ntohl(msgbuf->data_len);
-      if (*l == 0) {
-	fprintf(stderr, "Unregistered API message: %d\n", msg_id);
-	goto error;
-      }
+      fprintf (stderr, "Unregistered API message of length 0\n");
+      free (*p);
     }
-    *p = (char *)msg;
-
-
-  } else {
-    fprintf(stderr, "Read failed with %d\n", rv);
-  }
-  /* Let timeout notification thread know we're done */
-  if (timeout)
-    unset_timeout();
-
-  return (rv);
-
- error:
-  if (timeout)
-    unset_timeout();
-  vl_msg_api_free((void *) msg);
-  /* Client might forget to resume RX thread on failure */
-  vac_rx_resume ();
-  return VAC_TIMEOUT;
 }
 
 /*
@@ -481,63 +502,39 @@ typedef struct _vl_api_header
   u32 client_index;
 } __attribute__ ((packed)) vl_api_header_t;
 
-static u32
-vac_client_index (void)
-{
-  return (vlibapi_get_main()->my_client_index);
-}
-
 int
 vac_write (char *p, int l)
 {
-  int rv = -1;
-  api_main_t *am = vlibapi_get_main();
-  vl_api_header_t *mp = vl_msg_api_alloc(l);
-  svm_queue_t *q;
   vac_main_t *pm = &vac_main;
+  vl_api_header_t *mp;
+  char *copy;
+  int rv;
 
-  if (!pm->connected_to_vlib)
+  if (pm->fd < 0)
     return VAC_NOT_CONNECTED;
-  if (!mp) return (-1);
 
-  memcpy(mp, p, l);
-  mp->client_index = vac_client_index();
-  q = am->shmem_hdr->vl_input_queue;
-  rv = svm_queue_add(q, (u8 *)&mp, 0);
-  if (rv != 0) {
-    fprintf(stderr, "vpe_api_write fails: %d\n", rv);
-    /* Clear message */
-    vac_free(mp);
-  }
-  return (rv);
-}
+  copy = malloc (l);
+  if (!copy)
+    return -1;
 
-int
-vac_get_msg_index (char * name)
-{
-  return vl_msg_api_get_msg_index ((u8 *)name);
-}
+  memcpy (copy, p, l);
+  mp = (void *) copy;
+  mp->client_index = htonl (pm->client_index);
 
-int
-vac_msg_table_max_index(void)
-{
-  int max = 0;
-  hash_pair_t *hp;
-  uword *h = vac_msg_table_get_hash();
-  hash_foreach_pair (hp, h,
-  ({
-    if (hp->value[0] > max)
-      max = hp->value[0];
-  }));
+  rv = vac_send_msg (pm->fd, copy, l);
+  free (copy);
+  if (rv)
+    fprintf (stderr, "vpe_api_write fails: %d\n", rv);
 
-  return max;
+  return rv;
 }
 
 void
 vac_set_error_handler (vac_error_callback_t cb)
 {
   assert (clib_mem_get_heap ());
-  if (cb) clib_error_register_handler (cb, 0);
+  if (cb)
+    clib_error_register_handler (cb, 0);
 }
 
 /*
@@ -549,7 +546,7 @@ vac_mem_init (size_t size)
   if (mem_initialized)
     return;
   if (size == 0)
-    clib_mem_init (0, 1 << 30);  // default
+    clib_mem_init (0, 1 << 30); /* default */
   else
     clib_mem_init (0, size);
   mem_initialized = true;
