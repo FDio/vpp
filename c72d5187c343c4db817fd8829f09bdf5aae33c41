@@ -16,6 +16,23 @@
       "message": "Hello. I\u0027ve been internally testing VPP on my CI with many test cases and came across this edge case where an admin-down interface in vpp can blackhole routed traffic when lcp-sync is on; and worse when the interface returns it will route traffic for routes no longer installed in Linux. I think it\u0027s a simple fix, if you have a few minutes to take a look thx.",
       "revId": "c72d5187c343c4db817fd8829f09bdf5aae33c41",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "264b4fc9_e228ae9f",
+        "filename": "src/plugins/linux-cp/lcp_router.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 357,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2026-11-20T19:02:38Z",
+      "side": 1,
+      "message": "I think this change could cause multiple unnecessary flushes if multiple `RTM_NEWLINK` messages are received for an interface that is down. E.g. if an interface is set admin down and then its link state flaps or some other changes occur (mtu, mac address, etc) there could be an `RTM_NEWLINK` sent by the kernel for each of those changes and all of them would result in `up` evaluating false.\n\nTo flush the paths that resolve through an interface, each entry in a table needs to be walked, the specific source being flushed is retrieved, and the path list for that entry/source is walked. In the case where there is a large number of routes, there will be a large number of entries to inspect. When the interface initially goes down, the cost of this operation is reasonable because those paths need to be removed. After that if the flush is repeated while the interface is still down, the same work to walk a bunch of FIB entries \u0026 paths will have to be done but it will end up doing nothing because no paths through the interface will be found.\n\nThe existing condition `(sw_if_up \u0026\u0026 !up)` ensured that the routes were only flushed the one time that we actually brought the VPP interface down when lcp-sync is not enabled. To deal with flushing routes when lcp-sync is enabled, you could possibly make the lcp-sync code initiate a flush after it brings a kernel interface down. Or you could do it in `lcp_router_link_add()` by storing some new global state to indicate whether an interface\u0027s routes need to be flushed - e.g. add a flag value `LIP_FLAG_FLUSH_PATHS` to `lip_flag_t`, set that flag on an interface pair when lcp-sync code brings the VPP interface down, change the `if (sw_if_up)` in your path to `if (sw_if_up || (lip-\u003eflags \u0026 LIP_FLAG_FLUSH_PATHS))`, and unset the flag after completing the flush.",
+      "revId": "c72d5187c343c4db817fd8829f09bdf5aae33c41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
