@@ -249,6 +249,18 @@ u32x4_interleave_lo (u32x4 a, u32x4 b)
   return (u32x4) vzip1q_u32 (a, b);
 }
 
+always_inline u64x2
+u64x2_interleave_hi (u64x2 a, u64x2 b)
+{
+  return (u64x2) vzip2q_u64 (a, b);
+}
+
+always_inline u64x2
+u64x2_interleave_lo (u64x2 a, u64x2 b)
+{
+  return (u64x2) vzip1q_u64 (a, b);
+}
+
 static_always_inline u8x16
 u8x16_reflect (u8x16 v)
 {
