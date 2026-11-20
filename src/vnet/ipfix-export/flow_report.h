@@ -186,7 +186,7 @@ typedef struct flow_report_main
   ipfix_exporter_t *exporters;
 
   /* time scale transform. Joy. */
-  u32 unix_time_0;
+  time_t unix_time_0;
   f64 vlib_time_0;
 
   /* convenience variables */
