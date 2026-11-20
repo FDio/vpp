@@ -110,6 +110,10 @@ vl_api_mactime_details_t_handler (vl_api_mactime_details_t * mp)
 #include <mactime/mactime.api.h>
 #undef vl_endianfun
 
+#define vl_calcsizefun
+#include <mactime/mactime.api.h>
+#undef vl_calcsizefun
+
 /* instantiate all the print functions we know about */
 #define vl_printfun
 #include <mactime/mactime.api.h>
@@ -142,11 +146,19 @@ connect_to_vpp (char *name)
   if (mm->msg_id_base == (u16) ~ 0)
     return -1;
 
-#define _(N, n)                                                               \
-  vl_msg_api_set_handlers ((VL_API_##N + mm->msg_id_base), #n,                \
-			   vl_api_##n##_t_handler, vl_api_##n##_t_endian,     \
-			   vl_api_##n##_t_format, sizeof (vl_api_##n##_t), 1, \
-			   vl_api_##n##_t_tojson, vl_api_##n##_t_fromjson);
+#define _(N, n)                                                                                    \
+  vl_msg_api_config (&(vl_msg_api_msg_config_t) {                                                  \
+    .id = VL_API_##N + mm->msg_id_base,                                                            \
+    .name = #n,                                                                                    \
+    .handler = vl_api_##n##_t_handler,                                                             \
+    .endian = vl_api_##n##_t_endian,                                                               \
+    .format_fn = vl_api_##n##_t_format,                                                            \
+    .size = sizeof (vl_api_##n##_t),                                                               \
+    .traced = 1,                                                                                   \
+    .tojson = vl_api_##n##_t_tojson,                                                               \
+    .fromjson = vl_api_##n##_t_fromjson,                                                           \
+    .calc_size = vl_api_##n##_t_calc_size,                                                         \
+  });
   foreach_mactime_api_msg;
 #undef _
 
