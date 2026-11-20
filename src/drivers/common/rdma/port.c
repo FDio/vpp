@@ -3,15 +3,15 @@
  */
 
 #include <vppinfra/clib.h>
-#include <vppinfra/linux/sysfs.h>
 #include <vlib/pci/pci.h>
 #include <errno.h>
 #include <unistd.h>
-#include <dirent.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <linux/ethtool.h>
 #include <linux/sockios.h>
+#include <linux/netlink.h>
+#include <rdma/rdma_netlink.h>
 #include <infiniband/verbs.h>
 #include <rdma/common.h>
 
@@ -98,35 +98,123 @@ rdma_port_speed (struct ibv_port_attr *attr)
   return lane * width;
 }
 
-u32
-rdma_port_netdev_ifindex (vlib_pci_addr_t *addr, u8 ibv_port)
+typedef struct
 {
-  u8 *path = format (0, "/sys/bus/pci/devices/%U/net%c", format_vlib_pci_addr, addr, 0);
-  struct dirent *e;
-  u32 ifindex = 0;
-  DIR *dir;
+  char *dev_name;
+  u32 dev_index;
+  u32 port_index;
+  u32 ndev_index;
+} rdma_nldev_attrs_t;
 
-  dir = opendir ((char *) path);
-  if (dir == 0)
+static void
+rdma_nldev_parse (struct nlmsghdr *nh, rdma_nldev_attrs_t *r)
+{
+  struct nlattr *a = NLMSG_DATA (nh);
+  int rem = NLMSG_PAYLOAD (nh, 0);
+
+  *r = (rdma_nldev_attrs_t) {};
+
+  while (rem >= NLA_HDRLEN && a->nla_len >= NLA_HDRLEN && a->nla_len <= rem)
+    {
+      void *data = (u8 *) a + NLA_HDRLEN;
+
+      switch (a->nla_type & NLA_TYPE_MASK)
+	{
+	case RDMA_NLDEV_ATTR_DEV_NAME:
+	  r->dev_name = data;
+	  break;
+	case RDMA_NLDEV_ATTR_DEV_INDEX:
+	  clib_memcpy (&r->dev_index, data, sizeof (u32));
+	  break;
+	case RDMA_NLDEV_ATTR_PORT_INDEX:
+	  clib_memcpy (&r->port_index, data, sizeof (u32));
+	  break;
+	case RDMA_NLDEV_ATTR_NDEV_INDEX:
+	  clib_memcpy (&r->ndev_index, data, sizeof (u32));
+	  break;
+	}
+      rem -= NLA_ALIGN (a->nla_len);
+      a = (struct nlattr *) ((u8 *) a + NLA_ALIGN (a->nla_len));
+    }
+}
+
+u32
+rdma_port_netdev_ifindex (struct ibv_context *ctx, u8 ibv_port)
+{
+  const char *dev_name = ibv_get_device_name (ctx->device);
+  struct nlmsghdr dev_req = {
+    .nlmsg_len = sizeof (dev_req),
+    .nlmsg_type = RDMA_NL_GET_TYPE (RDMA_NL_NLDEV, RDMA_NLDEV_CMD_GET),
+    .nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP,
+    .nlmsg_seq = 1,
+  };
+  struct
+  {
+    struct nlmsghdr nh;
+    struct nlattr dev_attr;
+    u32 dev_index;
+    struct nlattr port_attr;
+    u32 port_index;
+  } port_req = {
+    .nh = {
+      .nlmsg_len = sizeof (port_req),
+      .nlmsg_type = RDMA_NL_GET_TYPE (RDMA_NL_NLDEV, RDMA_NLDEV_CMD_PORT_GET),
+      .nlmsg_flags = NLM_F_REQUEST,
+      .nlmsg_seq = 2,
+    },
+    .dev_attr = {
+      .nla_len = NLA_HDRLEN + sizeof (u32),
+      .nla_type = RDMA_NLDEV_ATTR_DEV_INDEX,
+    },
+    .port_attr = {
+      .nla_len = NLA_HDRLEN + sizeof (u32),
+      .nla_type = RDMA_NLDEV_ATTR_PORT_INDEX,
+    },
+    .dev_index = ~0,
+    .port_index = ibv_port,
+  };
+  const uword buf_sz = 8192;
+  u8 *buf = clib_mem_alloc (buf_sz);
+  rdma_nldev_attrs_t r;
+  struct nlmsghdr *nh;
+  u32 ifindex = 0;
+  int fd, len;
+
+  fd = socket (AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, NETLINK_RDMA);
+  if (fd < 0)
+    goto free;
+
+  if (send (fd, &dev_req, sizeof (dev_req), 0) != sizeof (dev_req))
     goto done;
 
-  while (ifindex == 0 && (e = readdir (dir)))
+  while ((len = recv (fd, buf, buf_sz, 0)) > 0)
+    for (nh = (struct nlmsghdr *) buf; NLMSG_OK (nh, len); nh = NLMSG_NEXT (nh, len))
+      {
+	if (nh->nlmsg_type == NLMSG_ERROR)
+	  goto done;
+	if (nh->nlmsg_type == NLMSG_DONE)
+	  goto dev_done;
+	rdma_nldev_parse (nh, &r);
+	if (r.dev_name && strcmp (r.dev_name, dev_name) == 0)
+	  port_req.dev_index = r.dev_index;
+      }
+
+dev_done:
+  if (port_req.dev_index == ~0 || send (fd, &port_req, sizeof (port_req), 0) != sizeof (port_req))
+    goto done;
+
+  len = recv (fd, buf, buf_sz, 0);
+  nh = (struct nlmsghdr *) buf;
+  if (len > 0 && NLMSG_OK (nh, len) && nh->nlmsg_type != NLMSG_ERROR)
     {
-      u32 dev_port;
-
-      if (e->d_name[0] == '.')
-	continue;
-
-      vec_reset_length (path);
-      path = format (path, "/sys/bus/pci/devices/%U/net/%s/dev_port%c", format_vlib_pci_addr, addr,
-		     e->d_name, 0);
-      if (clib_sysfs_read ((char *) path, "%u", &dev_port) == 0 && dev_port + 1 == ibv_port)
-	ifindex = if_nametoindex (e->d_name);
+      rdma_nldev_parse (nh, &r);
+      ifindex = r.ndev_index;
     }
 
-  closedir (dir);
 done:
-  vec_free (path);
+  close (fd);
+free:
+  clib_mem_free (buf);
   return ifindex;
 }
 

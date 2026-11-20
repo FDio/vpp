@@ -130,7 +130,7 @@ format_function_t format_rdma_rss_flows;
 vnet_dev_rv_t rdma_netdev_set_mtu (u32 ifindex, u32 max_rx_frame_size, clib_error_t **errp);
 
 u32 rdma_port_speed (struct ibv_port_attr *attr);
-u32 rdma_port_netdev_ifindex (vlib_pci_addr_t *addr, u8 ibv_port);
+u32 rdma_port_netdev_ifindex (struct ibv_context *ctx, u8 ibv_port);
 vnet_dev_rv_t rdma_netdev_module_eeprom_read (u32 ifindex, vnet_dev_port_module_eeprom_req_t *r);
 int rdma_port_mac (struct ibv_context *ctx, u8 ibv_port, int gid_tbl_len,
 		   vnet_dev_hw_addr_t *hw_addr);
