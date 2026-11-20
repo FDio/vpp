@@ -5,6 +5,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
+#include <vnet/interface/cli_types.h>
 #include <snort/snort.h>
 
 static clib_error_t *
@@ -44,71 +45,69 @@ snort_attach_detach_instance (vlib_main_t *vm, vnet_main_t *vnm,
   return err;
 }
 
+static const char *
+next_instance_name (const cli_arg_t *a, u32 *iter, u32 *value, const char **help)
+{
+  snort_main_t *sm = &snort_main;
+
+  while (*iter < vec_len (sm->instances))
+    {
+      u32 i = (*iter)++;
+
+      if (pool_is_free_index (sm->instances, i))
+	continue;
+
+      *value = i;
+      return (char *) pool_elt_at_index (sm->instances, i)->name;
+    }
+  return 0;
+}
+
+CLIB_CLI_TYPE (cli_type_snort_instance, static) = {
+  .name = "instance",
+  .help = "name of a snort instance",
+  .next_name = next_instance_name,
+  .parse = cli_names_parse,
+  .complete = cli_names_complete,
+};
+
+static const cli_choice_t snort_on_disconnect_choices[] = {
+  { "drop", "drop the packets", 1 },
+  { "pass", "pass the packets", 0 },
+  {},
+};
+
 static clib_error_t *
-snort_create_instance_command_fn (vlib_main_t *vm, unformat_input_t *input,
-				  vlib_cli_command_t *cmd)
+snort_create_instance_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   clib_error_t *err = 0;
-  u8 *name = 0;
-  u32 queue_size = 1024;
-  u32 empty_buf_queue_size = 64;
-  u32 qpairs_per_thread = 1;
-  u8 drop_on_disconnect = 1;
-  int rv = 0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "queue-size %u", &queue_size))
-	;
-      else if (unformat (input, "queues-per-thread %u", &qpairs_per_thread))
-	;
-      else if (unformat (input, "empty-buf-queue-size %u",
-			 &empty_buf_queue_size))
-	;
-      else if (unformat (input, "on-disconnect drop"))
-	drop_on_disconnect = 1;
-      else if (unformat (input, "on-disconnect pass"))
-	drop_on_disconnect = 0;
-      else if (unformat (input, "name %s", &name))
-	;
-      else
-	{
-	  err = clib_error_return (0, "unknown input `%U'",
-				   format_unformat_error, input);
-	  goto done;
-	}
-    }
+  cli_value_t *name = cli_get (ctx, "name");
+  u32 queue_size = cli_u64 (ctx, "queue-size", 1024);
+  u32 empty_buf_queue_size = cli_u64 (ctx, "empty-buf-queue-size", 64);
+  u32 qpairs_per_thread = cli_u64 (ctx, "queues-per-thread", 1);
+  u8 drop_on_disconnect = cli_u64 (ctx, "on-disconnect", 1);
+  int rv;
 
   if (!is_pow2 (queue_size))
-    {
-      err = clib_error_return (0, "Queue size must be a power of two");
-      goto done;
-    }
-
-  if (!name)
-    {
-      err = clib_error_return (0, "please specify instance name");
-      goto done;
-    }
+    return clib_error_return (0, "Queue size must be a power of two");
 
   rv = snort_instance_create (
     vm,
-    &(snort_instance_create_args_t){
+    &(snort_instance_create_args_t) {
       .log2_queue_sz = min_log2 (queue_size),
       .log2_empty_buf_queue_sz = min_log2 (empty_buf_queue_size),
       .drop_on_disconnect = drop_on_disconnect,
-      .drop_bitmap =
-	1 << DAQ_VPP_VERDICT_BLOCK | 1 << DAQ_VPP_VERDICT_BLACKLIST,
+      .drop_bitmap = 1 << DAQ_VPP_VERDICT_BLOCK | 1 << DAQ_VPP_VERDICT_BLACKLIST,
       .qpairs_per_thread = qpairs_per_thread,
     },
-    "%s", name);
+    "%v", name->str);
 
   switch (rv)
     {
     case 0:
       break;
     case VNET_API_ERROR_ENTRY_ALREADY_EXISTS:
-      err = clib_error_return (0, "instance '%s' already exists", name);
+      err = clib_error_return (0, "instance '%v' already exists", name->str);
       break;
     case VNET_API_ERROR_SYSCALL_ERROR_1:
       err = clib_error_return (0, "memory fd failure: %U", format_clib_error,
@@ -125,240 +124,124 @@ snort_create_instance_command_fn (vlib_main_t *vm, unformat_input_t *input,
       break;
     }
 
-done:
-  vec_free (name);
   return err;
 }
 
 VLIB_CLI_COMMAND (snort_create_instance_command, static) = {
   .path = "snort create-instance",
-  .short_help = "snort create-instance name <name> [queue-size <size>] "
-		"[queues-per-thread <n>] [empty-buf-queue-size <size>] "
-		"[on-disconnect drop|pass]",
-  .function = snort_create_instance_command_fn,
+  .short_help = "Create a snort instance",
+  .args = CLI_ARGS (
+    CLI_KEYWORD ("name", cli_type_string, .help = "instance name"),
+    CLI_OPT_KEYWORD ("queue-size", cli_type_u32, .min = 1,
+		     .help = "queue size, power of two, default 1024"),
+    CLI_OPT_KEYWORD ("queues-per-thread", cli_type_u32, .min = 1, .help = "default 1"),
+    CLI_OPT_KEYWORD ("empty-buf-queue-size", cli_type_u32, .min = 1, .help = "default 64"),
+    CLI_OPT_KEYWORD ("on-disconnect", cli_type_enum, .choices = snort_on_disconnect_choices,
+		     .help = "what to do with packets when the client disconnects, default drop")),
+  .handler = snort_create_instance_command_fn,
 };
 
 static clib_error_t *
-snort_disconnect_client_command_fn (vlib_main_t *vm, unformat_input_t *input,
-				    vlib_cli_command_t *cmd)
+snort_disconnect_client_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  clib_error_t *err = 0;
-  int rv = 0;
-  u32 client_index = SNORT_INVALID_CLIENT_INDEX;
-
-  if (!unformat (input, "%u", &client_index) || client_index == SNORT_INVALID_CLIENT_INDEX)
-    {
-      err = clib_error_return (0, "please specify client index");
-      goto done;
-    }
-
-  rv = snort_client_disconnect (vm, client_index);
+  u32 client_index = cli_u64 (ctx, "index", 0);
+  int rv = snort_client_disconnect (vm, client_index);
 
   switch (rv)
     {
     case 0:
-      break;
+      return 0;
     case VNET_API_ERROR_NO_SUCH_ENTRY:
-      err = clib_error_return (0, "unknown client '%u'", client_index);
-      break;
+      return clib_error_return (0, "unknown client '%u'", client_index);
     default:
-      err = clib_error_return (0, "snort_client_disconnect returned %d", rv);
-      break;
+      return clib_error_return (0, "snort_client_disconnect returned %d", rv);
     }
-
-done:
-  return err;
 }
 
 VLIB_CLI_COMMAND (snort_disconnect_client_command, static) = {
   .path = "snort disconnect client",
-  .short_help = "snort disconnect client <index>",
-  .function = snort_disconnect_client_command_fn,
+  .short_help = "Disconnect a snort client",
+  .args = CLI_ARGS (CLI_VALUE ("index", cli_type_u32, .max = SNORT_INVALID_CLIENT_INDEX - 1,
+			       .help = "client index")),
+  .handler = snort_disconnect_client_command_fn,
 };
 
 static clib_error_t *
-snort_delete_instance_command_fn (vlib_main_t *vm, unformat_input_t *input,
-				  vlib_cli_command_t *cmd)
+snort_delete_instance_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  clib_error_t *err = 0;
-  u8 *name = 0;
-  int rv = 0;
-
-  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    unformat (input, "%s", &name);
-
-  if (!name)
-    {
-      err = clib_error_return (0, "please specify instance name");
-      goto done;
-    }
-
-  snort_instance_t *si = snort_get_instance_by_name ((char *) name);
-  if (!si)
-    err = clib_error_return (0, "unknown instance '%s' requested", name);
-  else
-    rv = snort_instance_delete (vm, si->index);
+  snort_instance_t *si = snort_get_instance_by_index (cli_index (ctx, "instance"));
+  int rv = snort_instance_delete (vm, si->index);
 
   switch (rv)
     {
     case 0:
-      break;
+      return 0;
     case VNET_API_ERROR_NO_SUCH_ENTRY:
-      err = clib_error_return (0, "instance '%s' deletion failure", name);
-      break;
+      return clib_error_return (0, "instance '%s' deletion failure", si->name);
     case VNET_API_ERROR_INSTANCE_IN_USE:
-      err = clib_error_return (0, "instance '%s' has connected client", name);
-      break;
+      return clib_error_return (0, "instance '%s' has connected client", si->name);
     default:
-      err = clib_error_return (0, "snort_instance_delete returned %d", rv);
-      break;
+      return clib_error_return (0, "snort_instance_delete returned %d", rv);
     }
-
-done:
-  vec_free (name);
-  return err;
 }
 
 VLIB_CLI_COMMAND (snort_delete_instance_command, static) = {
   .path = "snort delete instance",
-  .short_help = "snort delete instance <name>",
-  .function = snort_delete_instance_command_fn,
+  .short_help = "Delete a snort instance",
+  .args = CLI_ARGS (CLI_VALUE ("instance", cli_type_snort_instance)),
+  .handler = snort_delete_instance_command_fn,
 };
 
+#define SNORT_ATTACH_ARGS                                                                          \
+  CLI_KEYWORD ("instance", cli_type_snort_instance),                                               \
+    CLI_KEYWORD ("interface", cli_type_sw_interface),                                              \
+    CLI_ONEOF ("direction", 0, CLI_FLAG ("input", .help = "traffic received on the interface"),    \
+	       CLI_FLAG ("output", .help = "traffic sent on the interface"),                       \
+	       CLI_FLAG ("inout", .help = "traffic in both directions"))
+
 static clib_error_t *
-snort_attach_command_fn (vlib_main_t *vm, unformat_input_t *input,
-			 vlib_cli_command_t *cmd)
+snort_attach_detach_command (cli_ctx_t *ctx, int is_enable)
 {
-  vnet_main_t *vnm = vnet_get_main ();
-  clib_error_t *err = NULL;
-  u8 *name = NULL;
-  u32 sw_if_index = ~0;
-  int in = 0, out = 0;
+  snort_instance_t *si = snort_get_instance_by_index (cli_index (ctx, "instance"));
+  int inout = cli_flag (ctx, "inout");
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "interface %U", unformat_vnet_sw_interface, vnm,
-		    &sw_if_index))
-	;
-      else if (unformat (input, "instance %s", &name))
-	;
-      else if (unformat (input, "input"))
-	in = 1;
-      else if (unformat (input, "output"))
-	out = 1;
-      else if (unformat (input, "inout"))
-	in = out = 1;
-      else
-	{
-	  err = clib_error_return (0, "unknown input `%U'",
-				   format_unformat_error, input);
-	  goto done;
-	}
-    }
+  return snort_attach_detach_instance (
+    vlib_get_main (), vnet_get_main (), (char *) si->name, cli_index (ctx, "interface"), is_enable,
+    inout || cli_flag (ctx, "input"), inout || cli_flag (ctx, "output"));
+}
 
-  if (sw_if_index == ~0)
-    {
-      err = clib_error_return (0, "please specify interface");
-      goto done;
-    }
+static clib_error_t *
+snort_attach_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
+{
+  return snort_attach_detach_command (ctx, 1);
+}
 
-  if (!name)
-    {
-      err = clib_error_return (0, "please specify instance");
-      goto done;
-    }
-
-  err =
-    snort_attach_detach_instance (vm, vnm, (char *) name, sw_if_index, 1 /* is_enable */, in, out);
-
-done:
-  vec_free (name);
-  return err;
+static clib_error_t *
+snort_detach_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
+{
+  return snort_attach_detach_command (ctx, 0);
 }
 
 VLIB_CLI_COMMAND (snort_attach_command, static) = {
   .path = "snort attach",
-  .short_help = "snort attach instance <name> "
-		"interface <if-name> "
-		"[input|output|inout]",
-  .function = snort_attach_command_fn,
+  .short_help = "Attach a snort instance to an interface",
+  .args = CLI_ARGS (SNORT_ATTACH_ARGS),
+  .handler = snort_attach_command_fn,
 };
-
-static clib_error_t *
-snort_detach_command_fn (vlib_main_t *vm, unformat_input_t *input,
-			 vlib_cli_command_t *cmd)
-{
-  vnet_main_t *vnm = vnet_get_main ();
-  clib_error_t *err = NULL;
-  u8 *name = NULL;
-  u32 sw_if_index = ~0;
-  int in = 0, out = 0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "instance %s", &name))
-	;
-      else if (unformat (input, "interface %U", unformat_vnet_sw_interface,
-			 vnm, &sw_if_index))
-	;
-      else if (unformat (input, "input"))
-	in = 1;
-      else if (unformat (input, "output"))
-	out = 1;
-      else if (unformat (input, "inout"))
-	in = out = 1;
-      else
-	{
-	  err = clib_error_return (0, "unknown input `%U'",
-				   format_unformat_error, input);
-	  goto done;
-	}
-    }
-
-  if (!in && !out)
-    {
-      err = clib_error_return (0, "please specify traffic direction");
-      goto done;
-    }
-
-  if (sw_if_index == ~0)
-    {
-      err = clib_error_return (0, "please specify interface");
-      goto done;
-    }
-
-  err =
-    snort_attach_detach_instance (vm, vnm, (char *) name, sw_if_index, 0 /* is_enable */, in, out);
-
-done:
-  vec_free (name);
-  return err;
-}
 
 VLIB_CLI_COMMAND (snort_detach_command, static) = {
   .path = "snort detach",
-  .short_help = "snort detach instance <name> "
-		"interface <if-name> "
-		"[input|output|inout]",
-  .function = snort_detach_command_fn,
+  .short_help = "Detach a snort instance from an interface",
+  .args = CLI_ARGS (SNORT_ATTACH_ARGS),
+  .handler = snort_detach_command_fn,
 };
 
 static clib_error_t *
-snort_show_instances_command_fn (vlib_main_t *vm, unformat_input_t *input,
-				 vlib_cli_command_t *cmd)
+snort_show_instances_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   snort_main_t *sm = &snort_main;
   snort_instance_t *si;
-  int verbose = 0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "verbose"))
-	verbose = 1;
-      else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
-    }
+  int verbose = cli_flag (ctx, "verbose");
 
   pool_foreach (si, sm->instances)
     {
@@ -433,13 +316,13 @@ snort_show_instances_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (snort_show_instances_command, static) = {
   .path = "show snort instances",
-  .short_help = "show snort instances [verbose]",
-  .function = snort_show_instances_command_fn,
+  .short_help = "Show the snort instances",
+  .args = CLI_ARGS (CLI_FLAG ("verbose", .help = "show the descriptors of each queue")),
+  .handler = snort_show_instances_command_fn,
 };
 
 static clib_error_t *
-snort_show_interfaces_command_fn (vlib_main_t *vm, unformat_input_t *input,
-				  vlib_cli_command_t *cmd)
+snort_show_interfaces_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   snort_main_t *sm = &snort_main;
   vnet_main_t *vnm = vnet_get_main ();
@@ -478,13 +361,12 @@ snort_show_interfaces_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (snort_show_interfaces_command, static) = {
   .path = "show snort interfaces",
-  .short_help = "show snort interfaces",
-  .function = snort_show_interfaces_command_fn,
+  .short_help = "Show the interfaces snort instances are attached to",
+  .handler = snort_show_interfaces_command_fn,
 };
 
 static clib_error_t *
-snort_show_clients_command_fn (vlib_main_t *vm, unformat_input_t *input,
-			       vlib_cli_command_t *cmd)
+snort_show_clients_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   snort_main_t *sm = &snort_main;
   snort_client_t *c;
@@ -514,6 +396,6 @@ snort_show_clients_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (snort_show_clients_command, static) = {
   .path = "show snort clients",
-  .short_help = "show snort clients",
-  .function = snort_show_clients_command_fn,
+  .short_help = "Show the snort clients",
+  .handler = snort_show_clients_command_fn,
 };
