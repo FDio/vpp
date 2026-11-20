@@ -13,6 +13,9 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/format.h>
+#include <vnet/interface/cli_types.h>
+#include <vnet/ip/cli_types.h>
+#include <vnet/ethernet/cli_types.h>
 #include <tap/internal.h>
 
 static void
@@ -166,162 +169,176 @@ tap_show (vlib_main_t *vm, u32 *hw_if_indices, u8 show_descr, int is_tun)
 	}
     }
 }
-static clib_error_t *
-tap_create_command_fn (vlib_main_t *vm, unformat_input_t *input,
-		       vlib_cli_command_t *cmd)
+static u8 *
+tap_cli_string (cli_ctx_t *ctx, const char *name)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  tap_create_if_args_t args = { 0 };
+  cli_value_t *v = cli_get (ctx, name);
+  u8 *s;
+
+  if (!v)
+    return 0;
+
+  s = vec_dup (v->str);
+  vec_add1 (s, 0);
+  return s;
+}
+
+static clib_error_t *
+tap_cli_host_addr (cli_ctx_t *ctx, const char *name, int is_ip6, void *addr, u8 *len, int *is_set)
+{
+  cli_value_t *v = cli_get (ctx, name);
+
+  if (!v)
+    return 0;
+
+  if (v->prefix.is_ip6 != is_ip6)
+    return clib_error_return (0, "'%s' needs an IPv%u address", name, is_ip6 ? 6 : 4);
+
+  clib_memcpy (addr, v->prefix.addr, is_ip6 ? 16 : 4);
+  *len = v->prefix.len;
+  *is_set = 1;
+  return 0;
+}
+
+static clib_error_t *
+tap_cli_gw (cli_ctx_t *ctx, const char *name, int is_ip6, void *addr, u8 *is_set)
+{
+  cli_value_t *v = cli_get (ctx, name);
+
+  if (!v)
+    return 0;
+
+  if (v->prefix.is_ip6 != is_ip6)
+    return clib_error_return (0, "'%s' needs an IPv%u address", name, is_ip6 ? 6 : 4);
+
+  clib_memcpy (addr, v->prefix.addr, is_ip6 ? 16 : 4);
+  *is_set = 1;
+  return 0;
+}
+
+static clib_error_t *
+tap_create_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
+{
+  tap_create_if_args_t args = {
+    .id = cli_u64 (ctx, "id", ~0),
+    .rv = -1,
+    .num_rx_queues = cli_u64 (ctx, "num-rx-queues", 1),
+    .num_tx_queues = cli_u64 (ctx, "num-tx-queues", 1),
+    .rx_ring_sz = cli_u64 (ctx, "rx-ring-size", 0),
+    .tx_ring_sz = cli_u64 (ctx, "tx-ring-size", 0),
+  };
+  clib_error_t *err = 0;
+  cli_value_t *v;
   int ip_addr_set = 0;
-  u32 tmp;
 
-  args.id = ~0;
-  args.tap_flags = 0;
-  args.rv = -1;
-  args.num_rx_queues = 1;
-  args.num_tx_queues = 1;
+  args.if_name = tap_cli_string (ctx, "if-name");
+  args.host_if_name = tap_cli_string (ctx, "host-if-name");
+  args.host_namespace = tap_cli_string (ctx, "host-ns");
+  args.host_bridge = tap_cli_string (ctx, "host-bridge");
 
-  /* Get a line of input. */
-  if (unformat_user (input, unformat_line_input, line_input))
+  if ((v = cli_get (ctx, "host-mac-addr")))
+    clib_memcpy (args.host_mac_addr.bytes, v->prefix.addr, 6);
+  if ((v = cli_get (ctx, "hw-addr")))
     {
-      while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-	{
-	  if (unformat (line_input, "id %u", &args.id))
-	    ;
-	  else if (unformat (line_input, "if-name %s", &args.if_name))
-	    ;
-	  else if (unformat (line_input, "host-if-name %s",
-			     &args.host_if_name))
-	    ;
-	  else if (unformat (line_input, "host-ns %s", &args.host_namespace))
-	    ;
-	  else if (unformat (line_input, "host-mac-addr %U",
-			     unformat_ethernet_address,
-			     args.host_mac_addr.bytes))
-	    ;
-	  else if (unformat (line_input, "host-bridge %s", &args.host_bridge))
-	    ;
-	  else if (unformat (line_input, "host-ip4-addr %U/%d",
-			     unformat_ip4_address, &args.host_ip4_addr,
-			     &args.host_ip4_prefix_len))
-	    ip_addr_set = 1;
-	  else if (unformat (line_input, "host-ip4-gw %U",
-			     unformat_ip4_address, &args.host_ip4_gw))
-	    args.host_ip4_gw_set = 1;
-	  else if (unformat (line_input, "host-ip6-addr %U/%d",
-			     unformat_ip6_address, &args.host_ip6_addr,
-			     &args.host_ip6_prefix_len))
-	    ip_addr_set = 1;
-	  else if (unformat (line_input, "host-ip6-gw %U",
-			     unformat_ip6_address, &args.host_ip6_gw))
-	    args.host_ip6_gw_set = 1;
-	  else if (unformat (line_input, "num-rx-queues %d", &tmp))
-	    args.num_rx_queues = tmp;
-	  else if (unformat (line_input, "num-tx-queues %d", &tmp))
-	    args.num_tx_queues = tmp;
-	  else if (unformat (line_input, "rx-ring-size %d", &tmp))
-	    args.rx_ring_sz = tmp;
-	  else if (unformat (line_input, "tx-ring-size %d", &tmp))
-	    args.tx_ring_sz = tmp;
-	  else if (unformat (line_input, "host-mtu-size %d",
-			     &args.host_mtu_size))
-	    args.host_mtu_set = 1;
-	  else if (unformat (line_input, "no-gso"))
-	    args.tap_flags &= ~TAP_FLAG_GSO;
-	  else if (unformat (line_input, "gso"))
-	    args.tap_flags |= TAP_FLAG_GSO;
-	  else if (unformat (line_input, "gro-coalesce"))
-	    args.tap_flags |= TAP_FLAG_GRO_COALESCE;
-	  else if (unformat (line_input, "csum-offload"))
-	    args.tap_flags |= TAP_FLAG_CSUM_OFFLOAD;
-	  else if (unformat (line_input, "persist"))
-	    args.tap_flags |= TAP_FLAG_PERSIST;
-	  else if (unformat (line_input, "attach"))
-	    args.tap_flags |= TAP_FLAG_ATTACH;
-	  else if (unformat (line_input, "tun"))
-	    args.tap_flags |= TAP_FLAG_TUN;
-	  else if (unformat (line_input, "packed"))
-	    args.tap_flags |= TAP_FLAG_PACKED;
-	  else if (unformat (line_input, "in-order"))
-	    args.tap_flags |= TAP_FLAG_IN_ORDER;
-	  else if (unformat (line_input, "consistent-qp"))
-	    args.tap_flags |= TAP_FLAG_CONSISTENT_QP;
-	  else if (unformat (line_input, "hw-addr %U",
-			     unformat_ethernet_address, args.mac_addr.bytes))
-	    args.mac_addr_set = 1;
-	  else
-	    {
-	      unformat_free (line_input);
-	      return clib_error_return (0, "unknown input `%U'",
-					format_unformat_error, input);
-	    }
-	}
-      unformat_free (line_input);
+      clib_memcpy (args.mac_addr.bytes, v->prefix.addr, 6);
+      args.mac_addr_set = 1;
+    }
+  if ((v = cli_get (ctx, "host-mtu-size")))
+    {
+      args.host_mtu_size = v->u64;
+      args.host_mtu_set = 1;
     }
 
+  err = tap_cli_host_addr (ctx, "host-ip4-addr", 0, &args.host_ip4_addr, &args.host_ip4_prefix_len,
+			   &ip_addr_set);
+  if (!err)
+    err = tap_cli_host_addr (ctx, "host-ip6-addr", 1, &args.host_ip6_addr,
+			     &args.host_ip6_prefix_len, &ip_addr_set);
+  if (!err)
+    err = tap_cli_gw (ctx, "host-ip4-gw", 0, &args.host_ip4_gw, &args.host_ip4_gw_set);
+  if (!err)
+    err = tap_cli_gw (ctx, "host-ip6-gw", 1, &args.host_ip6_gw, &args.host_ip6_gw_set);
+  if (err)
+    goto done;
+
+  if (cli_flag (ctx, "gso"))
+    args.tap_flags |= TAP_FLAG_GSO;
+  if (cli_flag (ctx, "gro-coalesce"))
+    args.tap_flags |= TAP_FLAG_GRO_COALESCE;
+  if (cli_flag (ctx, "csum-offload"))
+    args.tap_flags |= TAP_FLAG_CSUM_OFFLOAD;
+  if (cli_flag (ctx, "persist"))
+    args.tap_flags |= TAP_FLAG_PERSIST;
+  if (cli_flag (ctx, "attach"))
+    args.tap_flags |= TAP_FLAG_ATTACH;
+  if (cli_flag (ctx, "tun"))
+    args.tap_flags |= TAP_FLAG_TUN;
+  if (cli_flag (ctx, "packed"))
+    args.tap_flags |= TAP_FLAG_PACKED;
+  if (cli_flag (ctx, "in-order"))
+    args.tap_flags |= TAP_FLAG_IN_ORDER;
+  if (cli_flag (ctx, "consistent-qp"))
+    args.tap_flags |= TAP_FLAG_CONSISTENT_QP;
+
   if (ip_addr_set && args.host_bridge)
-    return clib_error_return (0, "Please specify either host ip address or "
-				 "host bridge");
+    {
+      err = clib_error_return (0, "Please specify either host ip address or host bridge");
+      goto done;
+    }
 
   tap_create_if (vm, &args);
 
   if (!args.rv)
-    vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name,
-		     vnet_get_main (), args.sw_if_index);
+    vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main (), args.sw_if_index);
+  err = args.error;
 
+done:
   vec_free (args.if_name);
   vec_free (args.host_if_name);
   vec_free (args.host_namespace);
   vec_free (args.host_bridge);
 
-  return args.error;
+  return err;
 }
 
 VLIB_CLI_COMMAND (tap_create_command, static) = {
   .path = "create tap",
-  .short_help =
-    "create tap {id <if-id>} [hw-addr <mac-address>] [if-name <if-name>] "
-    "[num-rx-queues <n>] [num-tx-queues <n>] [rx-ring-size <size>] "
-    "[tx-ring-size <size>] [host-ns <netns>] [host-bridge <bridge-name>] "
-    "[host-ip4-addr <ip4addr/mask>] [host-ip6-addr <ip6-addr>] "
-    "[host-ip4-gw <ip4-addr>] [host-ip6-gw <ip6-addr>] "
-    "[host-mac-addr <host-mac-address>] [host-if-name <name>] "
-    "[host-mtu-size <size>] [no-gso|gso [gro-coalesce]|csum-offload] "
-    "[persist] [attach] [tun] [packed] [in-order]",
-  .function = tap_create_command_fn,
+  .short_help = "Create a tap interface",
+  .args = CLI_ARGS (
+    CLI_OPT_KEYWORD ("id", cli_type_u32, .max = CLIB_U32_MAX - 1, .help = "interface id"),
+    CLI_OPT_KEYWORD ("hw-addr", cli_type_mac_address, .help = "MAC address of the interface"),
+    CLI_OPT_KEYWORD ("if-name", cli_type_string, .help = "name of the interface"),
+    CLI_OPT_KEYWORD ("num-rx-queues", cli_type_u32, .min = 1, .max = CLIB_U16_MAX),
+    CLI_OPT_KEYWORD ("num-tx-queues", cli_type_u32, .min = 1, .max = CLIB_U16_MAX),
+    CLI_OPT_KEYWORD ("rx-ring-size", cli_type_u32, .min = 1, .max = CLIB_U16_MAX),
+    CLI_OPT_KEYWORD ("tx-ring-size", cli_type_u32, .min = 1, .max = CLIB_U16_MAX),
+    CLI_OPT_KEYWORD ("host-ns", cli_type_string, .help = "network namespace of the host side"),
+    CLI_OPT_KEYWORD ("host-bridge", cli_type_string, .excludes = "host-ip4-addr,host-ip6-addr",
+		     .help = "host bridge to attach the host side to"),
+    CLI_OPT_KEYWORD ("host-ip4-addr", cli_type_ip_prefix, .help = "host IPv4 address/length"),
+    CLI_OPT_KEYWORD ("host-ip6-addr", cli_type_ip_prefix, .help = "host IPv6 address/length"),
+    CLI_OPT_KEYWORD ("host-ip4-gw", cli_type_ip_address, .help = "host IPv4 gateway"),
+    CLI_OPT_KEYWORD ("host-ip6-gw", cli_type_ip_address, .help = "host IPv6 gateway"),
+    CLI_OPT_KEYWORD ("host-mac-addr", cli_type_mac_address, .help = "MAC address of the host side"),
+    CLI_OPT_KEYWORD ("host-if-name", cli_type_string, .help = "name of the host side interface"),
+    CLI_OPT_KEYWORD ("host-mtu-size", cli_type_u32, .min = 64, .help = "MTU of the host side"),
+    CLI_FLAG ("no-gso", .excludes = "gso", .help = "no GSO, the default"),
+    CLI_FLAG ("gso", .help = "enable GSO"),
+    CLI_FLAG ("gro-coalesce", .help = "coalesce received packets"),
+    CLI_FLAG ("csum-offload", .help = "enable checksum offload"),
+    CLI_FLAG ("persist", .help = "keep the host interface after deletion"),
+    CLI_FLAG ("attach", .help = "attach to an existing host interface"),
+    CLI_FLAG ("tun", .help = "create a tun interface"), CLI_FLAG ("packed", .help = "packed rings"),
+    CLI_FLAG ("in-order", .help = "in-order descriptor use"),
+    CLI_FLAG ("consistent-qp", .help = "consistent queue pair to thread mapping")),
+  .handler = tap_create_command_fn,
 };
 
 static clib_error_t *
-tap_delete_command_fn (vlib_main_t *vm, unformat_input_t *input,
-		       vlib_cli_command_t *cmd)
+tap_delete_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  u32 sw_if_index = ~0;
-  vnet_main_t *vnm = vnet_get_main ();
-  int rv;
+  int rv = tap_delete_if (vm, cli_index (ctx, "interface"));
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, "Missing <interface>");
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "sw_if_index %d", &sw_if_index))
-	;
-      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
-			 &sw_if_index))
-	;
-      else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
-    }
-  unformat_free (line_input);
-
-  if (sw_if_index == ~0)
-    return clib_error_return (0,
-			      "please specify interface name or sw_if_index");
-
-  rv = tap_delete_if (vm, sw_if_index);
   if (rv == VNET_API_ERROR_INVALID_SW_IF_INDEX)
     return clib_error_return (0, "not a tap interface");
   else if (rv != 0)
@@ -332,35 +349,20 @@ tap_delete_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (tap_delete__command, static) = {
   .path = "delete tap",
-  .short_help = "delete tap {<interface> | sw_if_index <sw_idx>}",
-  .function = tap_delete_command_fn,
+  .short_help = "Delete a tap interface",
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_sw_interface)),
+  .handler = tap_delete_command_fn,
 };
 
 static clib_error_t *
-tap_show_command_fn (vlib_main_t *vm, unformat_input_t *input,
-		     vlib_cli_command_t *cmd)
+tap_show_common (vlib_main_t *vm, cli_ctx_t *ctx, int is_tun)
 {
   tap_main_t *tm = &tap_main;
   tap_if_t *tif;
-  vnet_main_t *vnm = vnet_get_main ();
-  int show_descr = 0;
-  clib_error_t *error = 0;
-  u32 hw_if_index, *hw_if_indices = 0;
+  cli_value_t *v;
+  u32 *hw_if_indices = 0;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "%U", unformat_vnet_hw_interface, vnm,
-		    &hw_if_index))
-	vec_add1 (hw_if_indices, hw_if_index);
-      else if (unformat (input, "descriptors"))
-	show_descr = 1;
-      else
-	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, input);
-	  goto done;
-	}
-    }
+  cli_foreach (v, ctx, "interface") vec_add1 (hw_if_indices, v->index);
 
   if (vec_len (hw_if_indices) == 0)
     {
@@ -368,62 +370,40 @@ tap_show_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	vec_add1 (hw_if_indices, tif->hw_if_index);
     }
 
-  tap_show (vm, hw_if_indices, show_descr, 0);
+  tap_show (vm, hw_if_indices, cli_flag (ctx, "descriptors"), is_tun);
 
-done:
   vec_free (hw_if_indices);
-  return error;
+  return 0;
+}
+
+static clib_error_t *
+tap_show_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
+{
+  return tap_show_common (vm, ctx, 0);
 }
 
 VLIB_CLI_COMMAND (tap_show_command, static) = {
   .path = "show tap",
-  .short_help = "show tap {<interface>] [descriptors]",
-  .function = tap_show_command_fn,
+  .short_help = "Show tap interfaces",
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_hw_interface,
+			       .flags = CLI_F_OPTIONAL | CLI_F_REPEAT),
+		    CLI_FLAG ("descriptors", .help = "show the descriptor tables")),
+  .handler = tap_show_command_fn,
 };
 
 static clib_error_t *
-tun_show_command_fn (vlib_main_t *vm, unformat_input_t *input,
-		     vlib_cli_command_t *cmd)
+tun_show_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  tap_main_t *tm = &tap_main;
-  tap_if_t *tif;
-  vnet_main_t *vnm = vnet_get_main ();
-  int show_descr = 0;
-  clib_error_t *error = 0;
-  u32 hw_if_index, *hw_if_indices = 0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "%U", unformat_vnet_hw_interface, vnm,
-		    &hw_if_index))
-	vec_add1 (hw_if_indices, hw_if_index);
-      else if (unformat (input, "descriptors"))
-	show_descr = 1;
-      else
-	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, input);
-	  goto done;
-	}
-    }
-
-  if (vec_len (hw_if_indices) == 0)
-    {
-      pool_foreach (tif, tm->interfaces)
-	vec_add1 (hw_if_indices, tif->hw_if_index);
-    }
-
-  tap_show (vm, hw_if_indices, show_descr, 1);
-
-done:
-  vec_free (hw_if_indices);
-  return error;
+  return tap_show_common (vm, ctx, 1);
 }
 
 VLIB_CLI_COMMAND (tun_show_command, static) = {
   .path = "show tun",
-  .short_help = "show tun {<interface>] [descriptors]",
-  .function = tun_show_command_fn,
+  .short_help = "Show tun interfaces",
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_hw_interface,
+			       .flags = CLI_F_OPTIONAL | CLI_F_REPEAT),
+		    CLI_FLAG ("descriptors", .help = "show the descriptor tables")),
+  .handler = tun_show_command_fn,
 };
 
 static clib_error_t *
