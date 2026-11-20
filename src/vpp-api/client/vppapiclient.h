@@ -20,8 +20,7 @@ typedef enum
 
 typedef void (*vac_callback_t)(unsigned char * data, int len);
 typedef void (*vac_error_callback_t)(void *, unsigned char *, int);
-int vac_connect(char * name, char * chroot_prefix, vac_callback_t cb,
-    int rx_qlen);
+int vac_connect (char *name, char *socket_path, vac_callback_t cb, int rx_qlen);
 int vac_disconnect(void);
 int vac_read(char **data, int *l, unsigned short timeout);
 int vac_write(char *data, int len);

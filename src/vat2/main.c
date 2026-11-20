@@ -238,20 +238,19 @@ dump_apis (void)
 static void
 print_help (void)
 {
-  char *help_string =
-    "Usage: vat2 [OPTION] <message-name> <JSON object>\n"
-    "Send API message to VPP and print reply\n"
-    "\n"
-    "-d, --debug                    Print additional information\n"
-    "--dump-apis                    List all APIs available in VAT2 (might "
-    "not reflect running VPP)\n"
-    "-f, --file <filename>          File containing a JSON object with the "
-    "arguments for the message to send\n"
-    "-p, --plugin-path              Plugin path\n"
-    "-s, --prefix <prefix>          Specify shared memory prefix to connect "
-    "to a given VPP instance\n"
-    "-t, --template <message-name>  Print a template JSON object for given API"
-    " message\n";
+  char *help_string = "Usage: vat2 [OPTION] <message-name> <JSON object>\n"
+		      "Send API message to VPP and print reply\n"
+		      "\n"
+		      "-d, --debug                    Print additional information\n"
+		      "--dump-apis                    List all APIs available in VAT2 (might "
+		      "not reflect running VPP)\n"
+		      "-f, --file <filename>          File containing a JSON object with the "
+		      "arguments for the message to send\n"
+		      "-p, --plugin-path              Plugin path\n"
+		      "-s, --socket <path>            Path of the API socket of the VPP instance "
+		      "to connect to, default /run/vpp/api.sock\n"
+		      "-t, --template <message-name>  Print a template JSON object for given API"
+		      " message\n";
   printf ("%s", help_string);
 }
 
@@ -260,7 +259,7 @@ main (int argc, char **argv)
 {
   /* Create a heap of 64MB */
   clib_mem_init (0, 64 << 20);
-  char *filename = 0, *prefix = 0, *template = 0, *pluginpath = 0;
+  char *filename = 0, *socket_path = 0, *template = 0, *pluginpath = 0;
   int index;
   int c;
   opterr = 0;
@@ -268,15 +267,13 @@ main (int argc, char **argv)
   int option_index = 0;
   bool dump_api = false;
   char *msgname = 0;
-  static struct option long_options[] = {
-    { "debug", no_argument, 0, 'd' },
-    { "dump-apis", no_argument, 0, 0 },
-    { "file", required_argument, 0, 'f' },
-    { "plugin-path", required_argument, 0, 'p' },
-    { "prefix", required_argument, 0, 's' },
-    { "template", required_argument, 0, 't' },
-    { 0, 0, 0, 0 }
-  };
+  static struct option long_options[] = { { "debug", no_argument, 0, 'd' },
+					  { "dump-apis", no_argument, 0, 0 },
+					  { "file", required_argument, 0, 'f' },
+					  { "plugin-path", required_argument, 0, 'p' },
+					  { "socket", required_argument, 0, 's' },
+					  { "template", required_argument, 0, 't' },
+					  { 0, 0, 0, 0 } };
 
   while ((c = getopt_long (argc, argv, "df:p:s:t:", long_options,
 			   &option_index)) != -1)
@@ -297,7 +294,7 @@ main (int argc, char **argv)
 	  pluginpath = optarg;
 	  break;
 	case 's':
-	  prefix = optarg;
+	  socket_path = optarg;
 	  break;
 	case 't':
 	  template = optarg;
@@ -309,8 +306,8 @@ main (int argc, char **argv)
 	  abort ();
 	}
     }
-  DBG ("debug = %d, filename = %s, template = %s, shared memory prefix: %s\n",
-       vat2_debug, filename, template, prefix);
+  DBG ("debug = %d, filename = %s, template = %s, api socket: %s\n", vat2_debug, filename, template,
+       socket_path);
 
   for (index = optind; index < argc; index++)
     DBG ("Non-option argument %s\n", argv[index]);
@@ -418,7 +415,7 @@ main (int argc, char **argv)
       exit (-1);
     }
 
-  if (vac_connect ("vat2", prefix, 0, 1024))
+  if (vac_connect ("vat2", socket_path, 0, 1024))
     {
       fprintf (stderr, "Failed connecting to VPP\n");
       exit (-1);

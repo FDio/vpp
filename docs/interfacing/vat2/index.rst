@@ -27,15 +27,15 @@ Usage examples
 
 Here are a few working examples to get you started.
 
-If you started ``vpp`` with an api-segment prefix,
-you must use the same prefix with ``vat2`` also:
+``vat2`` talks to VPP over the API socket, ``/run/vpp/api.sock`` by default.
+If you started ``vpp`` with a different socket, pass it with ``--socket``:
 
 .. code-block:: console
 
-  # vpp "api-segment { prefix vpp0 } unix { cli-listen /run/vpp/cli-vpp0.sock log /var/log/vpp/vpp0.log } api-trace { on } statseg { socket-name /run/vpp/statseg-vpp0.sock }"
-  # vat2 --prefix vpp0 show_version '{}'
+  # vpp "unix { cli-listen /run/vpp/cli-vpp0.sock log /var/log/vpp/vpp0.log } socksvr { socket-name /run/vpp/api-vpp0.sock } api-trace { on } statseg { socket-name /run/vpp/statseg-vpp0.sock }"
+  # vat2 --socket /run/vpp/api-vpp0.sock show_version '{}'
 
-But let's stick to not having a prefix.
+But let's stick to the default socket.
 The simplest call to print VPP's version.
 ``-d`` prints debug information:
 
@@ -44,7 +44,7 @@ The simplest call to print VPP's version.
   # kill $( pgrep vpp )
   # vpp "unix { cli-listen /run/vpp/cli-vpp0.sock log /var/log/vpp/vpp0.log } api-trace { on } statseg { socket-name /run/vpp/statseg-vpp0.sock }"
   # vat2 -d show_version '{}'
-  debug = 1, filename = (null), template = (null), shared memory prefix: (null)
+  debug = 1, filename = (null), template = (null), api socket: (null)
   Non-option argument show_version
   Non-option argument {}
   Plugin Path /usr/lib/x86_64-linux-gnu/vat2_plugins

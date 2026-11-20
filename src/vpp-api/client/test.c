@@ -40,15 +40,14 @@ volatile u16 result_msg_id;
 
 /* M_NOALLOC: construct, but don't yet send a message */
 
-#define M_NOALLOC(T,t)                          \
-  do {						\
-    result_ready = 0;                           \
-    clib_memset (mp, 0, sizeof (*mp));		\
-    mp->_vl_msg_id = ntohs (VL_API_##T);	\
-    mp->client_index = am->my_client_index;	\
-  } while(0);
-
-
+#define M_NOALLOC(T, t)                                                                            \
+  do                                                                                               \
+    {                                                                                              \
+      result_ready = 0;                                                                            \
+      clib_memset (mp, 0, sizeof (*mp));                                                           \
+      mp->_vl_msg_id = ntohs (vac_get_msg_index (VL_API_##T##_CRC));                               \
+    }                                                                                              \
+  while (0);
 
 void
 wrap_vac_callback (unsigned char *data, int len)
@@ -72,7 +71,6 @@ test_connect ()
 static void
 test_messages (void)
 {
-  api_main_t * am = vlibapi_get_main();
   vl_api_show_version_t message;
   vl_api_show_version_t *mp;
   int async = 1;
@@ -110,7 +108,8 @@ test_messages (void)
     M_NOALLOC(CONTROL_PING, control_ping);
     vac_write((char *)mp, sizeof(*mp));
 
-    while (result_msg_id != VL_API_CONTROL_PING_REPLY);
+    while (result_msg_id != vac_get_msg_index (VL_API_CONTROL_PING_REPLY_CRC))
+      ;
   }
 
   double timestamp_end = unix_time_now_nsec() * 1e-6;
