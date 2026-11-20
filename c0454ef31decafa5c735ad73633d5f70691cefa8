@@ -34,6 +34,24 @@
       "parentUuid": "9e6cbe5e_b7a7efd9",
       "revId": "c0454ef31decafa5c735ad73633d5f70691cefa8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "37adf8e3_81dcfd67",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1761
+      },
+      "writtenOn": "2026-11-20T14:25:16Z",
+      "side": 1,
+      "message": "sorry for a slightly slow response. Would you mind to take a look again? Thanks!",
+      "parentUuid": "c9acc8fa_aae83036",
+      "revId": "c0454ef31decafa5c735ad73633d5f70691cefa8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ],
   "submitRequirementResults": [
