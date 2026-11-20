@@ -33,7 +33,7 @@ typedef struct vxlan_gpe_ioam_main_
   fib_node_t node;
 
   /* time scale transform. Joy. */
-  u32 unix_time_0;
+  time_t unix_time_0;
   f64 vlib_time_0;
 
 

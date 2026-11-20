@@ -215,7 +215,7 @@ ioam_vxlan_gpe_init (vlib_main_t * vm)
 
   sm->vlib_main = vm;
   sm->vnet_main = vnet_get_main ();
-  sm->unix_time_0 = (u32) time (0);	/* Store starting time */
+  sm->unix_time_0 = time (0); /* Store starting time */
   sm->vlib_time_0 = vlib_time_now (vm);
 
   /* Ask for a correctly-sized block of API message decode slots */
