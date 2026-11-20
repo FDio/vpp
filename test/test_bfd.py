@@ -874,19 +874,6 @@ def bfd_session_up(test):
     test.test_session.stale_hello_time = None
     test.logger.info("BFD: Waiting for slow hello")
     p = wait_for_bfd_packet(test, 2, is_tunnel=test.vpp_session.is_tunnel)
-    old_offset = None
-    if hasattr(test, "vpp_clock_offset"):
-        old_offset = test.vpp_clock_offset
-    test.vpp_clock_offset = time.time() - float(p.time)
-    test.logger.debug("BFD: Calculated vpp clock offset: %s", test.vpp_clock_offset)
-    if old_offset:
-        test.assertAlmostEqual(
-            old_offset,
-            test.vpp_clock_offset,
-            delta=0.5,
-            msg="vpp clock offset not stable (new: %s, old: %s)"
-            % (test.vpp_clock_offset, old_offset),
-        )
     test.logger.info("BFD: Sending Init")
     test.test_session.update(
         my_discriminator=randint(0, 40000000),
@@ -904,7 +891,7 @@ def bfd_session_up(test):
     verify_event(test, e, expected_state=BFDState.up)
     test.logger.info("BFD: Session is Up")
     # packets sent before vpp learned our discriminator may still be queued
-    test.test_session.stale_hello_time = time.time() - test.vpp_clock_offset
+    test.test_session.stale_hello_time = time.time()
     test.test_session.update(state=BFDState.up)
     if (
         test.test_session.sha1_key
@@ -1110,7 +1097,6 @@ class BFD4TestCase(VppTestCase):
 
     pg0 = None
     interface0 = None
-    vpp_clock_offset = None
     vpp_session = None
     test_session = None
     src_ip_net = ""
@@ -1303,7 +1289,7 @@ class BFD4TestCase(VppTestCase):
         )
         self.sleep(detection_time, "waiting for BFD session time-out")
         self.test_session.my_discriminator = 0
-        wait_for_bfd_packet(self, pcap_time_min=time.time() - self.vpp_clock_offset)
+        wait_for_bfd_packet(self, pcap_time_min=time.time())
 
     def test_large_required_min_rx(self):
         """large remote required min rx interval"""
@@ -1323,7 +1309,7 @@ class BFD4TestCase(VppTestCase):
                 p = wait_for_bfd_packet(self, timeout=0)
                 # if vpp managed to send a packet before we did the session
                 # session update, then that's fine, ignore it
-                if p.time < time_mark - self.vpp_clock_offset:
+                if p.time < time_mark:
                     continue
                 self.logger.error(ppp("Received unexpected packet:", p))
                 count += 1
@@ -1387,7 +1373,7 @@ class BFD4TestCase(VppTestCase):
         self.vpp_session.modify_parameters(
             required_min_rx=2 * self.vpp_session.required_min_rx
         )
-        p = wait_for_bfd_packet(self, pcap_time_min=time.time() - self.vpp_clock_offset)
+        p = wait_for_bfd_packet(self, pcap_time_min=time.time())
         # poll bit needs to be set
         self.assertIn("P", p.sprintf("%BFD.flags%"), "Poll bit not set in BFD packet")
         # finish poll sequence with final packet
@@ -1416,7 +1402,7 @@ class BFD4TestCase(VppTestCase):
         p = wait_for_bfd_packet(self)
         self.test_session.update(desired_min_tx=10000, required_min_rx=10000)
         self.test_session.send_packet()
-        p = wait_for_bfd_packet(self, pcap_time_min=time.time() - self.vpp_clock_offset)
+        p = wait_for_bfd_packet(self, pcap_time_min=time.time())
         # halve required min rx
         old_required_min_rx = self.vpp_session.required_min_rx
         self.vpp_session.modify_parameters(
@@ -1457,7 +1443,7 @@ class BFD4TestCase(VppTestCase):
         bfd_session_up(self)
         p = wait_for_bfd_packet(self)
         self.vpp_session.modify_parameters(detect_mult=1)
-        p = wait_for_bfd_packet(self, pcap_time_min=time.time() - self.vpp_clock_offset)
+        p = wait_for_bfd_packet(self, pcap_time_min=time.time())
         self.assert_equal(
             self.vpp_session.detect_mult, p[BFD].detect_mult, "detect mult"
         )
@@ -1466,7 +1452,7 @@ class BFD4TestCase(VppTestCase):
             "P", p.sprintf("%BFD.flags%"), "Poll bit not set in BFD packet"
         )
         self.vpp_session.modify_parameters(detect_mult=10)
-        p = wait_for_bfd_packet(self, pcap_time_min=time.time() - self.vpp_clock_offset)
+        p = wait_for_bfd_packet(self, pcap_time_min=time.time())
         self.assert_equal(
             self.vpp_session.detect_mult, p[BFD].detect_mult, "detect mult"
         )
@@ -1557,7 +1543,7 @@ class BFD4TestCase(VppTestCase):
         # Record the cutoff before sending the poll.  VPP can produce the
         # final response before send_packet() returns; computing it afterwards
         # can therefore discard the response we are trying to validate.
-        pcap_time_min = time.time() - self.vpp_clock_offset
+        pcap_time_min = time.time()
         self.test_session.send_packet(poll)
         final = wait_for_bfd_packet(self, pcap_time_min=pcap_time_min)
         self.assertIn("F", final.sprintf("%BFD.flags%"))
@@ -1681,7 +1667,7 @@ class BFD4TestCase(VppTestCase):
             sleep = self.vpp_session.required_min_rx / USEC_IN_SEC
             self.sleep(sleep, "delay before sending bfd packet")
             self.test_session.send_packet()
-        p = wait_for_bfd_packet(self, pcap_time_min=time.time() - self.vpp_clock_offset)
+        p = wait_for_bfd_packet(self, pcap_time_min=time.time())
         self.assert_equal(
             p[BFD].required_min_rx_interval,
             self.vpp_session.required_min_rx,
@@ -1835,7 +1821,7 @@ class BFD4TestCase(VppTestCase):
         self.test_session.send_packet()
         # echo packets shouldn't arrive anymore
         for dummy in range(5):
-            wait_for_bfd_packet(self, pcap_time_min=time.time() - self.vpp_clock_offset)
+            wait_for_bfd_packet(self, pcap_time_min=time.time())
             self.test_session.send_packet()
             events = self.vapi.collect_events()
             self.assert_equal(len(events), 0, "number of bfd events")
@@ -1871,7 +1857,7 @@ class BFD4TestCase(VppTestCase):
         self.test_session.send_packet()
         # echo packets shouldn't arrive anymore
         for dummy in range(5):
-            wait_for_bfd_packet(self, pcap_time_min=time.time() - self.vpp_clock_offset)
+            wait_for_bfd_packet(self, pcap_time_min=time.time())
             self.test_session.send_packet()
             events = self.vapi.collect_events()
             self.assert_equal(len(events), 0, "number of bfd events")
@@ -2020,7 +2006,7 @@ class BFD4TestCase(VppTestCase):
         p = wait_for_bfd_packet(
             self,
             timeout=2,
-            pcap_time_min=time.time() - self.vpp_clock_offset,
+            pcap_time_min=time.time(),
         )
         self.assert_equal(p[BFD].state, BFDState.admin_down, BFDState)
         verify_bfd_session_config(self, self.vpp_session, state=BFDState.admin_down)
@@ -2028,16 +2014,16 @@ class BFD4TestCase(VppTestCase):
         self.test_session.update(state=BFDState.down)
         e = self.vapi.wait_for_event(1, "bfd_udp_session_event")
         verify_event(self, e, expected_state=BFDState.down)
-        p = wait_for_bfd_packet(self, pcap_time_min=time.time() - self.vpp_clock_offset)
+        p = wait_for_bfd_packet(self, pcap_time_min=time.time())
         self.assert_equal(p[BFD].state, BFDState.down, BFDState)
         self.test_session.send_packet()
-        p = wait_for_bfd_packet(self, pcap_time_min=time.time() - self.vpp_clock_offset)
+        p = wait_for_bfd_packet(self, pcap_time_min=time.time())
         self.assert_equal(p[BFD].state, BFDState.init, BFDState)
         e = self.vapi.wait_for_event(1, "bfd_udp_session_event")
         verify_event(self, e, expected_state=BFDState.init)
         self.test_session.update(state=BFDState.up)
         self.test_session.send_packet()
-        p = wait_for_bfd_packet(self, pcap_time_min=time.time() - self.vpp_clock_offset)
+        p = wait_for_bfd_packet(self, pcap_time_min=time.time())
         self.assert_equal(p[BFD].state, BFDState.up, BFDState)
         e = self.vapi.wait_for_event(1, "bfd_udp_session_event")
         verify_event(self, e, expected_state=BFDState.up)
@@ -2051,7 +2037,7 @@ class BFD4TestCase(VppTestCase):
         self.vpp_session.modify_parameters(
             required_min_rx=2 * self.vpp_session.required_min_rx
         )
-        p = wait_for_bfd_packet(self, pcap_time_min=time.time() - self.vpp_clock_offset)
+        p = wait_for_bfd_packet(self, pcap_time_min=time.time())
         # poll bit must be set
         self.assertIn("P", p.sprintf("%BFD.flags%"), "Poll bit not set")
         # terminate poll sequence
@@ -2305,7 +2291,6 @@ class BFD6TestCase(VppTestCase):
 
     pg0 = None
     interface0 = None
-    vpp_clock_offset = None
     vpp_session = None
     test_session = None
     src_ip6_net = ""
@@ -2527,7 +2512,7 @@ class BFD6TestCase(VppTestCase):
             sleep = self.vpp_session.required_min_rx / USEC_IN_SEC
             self.sleep(sleep, "delay before sending bfd packet")
             self.test_session.send_packet()
-        p = wait_for_bfd_packet(self, pcap_time_min=time.time() - self.vpp_clock_offset)
+        p = wait_for_bfd_packet(self, pcap_time_min=time.time())
         self.assert_equal(
             p[BFD].required_min_rx_interval,
             self.vpp_session.required_min_rx,
@@ -2876,7 +2861,6 @@ class BFDSHA1TestCase(VppTestCase):
     """BFD SHA1 test"""
 
     pg0 = None
-    vpp_clock_offset = None
     vpp_session = None
     test_session = None
     src_ip_net = ""
