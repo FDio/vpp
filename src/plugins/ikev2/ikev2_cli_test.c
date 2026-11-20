@@ -20,7 +20,7 @@ ikev2_test_available_buffers (vlib_main_t *vm)
 }
 
 static clib_error_t *
-test_ikev2_delete_failure (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+test_ikev2_delete_failure (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   ikev2_main_t *km = vlib_get_plugin_symbol ("ikev2_plugin.so", "ikev2_main");
   if (!km || vlib_num_workers () || pool_elts (km->profiles) || pool_elts (km->sas) ||
@@ -117,8 +117,8 @@ done:
 
 VLIB_CLI_COMMAND (test_ikev2_delete_failure_command, static) = {
   .path = "test ikev2 delete-failure",
-  .short_help = "test ikev2 delete-failure",
-  .function = test_ikev2_delete_failure,
+  .short_help = "Test the IKEv2 delete failure handling",
+  .handler = test_ikev2_delete_failure,
 };
 
 VLIB_PLUGIN_REGISTER () = {
