@@ -1105,7 +1105,7 @@ ip6_hop_by_hop_ioam_init (vlib_main_t * vm)
 
   hm->vlib_main = vm;
   hm->vnet_main = vnet_get_main ();
-  hm->unix_time_0 = (u32) time (0);	/* Store starting time */
+  hm->unix_time_0 = time (0); /* Store starting time */
   hm->vlib_time_0 = vlib_time_now (vm);
   hm->ioam_flag = IOAM_HBYH_MOD;
   clib_memset (hm->add_options, 0, sizeof (hm->add_options));
