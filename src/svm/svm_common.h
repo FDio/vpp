@@ -22,6 +22,7 @@
 #define SVM_FLAGS_FILE  (1<<1)	/* region backed by one or more files */
 #define SVM_FLAGS_NODATA (1<<2)	/* region will be further subdivided */
 #define SVM_FLAGS_NEED_DATA_INIT (1<<3)
+#define SVM_FLAGS_MEMFD		 (1 << 4) /* anonymous memfd backing, no named shm file */
 
 #define SVM_PVT_MHEAP_SIZE (128<<10)	/* region's private mheap (128k) */
 

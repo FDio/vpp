@@ -1128,31 +1128,9 @@ vlibmemory_init (vlib_main_t * vm)
 {
   api_main_t *am = vlibapi_get_main ();
   svm_map_region_args_t _a, *a = &_a;
-  u8 *remove_path1, *remove_path2;
   void vlibsocket_reference (void);
 
   vlibsocket_reference ();
-
-  /*
-   * By popular request / to avoid support fires, remove any old api segment
-   * files Right Here.
-   */
-  if (am->root_path == 0)
-    {
-      remove_path1 = format (0, "/dev/shm/global_vm%c", 0);
-      remove_path2 = format (0, "/dev/shm/vpe-api%c", 0);
-    }
-  else
-    {
-      remove_path1 = format (0, "/dev/shm/%s-global_vm%c", am->root_path, 0);
-      remove_path2 = format (0, "/dev/shm/%s-vpe-api%c", am->root_path, 0);
-    }
-
-  (void) unlink ((char *) remove_path1);
-  (void) unlink ((char *) remove_path2);
-
-  vec_free (remove_path1);
-  vec_free (remove_path2);
 
   clib_memset (a, 0, sizeof (*a));
   a->root_path = am->root_path;
@@ -1160,7 +1138,7 @@ vlibmemory_init (vlib_main_t * vm)
   a->baseva = (am->global_baseva != 0) ?
     am->global_baseva : +svm_get_global_region_base_va ();
   a->size = (am->global_size != 0) ? am->global_size : SVM_GLOBAL_REGION_SIZE;
-  a->flags = SVM_FLAGS_NODATA;
+  a->flags = SVM_FLAGS_NODATA | SVM_FLAGS_MEMFD;
   a->uid = am->api_uid;
   a->gid = am->api_gid;
   a->pvt_heap_size =
