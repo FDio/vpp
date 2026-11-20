@@ -11,23 +11,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# We support MacOS for docs generation
-ifeq ($(shell uname),Darwin)
-OS_ID = darwin
-endif
+# Thin wrapper: the docs build itself (sources, siphons, generated files,
+# sphinx) is implemented in docs/docs.py and described by docs/docs.json. This
+# makefile only takes care of the python virtualenv.
 
 # These should be passed in by the root Makefile
 WS_ROOT ?= $(CURDIR)/..
 BR ?= $(WS_ROOT)/build-root
-DOCS_DIR ?= $(WS_ROOT)/docs
-
-SPHINX_SCRIPTS_DIR ?= $(WS_ROOT)/docs/scripts
-
-# Work out the OS if we haven't already
-OS_ID ?= $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
-OS_VERSION ?= $(shell grep '^VERSION_ID=' /etc/os-release  | cut -f2- -d= | sed -e 's/\"//g')
-PIP_VERSION ?= $(shell grep 'PIP_VERSION=' ${WS_ROOT}/test/Makefile | cut -d'=' -f2)
-PIP_TOOLS_VERSION ?= $(shell grep 'PIP_TOOLS_VERSION=' ${WS_ROOT}/test/Makefile | cut -d'=' -f2)
 
 PYTHON ?= "python3"
 PYTHON_VERSION_OK := $(shell $(PYTHON) -c "exec('import sys\nif sys.hexversion >= 0x03070000: print(\"true\")\nelse: print(\"false\")')")
@@ -35,23 +25,26 @@ ifneq ($(PYTHON_VERSION_OK),true)
 $(error "ERROR: docs build requires python version >= to 3.7")
 endif
 
-# You can set these variables from the command line.
-SPHINXOPTS        = --keep-going -n -W
-SPHINXBUILD       = sphinx-build
-SPHINXPROJ        = fdio-vpp
-BUILDDIR          = ${BR}/docs
-BUILDDIR_SRC      = ${BUILDDIR}/src
-BUILDDIR_OUT      = ${BUILDDIR}/html
-SCRIPTS_DIR       = _scripts
-VENV_DIR          ?= $(BUILDDIR)/venv
+PIP_VERSION ?= $(shell grep 'PIP_VERSION=' ${WS_ROOT}/test/Makefile | cut -d'=' -f2)
+PIP_TOOLS_VERSION ?= $(shell grep 'PIP_TOOLS_VERSION=' ${WS_ROOT}/test/Makefile | cut -d'=' -f2)
 
+# Tag used in github repository path.
+# Change this when genearting for a release
+VPP_TAG ?= master
+REPOSITORY_URL ?= https://github.com/FDio/vpp/blob/$(VPP_TAG)/
 
-# Put it first so that "make" without argument is like "make help".
+SPHINXOPTS = --keep-going -n -W
+BUILDDIR = $(BR)/docs
+VENV_DIR ?= $(BUILDDIR)/venv
+DOCS_PY = $(VENV_DIR)/bin/python3 $(WS_ROOT)/docs/docs.py
+DOCS_ARGS = --out-dir $(BUILDDIR) --venv $(VENV_DIR) \
+	--repo-url "$(REPOSITORY_URL)" --sphinx-opts="$(SPHINXOPTS)"
+
 .PHONY: help
 help:
 	@( \
 	  . ${VENV_DIR}/bin/activate; \
-	  $(SPHINXBUILD) --help ;\
+	  sphinx-build --help ;\
 	)
 
 .PHONY: venv
@@ -68,29 +61,22 @@ venv:
 
 .PHONY: spell
 spell: venv
-	@( \
-	  . ${VENV_DIR}/bin/activate; \
-	  $(MAKE) -C ${SCRIPTS_DIR} generate && \
-	  $(SPHINXBUILD) -b spelling $(SPHINXOPTS) $(BUILDDIR_SRC) $(BUILDDIR_OUT); \
-	)
+	@$(DOCS_PY) spell $(DOCS_ARGS)
 
 .PHONY: rebuild-spell
 rebuild-spell: clean spell
 
 .PHONY: docs
 docs: venv
-	@( \
-	  . ${VENV_DIR}/bin/activate; \
-	  $(MAKE) -C ${SCRIPTS_DIR} generate && \
-	  $(SPHINXBUILD) $(SPHINXOPTS) -b html $(BUILDDIR_SRC) $(BUILDDIR_OUT); \
-	)
+	@$(DOCS_PY) build $(DOCS_ARGS)
 
 .PHONY: rebuild
 rebuild: clean docs
 
 .PHONY: clean
 clean:
-	@$(MAKE) -C ${SCRIPTS_DIR} clean
+	@rm -rf $(BUILDDIR)
+	@rm -rf $(WS_ROOT)/docs/_scripts/siphon/__pycache__
 
 .PHONY: build
 build: docs
