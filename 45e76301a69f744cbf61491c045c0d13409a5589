@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c065a3a6_eee4bbb7",
+        "filename": "src/plugins/hs_apps/http_client.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 1259,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-20T14:18:03Z",
+      "side": 1,
+      "message": "when HEAD reply omits Content-Length, body_len defaults to zero. and this print same summary as explicit Content-Length: 0. could we check header table and print something like representation length: unknown when the header is absent?",
+      "revId": "45e76301a69f744cbf61491c045c0d13409a5589",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c709bac1_abb91fb1",
+        "filename": "src/plugins/http/http_plugin.rst",
+        "patchSetId": 8
+      },
+      "lineNbr": 756,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-20T14:18:03Z",
+      "side": 1,
+      "message": "this is not true anymore, http/3 now publishes completed HEAD reply even if opening replacement stream fails. could we change it? http/2 and http/3 publish reply after processing END_STREAM or FIN and http/3 deliver it even if session cannot be reused",
+      "range": {
+        "startLine": 755,
+        "startChar": 57,
+        "endLine": 756,
+        "endChar": 21
+      },
+      "revId": "45e76301a69f744cbf61491c045c0d13409a5589",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "52c6709a_aebbaf1a",
+        "filename": "test/hs-test/http2_test.go",
+        "patchSetId": 8
+      },
+      "lineNbr": 2507,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-20T14:18:03Z",
+      "side": 1,
+      "message": "if VPP client command fails before connecting, the test waits on \u003c-done while server goroutine remains blocked in Accept(). deferred listener close can’t run until that wait finishes. could we set deadline on the TCP listener before each accept? same pattern appears in Http2HeadClientReuseTest and http/1 response and reuse tests",
+      "revId": "45e76301a69f744cbf61491c045c0d13409a5589",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
