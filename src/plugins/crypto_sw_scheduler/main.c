@@ -448,51 +448,15 @@ VLIB_REGISTER_NODE (crypto_sw_scheduler_deq_node) = {
 };
 
 static clib_error_t *
-sw_scheduler_set_worker_crypto (vlib_main_t * vm, unformat_input_t * input,
-				vlib_cli_command_t * cmd)
+sw_scheduler_set_worker_crypto (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  u32 worker_index;
-  u8 crypto_enable;
-  int rv;
+  u32 worker_index = cli_u64 (ctx, "worker", 0);
+  int rv = crypto_sw_scheduler_set_worker_crypto (worker_index, cli_index (ctx, "crypto"));
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "worker %u", &worker_index))
-	{
-	  if (unformat (line_input, "crypto"))
-	    {
-	      if (unformat (line_input, "on"))
-		crypto_enable = 1;
-	      else if (unformat (line_input, "off"))
-		crypto_enable = 0;
-	      else
-		return (clib_error_return (0, "unknown input '%U'",
-					   format_unformat_error,
-					   line_input));
-	    }
-	  else
-	    return (clib_error_return (0, "unknown input '%U'",
-				       format_unformat_error, line_input));
-	}
-      else
-	return (clib_error_return (0, "unknown input '%U'",
-				   format_unformat_error, line_input));
-    }
-
-  rv = crypto_sw_scheduler_set_worker_crypto (worker_index, crypto_enable);
   if (rv == VNET_API_ERROR_INVALID_VALUE)
-    {
-      return (clib_error_return (0, "invalid worker idx: %d", worker_index));
-    }
+    return clib_error_return (0, "invalid worker idx: %d", worker_index);
   else if (rv == VNET_API_ERROR_INVALID_VALUE_2)
-    {
-      return (clib_error_return (0, "cannot disable all crypto workers"));
-    }
+    return clib_error_return (0, "cannot disable all crypto workers");
   return 0;
 }
 
@@ -505,15 +469,16 @@ sw_scheduler_set_worker_crypto (vlib_main_t * vm, unformat_input_t * input,
  * @cliexend
  ?*/
 VLIB_CLI_COMMAND (cmd_set_sw_scheduler_worker_crypto, static) = {
-  .path = "set sw_scheduler",
-  .short_help = "set sw_scheduler worker <idx> crypto <on|off>",
-  .function = sw_scheduler_set_worker_crypto,
+  .path = "set sw_scheduler worker",
+  .short_help = "Set if a worker does crypto processing",
+  .args = CLI_ARGS (CLI_VALUE ("worker", cli_type_u32, .help = "worker index"),
+		    CLI_KEYWORD ("crypto", cli_type_bool, .help = "on or off")),
+  .handler = sw_scheduler_set_worker_crypto,
   .is_mp_safe = 1,
 };
 
 static clib_error_t *
-sw_scheduler_show_workers (vlib_main_t * vm, unformat_input_t * input,
-			   vlib_cli_command_t * cmd)
+sw_scheduler_show_workers (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   crypto_sw_scheduler_main_t *cm = &crypto_sw_scheduler_main;
   u32 i;
@@ -540,8 +505,8 @@ sw_scheduler_show_workers (vlib_main_t * vm, unformat_input_t * input,
  ?*/
 VLIB_CLI_COMMAND (cmd_show_sw_scheduler_workers, static) = {
   .path = "show sw_scheduler workers",
-  .short_help = "show sw_scheduler workers",
-  .function = sw_scheduler_show_workers,
+  .short_help = "Show the sw_scheduler workers",
+  .handler = sw_scheduler_show_workers,
   .is_mp_safe = 1,
 };
 
