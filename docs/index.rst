@@ -75,6 +75,12 @@ For more details click on the links below or press next.
    gettingstarted/troubleshooting/index
 
 .. toctree::
+   :caption: Device Drivers
+   :maxdepth: 2
+
+   drivers/index
+
+.. toctree::
     :caption: Developer Documentation
     :maxdepth: 2
 

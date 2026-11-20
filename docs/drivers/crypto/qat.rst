@@ -1,0 +1,1 @@
+../../../src/drivers/crypto/qat/qat.rst

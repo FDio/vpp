@@ -1,0 +1,1 @@
+../../../src/drivers/net/armada/armada.rst
