@@ -7,196 +7,122 @@
 #include <vppinfra/error.h>
 #include <vnet/vnet.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/interface/cli_types.h>
+#include <vnet/ip/cli_types.h>
+
+static const cli_choice_t ipip_flag_choices[] = {
+#define _(n, s, v) { s, 0, v },
+  foreach_tunnel_encap_decap_flag
+#undef _
+  {},
+};
+
+static void
+ipip_cli_address (cli_value_t *v, ip46_address_t *a)
+{
+  if (v->prefix.is_ip6)
+    clib_memcpy (&a->ip6, v->prefix.addr, 16);
+  else
+    ip46_address_set_ip4 (a, (ip4_address_t *) v->prefix.addr);
+}
+
+/* the tunnel is given as sw_if_index <n>, or as the name of the interface */
+#define IPIP_CLI_DELETE_ARGS                                                                       \
+  CLI_ONEOF ("tunnel", 0, CLI_KEYWORD ("sw_if_index", cli_type_u32),                               \
+	     CLI_VALUE ("interface", cli_type_sw_interface))
+
+static u32
+ipip_cli_sw_if_index (cli_ctx_t *ctx)
+{
+  cli_value_t *v = cli_get (ctx, "sw_if_index");
+
+  return v ? v->u64 : cli_index (ctx, "interface");
+}
 
 static clib_error_t *
-create_ipip_tunnel_command_fn (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+create_ipip_tunnel_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  ip46_address_t src = ip46_address_initializer, dst =
-    ip46_address_initializer;
-  u32 instance = ~0;
-  u32 fib_index = 0;
-  u32 table_id = 0;
-  int rv;
-  u32 num_m_args = 0;
-  u32 sw_if_index;
-  clib_error_t *error = NULL;
-  bool ip4_set = false, ip6_set = false;
-  tunnel_mode_t mode = TUNNEL_MODE_P2P;
+  ip46_address_t src = ip46_address_initializer, dst = ip46_address_initializer;
+  cli_value_t *vsrc = cli_get (ctx, "src"), *vdst = cli_get (ctx, "dst");
+  u32 instance = cli_u64 (ctx, "instance", ~0);
+  u32 table_id = cli_u64 (ctx, "outer-table-id", 0);
+  tunnel_mode_t mode = cli_flag (ctx, "p2mp") ? TUNNEL_MODE_MP : TUNNEL_MODE_P2P;
   tunnel_encap_decap_flags_t flags = TUNNEL_ENCAP_DECAP_FLAG_NONE;
+  u32 fib_index, sw_if_index;
+  int rv, is_ip6 = vsrc->prefix.is_ip6;
+  cli_value_t *vflags;
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+  if (!vdst && mode != TUNNEL_MODE_MP)
+    return clib_error_return (0, "mandatory argument(s) missing");
 
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "instance %d", &instance))
-	;
-      else
-	if (unformat (line_input, "src %U", unformat_ip4_address, &src.ip4))
-	{
-	  num_m_args++;
-	  ip4_set = true;
-	}
-      else
-	if (unformat (line_input, "dst %U", unformat_ip4_address, &dst.ip4))
-	{
-	  num_m_args++;
-	  ip4_set = true;
-	}
-      else
-	if (unformat (line_input, "src %U", unformat_ip6_address, &src.ip6))
-	{
-	  num_m_args++;
-	  ip6_set = true;
-	}
-      else
-	if (unformat (line_input, "dst %U", unformat_ip6_address, &dst.ip6))
-	{
-	  num_m_args++;
-	  ip6_set = true;
-	}
-      else if (unformat (line_input, "%U", unformat_tunnel_mode, &mode))
-	{
-	  num_m_args++;
-	}
-      else if (unformat (line_input, "outer-table-id %d", &table_id))
-	;
-      else
-	if (unformat
-	    (line_input, "flags %U", unformat_tunnel_encap_decap_flags,
-	     &flags))
-	;
-      else
-	{
-	  error =
-	    clib_error_return (0, "unknown input `%U'", format_unformat_error,
-			       line_input);
-	  goto done;
-	}
-    }
+  cli_foreach (vflags, ctx, "flags") flags |= vflags->u64;
 
-  if (num_m_args < 2)
-    {
-      error = clib_error_return (0, "mandatory argument(s) missing");
-      goto done;
-    }
-  if (ip4_set && ip6_set)
-    {
-      error =
-	clib_error_return (0,
-			   "source and destination must be of same address family");
-      goto done;
-    }
+  if (vdst && vdst->prefix.is_ip6 != is_ip6)
+    return clib_error_return (0, "source and destination must be of same address family");
 
-  fib_index = fib_table_find (fib_ip_proto (ip6_set), table_id);
+  ipip_cli_address (vsrc, &src);
+  if (vdst)
+    ipip_cli_address (vdst, &dst);
+
+  fib_index = fib_table_find (fib_ip_proto (is_ip6), table_id);
 
   if (~0 == fib_index)
-    {
-      rv = VNET_API_ERROR_NO_SUCH_FIB;
-    }
+    rv = VNET_API_ERROR_NO_SUCH_FIB;
   else
-    {
-      rv = ipip_add_tunnel (ip6_set ? IPIP_TRANSPORT_IP6 : IPIP_TRANSPORT_IP4,
-			    instance,
-			    &src,
-			    &dst,
-			    fib_index,
-			    flags, IP_DSCP_CS0, mode, &sw_if_index);
-    }
+    rv = ipip_add_tunnel (is_ip6 ? IPIP_TRANSPORT_IP6 : IPIP_TRANSPORT_IP4, instance, &src, &dst,
+			  fib_index, flags, IP_DSCP_CS0, mode, &sw_if_index);
 
   switch (rv)
     {
     case 0:
-      vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name,
-		       vnet_get_main (), sw_if_index);
-      break;
+      vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main (), sw_if_index);
+      return 0;
     case VNET_API_ERROR_IF_ALREADY_EXISTS:
-      error = clib_error_return (0, "IPIP tunnel already exists...");
-      goto done;
+      return clib_error_return (0, "IPIP tunnel already exists...");
     case VNET_API_ERROR_NO_SUCH_FIB:
-      error =
-	clib_error_return (0, "outer fib ID %d doesn't exist\n", fib_index);
-      goto done;
+      return clib_error_return (0, "outer fib ID %d doesn't exist", table_id);
     case VNET_API_ERROR_NO_SUCH_ENTRY:
-      error = clib_error_return (0, "IPIP tunnel doesn't exist");
-      goto done;
+      return clib_error_return (0, "IPIP tunnel doesn't exist");
     case VNET_API_ERROR_INSTANCE_IN_USE:
-      error = clib_error_return (0, "Instance is in use");
-      goto done;
+      return clib_error_return (0, "Instance is in use");
     case VNET_API_ERROR_INVALID_DST_ADDRESS:
-      error =
-	clib_error_return (0,
-			   "destination IP address when mode is multi-point");
-      goto done;
+      return clib_error_return (0, "destination IP address when mode is multi-point");
     default:
-      error =
-	clib_error_return (0, "vnet_ipip_add_del_tunnel returned %d", rv);
-      goto done;
+      return clib_error_return (0, "vnet_ipip_add_del_tunnel returned %d", rv);
     }
-
-done:
-  unformat_free (line_input);
-
-  return error;
 }
 
 static clib_error_t *
-delete_ipip_tunnel_command_fn (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+delete_ipip_tunnel_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  int rv;
-  u32 num_m_args = 0;
-  u32 sw_if_index = ~0;
-  clib_error_t *error = NULL;
+  int rv = ipip_del_tunnel (ipip_cli_sw_if_index (ctx));
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "sw_if_index %d", &sw_if_index))
-	num_m_args++;
-      else
-	{
-	  error =
-	    clib_error_return (0, "unknown input `%U'", format_unformat_error,
-			       line_input);
-	  goto done;
-	}
-    }
-
-  if (num_m_args < 1)
-    {
-      error = clib_error_return (0, "mandatory argument(s) missing");
-      goto done;
-    }
-
-  rv = ipip_del_tunnel (sw_if_index);
-  printf ("RV %d\n", rv);
-
-done:
-  unformat_free (line_input);
-
-  return error;
+  if (rv)
+    return clib_error_return (0, "deleting the tunnel failed: %d", rv);
+  return 0;
 }
 
-VLIB_CLI_COMMAND(create_ipip_tunnel_command, static) = {
-    .path = "create ipip tunnel",
-    .short_help = "create ipip tunnel src <addr> dst <addr> [instance <n>] "
-                  "[outer-table-id <ID>] [p2mp]",
-    .function = create_ipip_tunnel_command_fn,
+VLIB_CLI_COMMAND (create_ipip_tunnel_command, static) = {
+  .path = "create ipip tunnel",
+  .short_help = "Create an IPIP tunnel",
+  .args = CLI_ARGS (
+    CLI_KEYWORD ("src", cli_type_ip_address, .help = "tunnel source address"),
+    CLI_OPT_KEYWORD ("dst", cli_type_ip_address, .help = "tunnel destination address"),
+    CLI_FLAG ("p2p", .excludes = "p2mp", .help = "point-to-point tunnel, the default"),
+    CLI_FLAG ("p2mp", .alias = "mp", .excludes = "p2p", .help = "multi-point tunnel"),
+    CLI_OPT_KEYWORD ("instance", cli_type_u32, .max = CLIB_U32_MAX - 1,
+		     .help = "interface instance number"),
+    CLI_OPT_KEYWORD ("outer-table-id", cli_type_u32, .help = "FIB table of the outer header"),
+    CLI_OPT_KEYWORD_F ("flags", cli_type_flags, CLI_F_REPEAT, .choices = ipip_flag_choices,
+		       .help = "encapsulation and decapsulation flags")),
+  .handler = create_ipip_tunnel_command_fn,
 };
-VLIB_CLI_COMMAND(delete_ipip_tunnel_command, static) = {
-    .path = "delete ipip tunnel",
-    .short_help = "delete ipip tunnel sw_if_index <sw_if_index>",
-    .function = delete_ipip_tunnel_command_fn,
+
+VLIB_CLI_COMMAND (delete_ipip_tunnel_command, static) = {
+  .path = "delete ipip tunnel",
+  .short_help = "Delete an IPIP tunnel",
+  .args = CLI_ARGS (IPIP_CLI_DELETE_ARGS),
+  .handler = delete_ipip_tunnel_command_fn,
 };
 
 static u8 *
@@ -241,24 +167,14 @@ format_ipip_tunnel (u8 * s, va_list * args)
 }
 
 static clib_error_t *
-show_ipip_tunnel_command_fn (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+show_ipip_tunnel_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   ipip_main_t *gm = &ipip_main;
   ipip_tunnel_t *t;
-  u32 ti = ~0;
+  u32 ti = cli_u64 (ctx, "index", ~0);
 
   if (pool_elts (gm->tunnels) == 0)
     vlib_cli_output (vm, "No IPIP tunnels configured...");
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "%d", &ti))
-	;
-      else
-	break;
-    }
 
   if (ti == ~0)
     {
@@ -276,9 +192,12 @@ show_ipip_tunnel_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-VLIB_CLI_COMMAND(show_ipip_tunnel_command, static) = {
-    .path = "show ipip tunnel",
-    .function = show_ipip_tunnel_command_fn,
+VLIB_CLI_COMMAND (show_ipip_tunnel_command, static) = {
+  .path = "show ipip tunnel",
+  .short_help = "Show the IPIP tunnels",
+  .args = CLI_ARGS (CLI_VALUE ("index", cli_type_u32, .flags = CLI_F_OPTIONAL,
+			       .help = "tunnel index, default all")),
+  .handler = show_ipip_tunnel_command_fn,
 };
 
 static u8 *
@@ -295,8 +214,7 @@ format_ipip_tunnel_key (u8 * s, va_list * args)
 }
 
 static clib_error_t *
-ipip_tunnel_hash_show (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cmd)
+ipip_tunnel_hash_show (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   ipip_main_t *im = &ipip_main;
   ipip_tunnel_key_t *key;
@@ -313,146 +231,70 @@ ipip_tunnel_hash_show (vlib_main_t * vm,
 /**
  * show IPSEC tunnel protection hash tables
  */
-VLIB_CLI_COMMAND (ipip_tunnel_hash_show_node, static) =
-{
+VLIB_CLI_COMMAND (ipip_tunnel_hash_show_node, static) = {
   .path = "show ipip tunnel-hash",
-  .function = ipip_tunnel_hash_show,
-  .short_help =  "show ipip tunnel-hash",
+  .handler = ipip_tunnel_hash_show,
+  .short_help = "Show the IPIP tunnel hash table",
 };
 
 static clib_error_t *
-create_sixrd_tunnel_command_fn (vlib_main_t * vm,
-				unformat_input_t * input,
-				vlib_cli_command_t * cmd)
+create_sixrd_tunnel_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  ip4_address_t ip4_prefix;
-  ip6_address_t ip6_prefix;
-  ip4_address_t ip4_src;
-  u32 ip6_prefix_len = 0, ip4_prefix_len = 0, sixrd_tunnel_index;
-  u32 num_m_args = 0;
-  /* Optional arguments */
-  u32 ip4_table_id = 0, ip4_fib_index;
-  u32 ip6_table_id = 0, ip6_fib_index;
-  clib_error_t *error = 0;
-  bool security_check = false;
+  cli_value_t *p6 = cli_get (ctx, "ip6-pfx"), *p4 = cli_get (ctx, "ip4-pfx");
+  cli_value_t *src = cli_get (ctx, "ip4-src");
+  u32 ip4_table_id = cli_u64 (ctx, "ip4-table-id", 0);
+  u32 ip6_table_id = cli_u64 (ctx, "ip6-table-id", 0);
+  u32 ip4_fib_index, ip6_fib_index, sixrd_tunnel_index;
   int rv;
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "security-check"))
-	security_check = true;
-      else if (unformat (line_input, "ip6-pfx %U/%d", unformat_ip6_address,
-			 &ip6_prefix, &ip6_prefix_len))
-	num_m_args++;
-      else if (unformat (line_input, "ip4-pfx %U/%d", unformat_ip4_address,
-			 &ip4_prefix, &ip4_prefix_len))
-	num_m_args++;
-      else
-	if (unformat
-	    (line_input, "ip4-src %U", unformat_ip4_address, &ip4_src))
-	num_m_args++;
-      else if (unformat (line_input, "ip4-table-id %d", &ip4_table_id))
-	;
-      else if (unformat (line_input, "ip6-table-id %d", &ip6_table_id))
-	;
-      else
-	{
-	  error =
-	    clib_error_return (0, "unknown input `%U'", format_unformat_error,
-			       line_input);
-	  goto done;
-	}
-    }
+  if (!p6->prefix.is_ip6)
+    return clib_error_return (0, "ip6-pfx needs an IPv6 prefix");
+  if (p4->prefix.is_ip6 || src->prefix.is_ip6)
+    return clib_error_return (0, "ip4-pfx and ip4-src need IPv4 addresses");
 
-  if (num_m_args < 3)
-    {
-      error = clib_error_return (0, "mandatory argument(s) missing");
-      goto done;
-    }
   ip4_fib_index = fib_table_find (FIB_PROTOCOL_IP4, ip4_table_id);
   ip6_fib_index = fib_table_find (FIB_PROTOCOL_IP6, ip6_table_id);
 
   if (~0 == ip4_fib_index)
-    {
-      error = clib_error_return (0, "No such IP4 table %d", ip4_table_id);
-      rv = VNET_API_ERROR_NO_SUCH_FIB;
-    }
-  else if (~0 == ip6_fib_index)
-    {
-      error = clib_error_return (0, "No such IP6 table %d", ip6_table_id);
-      rv = VNET_API_ERROR_NO_SUCH_FIB;
-    }
-  else
-    {
-      rv = sixrd_add_tunnel (&ip6_prefix, ip6_prefix_len, &ip4_prefix,
-			     ip4_prefix_len, &ip4_src, security_check,
-			     ip4_fib_index, ip6_fib_index,
-			     &sixrd_tunnel_index);
+    return clib_error_return (0, "No such IP4 table %d", ip4_table_id);
+  if (~0 == ip6_fib_index)
+    return clib_error_return (0, "No such IP6 table %d", ip6_table_id);
 
-      if (rv)
-	error = clib_error_return (0, "adding tunnel failed %d", rv);
-    }
-
-done:
-  unformat_free (line_input);
-
-  return error;
+  rv = sixrd_add_tunnel ((ip6_address_t *) p6->prefix.addr, p6->prefix.len,
+			 (ip4_address_t *) p4->prefix.addr, p4->prefix.len,
+			 (ip4_address_t *) src->prefix.addr, cli_flag (ctx, "security-check"),
+			 ip4_fib_index, ip6_fib_index, &sixrd_tunnel_index);
+  if (rv)
+    return clib_error_return (0, "adding tunnel failed %d", rv);
+  return 0;
 }
 
 static clib_error_t *
-delete_sixrd_tunnel_command_fn (vlib_main_t * vm,
-				unformat_input_t * input,
-				vlib_cli_command_t * cmd)
+delete_sixrd_tunnel_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  u32 num_m_args = 0;
-  /* Optional arguments */
-  clib_error_t *error = 0;
-  u32 sw_if_index = ~0;
+  int rv = sixrd_del_tunnel (ipip_cli_sw_if_index (ctx));
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "sw_if_index %d", &sw_if_index))
-	num_m_args++;
-      else
-	{
-	  error =
-	    clib_error_return (0, "unknown input `%U'", format_unformat_error,
-			       line_input);
-	  goto done;
-	}
-    }
-
-  if (num_m_args < 1)
-    {
-      error = clib_error_return (0, "mandatory argument(s) missing");
-      goto done;
-    }
-  int rv = sixrd_del_tunnel (sw_if_index);
-  printf ("RV %d\n", rv);
-
-done:
-  unformat_free (line_input);
-
-  return error;
+  if (rv)
+    return clib_error_return (0, "deleting the tunnel failed: %d", rv);
+  return 0;
 }
 
-VLIB_CLI_COMMAND(create_sixrd_tunnel_command, static) = {
-    .path = "create 6rd tunnel",
-    .short_help = "create 6rd tunnel ip6-pfx <ip6-pfx> ip4-pfx <ip4-pfx> "
-                  "ip4-src <ip4-addr> ip4-table-id <ID> ip6-table-id <ID> "
-                  "[security-check]",
-    .function = create_sixrd_tunnel_command_fn,
+VLIB_CLI_COMMAND (create_sixrd_tunnel_command, static) = {
+  .path = "create 6rd tunnel",
+  .short_help = "Create a 6rd tunnel",
+  .args = CLI_ARGS (CLI_KEYWORD ("ip6-pfx", cli_type_ip_prefix, .help = "IPv6 prefix"),
+		    CLI_KEYWORD ("ip4-pfx", cli_type_ip_prefix, .help = "IPv4 prefix"),
+		    CLI_KEYWORD ("ip4-src", cli_type_ip_address, .help = "IPv4 source address"),
+		    CLI_OPT_KEYWORD ("ip4-table-id", cli_type_u32),
+		    CLI_OPT_KEYWORD ("ip6-table-id", cli_type_u32),
+		    CLI_FLAG ("security-check",
+			      .help = "check the source of decapsulated packets")),
+  .handler = create_sixrd_tunnel_command_fn,
 };
+
 VLIB_CLI_COMMAND (delete_sixrd_tunnel_command, static) = {
   .path = "delete 6rd tunnel",
-  .short_help = "delete 6rd tunnel sw_if_index <sw_if_index>",
-  .function = delete_sixrd_tunnel_command_fn,
+  .short_help = "Delete a 6rd tunnel",
+  .args = CLI_ARGS (IPIP_CLI_DELETE_ARGS),
+  .handler = delete_sixrd_tunnel_command_fn,
 };
