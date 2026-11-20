@@ -349,14 +349,39 @@ static void
 quic_quicly_ca_trust_int_ctx_update (app_crypto_ca_trust_int_ctx_t *cti, app_crypto_ca_trust_t *ct,
 				     app_crypto_ca_trust_update_type_t type)
 {
-  X509_STORE_free (cti->ca_store);
-  cti->ca_store = 0;
+  quic_quicly_crypto_main_t *qqcm = &quic_quicly_crypto_main;
+  X509_STORE *old_store = cti->ca_store;
+  quic_quicly_crypto_ctx_t **crctx;
 
   if (type == APP_CA_TRUST_UPDATE_TYPE_DEL)
-    return;
+    {
+      X509_STORE_free (old_store);
+      cti->ca_store = 0;
+      return;
+    }
 
   if (!quic_quicly_init_int_ca_trust_ctx (ct, cti->thread_index))
-    clib_warning ("failed to rebuild ca trust ctx after CRL update");
+    {
+      clib_warning ("failed to rebuild ca trust ctx after CRL update");
+      return;
+    }
+
+  if (!old_store)
+    return;
+
+  /* Listeners retain their verifier across connections. Replace the store
+   * reference in each verifier while the main thread holds the worker barrier. */
+  pool_foreach (crctx, qqcm->crypto_ctx_pool)
+    {
+      ptls_openssl_verify_certificate_t *verifier = &(*crctx)->verify_cert.super;
+      if (verifier->cert_store != old_store)
+	continue;
+
+      X509_STORE_up_ref (cti->ca_store);
+      verifier->cert_store = cti->ca_store;
+      X509_STORE_free (old_store);
+    }
+  X509_STORE_free (old_store);
 }
 
 static app_crypto_ca_trust_int_ctx_t *
