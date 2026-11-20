@@ -1,0 +1,35 @@
+{
+  "docs_dir": "docs",
+  "scripts_dir": "docs/_scripts",
+  "version_script": "src/scripts/version",
+  "fts_script": "src/scripts/fts.py",
+  "wordlist": "docs/spelling_wordlist.txt",
+  "repo_url": "https://github.com/FDio/vpp/blob/master/",
+  "siphon_type": [
+    "clicmd",
+    "syscfg"
+  ],
+  "siphon_dir": [
+    "src/vppinfra",
+    "src/svm",
+    "src/vlib",
+    "src/vlibapi",
+    "src/vlibmemory",
+    "src/vnet",
+    "src/vpp",
+    "src/vpp-api",
+    "src/examples",
+    "src/plugins",
+    "extras"
+  ],
+  "siphon_md_scan": [
+    "src"
+  ],
+  "siphon_exclude": [
+    "src/vpp-api/lua/",
+    "src/examples/"
+  ],
+  "cli_dir": "cli-reference",
+  "featurelist": "aboutvpp/featurelist.md",
+  "includes_dir": "_generated/includes"
+}
