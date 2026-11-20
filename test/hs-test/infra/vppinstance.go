@@ -893,8 +893,9 @@ var defaultMemLeakReportNoiseFrames = []string{
 var defaultMemLeakReportNoiseFramePairs = [][2]string{
 	// per worker scratch vectors, grow to a high-water mark and are never freed
 	{"_vec_validate", "session_tx_fifo_read_and_snd_i"},
-	// per worker event pool free indices, same
+	// These pools retain their free bitmap and free-index vector for reuse.
 	{"_pool_put_index", "session_event_dispatch_io"},
+	{"_pool_put_index", "hcs_session_free"},
 }
 
 // memTraceIsReportNoise reports whether a trace is expected noise and what matched.

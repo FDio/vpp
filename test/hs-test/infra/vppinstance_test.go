@@ -26,6 +26,16 @@ var (
 		"session_event_dispatch_io",
 		"session_queue_node_fn",
 	}
+	// pool free indices, noise
+	tbHttpCliSessionPoolPut = []string{
+		"_vec_realloc_internal + 0x100",
+		"_vec_resize_internal + 0xd3",
+		"_vec_add1 + 0xda",
+		"_pool_put_index + 0x1e3",
+		"hcs_session_free + 0x7f",
+		"hcs_ts_cleanup_callback + 0xb2",
+		"app_worker_flush_events_inline + 0x99f",
+	}
 	// CLI machinery serving the vppctl call that dumps the trace, noise
 	tbUnixCli = []string{
 		"_vec_alloc_internal + 0x11c",
@@ -95,6 +105,10 @@ func TestMemTraceIsReportNoise(t *testing.T) {
 	}{
 		{name: "session tx scratch vector", traceback: tbSessionTxVecValidate, noise: true},
 		{name: "session event pool put", traceback: tbSessionEventPoolPut, noise: true},
+		{name: "HTTP CLI session pool put", traceback: tbHttpCliSessionPoolPut, noise: true},
+		{name: "pool put with another caller", traceback: []string{"_vec_validate", "clib_bitmap_ori_notrim", "_pool_put_index", "session_free"}, noise: false},
+		{name: "pool put with caller truncated", traceback: []string{"_vec_add1", "_pool_put_index + 0x1e3"}, noise: false},
+		{name: "pool get", traceback: []string{"_vec_realloc_internal", "_pool_get", "session_alloc"}, noise: false},
 		{name: "unix cli", traceback: tbUnixCli, noise: true},
 		{name: "pair on last two frames", traceback: tbPairAtCap, noise: true},
 		{name: "deliberate leak", traceback: tbDeliberateLeak, noise: false},
