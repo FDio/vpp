@@ -11,23 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# We support MacOS for docs generation
-ifeq ($(shell uname),Darwin)
-OS_ID = darwin
-endif
+# Thin wrapper: the docs build itself (sources, siphons, generated files,
+# sphinx, spell check) is implemented in docs/docs.py and described by
+# docs/docs.json, shared with the cmake build ("ninja docs"). This makefile only
+# takes care of the python virtualenv, the cmake build has its own.
 
 # These should be passed in by the root Makefile
 WS_ROOT ?= $(CURDIR)/..
 BR ?= $(WS_ROOT)/build-root
-DOCS_DIR ?= $(WS_ROOT)/docs
-
-SPHINX_SCRIPTS_DIR ?= $(WS_ROOT)/docs/scripts
-
-# Work out the OS if we haven't already
-OS_ID ?= $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
-OS_VERSION ?= $(shell grep '^VERSION_ID=' /etc/os-release  | cut -f2- -d= | sed -e 's/\"//g')
-PIP_VERSION ?= $(shell grep 'PIP_VERSION=' ${WS_ROOT}/test/Makefile | cut -d'=' -f2)
-PIP_TOOLS_VERSION ?= $(shell grep 'PIP_TOOLS_VERSION=' ${WS_ROOT}/test/Makefile | cut -d'=' -f2)
 
 PYTHON ?= "python3"
 PYTHON_VERSION_OK := $(shell $(PYTHON) -c "exec('import sys\nif sys.hexversion >= 0x03070000: print(\"true\")\nelse: print(\"false\")')")
@@ -35,23 +26,18 @@ ifneq ($(PYTHON_VERSION_OK),true)
 $(error "ERROR: docs build requires python version >= to 3.7")
 endif
 
-# You can set these variables from the command line.
-SPHINXOPTS        = --keep-going -n -W
-SPHINXBUILD       = sphinx-build
-SPHINXPROJ        = fdio-vpp
-BUILDDIR          = ${BR}/docs
-BUILDDIR_SRC      = ${BUILDDIR}/src
-BUILDDIR_OUT      = ${BUILDDIR}/html
-SCRIPTS_DIR       = _scripts
-VENV_DIR          ?= $(BUILDDIR)/venv
+PIP_VERSION ?= $(shell grep 'PIP_VERSION=' ${WS_ROOT}/test/Makefile | cut -d'=' -f2)
+PIP_TOOLS_VERSION ?= $(shell grep 'PIP_TOOLS_VERSION=' ${WS_ROOT}/test/Makefile | cut -d'=' -f2)
 
+OUT_DIR = $(BR)/.docs-build
+VENV_DIR ?= $(OUT_DIR)/venv
+DOCS_PY = $(VENV_DIR)/bin/python3 $(WS_ROOT)/docs/docs.py
 
-# Put it first so that "make" without argument is like "make help".
 .PHONY: help
 help:
 	@( \
 	  . ${VENV_DIR}/bin/activate; \
-	  $(SPHINXBUILD) --help ;\
+	  sphinx-build --help ;\
 	)
 
 .PHONY: venv
@@ -66,31 +52,23 @@ venv:
 	    fi; \
 	)
 
-.PHONY: spell
-spell: venv
-	@( \
-	  . ${VENV_DIR}/bin/activate; \
-	  $(MAKE) -C ${SCRIPTS_DIR} generate && \
-	  $(SPHINXBUILD) -b spelling $(SPHINXOPTS) $(BUILDDIR_SRC) $(BUILDDIR_OUT); \
-	)
-
-.PHONY: rebuild-spell
-rebuild-spell: clean spell
-
+# builds the html docs and fails on spelling errors
 .PHONY: docs
 docs: venv
-	@( \
-	  . ${VENV_DIR}/bin/activate; \
-	  $(MAKE) -C ${SCRIPTS_DIR} generate && \
-	  $(SPHINXBUILD) $(SPHINXOPTS) -b html $(BUILDDIR_SRC) $(BUILDDIR_OUT); \
-	)
+	@$(DOCS_PY) build --out-dir $(OUT_DIR) --venv $(VENV_DIR)
+
+.PHONY: spell
+spell: docs
 
 .PHONY: rebuild
 rebuild: clean docs
 
+.PHONY: rebuild-spell
+rebuild-spell: rebuild
+
 .PHONY: clean
 clean:
-	@$(MAKE) -C ${SCRIPTS_DIR} clean
+	@rm -rf $(OUT_DIR)
 
 .PHONY: build
 build: docs

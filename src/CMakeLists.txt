@@ -300,6 +300,8 @@ include(cmake/exec.cmake)
 include(cmake/plugin.cmake)
 include(cmake/crypto_engines.cmake)
 include(cmake/drivers.cmake)
+include(cmake/venv.cmake)
+include(cmake/docs.cmake)
 
 ##############################################################################
 # options

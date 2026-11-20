@@ -252,5 +252,7 @@ cat << __EOF__
   ninja debug             Runs VPP inside GDB using startup.conf in the build directory
   ninja pkg-deb           Create .deb packages
   ninja install           Install VPP to $install_dir
+  ninja docs              Build HTML documentation in <build_dir>/docs/html
+  ninja docs-serve        Build documentation and serve it over HTTP (all interfaces, port 8000)
 
 __EOF__
