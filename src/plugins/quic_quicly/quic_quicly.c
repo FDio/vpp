@@ -943,7 +943,19 @@ quic_quicly_on_stream_open (quicly_stream_open_t *self, quicly_stream_t *stream)
   if ((rv = app_worker_init_connected (app_wrk, stream_session)))
     {
       QUIC_ERR ("failed to allocate fifos");
-      return -1; /* close connection */
+      /* App never saw the stream, so release it and reject it. Failing the
+       * open would leave quicly's stream counts inconsistent */
+      session_free (stream_session);
+      quic_ctx_free (quic_quicly_main.qm, sctx);
+      clib_mem_free (stream->data);
+      stream->data = 0;
+      stream->callbacks = &quicly_stream_noop_callbacks;
+      quic_quicly_get_worker_stats (thread_index)->n_streams--;
+      if (quicly_stream_has_receive_side (quicly_is_client (stream->conn), stream->stream_id))
+	quicly_request_stop (stream, QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (0));
+      if (quicly_stream_has_send_side (quicly_is_client (stream->conn), stream->stream_id))
+	quicly_reset_stream (stream, QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (0));
+      return 0;
     }
   svm_fifo_add_want_deq_ntf (stream_session->rx_fifo,
 			     SVM_FIFO_WANT_DEQ_NOTIF_IF_FULL |
