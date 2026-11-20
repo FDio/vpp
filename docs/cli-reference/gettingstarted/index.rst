@@ -26,6 +26,60 @@ You can find the source code of CLI commands by searching for instances of the
 Please help maintain and improve this document to make and keep these commands
 clear and useful!
 
+.. _cli_transition:
+
+The new CLI and the transition
+------------------------------
+
+VPP is moving its debug CLI from commands which parse their own text with
+``unformat`` to commands which declare their arguments as typed data. Both
+kinds live in the same command tree and are used the same way, but the
+converted commands give you more:
+
+- **Completion and help of the arguments.** TAB completes keywords, enum
+  words and names such as interfaces, nodes or profiles, not only the
+  command path. ``?`` after a command shows the usage of every argument.
+- **Useful errors.** A mistake is reported with the line and a marker below
+  the offending word, and a close match is suggested, for example
+  ``unexpected argument 'cuont', did you mean 'count'?``.
+- **Filters on any output.** ``| grep``, ``| head``, ``| tail`` and
+  ``| count`` work on every command, converted or not.
+- **Structured output.** Commands which support it print a table, or JSON
+  with ``| json``, and rows can be selected with ``| where <field> <op>
+  <value>``. For example ``show runtime | json`` or
+  ``show runtime | where name == "fib-walk"``. A command which does not
+  support it refuses ``| json`` and ``| where`` with the error "command has
+  no structured output".
+- **One syntax.** Keywords and flags are not abbreviated implicitly, a short
+  spelling exists only where the command declares an alias, and TAB
+  completes the full word. The words of the command itself can still be
+  abbreviated, ``sh int`` is ``show interface``.
+- **A schema.** ``show cli schema`` dumps every command and its arguments as
+  JSON, which tools and the ``vppctl`` bash completion use.
+
+Converted commands are stricter than the legacy ones. Text after the last
+argument, which a legacy command ignored, is an error now, so check your
+``exec`` files and scripts when you upgrade. The CLI is a debug interface and
+its syntax is not guaranteed to stay the same between releases. Use the API
+for anything which has to be stable.
+
+``show cli`` tells which commands are converted:
+
+.. code-block:: console
+
+    vpp# show cli summary
+    total    541
+    legacy   330
+    mp-safe  64
+
+``show cli legacy`` lists the commands which have not been converted yet,
+``show cli not-legacy`` the converted ones and ``show cli structured`` the
+commands which can emit structured output. They can be combined with
+``mp-safe`` and ``not-mp-safe``. The numbers above are an example, they
+depend on the version and on the loaded plugins.
+
+If you write commands, see :ref:`cli_handlers`.
+
 .. _debug_telnet_cli:
 
 Debug and Telnet CLI
