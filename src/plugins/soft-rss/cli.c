@@ -5,6 +5,7 @@
 #include <vlib/vlib.h>
 #include <vlib/cli.h>
 #include <vnet/interface.h>
+#include <vnet/interface/cli_types.h>
 #include <vppinfra/clib.h>
 #include <vppinfra/error.h>
 #include <vppinfra/format.h>
@@ -12,167 +13,70 @@
 #include <vppinfra/vec.h>
 #include <soft-rss/soft_rss.h>
 
+static const cli_choice_t soft_rss_type_choices[] = {
+#define _(sym, str) { str, 0, SOFT_RSS_TYPE_##sym },
+  foreach_soft_rss_type
+#undef _
+  {},
+};
+
 static clib_error_t *
-soft_rss_config_command_fn (vlib_main_t *vm, unformat_input_t *input,
-			    vlib_cli_command_t *cmd)
+soft_rss_config_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  vnet_main_t *vnm = vnet_get_main ();
-  u32 hw_if_index = ~0;
-  clib_error_t *err = 0;
-  soft_rss_config_t cfg = {};
+  soft_rss_config_t cfg = {
+    .type = cli_u64 (ctx, "type", 0),
+    .ipv4_type = cli_u64 (ctx, "ipv4-type", 0),
+    .ipv6_type = cli_u64 (ctx, "ipv6-type", 0),
+    .l2_hdr_offset = cli_u64 (ctx, "l2-offset", 0),
+    .handoff_queue_size = cli_u64 (ctx, "handoff-queue-size", 0),
+    .with_main_thread = cli_flag (ctx, "with-main-thread"),
+  };
+  cli_value_t *v;
+  clib_error_t *err;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  if ((v = cli_get (ctx, "threads")))
+    cfg.threads = clib_bitmap_dup ((uword *) v->str);
+  if ((v = cli_get (ctx, "rss-key")))
     {
-      if (unformat (input, "%U", unformat_vnet_hw_interface, vnm,
-		    &hw_if_index))
-	;
-      else if (unformat (input, "type %U", unformat_soft_rss_type, &cfg.type))
-	;
-      else if (unformat (input, "ipv4-type %U", unformat_soft_rss_type,
-			 &cfg.ipv4_type))
-	;
-      else if (unformat (input, "ipv6-type %U", unformat_soft_rss_type,
-			 &cfg.ipv6_type))
-	;
-      else if (unformat (input, "l2-offset %u", &cfg.l2_hdr_offset))
-	;
-      else if (unformat (input, "handoff-queue-size %u", &cfg.handoff_queue_size))
-	;
-      else if (unformat (input, "with-main-thread"))
-	cfg.with_main_thread = 1;
-      else if (unformat (input, "threads %U", unformat_bitmap_list,
-			 &cfg.threads))
-	;
-      else if (unformat (input, "rss-key %U", unformat_hex_string, &cfg.key))
-	;
-      else
+      if (vec_len (v->str) < 8)
 	{
-	  err = clib_error_return (0, "unknown input `%U'",
-				   format_unformat_error, input);
-	  goto done;
+	  clib_bitmap_free (cfg.threads);
+	  return clib_error_return (0, "rss-key must be at least 8 bytes");
 	}
+      cfg.key = vec_dup (v->str);
     }
 
-  if (hw_if_index == ~0)
-    {
-      err = clib_error_return (0, "hardware interface required");
-      goto done;
-    }
+  err = soft_rss_config (vm, &cfg, cli_index (ctx, "interface"));
 
-  if (cfg.key && vec_len (cfg.key) < 8)
-    {
-      err = clib_error_return (0, "rss-key must be at least 8 bytes");
-      goto done;
-    }
-
-  err = soft_rss_config (vm, &cfg, hw_if_index);
-
-done:
   clib_bitmap_free (cfg.threads);
   vec_free (cfg.key);
   return err;
 }
 
 static clib_error_t *
-soft_rss_enable_command_fn (vlib_main_t *vm, unformat_input_t *input,
-			    vlib_cli_command_t *cmd)
+soft_rss_enable_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  vnet_main_t *vnm = vnet_get_main ();
-  u32 hw_if_index = ~0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "%U", unformat_vnet_hw_interface, vnm,
-		    &hw_if_index))
-	;
-      else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
-    }
-
-  if (hw_if_index == ~0)
-    return clib_error_return (0, "hardware interface required");
-
-  return soft_rss_enable (vm, hw_if_index);
+  return soft_rss_enable (vm, cli_index (ctx, "interface"));
 }
 
 static clib_error_t *
-soft_rss_disable_command_fn (vlib_main_t *vm, unformat_input_t *input,
-			     vlib_cli_command_t *cmd)
+soft_rss_disable_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  vnet_main_t *vnm = vnet_get_main ();
-  u32 hw_if_index = ~0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "%U", unformat_vnet_hw_interface, vnm,
-		    &hw_if_index))
-	;
-      else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
-    }
-
-  if (hw_if_index == ~0)
-    return clib_error_return (0, "hardware interface required");
-
-  return soft_rss_disable (vm, hw_if_index);
+  return soft_rss_disable (vm, cli_index (ctx, "interface"));
 }
 
 static clib_error_t *
-soft_rss_clear_command_fn (vlib_main_t *vm, unformat_input_t *input,
-			   vlib_cli_command_t *cmd)
+soft_rss_clear_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  vnet_main_t *vnm = vnet_get_main ();
-  u32 hw_if_index = ~0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "%U", unformat_vnet_hw_interface, vnm,
-		    &hw_if_index))
-	;
-      else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
-    }
-
-  if (hw_if_index == ~0)
-    return clib_error_return (0, "hardware interface required");
-
-  return soft_rss_clear (vm, hw_if_index);
+  return soft_rss_clear (vm, cli_index (ctx, "interface"));
 }
 
 static clib_error_t *
-soft_rss_show_command_fn (vlib_main_t *vm, unformat_input_t *input,
-			  vlib_cli_command_t *cmd)
+soft_rss_show_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   soft_rss_main_t *sm = &soft_rss_main;
   vnet_main_t *vnm = vnet_get_main ();
-  u32 sw_if_index = ~0;
-  u32 hw_if_index = ~0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
-		    &sw_if_index))
-	;
-      else if (unformat (input, "%U", unformat_vnet_hw_interface, vnm,
-			 &hw_if_index))
-	;
-      else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
-    }
-
-  if (hw_if_index != ~0)
-    {
-      vnet_hw_interface_t *hi =
-	vnet_get_hw_interface_or_null (vnm, hw_if_index);
-      if (!hi)
-	return clib_error_return (0, "invalid hardware interface %u",
-				  hw_if_index);
-      sw_if_index = hi->sw_if_index;
-    }
+  u32 sw_if_index = cli_index (ctx, "interface");
 
   if (sw_if_index != ~0)
     {
@@ -210,35 +114,47 @@ soft_rss_show_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (soft_rss_config_command, static) = {
   .path = "soft-rss config",
-  .short_help = "soft-rss config <hw-interface> [type <type>] "
-		"[l2-offset <bytes>] [threads <bitmap-list>] "
-		"[handoff-queue-size <size>] "
-		"[rss-key <hex-string>] [ipv4-type <type>] [ipv6-type <type>] "
-		"[with-main-thread]",
-  .function = soft_rss_config_command_fn,
+  .short_help = "Configure software RSS on an interface",
+  .args = CLI_ARGS (
+    CLI_VALUE ("interface", cli_type_hw_interface),
+    CLI_OPT_KEYWORD ("type", cli_type_enum, .choices = soft_rss_type_choices, .help = "hash type"),
+    CLI_OPT_KEYWORD ("ipv4-type", cli_type_enum, .choices = soft_rss_type_choices,
+		     .help = "hash type for IPv4"),
+    CLI_OPT_KEYWORD ("ipv6-type", cli_type_enum, .choices = soft_rss_type_choices,
+		     .help = "hash type for IPv6"),
+    CLI_OPT_KEYWORD ("l2-offset", cli_type_u32, .help = "bytes to skip before the L2 header"),
+    CLI_OPT_KEYWORD ("threads", cli_type_bitmap, .help = "threads which receive the packets"),
+    CLI_OPT_KEYWORD ("handoff-queue-size", cli_type_u32),
+    CLI_OPT_KEYWORD ("rss-key", cli_type_hex, .help = "hash key, at least 8 bytes"),
+    CLI_FLAG ("with-main-thread", .help = "main thread is one of the threads")),
+  .handler = soft_rss_config_command_fn,
 };
 
 VLIB_CLI_COMMAND (soft_rss_enable_command, static) = {
   .path = "soft-rss enable",
-  .short_help = "soft-rss enable <hw-interface>",
-  .function = soft_rss_enable_command_fn,
+  .short_help = "Enable software RSS on an interface",
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_hw_interface)),
+  .handler = soft_rss_enable_command_fn,
 };
 
 VLIB_CLI_COMMAND (soft_rss_disable_command, static) = {
   .path = "soft-rss disable",
-  .short_help = "soft-rss disable <hw-interface>",
-  .function = soft_rss_disable_command_fn,
+  .short_help = "Disable software RSS on an interface",
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_hw_interface)),
+  .handler = soft_rss_disable_command_fn,
 };
 
 VLIB_CLI_COMMAND (soft_rss_clear_command, static) = {
   .path = "soft-rss clear",
-  .short_help = "soft-rss clear <hw-interface>",
-  .function = soft_rss_clear_command_fn,
+  .short_help = "Clear the software RSS configuration of an interface",
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_hw_interface)),
+  .handler = soft_rss_clear_command_fn,
 };
 
 VLIB_CLI_COMMAND (soft_rss_show_command, static) = {
   .path = "show soft-rss",
-  .short_help = "show soft-rss [<interface>]",
-  .function = soft_rss_show_command_fn,
+  .short_help = "Show the software RSS configuration",
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_sw_interface, .flags = CLI_F_OPTIONAL)),
+  .handler = soft_rss_show_command_fn,
   .is_mp_safe = 1,
 };
