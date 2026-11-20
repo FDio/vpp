@@ -142,7 +142,6 @@ mlx5_add_port (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_port_id_t port_id)
   const struct mlx5dv_striding_rq_caps *caps;
   mlx5_port_t port_data = {};
   uword data_seg_log2_sz;
-  vlib_pci_addr_t di_addr = vnet_dev_get_pci_addr (dev);
   clib_error_t *err = 0;
   u32 netdev_max_mtu;
   u8 ibv_port = port_id;
@@ -279,9 +278,15 @@ mlx5_add_port (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_port_id_t port_id)
   if (port_attr.link_layer != IBV_LINK_LAYER_ETHERNET)
     return VNET_DEV_OK;
 
-  port_data.netdev_ifindex = rdma_port_netdev_ifindex (&di_addr, ibv_port);
-  if (port_data.netdev_ifindex == 0 ||
-      (err = vnet_netlink_get_link_max_mtu (port_data.netdev_ifindex, &netdev_max_mtu)))
+  port_data.netdev_ifindex = rdma_port_netdev_ifindex (rd->ctx, ibv_port);
+  if (port_data.netdev_ifindex == 0)
+    {
+      log_debug (dev, "port %u: no kernel netdev, skipping", ibv_port);
+      return VNET_DEV_OK;
+    }
+
+  err = vnet_netlink_get_link_max_mtu (port_data.netdev_ifindex, &netdev_max_mtu);
+  if (err)
     {
       log_err (dev, "port %u: cannot find kernel netdev max mtu: %U", ibv_port, format_clib_error,
 	       err);

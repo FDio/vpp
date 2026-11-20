@@ -144,9 +144,14 @@ ibv_init (vlib_main_t *vm, vnet_dev_t *dev)
 
       rdma_rss_init (&port_data.rss);
 
-      port_data.netdev_ifindex = rdma_port_netdev_ifindex (&addr, ibv_port);
-      if (port_data.netdev_ifindex &&
-	  (err = vnet_netlink_get_link_max_mtu (port_data.netdev_ifindex, &netdev_max_mtu)) == 0)
+      port_data.netdev_ifindex = rdma_port_netdev_ifindex (rd->ctx, ibv_port);
+      if (port_data.netdev_ifindex == 0)
+	{
+	  log_debug (dev, "port %u: no kernel netdev, skipping", ibv_port);
+	  continue;
+	}
+
+      if ((err = vnet_netlink_get_link_max_mtu (port_data.netdev_ifindex, &netdev_max_mtu)) == 0)
 	max_frame_size = clib_min (max_frame_size, netdev_max_mtu + RDMA_NETDEV_MTU_OVERHEAD);
       else
 	{
