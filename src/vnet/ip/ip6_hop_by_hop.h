@@ -51,7 +51,7 @@ typedef struct
 #define IOAM_HBYH_POP  2
   u8 ioam_flag;
   /* time scale transform. Joy. */
-  u32 unix_time_0;
+  time_t unix_time_0;
   f64 vlib_time_0;
 
 
