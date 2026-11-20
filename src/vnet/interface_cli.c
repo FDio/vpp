@@ -88,47 +88,6 @@ CLIB_CLI_TYPE (cli_type_hw_class, static) = {
   .complete = cli_names_complete,
 };
 
-#define VLAN_ID_ANY 0x10000
-
-/* vlan id, or "any" which is VLAN_ID_ANY, the value is in v->u64 */
-static u8 *
-parse_vlan (const cli_arg_t *a, u8 *tok, cli_value_t *v)
-{
-  u64 id = 0;
-
-  if (vec_len (tok) == 3 && memcmp (tok, "any", 3) == 0)
-    {
-      v->u64 = VLAN_ID_ANY;
-      return 0;
-    }
-
-  for (u32 i = 0; i < vec_len (tok); i++)
-    {
-      if (!cli_is_digit (tok[i]) || id > 4095)
-	return format (0, "'%v' is not a vlan id or any", tok);
-      id = id * 10 + tok[i] - '0';
-    }
-  if (vec_len (tok) == 0 || id > 4095)
-    return format (0, "'%v' is not a vlan id or any", tok);
-
-  v->u64 = id;
-  return 0;
-}
-
-static void
-complete_vlan (const cli_arg_t *a, u8 *prefix, cli_candidate_t **out)
-{
-  if (cli_prefix_match ("any", prefix))
-    cli_candidate_add (out, "any", "any vlan id");
-}
-
-CLIB_CLI_TYPE (cli_type_vlan, static) = {
-  .name = "vlan-id",
-  .help = "vlan id, or any",
-  .parse = parse_vlan,
-  .complete = complete_vlan,
-};
-
 /* sub-interface id or a range of ids, first-last, the value is in v->range */
 static u8 *
 parse_sub_id (const cli_arg_t *a, u8 *tok, cli_value_t *v)
@@ -923,9 +882,9 @@ VLIB_CLI_COMMAND (create_sub_interfaces_command, static) = {
 	      { "untagged", "packets without vlan tags", SUB_KIND_UNTAGGED },
 	      { "dot1q", "802.1q vlan tags", SUB_KIND_DOT1Q },
 	      { "dot1ad", "802.1ad outer vlan tag", SUB_KIND_DOT1AD }),
-    CLI_VALUE ("outer", cli_type_vlan, .flags = CLI_F_OPTIONAL, .requires = "kind",
+    CLI_VALUE ("outer", cli_type_vlan_id, .flags = CLI_F_OPTIONAL, .requires = "kind",
 	       .help = "outer vlan id or any"),
-    CLI_OPT_KEYWORD ("inner-dot1q", cli_type_vlan, .requires = "outer",
+    CLI_OPT_KEYWORD ("inner-dot1q", cli_type_vlan_id, .requires = "outer",
 		     .help = "inner vlan id or any"),
     CLI_FLAG ("exact-match", .help = "the number of tags must match")),
   .handler = create_sub_interfaces,
