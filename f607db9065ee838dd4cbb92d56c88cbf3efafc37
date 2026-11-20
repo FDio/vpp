@@ -1,0 +1,225 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ff2dd82d_2eb5e391",
+        "filename": "src/vnet/sfdp/api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-20T15:54:18Z",
+      "side": 1,
+      "message": "I assume we add a null terminator at the end of the char array to guard against potential invalid char arrays ?\n\nCould we rather take a similar approach to how this is enforced for sfdp service names (see `vl_api_sfdp_set_services_t_handler`) ?",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4990692d_0b6d0bb2",
+        "filename": "src/vnet/sfdp/cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-20T15:54:18Z",
+      "side": 1,
+      "message": "nit: `filter_name` rather than `name` for clarity ?",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b8cf7186_0d83f7fa",
+        "filename": "src/vnet/sfdp/cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 261,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-20T15:54:18Z",
+      "side": 1,
+      "message": "Use `%u` rather than `%d`, since we have `u32 tenant_id` and would rather not parse an integer value ?",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6d77fcae_abde71aa",
+        "filename": "src/vnet/sfdp/cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 309,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-20T15:54:18Z",
+      "side": 1,
+      "message": "nit: for iterating over pre-filters, would it make sense to have a dedicated macro (similar to `sfdp_foreach_session` and `sfdp_foreach_timeout`) ?",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e3002fa4_4991b9d9",
+        "filename": "src/vnet/sfdp/format.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 305,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-20T15:54:18Z",
+      "side": 1,
+      "message": "Can we use vec_elt() here ?",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b876fe72_d425a646",
+        "filename": "src/vnet/sfdp/lookup/lookup.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-20T15:54:18Z",
+      "side": 1,
+      "message": "Would it be more accurate to have \"pre-filter refused session creation\" ?",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7063d139_b235c455",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 432,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-20T15:54:18Z",
+      "side": 1,
+      "message": "IMO I would prefer having opposite `sfdp_pre_filter_accept` compared to `sfdp_pre_filter_refuses`. Thoughts ?",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fc3e2300_c928b271",
+        "filename": "src/vnet/sfdp/sfdp.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-20T15:54:18Z",
+      "side": 1,
+      "message": "Could you remove `option status\u003d\"in_progress\";` here ?\n\nSame comment for the other introduced APIs.",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5ee5f77b_f431bbcb",
+        "filename": "src/vnet/sfdp/sfdp.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-20T15:54:18Z",
+      "side": 1,
+      "message": "Could there be an additional API `sfdp_get_pre_filter` that would expose which pre_filter is currently applied for a specified tenant ?",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1e7b5acf_faf7a114",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 303,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-20T15:54:18Z",
+      "side": 1,
+      "message": "nit: vector `sfdp-\u003etenant_pre_filters` will grow/re-allocate at runtime as we add more tenants. We could pre-allocate this vector with the max number of tenants (32k by default) in sfdp_init_main_if_needed() to avoid runtime re-allocation.\n\nI don\u0027t see this as a blocker however due to the relatively small number of max tenants by default.",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e7d4f61d_3b0478c9",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 332,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-20T15:54:18Z",
+      "side": 1,
+      "message": "Could we use vec_elt() here ?",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "87058679_9cf2626c",
+        "filename": "test/test_sfdp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1250,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-20T15:54:18Z",
+      "side": 1,
+      "message": "Could udp()/udp6() be moved under BaseSfdpTest as generic helper functions ?",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f3f213a8_4152c342",
+        "filename": "test/test_sfdp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1269,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-20T15:54:18Z",
+      "side": 1,
+      "message": "Could we clarify what we are iterating on here with comments ? i.e. my understanding is that we are iterating on two counter entries associated with pre-filter-calls, first is associated with \u0027sample-discard\u0027 and second is \u0027sample-echo\u0027",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
