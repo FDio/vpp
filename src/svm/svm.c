@@ -143,6 +143,8 @@ format_svm_flags (u8 * s, va_list * args)
     s = format (s, "NODATA ");
   if (f & SVM_FLAGS_NEED_DATA_INIT)
     s = format (s, "INIT ");
+  if (f & SVM_FLAGS_MEMFD)
+    s = format (s, "MEMFD ");
 
   return (s);
 }
@@ -551,6 +553,35 @@ svm_map_region (svm_map_region_args_t * a)
 
   ASSERT ((a->size & ~(MMAP_PAGESIZE - 1)) == a->size);
   ASSERT (a->name);
+
+  if (a->flags & SVM_FLAGS_MEMFD)
+    {
+      /* Anonymous segment: nothing is created in /dev/shm */
+      svm_fd = clib_mem_vm_create_fd (CLIB_MEM_PAGE_SZ_DEFAULT, "svm-%s", a->name);
+      if (svm_fd < 0)
+	{
+	  clib_warning ("memfd create failed for region %s", a->name);
+	  return 0;
+	}
+      if (ftruncate (svm_fd, a->size) < 0)
+	{
+	  clib_unix_warning ("ftruncate region size");
+	  close (svm_fd);
+	  return 0;
+	}
+      rp = mmap (uword_to_pointer (a->baseva, void *), a->size, PROT_READ | PROT_WRITE,
+		 MAP_SHARED | MAP_FIXED, svm_fd, 0);
+      close (svm_fd);
+      if (rp == (svm_region_t *) MAP_FAILED)
+	{
+	  clib_unix_warning ("mmap create");
+	  return 0;
+	}
+      clib_mem_unpoison (rp, a->size);
+      svm_region_init_mapped_region (a, rp);
+      rp->flags |= SVM_FLAGS_MEMFD;
+      return (void *) rp;
+    }
 
   shm_name = shm_name_from_svm_map_region_args (a);
 
@@ -985,6 +1016,9 @@ svm_region_unlink (svm_region_t * rp)
   ASSERT (root_rp);
   ASSERT (rp);
   ASSERT (vec_c_string_is_terminated (rp->region_name));
+
+  if (rp->flags & SVM_FLAGS_MEMFD)
+    return;
 
   mp = root_rp->data_base;
   ASSERT (mp);
