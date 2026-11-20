@@ -77,6 +77,9 @@ typedef struct vlib_cli_command_t
   /* Known MP-safe? */
   uword is_mp_safe;
 
+  /* Can emit structured output, see vppinfra/cli.h. */
+  u8 is_structured;
+
   /* Declarative command, see vppinfra/cli.h. A command with a handler is parsed
      using args and its function is set when the command is registered, a
      command which has a function is parsed by the function itself. */

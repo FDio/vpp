@@ -1768,6 +1768,9 @@ typedef struct
   u32 parent_command_index;
   int show_mp_safe;
   int show_not_mp_safe;
+  int show_legacy;
+  int show_not_legacy;
+  int show_structured;
   int show_hit;
   int clear_hit;
 } vlib_cli_walk_args_t;
@@ -1789,9 +1792,11 @@ cli_recursive_walk (vlib_cli_walk_args_t * aa)
 
   if (parent->function)
     {
-      if (((a->show_mp_safe && parent->is_mp_safe)
-	   || (a->show_not_mp_safe && !parent->is_mp_safe))
-	  && (a->show_hit == 0 || parent->hit_counter))
+      if (((a->show_mp_safe && parent->is_mp_safe) ||
+	   (a->show_not_mp_safe && !parent->is_mp_safe)) &&
+	  ((a->show_legacy && !parent->handler) || (a->show_not_legacy && parent->handler)) &&
+	  (!a->show_structured || parent->is_structured) &&
+	  (a->show_hit == 0 || parent->hit_counter))
 	{
 	  vec_add1 (cm->sort_vector, a->parent_command_index);
 	}
@@ -1814,6 +1819,9 @@ format_mp_safe (u8 * s, va_list * args)
   vlib_cli_main_t *cm = va_arg (*args, vlib_cli_main_t *);
   int show_mp_safe = va_arg (*args, int);
   int show_not_mp_safe = va_arg (*args, int);
+  int show_legacy = va_arg (*args, int);
+  int show_not_legacy = va_arg (*args, int);
+  int show_structured = va_arg (*args, int);
   int show_hit = va_arg (*args, int);
   int clear_hit = va_arg (*args, int);
   vlib_cli_command_t *c;
@@ -1830,6 +1838,9 @@ format_mp_safe (u8 * s, va_list * args)
   a->parent_command_index = 0;
   a->show_mp_safe = show_mp_safe;
   a->show_not_mp_safe = show_not_mp_safe;
+  a->show_legacy = show_legacy;
+  a->show_not_legacy = show_not_legacy;
+  a->show_structured = show_structured;
   a->show_hit = show_hit;
   a->clear_hit = clear_hit;
 
@@ -1846,21 +1857,60 @@ format_mp_safe (u8 * s, va_list * args)
   return s;
 }
 
+static void
+show_cli_summary (vlib_main_t *vm, vlib_cli_main_t *cm)
+{
+  vlib_cli_walk_args_t a = {
+    .cm = cm,
+    .show_mp_safe = 1,
+    .show_not_mp_safe = 1,
+    .show_legacy = 1,
+    .show_not_legacy = 1,
+  };
+  u32 n_legacy = 0, n_mp_safe = 0, *ci;
+
+  vec_reset_length (cm->sort_vector);
+  cli_recursive_walk (&a);
+
+  vec_foreach (ci, cm->sort_vector)
+    {
+      vlib_cli_command_t *c = vec_elt_at_index (cm->commands, *ci);
+
+      n_legacy += c->handler == 0;
+      n_mp_safe += c->is_mp_safe != 0;
+    }
+
+  vlib_cli_output (vm, "total    %u", vec_len (cm->sort_vector));
+  vlib_cli_output (vm, "legacy   %u", n_legacy);
+  vlib_cli_output (vm, "mp-safe  %u", n_mp_safe);
+}
+
 static clib_error_t *
 show_cli_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_global_main_t *vgm = vlib_get_global_main ();
   int show_mp_safe = cli_flag (ctx, "mp-safe");
   int show_not_mp_safe = cli_flag (ctx, "not-mp-safe");
+  int show_legacy = cli_flag (ctx, "legacy");
+  int show_not_legacy = cli_flag (ctx, "not-legacy");
+  int show_structured = cli_flag (ctx, "structured");
   int show_hit = cli_flag (ctx, "hit");
   int clear_hit = cli_flag (ctx, "clear-hit");
+
+  if (cli_flag (ctx, "summary"))
+    {
+      show_cli_summary (vm, &vgm->cli_main);
+      return 0;
+    }
 
   /* default set: all cli commands */
   if (clear_hit == 0 && (show_mp_safe + show_not_mp_safe) == 0)
     show_mp_safe = show_not_mp_safe = 1;
+  if (show_legacy + show_not_legacy == 0)
+    show_legacy = show_not_legacy = 1;
 
-  vlib_cli_output (vm, "%U", format_mp_safe, &vgm->cli_main, show_mp_safe,
-		   show_not_mp_safe, show_hit, clear_hit);
+  vlib_cli_output (vm, "%U", format_mp_safe, &vgm->cli_main, show_mp_safe, show_not_mp_safe,
+		   show_legacy, show_not_legacy, show_structured, show_hit, clear_hit);
   if (clear_hit)
     vlib_cli_output (vm, "hit counters cleared...");
 
@@ -1871,7 +1921,8 @@ show_cli_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
  * Displays debug cli command information
  *
  * @cliexpar
- * @cliexstart{show cli [mp-safe][not-mp-safe][hit][clear-hit]}
+ * @cliexstart{show cli
+[mp-safe][not-mp-safe][legacy][not-legacy][structured][summary][hit][clear-hit]}
  *
  * "show cli" displays the entire debug cli:
  *
@@ -1900,6 +1951,15 @@ show_cli_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
  * "show cli not-mp-safe" displays debug CLI commands
  * which cause worker thread barrier synchronization
  *
+ * "show cli legacy" displays the commands which are not converted to
+ * typed arguments, "show cli not-legacy" the ones which are.
+ *
+ * "show cli structured" displays the commands which can emit structured
+ * output (json, where).
+ *
+ * "show cli summary" displays the total number of commands and how many of
+ * them are legacy and mp-safe.
+ *
  * "show cli hit" displays commands which have been executed. Qualify
  * as desired with "mp-safe" or "not-mp-safe".
  *
@@ -1912,6 +1972,11 @@ VLIB_CLI_COMMAND (show_cli_command, static) = {
   .short_help = "Show the CLI commands",
   .args = CLI_ARGS (CLI_FLAG ("mp-safe", .help = "only commands which are mp-safe"),
 		    CLI_FLAG ("not-mp-safe", .help = "only commands which are not mp-safe"),
+		    CLI_FLAG ("legacy",
+			      .help = "only commands which are not converted to typed arguments"),
+		    CLI_FLAG ("not-legacy", .help = "only commands with typed arguments"),
+		    CLI_FLAG ("structured", .help = "only commands with structured output"),
+		    CLI_FLAG ("summary", .help = "show the number of commands"),
 		    CLI_FLAG ("hit", .help = "show the hit counters"),
 		    CLI_FLAG ("clear-hit", .help = "clear the hit counters")),
   .handler = show_cli_command_fn,

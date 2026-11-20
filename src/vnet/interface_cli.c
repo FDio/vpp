@@ -584,6 +584,7 @@ VLIB_CLI_COMMAND (show_sw_interfaces_command, static) = {
 		    CLI_FLAG ("verbose", .help = "more details")),
   .handler = show_sw_interfaces,
   .is_mp_safe = 1,
+  .is_structured = 1,
 };
 
 /* Root of all interface commands. */
