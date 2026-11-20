@@ -885,6 +885,8 @@ var defaultMemLeakReportNoiseFrames = []string{
 	"tap_device_input_one_inline",
 	"tw_timer_expire_timers_internal",
 	"http_add_postponed_ho_cleanups",
+	// The pool retains its free bitmap and free-index vector for reuse.
+	"_pool_put_index",
 }
 
 // Frame pairs {callee, caller} for generic helpers that are noise only under one
@@ -893,8 +895,6 @@ var defaultMemLeakReportNoiseFrames = []string{
 var defaultMemLeakReportNoiseFramePairs = [][2]string{
 	// per worker scratch vectors, grow to a high-water mark and are never freed
 	{"_vec_validate", "session_tx_fifo_read_and_snd_i"},
-	// per worker event pool free indices, same
-	{"_pool_put_index", "session_event_dispatch_io"},
 }
 
 // memTraceIsReportNoise reports whether a trace is expected noise and what matched.
