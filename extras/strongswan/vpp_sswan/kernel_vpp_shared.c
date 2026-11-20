@@ -22,6 +22,7 @@
 #include <collections/hashtable.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
+#include <vlibmemory/socket_client.h>
 #include <vlibmemory/memclnt.api_enum.h>
 
 #include "kernel_vpp_shared.h"
@@ -385,8 +386,7 @@ METHOD (vac_t, destroy, void, private_vac_t *this)
 	  else
 	    this->rx->join (this->rx);
 	}
-      vl_client_disconnect ();
-      vl_client_api_unmap ();
+      vl_socket_client_disconnect ();
     }
 
   this->queue_lock->destroy (this->queue_lock);
@@ -598,17 +598,21 @@ vac_create (char *name)
 
   clib_mem_init (0, 256 << 20);
 
-  if (vl_client_api_map ("/vpe-api"))
+  if (vl_socket_client_connect (lib->settings->get_str (lib->settings,
+							"%s.plugins.kernel-vpp.api_socket",
+							"/run/vpp/api.sock", lib->ns),
+				name, 0 /* default buffers */))
     {
-      DBG1 (DBG_KNL, "vac unable to map");
+      DBG1 (DBG_KNL, "vac unable to connect");
       destroy (this);
       return NULL;
     }
 
-  if (vl_client_connect (name, 0, 32) < 0)
+  /* Messages are exchanged through a private memfd region, own rx thread */
+  if (vl_socket_client_init_shm (0, 0 /* no rx pthread */))
     {
-      DBG1 (DBG_KNL, "vac unable to connect");
-      vl_client_api_unmap ();
+      DBG1 (DBG_KNL, "vac unable to set up the shared memory region");
+      vl_socket_client_disconnect ();
       destroy (this);
       return NULL;
     }
@@ -618,7 +622,6 @@ vac_create (char *name)
   this->rx = thread_create ((thread_main_t) vac_rx_thread_fn, this);
   if (!this->rx)
     {
-      vl_client_api_unmap ();
       destroy (this);
       return NULL;
     }
