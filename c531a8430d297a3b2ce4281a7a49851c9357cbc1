@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f8453dd5_1f66ee7d",
+        "filename": "src/plugins/hs_apps/http_cli.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 589,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-20T13:01:05Z",
+      "side": 1,
+      "message": "follows the echo path now",
+      "parentUuid": "62aa9439_c58a71cf",
+      "revId": "c531a8430d297a3b2ce4281a7a49851c9357cbc1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "7b6a4ecf_094e8ec6",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-11-20T11:17:30Z",
       "side": 1,
       "message": "http1_transport_rx_callback() discard queued upload and free tx buffer before this branch checks status. if server sends 103 while it’s still waiting for request body, we consume 103 and then wait for final response the server can’t send. could we classify the response before cancelling tx so interim response leaves upload active?",
+      "revId": "c531a8430d297a3b2ce4281a7a49851c9357cbc1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1371ce83_b3337774",
+        "filename": "src/plugins/http/http1/http1.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1192,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-20T13:01:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7b6a4ecf_094e8ec6",
       "revId": "c531a8430d297a3b2ce4281a7a49851c9357cbc1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "8e56f177_08dfb39f",
+        "filename": "src/plugins/http/http2/http2.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 1316,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-20T13:01:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "23ed5845_354e36c8",
+      "revId": "c531a8430d297a3b2ce4281a7a49851c9357cbc1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f4a26a13_00629f59",
@@ -69,6 +123,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ed2927cb_0d7e4d4e",
+        "filename": "src/plugins/http/http3/http3.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 604,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-20T13:01:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f4a26a13_00629f59",
+      "revId": "c531a8430d297a3b2ce4281a7a49851c9357cbc1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "8904b175_a473d37d",
@@ -82,6 +154,24 @@
       "writtenOn": "2026-11-20T11:17:30Z",
       "side": 1,
       "message": "at this point the HEAD response is complete, if opening of the replacement quic stream fails, this return skips http_publish_bodyless_reply() and the app loses valid response. could we publish and notify the app of the completed reply before reporting that session can’t accept another request?",
+      "revId": "c531a8430d297a3b2ce4281a7a49851c9357cbc1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8ca1cda6_8585edd3",
+        "filename": "src/plugins/http/http3/http3.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 2242,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-20T13:01:05Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8904b175_a473d37d",
       "revId": "c531a8430d297a3b2ce4281a7a49851c9357cbc1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
