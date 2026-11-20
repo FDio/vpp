@@ -903,8 +903,9 @@ def bfd_session_up(test):
     e = test.vapi.wait_for_event(1, "bfd_udp_session_event")
     verify_event(test, e, expected_state=BFDState.up)
     test.logger.info("BFD: Session is Up")
-    # packets sent before vpp learned our discriminator may still be queued
-    test.test_session.stale_hello_time = time.time() - test.vpp_clock_offset
+    # packets sent before vpp learned our discriminator may still be queued;
+    # pcap time is vpp wall clock, don't skew the cutoff by vpp_clock_offset
+    test.test_session.stale_hello_time = time.time()
     test.test_session.update(state=BFDState.up)
     if (
         test.test_session.sha1_key
