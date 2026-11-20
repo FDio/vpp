@@ -197,20 +197,18 @@ public:
    * @brief connect to vpp
    *
    * @param name application name
-   * @param chroot_prefix shared memory prefix
+   * @param socket_path path of the api socket, NULL for the default
    * @param max_queued_request max number of outstanding requests queued
    * @param handle_keepalives handle memclnt_keepalive automatically
    *
    * @return VAPI_OK on success, other error code on error
    */
   vapi_error_e
-  connect (const char *name, const char *chroot_prefix,
-	   int max_outstanding_requests, int response_queue_size,
-	   bool handle_keepalives = true, bool use_uds = false)
+  connect (const char *name, const char *socket_path, int max_outstanding_requests,
+	   int response_queue_size, bool handle_keepalives = true)
   {
-    return vapi_connect_ex (vapi_ctx, name, chroot_prefix,
-			    max_outstanding_requests, response_queue_size,
-			    VAPI_MODE_BLOCKING, handle_keepalives, use_uds);
+    return vapi_connect_ex (vapi_ctx, name, socket_path, max_outstanding_requests,
+			    response_queue_size, VAPI_MODE_BLOCKING, handle_keepalives);
   }
 
   /**
