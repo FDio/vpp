@@ -2330,6 +2330,161 @@ func http3FinReadResponse(stream *quic.Stream, bodyLength int) {
 	AssertEqual(bodyLength, len(body))
 }
 
+// QUIC can packetize Write and Close separately. Hold request data without FIN
+// until the server acknowledges a packet carrying FIN, so it sees the final
+// stream size before it can respond to the complete request.
+type http3FinPacketConn struct {
+	net.PacketConn
+	mu                 sync.Mutex
+	sent               []qlog.PacketSent
+	held               [][]byte
+	finPackets         map[qlog.PacketNumber]bool
+	finAcknowledged    bool
+	handshakeConfirmed chan struct{}
+	requestHeld        chan struct{}
+	finAck             chan struct{}
+}
+
+func (c *http3FinPacketConn) record(event qlogwriter.Event) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.finAcknowledged {
+		return
+	}
+	switch packet := event.(type) {
+	case qlog.ConnectionStateUpdated:
+		if packet.State == qlog.ConnectionStateHandshakeConfirmed {
+			close(c.handshakeConfirmed)
+		}
+	case qlog.PacketSent:
+		c.sent = append(c.sent, packet)
+	case qlog.PacketReceived:
+		if packet.Header.PacketType != qlog.PacketType1RTT {
+			return
+		}
+		for _, frame := range packet.Frames {
+			if ack, ok := frame.Frame.(*qlog.AckFrame); ok {
+				for number := range c.finPackets {
+					if ack.AcksPacket(number) {
+						c.finAcknowledged = true
+						c.sent = nil
+						close(c.finAck)
+						return
+					}
+				}
+			}
+		}
+	}
+}
+
+func (c *http3FinPacketConn) WriteTo(p []byte, addr net.Addr) (int, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.finAcknowledged {
+		return c.PacketConn.WriteTo(p, addr)
+	}
+	// qlog records each QUIC packet before its datagram reaches WriteTo.
+	length, count := 0, 0
+	request, fin := false, false
+	for length < len(p) && count < len(c.sent) {
+		packet := c.sent[count]
+		length += packet.Raw.Length
+		count++
+		if packet.Header.PacketType != qlog.PacketType1RTT {
+			continue
+		}
+		for _, frame := range packet.Frames {
+			if stream, ok := frame.Frame.(*qlog.StreamFrame); ok && stream.StreamID == 0 {
+				request = true
+				if stream.Fin {
+					fin = true
+					c.finPackets[packet.Header.PacketNumber] = true
+				}
+			}
+		}
+	}
+	if length != len(p) {
+		return 0, fmt.Errorf("QUIC packet trace length %d does not match datagram length %d", length, len(p))
+	}
+	c.sent = c.sent[count:]
+	if request && !fin {
+		c.held = append(c.held, bytes.Clone(p))
+		select {
+		case c.requestHeld <- struct{}{}:
+		default:
+		}
+		return len(p), nil
+	}
+	return c.PacketConn.WriteTo(p, addr)
+}
+
+func (c *http3FinPacketConn) release(addr net.Addr) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, p := range c.held {
+		if _, err := c.PacketConn.WriteTo(p, addr); err != nil {
+			return err
+		}
+	}
+	c.held = nil
+	return nil
+}
+
+func http3FinCompleteRequest(s *Http3Suite, serverAddress string, request []byte, bodyLength int, splitFin bool) {
+	socket, err := net.ListenPacket("udp4", net.JoinHostPort(s.HostAddr(), "0"))
+	AssertNil(err)
+	defer socket.Close()
+	packets := &http3FinPacketConn{
+		PacketConn:         socket,
+		finPackets:         make(map[qlog.PacketNumber]bool),
+		handshakeConfirmed: make(chan struct{}),
+		requestHeld:        make(chan struct{}, 1),
+		finAck:             make(chan struct{}),
+	}
+	transport := quic.Transport{Conn: packets}
+	defer transport.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	address, err := net.ResolveUDPAddr("udp4", serverAddress)
+	AssertNil(err)
+	conn, err := transport.Dial(ctx, address,
+		&tls.Config{InsecureSkipVerify: true, NextProtos: []string{"h3"}, SessionTicketsDisabled: true},
+		&quic.Config{DisablePathMTUDiscovery: true,
+			Tracer: func(context.Context, bool, quic.ConnectionID) qlogwriter.Trace {
+				return http3TraceFunc(packets.record)
+			}})
+	AssertNil(err)
+	defer conn.CloseWithError(0, "")
+	select {
+	case <-packets.handshakeConfirmed:
+	case <-ctx.Done():
+		Fail("QUIC handshake was not confirmed")
+	}
+	stream, err := conn.OpenStream()
+	AssertNil(err)
+	deadline, _ := ctx.Deadline()
+	AssertNil(stream.SetDeadline(deadline))
+	n, err := stream.Write(request)
+	AssertNil(err)
+	AssertEqual(len(request), n)
+	if splitFin {
+		// Exercise the packet split that allowed an early response in CI.
+		select {
+		case <-packets.requestHeld:
+		case <-ctx.Done():
+			Fail("request data was not packetized before Close")
+		}
+	}
+	AssertNil(stream.Close())
+	select {
+	case <-packets.finAck:
+	case <-ctx.Done():
+		Fail("VPP did not acknowledge the request FIN")
+	}
+	AssertNil(packets.release(address))
+	http3FinReadResponse(stream, bodyLength)
+}
+
 func Http3RequestFinCompleteTest(s *Http3Suite) {
 	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
 	Log(s.Containers.Vpp.VppInstance.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
@@ -2339,25 +2494,18 @@ func Http3RequestFinCompleteTest(s *Http3Suite) {
 		name       string
 		request    []byte
 		bodyLength int
+		splitFin   bool
 	}{
-		{"headers", get, 64},
-		{"zero content length", http3FinHeaders(http.MethodGet, "/test_file_64", "0"), 64},
-		{"empty DATA after body", append(append(bytes.Clone(post), http3FinFrame(0x00, []byte("abcd"))...), http3FinFrame(0x00, nil)...), 0},
-		{"complete DATA", append(bytes.Clone(post), http3FinFrame(0x00, []byte("abcd"))...), 0},
-		{"multiple DATA frames", append(append(bytes.Clone(post), http3FinFrame(0x00, []byte("ab"))...), http3FinFrame(0x00, []byte("cd"))...), 0},
-		{"empty DATA", append(append(bytes.Clone(post), http3FinFrame(0x00, nil)...), http3FinFrame(0x00, []byte("abcd"))...), 0},
-		{"unknown frames", append(append(http3FinFrame(0x21, []byte("padding")), get...), http3FinFrame(0x21, nil)...), 64},
+		{"headers", get, 64, false},
+		{"zero content length", http3FinHeaders(http.MethodGet, "/test_file_64", "0"), 64, false},
+		{"empty DATA after body", append(append(bytes.Clone(post), http3FinFrame(0x00, []byte("abcd"))...), http3FinFrame(0x00, nil)...), 0, false},
+		{"complete DATA", append(bytes.Clone(post), http3FinFrame(0x00, []byte("abcd"))...), 0, false},
+		{"multiple DATA frames", append(append(bytes.Clone(post), http3FinFrame(0x00, []byte("ab"))...), http3FinFrame(0x00, []byte("cd"))...), 0, false},
+		{"empty DATA", append(append(bytes.Clone(post), http3FinFrame(0x00, nil)...), http3FinFrame(0x00, []byte("abcd"))...), 0, false},
+		{"unknown frames", append(append(http3FinFrame(0x21, []byte("padding")), get...), http3FinFrame(0x21, nil)...), 64, true},
 	} {
 		By(tc.name)
-		conn := H3ClientConnect(serverAddress)
-		stream, err := conn.OpenStream()
-		AssertNil(err)
-		AssertNil(stream.SetDeadline(time.Now().Add(3 * time.Second)))
-		_, err = stream.Write(tc.request)
-		AssertNil(err)
-		AssertNil(stream.Close())
-		http3FinReadResponse(stream, tc.bodyLength)
-		AssertNil(conn.CloseWithError(0, ""))
+		http3FinCompleteRequest(s, serverAddress, tc.request, tc.bodyLength, tc.splitFin)
 	}
 	http3TestSessionCleanupServer(s)
 }
