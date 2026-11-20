@@ -19,9 +19,9 @@ class VAPITestCase(VppAsfTestCase):
     def tearDownClass(cls):
         super(VAPITestCase, cls).tearDownClass()
 
-    def run_vapi_c(self, path, transport):
+    def run_vapi_c(self, path):
         executable = f"{config.vpp_build_dir}/vpp/bin/vapi_c_test"
-        worker = Worker([executable, "vapi client", path, transport], self.logger)
+        worker = Worker([executable, "vapi client", path], self.logger)
         worker.start()
         timeout = 60
         worker.join(timeout)
@@ -40,14 +40,14 @@ class VAPITestCase(VppAsfTestCase):
             raise Exception("Timeout! Worker did not finish in %ss" % timeout)
         self.assert_equal(worker.result, 0, "Binary test return code")
 
-    def test_vapi_c_uds(self):
+    def test_vapi_c(self):
         """run C VAPI tests (over unix domain socket)"""
-        self.run_vapi_c(self.get_api_sock_path(), "uds")
+        self.run_vapi_c(self.get_api_sock_path())
 
-    def run_vapi_cpp(self, path, transport):
+    def run_vapi_cpp(self, path):
         """run C++ VAPI tests"""
         executable = f"{config.vpp_build_dir}/vpp/bin/vapi_cpp_test"
-        worker = Worker([executable, "vapi client", path, transport], self.logger)
+        worker = Worker([executable, "vapi client", path], self.logger)
         worker.start()
         timeout = 120
         worker.join(timeout)
@@ -65,9 +65,9 @@ class VAPITestCase(VppAsfTestCase):
             raise Exception("Timeout! Worker did not finish in %ss" % timeout)
         self.assert_equal(worker.result, 0, "Binary test return code")
 
-    def test_vapi_cpp_uds(self):
+    def test_vapi_cpp(self):
         """run C++ VAPI tests (over unix domain socket)"""
-        self.run_vapi_cpp(self.get_api_sock_path(), "uds")
+        self.run_vapi_cpp(self.get_api_sock_path())
 
 
 if __name__ == "__main__":

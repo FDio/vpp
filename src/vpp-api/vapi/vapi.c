@@ -957,9 +957,8 @@ vapi_api_get_msg_index (vapi_ctx_t ctx, u8 *name_and_crc)
 }
 
 vapi_error_e
-vapi_connect_ex (vapi_ctx_t ctx, const char *name, const char *path,
-		 int max_outstanding_requests, int response_queue_size,
-		 vapi_mode_e mode, bool handle_keepalives, bool use_uds)
+vapi_connect_ex (vapi_ctx_t ctx, const char *name, const char *path, int max_outstanding_requests,
+		 int response_queue_size, vapi_mode_e mode, bool handle_keepalives)
 {
   int rv;
 
@@ -979,37 +978,11 @@ vapi_connect_ex (vapi_ctx_t ctx, const char *name, const char *path,
   clib_memset (ctx->requests, 0, size);
   /* coverity[MISSING_LOCK] - 177211 requests_mutex is not needed here */
   ctx->requests_start = ctx->requests_count = 0;
-  ctx->use_uds = use_uds;
+  ctx->use_uds = true;
 
-  if (use_uds)
+  if (vapi_sock_client_connect (ctx, (char *) path, name) != VAPI_OK)
     {
-      if (vapi_sock_client_connect (ctx, (char *) path, name) != VAPI_OK)
-	{
-	  return VAPI_ECON_FAIL;
-	}
-    }
-  else
-    {
-      if (path)
-	{
-	  VAPI_DBG ("set memory root path `%s'", path);
-	  vl_set_memory_root_path ((char *) path);
-	}
-      static char api_map[] = "/vpe-api";
-      VAPI_DBG ("client api map `%s'", api_map);
-      if ((rv = vl_map_shmem (api_map, 0 /* is_vlib */)) < 0)
-	{
-	  return VAPI_EMAP_FAIL;
-	}
-      VAPI_DBG ("connect client `%s'", name);
-      if (VAPI_OK != vapi_shm_client_connect (ctx, (char *) name, 0, response_queue_size, true))
-	{
-	  vl_client_api_unmap ();
-	  return VAPI_ECON_FAIL;
-	}
-#if VAPI_DEBUG_CONNECT
-  VAPI_DBG ("start probing messages");
-#endif
+      return VAPI_ECON_FAIL;
     }
 
   int i;
@@ -1084,12 +1057,12 @@ fail:
 }
 
 vapi_error_e
-vapi_connect (vapi_ctx_t ctx, const char *name, const char *chroot_prefix,
-	      int max_outstanding_requests, int response_queue_size,
-	      vapi_mode_e mode, bool handle_keepalives)
+vapi_connect (vapi_ctx_t ctx, const char *name, const char *socket_path,
+	      int max_outstanding_requests, int response_queue_size, vapi_mode_e mode,
+	      bool handle_keepalives)
 {
-  return vapi_connect_ex (ctx, name, chroot_prefix, max_outstanding_requests,
-			  response_queue_size, mode, handle_keepalives, false);
+  return vapi_connect_ex (ctx, name, socket_path, max_outstanding_requests, response_queue_size,
+			  mode, handle_keepalives);
 }
 
 /*

@@ -7,6 +7,8 @@
 #include <vlibapi/api_common.h>
 #include <vlibmemory/memory_client.h>
 #include <vlibmemory/api.h>
+#include <vlibmemory/socket_client.h>
+#include <vlibmemory/socket_api.h>
 #include <vnet/api_errno.h>
 #include <svm/queue.h>
 
@@ -120,13 +122,16 @@ vl_api_mactime_details_t_handler (vl_api_mactime_details_t * mp)
 #undef vl_api_version
 
 static int
-connect_to_vpp (char *name)
+connect_to_vpp (char *name, char *socket_name)
 {
   api_main_t *am = vlibapi_get_main ();
   mt_main_t *mm = &mt_main;
   u8 *msg_base_lookup_name;
 
-  if (vl_client_connect_to_vlib ("/vpe-api", name, 32) < 0)
+  if (vl_socket_client_connect (socket_name, name, 0 /* default buffers */))
+    return -1;
+
+  if (vl_socket_client_init_shm (0, 1 /* want_pthread */))
     return -1;
 
   mm->vl_input_queue = am->shmem_hdr->vl_input_queue;
@@ -452,7 +457,7 @@ main (int argc, char **argv)
 
   clib_mem_init (0, 64 << 20);
 
-  if (connect_to_vpp ("mactime_top") < 0)
+  if (connect_to_vpp ("mactime_top", argc > 2 ? argv[2] : API_SOCKET_FILE) < 0)
     {
       fformat (stderr, "vpp api client connect error\n");
       exit (1);

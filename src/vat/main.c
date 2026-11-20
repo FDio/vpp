@@ -19,22 +19,6 @@ vat_suspend (vlib_main_t * vm, f64 interval)
   /* do nothing in the standalone version, just return */
 }
 
-int
-connect_to_vpe (char *name)
-{
-  vat_main_t *vam = &vat_main;
-  api_main_t *am = vlibapi_get_main ();
-
-  if (vl_client_connect_to_vlib ("/vpe-api", name, 32) < 0)
-    return -1;
-
-  vam->vl_input_queue = am->shmem_hdr->vl_input_queue;
-  vam->my_client_index = am->my_client_index;
-
-  return 0;
-}
-
-
 vlib_global_main_t vlib_global_main;
 
 void
@@ -404,7 +388,6 @@ main (int argc, char **argv)
   unformat_input_t _argv, *a = &_argv;
   u8 **input_files = 0;
   u8 *output_file = 0;
-  u8 *chroot_prefix;
   u8 *this_input_file;
   u8 interactive = 1;
   u8 json_output = 0;
@@ -452,18 +435,13 @@ main (int argc, char **argv)
       else if (unformat (a, "plugin_name_filter %s",
 			 (u8 *) & vat_plugin_name_filter))
 	vec_add1 (vat_plugin_name_filter, 0);
-      else if (unformat (a, "chroot prefix %s", &chroot_prefix))
-	{
-	  vl_set_memory_root_path ((char *) chroot_prefix);
-	}
       else
 	{
-	  fformat
-	    (stderr,
-	     "%s: usage [in <f1> ... in <fn>] [out <fn>] [script] [json]\n"
-	     "[plugin_path <path>][default-socket][socket-name <name>]\n"
-	     "[plugin_name_filter <filter>][chroot prefix <path>]\n",
-	     argv[0]);
+	  fformat (stderr,
+		   "%s: usage [in <f1> ... in <fn>] [out <fn>] [script] [json]\n"
+		   "[plugin_path <path>][default-socket][socket-name <name>]\n"
+		   "[plugin_name_filter <filter>]\n",
+		   argv[0]);
 	  exit (1);
 	}
     }
@@ -487,13 +465,11 @@ main (int argc, char **argv)
 
   setup_signal_handlers ();
 
-  if (vam->socket_name && vat_socket_connect (vam))
-    fformat (stderr, "WARNING: socket connection failed");
+  if (!vam->socket_name)
+    vam->socket_name = format (0, "%s%c", API_SOCKET_FILE, 0);
 
-  if ((!vam->socket_client_main || vam->socket_client_main->socket_fd == 0)
-      && connect_to_vpe ("vpp_api_test") < 0)
+  if (vat_socket_connect (vam))
     {
-      svm_region_exit ();
       fformat (stderr, "Couldn't connect to vpe, exiting...\n");
       exit (1);
     }
@@ -567,6 +543,6 @@ main (int argc, char **argv)
   if (vat_time_now (vam) > timeout)
     clib_warning ("BUG: message reply spin-wait timeout");
 
-  vl_client_disconnect_from_vlib ();
+  vl_socket_client_disconnect ();
   exit (0);
 }
