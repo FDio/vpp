@@ -1437,6 +1437,36 @@ class TestMPLS(VppTestCase):
         route_10_0_0_0.add_vpp_config()
         send_and_expect_mpls_lb(pkts, [[33], [44, 33], [34], [44, 34]], 0.70)
 
+    def test_tunnel_popular_path(self):
+        """MPLS Tunnel Tests - Popular path"""
+
+        #
+        # Create a tunnel with multiple paths and labels with no ip4 neighbors configured
+        #
+        N_PATHS = 64
+        self.pg0.generate_remote_hosts(1)
+
+        for i in range(N_PATHS):
+            mpls_tun = VppMPLSTunnelInterface(
+                self,
+                [
+                    VppRoutePath(
+                        self.pg0.remote_hosts[0].ip4,
+                        self.pg0.sw_if_index,
+                        labels=[VppMplsLabel(40 + i)],
+                    ),
+                ],
+            )
+            mpls_tun.add_vpp_config()
+            mpls_tun.admin_up()
+            tun_route = VppIpRoute(
+                self,
+                "10.0.0.%d" % (i + 1),
+                32,
+                [VppRoutePath("0.0.0.0", mpls_tun._sw_if_index)],
+            )
+            tun_route.add_vpp_config()
+
     def test_mpls_tunnel_many(self):
         """MPLS Multiple Tunnels"""
 

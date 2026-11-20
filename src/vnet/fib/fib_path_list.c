@@ -1288,13 +1288,19 @@ fib_path_list_child_add (fib_node_index_t path_list_index,
 			 fib_node_type_t child_type,
 			 fib_node_index_t child_index)
 {
-    if (FIB_PATH_LIST_POPULAR - 1 == fib_node_get_n_children(FIB_NODE_TYPE_PATH_LIST,
+    fib_path_list_t *path_list;
+
+    path_list = fib_path_list_get(path_list_index);
+
+    if (!(path_list->fpl_flags & FIB_PATH_LIST_FLAG_POPULAR) &&
+	FIB_PATH_LIST_POPULAR - 1 == fib_node_get_n_children(FIB_NODE_TYPE_PATH_LIST,
                                                              path_list_index))
     {
         /*
          * Set the popular flag on the path-list once we pass the magic
          * threshold. then walk children to update.
-         * We don't undo this action. The rational being that the number
+         * We don't undo this action and don't run subsequent walks on the
+         * newly occuring transitions. The rational being that the number
          * of entries using this prefix is large enough such that it is a
          * non-trival amount of effort to converge them. If we get into the
          * situation where we are adding and removing entries such that we
@@ -1304,9 +1310,7 @@ fib_path_list_child_add (fib_node_index_t path_list_index,
         fib_node_back_walk_ctx_t ctx = {
             .fnbw_reason = FIB_NODE_BW_REASON_FLAG_EVALUATE,
         };
-        fib_path_list_t *path_list;
 
-        path_list = fib_path_list_get(path_list_index);
         path_list->fpl_flags |= FIB_PATH_LIST_FLAG_POPULAR;
 
 	fib_walk_sync(FIB_NODE_TYPE_PATH_LIST, path_list_index, &ctx);
