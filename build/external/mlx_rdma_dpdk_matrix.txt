@@ -6,3 +6,4 @@ rdma=58.0 dpdk=25.07
 rdma=60.0 dpdk=25.11
 rdma=62.0 dpdk=26.03
 rdma=64.0 dpdk=26.07
+rdma=66.0 dpdk=26.07
