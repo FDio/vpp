@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f331f43d_576c34eb",
+        "filename": "test/hs-test/infra/vppinstance.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 889,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-11-20T10:58:56Z",
+      "side": 1,
+      "message": "Could we keep the existing pair for session_event_dispatch_io and add one for hcs_session_free specifically?\n\nin defaultMemLeakReportNoiseFramePairs:\n{\"_pool_put_index\", \"session_event_dispatch_io\"},\n{\"_pool_put_index\", \"hcs_session_free\"},\n\nThe global filter could also hide leaked free-index vectors or bitmaps from pools that should have been freed.",
+      "revId": "8a35780bd3dc7ec2997c9a74ebab4944d7dd47f3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
