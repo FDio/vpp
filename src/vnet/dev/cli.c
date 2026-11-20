@@ -635,6 +635,7 @@ VLIB_CLI_COMMAND (show_device_drivers_cmd, static) = {
   .short_help = "Show the loaded device drivers",
   .handler = show_device_drivers_cmd_fn,
   .is_mp_safe = 1,
+  .is_structured = 1,
 };
 
 static clib_error_t *
