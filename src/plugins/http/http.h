@@ -1629,6 +1629,7 @@ _http_parse_ip6 (u8 **p, u8 *end, ip6_address_t *ip6)
       for (u32 i = n_hex_quads; i > double_colon_index; i--)
 	ip6->as_u16[n_zero + i - 1] = ip6->as_u16[i - 1];
       for (u32 i = 0; i < n_zero; i++)
+	/* coverity[overflow_sink] - double_colon_index + n_zero is at most 8 */
 	ip6->as_u16[double_colon_index + i] = 0;
 
       n_hex_quads = ARRAY_LEN (ip6->as_u16);
