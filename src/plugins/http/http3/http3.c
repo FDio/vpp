@@ -1263,24 +1263,8 @@ http3_req_state_wait_transport_method (http_ctx_t *stream, http_ctx_t *req,
   res = (req->req_flags & HTTP_REQ_F_IS_TUNNEL) ? HTTP_SM_STOP : HTTP_SM_CONTINUE;
   req->to_recv = req->body_len;
 
-  req->target_query_offset = 0;
-  req->target_query_len = 0;
-  if (control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_PATH_PARSED)
-    {
-      req->target_path_len = control_data.path_len;
-      req->target_path_offset = control_data.path - wrk->header_list;
-      if (control_data.path[0] == '/')
-	{
-	  req->target_path_offset++;
-	  req->target_path_len--;
-	}
-      http_identify_optional_query (req, wrk->header_list);
-    }
-  else
-    {
-      req->target_path_len = 0;
-      req->target_path_offset = 0;
-    }
+  http_set_target_path (req, wrk->header_list, control_data.path, control_data.path_len,
+			control_data.query_offset);
 
   msg.type = HTTP_MSG_REQUEST;
   msg.method_type = req->method;

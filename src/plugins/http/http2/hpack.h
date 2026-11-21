@@ -39,6 +39,7 @@ typedef struct
   u8 is_options;
   u8 *path;
   u32 path_len;
+  u32 query_offset; /**< Offset of '?' within :path, or path_len if absent. */
   u8 *headers;
   u8 *protocol;
   u32 protocol_len;

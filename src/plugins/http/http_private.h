@@ -927,23 +927,106 @@ http_get_app_msg (http_ctx_t *req, http_msg_t *msg, u8 peek)
   ASSERT (rv == sizeof (*msg));
 }
 
-always_inline void
-http_identify_optional_query (http_ctx_t *req, u8 *rx_buf)
+typedef struct
 {
-  int i;
-  for (i = req->target_path_offset;
-       i < (req->target_path_offset + req->target_path_len); i++)
+  u8 *host;
+  u32 host_len;
+  u32 port;
+  u8 has_port;
+  u8 is_ip6;
+  ip6_address_t ip6;
+} http_target_authority_t;
+
+/* Validate the authority on the wire and retain its components for comparison. */
+always_inline u8
+http_target_authority_parse (u8 *value, u32 len, u8 require_port, u8 allow_userinfo,
+			     http_target_authority_t *out)
+{
+  u8 *p, *end, *host = value;
+  clib_memset (out, 0, sizeof (*out));
+  if (!len)
+    return 0;
+  end = value + len;
+  p = memchr (value, '@', len);
+  if (p)
     {
-      if (rx_buf[i] == '?')
+      if (!allow_userinfo ||
+	  http_validate_uri_component (value, p - value, HTTP_URI_COMPONENT_USERINFO, 0))
+	return 0;
+      host = p + 1;
+    }
+  if (host == end)
+    return 0;
+  if (*host == '[')
+    {
+      u8 *close = memchr (host, ']', end - host);
+      if (!close || close - host < 3)
+	return 0;
+      p = host + 1;
+      if (*p == 'v' || *p == 'V')
 	{
-	  req->target_query_offset = i + 1;
-	  req->target_query_len = req->target_path_offset +
-				  req->target_path_len -
-				  req->target_query_offset;
-	  req->target_path_len =
-	    req->target_path_len - req->target_query_len - 1;
-	  break;
+	  /* IPvFuture = 'v' 1*HEXDIG '.' 1*(unreserved / sub-delims / ':') */
+	  u8 *version = ++p;
+	  while (p < close && isxdigit (*p))
+	    p++;
+	  if (p == version || p == close || *p++ != '.' || p == close)
+	    return 0;
+	  for (; p < close; p++)
+	    if (!http_uri_reg_name_char_is_valid (*p) && *p != ':')
+	      return 0;
 	}
+      else
+	{
+	  if (_http_parse_ip6 (&p, close, &out->ip6) || p != close)
+	    return 0;
+	  out->is_ip6 = 1;
+	}
+      out->host_len = close + 1 - host;
+      p = close + 1;
+    }
+  else
+    {
+      p = memchr (host, ':', end - host);
+      if (!p)
+	p = end;
+      out->host_len = p - host;
+      if (!out->host_len ||
+	  http_validate_uri_component (host, out->host_len, HTTP_URI_COMPONENT_REG_NAME, 0))
+	return 0;
+    }
+  out->host = host;
+  if (p != end)
+    {
+      if (*p++ != ':')
+	return 0;
+      out->has_port = p != end;
+      if (out->has_port)
+	{
+	  u16 port;
+	  if (_http_parse_port (&p, end, &port) || p != end)
+	    return 0;
+	  out->port = clib_net_to_host_u16 (port);
+	}
+    }
+  return !require_port || out->has_port;
+}
+
+always_inline void
+http_set_target_path (http_ctx_t *req, const u8 *rx_buf, const u8 *path, u32 len, u32 query_offset)
+{
+  req->target_path_offset = req->target_path_len = 0;
+  req->target_query_offset = req->target_query_len = 0;
+  if (!len)
+    return;
+
+  u32 path_offset = path - rx_buf;
+  u8 leading_slash = path[0] == '/';
+  req->target_path_offset = path_offset + leading_slash;
+  req->target_path_len = query_offset - leading_slash;
+  if (query_offset < len)
+    {
+      req->target_query_offset = path_offset + query_offset + 1;
+      req->target_query_len = len - query_offset - 1;
     }
 }
 

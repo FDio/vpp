@@ -7,6 +7,7 @@
 #define SRC_PLUGINS_HTTP_HTTP_H_
 
 #include <ctype.h>
+#include <vppinfra/vector.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/ip/format.h>
 #include <vnet/ip/ip46_address.h>
@@ -634,28 +635,103 @@ typedef enum
   HTTP_URI_COMPONENT_QUERY,
 } http_uri_component_t;
 
-/* Validate encoded URI components without decoding, QUERY covers combined path and query. */
+always_inline u8
+http_uri_hex_digit_is_valid (u8 c)
+{
+  return (u8) (c - '0') <= 9 || (u8) ((c | 0x20) - 'a') <= 5;
+}
+
+always_inline u8
+http_uri_escape_digits_are_valid (const u8 *value, u32 len, u32 pos)
+{
+  return len - pos >= 3 && http_uri_hex_digit_is_valid (value[pos + 1]) &&
+	 http_uri_hex_digit_is_valid (value[pos + 2]);
+}
+
+/* For a combined path and query, optionally report the first '?' or len. */
 always_inline int
-http_validate_uri_component (u8 *value, u32 len, http_uri_component_t component, int *is_encoded)
+_http_validate_uri_component (const u8 *value, u32 len, http_uri_component_t component,
+			      int *is_encoded, u32 *query_offset)
 {
   int encoded = 0;
-  for (u32 i = 0; i < len; i++)
+  u32 i = 0, query = len;
+
+#if defined(CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE) && defined(CLIB_HAVE_VEC128_MSB_MASK) &&        \
+  defined(CLIB_VEC128_DYNAMIC_SHUFFLE_DEFINED)
+  if (len >= 16)
+    {
+      /* Each low-nibble entry has one bit per allowed high nibble.
+       * Start with the reg-name alphabet and add the component delimiters. */
+      u8x16 allowed_lo = { 0xa8, 0xfc, 0xf8, 0xf8, 0xfc, 0xf8, 0xfc, 0xfc,
+			   0xfc, 0xfc, 0xf4, 0x5c, 0x54, 0x5c, 0xd4, 0x70 };
+      const u8x16 high_bit = { 1, 2, 4, 8, 16, 32, 64, 128 };
+
+      if (component != HTTP_URI_COMPONENT_REG_NAME)
+	allowed_lo[':' & 0xf] |= 1 << (':' >> 4);
+      if (component >= HTTP_URI_COMPONENT_PATH)
+	{
+	  allowed_lo['@' & 0xf] |= 1 << ('@' >> 4);
+	  allowed_lo['/' & 0xf] |= 1 << ('/' >> 4);
+	}
+      if (component == HTTP_URI_COMPONENT_QUERY)
+	allowed_lo['?' & 0xf] |= 1 << ('?' >> 4);
+
+      for (; len - i >= 16; i += 16)
+	{
+	  u8x16 bytes = u8x16_load_unaligned ((void *) (value + i));
+	  u8x16 lo = bytes & u8x16_splat (0xf), hi = bytes >> 4;
+	  u8x16 allowed =
+	    u8x16_shuffle_dynamic (allowed_lo, lo) & u8x16_shuffle_dynamic (high_bit, hi);
+	  u32 special = u8x16_msb_mask (allowed == u8x16_splat (0));
+
+	  if (query_offset && query == len)
+	    {
+	      u32 questions = u8x16_msb_mask (bytes == u8x16_splat ('?'));
+	      if (questions)
+		query = i + count_trailing_zeros (questions);
+	    }
+	  /* Hex digits are already allowed bytes, so check only the '%' lane. */
+	  for (; special; special &= special - 1)
+	    {
+	      u32 pos = i + count_trailing_zeros (special);
+	      if (value[pos] != '%' || !http_uri_escape_digits_are_valid (value, len, pos))
+		return -1;
+	      encoded = 1;
+	    }
+	}
+    }
+#endif
+
+  for (; i < len; i++)
     {
       u8 c = value[i];
       if (http_uri_reg_name_char_is_valid (c) ||
 	  (component != HTTP_URI_COMPONENT_REG_NAME && c == ':') ||
-	  (component >= HTTP_URI_COMPONENT_PATH && (c == '@' || c == '/')) ||
-	  (component == HTTP_URI_COMPONENT_QUERY && c == '?'))
+	  (component >= HTTP_URI_COMPONENT_PATH && (c == '@' || c == '/')))
 	continue;
-      /* pct-encoded = "%" HEXDIG HEXDIG */
-      if (c != '%' || i + 2 >= len || !isxdigit (value[i + 1]) || !isxdigit (value[i + 2]))
+      if (component == HTTP_URI_COMPONENT_QUERY && c == '?')
+	{
+	  if (query_offset && query == len)
+	    query = i;
+	  continue;
+	}
+      if (c != '%' || !http_uri_escape_digits_are_valid (value, len, i))
 	return -1;
       i += 2;
       encoded = 1;
     }
   if (is_encoded)
     *is_encoded = encoded;
+  if (query_offset)
+    *query_offset = query;
   return 0;
+}
+
+/* Validate encoded URI components without decoding, QUERY covers combined path and query. */
+always_inline int
+http_validate_uri_component (u8 *value, u32 len, http_uri_component_t component, int *is_encoded)
+{
+  return _http_validate_uri_component (value, len, component, is_encoded, 0);
 }
 
 always_inline int
@@ -871,6 +947,31 @@ http_token_is_case (const char *actual, uword actual_len, const char *expected, 
   ASSERT (actual != 0);
   if (actual_len != expected_len)
     return 0;
+
+#ifdef CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE
+  if (i >= 16)
+    {
+      const u8x16 upper_a = u8x16_splat ('A'), upper_z = u8x16_splat ('Z');
+      const u8x16 case_bit = u8x16_splat (0x20);
+      for (;;)
+	{
+	  u8x16 a = u8x16_load_unaligned ((void *) actual);
+	  u8x16 e = u8x16_load_unaligned ((void *) expected);
+	  a |= ((a >= upper_a) & (a <= upper_z)) & case_bit;
+	  e |= ((e >= upper_a) & (e <= upper_z)) & case_bit;
+	  if (!u8x16_is_equal (a, e))
+	    return 0;
+	  if (i == 16)
+	    return 1;
+
+	  /* Overlap the final loads so they stay within both tokens. */
+	  uword step = clib_min (i - 16, 16);
+	  actual += step;
+	  expected += step;
+	  i -= step;
+	}
+    }
+#endif
 
   /* Tokens may be unaligned, so use memcpy for word loads. */
   while (i >= sizeof (uword))
