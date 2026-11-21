@@ -769,10 +769,108 @@ http_validate_query_syntax (u8 *query, int *is_encoded)
   return http_validate_target_syntax (query, vec_len (query), 1, is_encoded);
 }
 
+typedef struct
+{
+  const u8 *next;
+  const u8 *end;
+  u16 slash_mask;
+  u16 percent_mask;
+  u8 block_len;
+} http_path_iter_t;
+
+typedef struct
+{
+  const u8 *data;
+  u32 len;
+  u8 is_encoded;
+} http_path_segment_t;
+
+/** Initialize an iterator over a validated, encoded path slice. */
+always_inline http_path_iter_t
+http_path_iter_init (const u8 *path, u32 len)
+{
+  if (!len)
+    return (http_path_iter_t) {};
+  return (http_path_iter_t) { .next = path, .end = path + len };
+}
+
+/**
+ * Return 1 and a borrowed segment slice, or 0 when the path is exhausted.
+ * Literal slashes delimit segments. Empty segments, including the segment
+ * after a trailing slash, are returned. An empty path has no segments.
+ */
+always_inline u8
+http_path_iter_next (http_path_iter_t *iter, http_path_segment_t *segment)
+{
+  const u8 *p = iter->next;
+  u8 is_encoded = 0;
+
+  if (!p)
+    return 0;
+
+#if defined(CLIB_HAVE_VEC128_UNALIGNED_LOAD_STORE) && defined(CLIB_HAVE_VEC128_MSB_MASK)
+  while (iter->block_len || iter->end - p >= 16)
+    {
+      if (!iter->block_len)
+	{
+	  u8x16 bytes = u8x16_load_unaligned ((void *) p);
+	  iter->slash_mask = u8x16_msb_mask (bytes == u8x16_splat ('/'));
+	  iter->percent_mask = u8x16_msb_mask (bytes == u8x16_splat ('%'));
+	  iter->block_len = 16;
+	}
+      if (iter->slash_mask)
+	{
+	  u32 slash = count_trailing_zeros (iter->slash_mask);
+	  is_encoded |= (iter->percent_mask & pow2_mask (slash)) != 0;
+	  /* Retain the masks for unread bytes after this slash. */
+	  iter->slash_mask >>= slash + 1;
+	  iter->percent_mask >>= slash + 1;
+	  iter->block_len -= slash + 1;
+	  p += slash;
+	  break;
+	}
+      is_encoded |= iter->percent_mask != 0;
+      p += iter->block_len;
+      iter->block_len = 0;
+    }
+#endif
+
+  while (p != iter->end && *p != '/')
+    is_encoded |= *p++ == '%';
+
+  *segment =
+    (http_path_segment_t) { .data = iter->next, .len = p - iter->next, .is_encoded = is_encoded };
+  iter->next = p == iter->end ? 0 : p + 1;
+  return 1;
+}
+
 #define htoi(x) (isdigit (x) ? ((x) - '0') : (tolower (x) - 'a' + 10))
 
 /**
- * Decode percent-encoded data.
+ * Decode validated percent escapes into a buffer with room for len bytes.
+ * The buffers may overlap when dst starts at or before src.
+ * Return the number of bytes written.
+ */
+always_inline u32
+http_percent_decode_to (u8 *dst, const u8 *src, u32 len)
+{
+  u32 written = 0;
+
+  for (u32 i = 0; i < len; i++)
+    {
+      u8 c = src[i];
+      if (c == '%')
+	{
+	  c = (htoi (src[i + 1]) << 4) | htoi (src[i + 2]);
+	  i += 2;
+	}
+      dst[written++] = c;
+    }
+  return written;
+}
+
+/**
+ * Decode data with validated percent escapes.
  *
  * @param src Data to decode.
  * @param len Length of data to decode.
@@ -784,20 +882,10 @@ http_validate_query_syntax (u8 *query, int *is_encoded)
 always_inline u8 *
 http_percent_decode (u8 *src, u32 len)
 {
-  u32 i;
-  u8 *decoded_uri = 0;
-
-  for (i = 0; i < len; i++)
-    {
-      if (src[i] == '%')
-	{
-	  u8 c = (htoi (src[i + 1]) << 4) | htoi (src[i + 2]);
-	  vec_add1 (decoded_uri, c);
-	  i += 2;
-	}
-      else
-	vec_add1 (decoded_uri, src[i]);
-    }
+  if (!len)
+    return 0;
+  u8 *decoded_uri = vec_new (u8, len);
+  vec_set_len (decoded_uri, http_percent_decode_to (decoded_uri, src, len));
   return decoded_uri;
 }
 

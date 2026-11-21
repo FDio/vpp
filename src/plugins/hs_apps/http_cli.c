@@ -308,21 +308,11 @@ hcs_cli_process (vlib_main_t *vm, vlib_node_runtime_t *rt, vlib_frame_t *f)
   hcs_main_t *hcm = &hcs_main;
   hcs_cli_args_t **save_args;
   unformat_input_t input;
-  int i;
 
   save_args = vlib_node_get_runtime_data (hcm->vlib_main, rt->node_index);
   args = *save_args;
 
   request = args->buf;
-
-  /* Replace slashes with spaces, stop at the end of the path */
-  i = 0;
-  while (i < vec_len (request))
-    {
-      if (request[i] == '/')
-	request[i] = ' ';
-      i++;
-    }
   HCS_DBG ("%v", request);
 
   /* Run the command */
@@ -488,13 +478,37 @@ hcs_discard_rx (session_t *ts)
     }
 }
 
+static void
+hcs_path_to_command (u8 *path)
+{
+  http_path_iter_t iter = http_path_iter_init (path, vec_len (path));
+  http_path_segment_t segment;
+  u8 *dst = path;
+
+  /* Only literal slashes separate command words. */
+  while (http_path_iter_next (&iter, &segment))
+    {
+      if (segment.data != path)
+	*dst++ = ' ';
+      if (segment.is_encoded)
+	dst += http_percent_decode_to (dst, segment.data, segment.len);
+      else
+	{
+	  if (dst != segment.data)
+	    memmove (dst, segment.data, segment.len);
+	  dst += segment.len;
+	}
+    }
+  vec_set_len (path, dst - path);
+}
+
 static int
 hcs_ts_rx_callback (session_t *ts)
 {
   hcs_cli_args_t args = {};
   hcs_session_t *hs;
   http_msg_t msg;
-  int rv, is_encoded = 0;
+  int rv;
   u8 is_echo;
 
   hs = hcs_session_get (ts->thread_index, ts->opaque);
@@ -546,19 +560,7 @@ hcs_ts_rx_callback (session_t *ts)
       rv = svm_fifo_peek (ts->rx_fifo, msg.data.target_path_offset, msg.data.target_path_len,
 			  args.buf);
       ASSERT (rv == msg.data.target_path_len);
-    }
-  HCS_DBG ("%v", args.buf);
-  if (http_validate_abs_path_syntax (args.buf, &is_encoded))
-    {
-      start_send_data (hs, HTTP_STATUS_BAD_REQUEST);
-      vec_free (args.buf);
-      goto done;
-    }
-  if (is_encoded)
-    {
-      u8 *decoded = http_percent_decode (args.buf, vec_len (args.buf));
-      vec_free (args.buf);
-      args.buf = decoded;
+      hcs_path_to_command (args.buf);
     }
 
   is_echo =

@@ -4006,18 +4006,25 @@ func HttpUriDecodeTest(s *Http1Suite) {
 	vpp.Vppctl("http cli server uri http://" + serverAddress)
 
 	client := NewHttpClient(defaultHttpTimeout, false)
-	req, err := http.NewRequest("GET", "http://"+serverAddress+"/sh%6fw%20versio%6E%20verbose", nil)
-	AssertNil(err, fmt.Sprint(err))
-	resp, err := client.Do(req)
-	AssertNil(err, fmt.Sprint(err))
-	defer resp.Body.Close()
-	Log(DumpHttpResp(resp, true))
-	AssertHttpStatus(resp, 200)
-	data, err := io.ReadAll(resp.Body)
-	AssertNil(err, fmt.Sprint(err))
-	AssertNotContains(string(data), "unknown input")
-	AssertContains(string(data), "Compiler")
-	AssertHttpHeaderWithValue(resp, "Content-Type", "text/html")
+	for _, tc := range []struct {
+		path, want string
+	}{
+		{"/show/version/verbose", "Compiler"},
+		{"/sh%6fw%20versio%6E%20verbose", "Compiler"},
+		{"/sh%6fw//versio%6E/verbose/", "Compiler"},
+		{"/show%2Fversion/verbose", "unknown input"},
+		{"/echo/left%2fright/next", "left/right next"},
+		{"/echo/left%252Fright/next", "left%2Fright next"},
+	} {
+		resp, err := client.Get("http://" + serverAddress + tc.path)
+		AssertNil(err, tc.path)
+		AssertHttpStatus(resp, http.StatusOK, tc.path)
+		AssertHttpHeaderWithValue(resp, "Content-Type", "text/html", tc.path)
+		data, err := io.ReadAll(resp.Body)
+		AssertNil(resp.Body.Close(), tc.path)
+		AssertNil(err, tc.path)
+		AssertContains(string(data), tc.want, tc.path)
+	}
 }
 
 func http1ReadTargetHeaders(address, method, target string) *http.Response {
