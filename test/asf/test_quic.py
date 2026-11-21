@@ -63,9 +63,6 @@ class QUICTestCase(VppAsfTestCase):
     """QUIC Test Case"""
 
     timeout = 20
-    # vperf transfers can legitimately take longer than the framework's
-    # default 5 second API response timeout on loaded CI workers.
-    vapi_response_timeout = timeout
     pre_test_sleep = 0.3
     post_test_sleep = 0.3
     server_appns = "server"
@@ -81,6 +78,8 @@ class QUICTestCase(VppAsfTestCase):
 
     @classmethod
     def setUpClass(cls):
+        # vperf blocks the API reply until completion.
+        cls.vapi_response_timeout = cls.timeout
         cls.extra_vpp_plugin_config.append("plugin quic_plugin.so { enable }")
         cls.extra_vpp_plugin_config.append("plugin quic_quicly_plugin.so { enable }")
         cls.extra_vpp_config = list(cls.extra_vpp_config) + [
