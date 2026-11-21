@@ -315,8 +315,11 @@ void *clib_mem_vm_map_stack (uword size, clib_mem_page_sz_t log2_page_size,
 void *clib_mem_vm_map_shared (void *start, uword size, int fd, uword offset,
 			      char *fmt, ...);
 int clib_mem_vm_unmap (void *base);
+/** Not thread safe, it changes header protection while walking */
 clib_mem_vm_map_hdr_t *clib_mem_vm_get_next_map_hdr (clib_mem_vm_map_hdr_t *
 						     hdr);
+/** Log2 page size of the mapping containing addr, default page size if none */
+clib_mem_page_sz_t clib_mem_vm_get_log2_page_size_at (void *addr);
 
 static_always_inline clib_mem_page_sz_t
 clib_mem_get_log2_page_size (void)

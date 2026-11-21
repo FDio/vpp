@@ -304,6 +304,32 @@ clib_mem_vm_get_next_map_hdr (clib_mem_vm_map_hdr_t * hdr)
   return next;
 }
 
+/* Heaps are created right after their memory is mapped, so search back from the last map.
+ * Protection changes on map headers are serialized by the map lock. */
+__clib_export clib_mem_page_sz_t
+clib_mem_vm_get_log2_page_size_at (void *addr)
+{
+  clib_mem_main_t *mm = &clib_mem_main;
+  uword sys_page_sz = 1ULL << mm->log2_page_sz, a = pointer_to_uword (addr);
+  clib_mem_page_sz_t log2_page_sz = mm->log2_page_sz;
+  clib_mem_vm_map_hdr_t *hdr, *prev;
+
+  map_lock ();
+  for (hdr = mm->last_map; hdr; hdr = prev)
+    {
+      mprotect (hdr, sys_page_sz, PROT_READ);
+      prev = hdr->prev;
+      if (a >= hdr->base_addr && a < hdr->base_addr + (hdr->num_pages << hdr->log2_page_sz))
+	{
+	  log2_page_sz = hdr->log2_page_sz;
+	  prev = 0;
+	}
+      mprotect (hdr, sys_page_sz, PROT_NONE);
+    }
+  map_unlock ();
+  return log2_page_sz;
+}
+
 void *
 clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
 			  uword size, int fd, u8 log2_align, uword offset,
