@@ -232,7 +232,6 @@ vnp_map_caps (vlib_main_t *vm, vnet_dev_t *dev)
 	  if (rv)
 	    return rv;
 
-	  vd->notify_multiplier = vd->notify_multiplier;
 	  vd->notify = base;
 	  vd->notify_length = length;
 	  break;
