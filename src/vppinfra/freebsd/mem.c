@@ -196,6 +196,13 @@ uword
   return NULL;
 }
 
+__clib_export clib_mem_page_sz_t
+clib_mem_vm_get_log2_page_size_at (void *addr)
+{
+  /* Map headers are not tracked yet, see clib_mem_vm_get_next_map_hdr */
+  return clib_mem_get_log2_page_size ();
+}
+
 void *
 clib_mem_vm_map_internal (void *base, clib_mem_page_sz_t log2_page_sz,
 			  uword size, int fd, u8 log2_align, uword offset,
