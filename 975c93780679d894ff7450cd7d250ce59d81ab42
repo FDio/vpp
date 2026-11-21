@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "de1c49f6_7991c5b0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-11-21T10:44:09Z",
+      "side": 1,
+      "message": "In enqueue.c: the separate seq_cst fence followed by an acquire exchange could be folded into a single seq_cst RMW:\n\nif (!__atomic_exchange_n (\u0026qp-\u003ehdr-\u003eenq.interrupt_pending, 1, __ATOMIC_SEQ_CST))\nOn x86 the xchg is already a full barrier, so the explicit fence only adds an extra mfence on a per-frame path. On ARM a seq_cst exchange (ldaxr/stlxr or swpal) orders the preceding head store without a separate dmb. SEQ_CST includes acquire, so it still pairs with the DAQ\u0027s release store of 0.",
+      "revId": "975c93780679d894ff7450cd7d250ce59d81ab42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
