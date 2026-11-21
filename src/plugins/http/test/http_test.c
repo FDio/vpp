@@ -5605,6 +5605,7 @@ done:
     if (streams[i] != SESSION_INVALID_HANDLE)
       {
 	s = session_get_from_handle (streams[i]);
+	/* coverity[forward_null] - streams are only set after callbacks is initialized */
 	callbacks.session_cleanup_callback (s, SESSION_CLEANUP_SESSION);
 	session_free (session_get_from_handle (streams[i]));
       }
