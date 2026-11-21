@@ -1320,7 +1320,7 @@ func Http3ClientPostPtrTest(s *VethsSuite) {
 // Withhold ACKs and the solicited RESET_STREAM until STOP_SENDING is retransmitted.
 // This also keeps the response unacknowledged while request cancellation completes.
 type http3EarlyPacketConn struct {
-	net.PacketConn
+	quicTestUDPSocket
 	mu         sync.Mutex
 	retry      bool
 	stops      []quic.StreamErrorCode
@@ -1370,7 +1370,7 @@ func (c *http3EarlyPacketConn) WriteTo(p []byte, addr net.Addr) (int, error) {
 	if drop {
 		return len(p), nil
 	}
-	return c.PacketConn.WriteTo(p, addr)
+	return c.quicTestUDPSocket.WriteTo(p, addr)
 }
 
 func http3EarlyHeaders(fields []qpack.HeaderField) []byte {
@@ -1443,10 +1443,10 @@ func http3EarlyResponseTest(s *Http3Suite, mode string, complete bool, retry boo
 	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
 	Log(vpp.Vppctl("http tps fifo-size 8k no-zc h3 uri https://" + address))
 	cleanup := quicCleanupCheck(5*time.Second, vpp)
-	socket, err := net.ListenPacket("udp4", net.JoinHostPort(s.HostAddr(), "0"))
+	socket, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.ParseIP(s.HostAddr())})
 	AssertNil(err)
 	defer socket.Close()
-	packets := &http3EarlyPacketConn{PacketConn: socket, retry: retry, changed: make(chan struct{}, 1)}
+	packets := &http3EarlyPacketConn{quicTestUDPSocket: socket, retry: retry, changed: make(chan struct{}, 1)}
 	transport := quic.Transport{Conn: packets}
 	if complete {
 		packets.requestFin = newHttp3FinPacketConn(socket)
@@ -2438,7 +2438,7 @@ func Http3PeerResetStream(s *Http3Suite) {
 // http3ResetPacketConn creates a packet-number gap before the invalid request.
 // Subsequent client packets are suppressed so they cannot flush stranded reset.
 type http3ResetPacketConn struct {
-	net.PacketConn
+	quicTestUDPSocket
 	mu              sync.Mutex
 	sent            []qlog.PacketSent
 	serverPending   map[qlog.PacketNumber]bool
@@ -2556,7 +2556,7 @@ func (c *http3ResetPacketConn) WriteTo(p []byte, addr net.Addr) (int, error) {
 		c.requestSent = true
 		c.requestPacket = requestPacket
 	}
-	n, err := c.PacketConn.WriteTo(p, addr)
+	n, err := c.quicTestUDPSocket.WriteTo(p, addr)
 	c.notify()
 	return n, err
 }
@@ -2582,14 +2582,14 @@ func http3SenInvalidReqExpectStreamError(s *Http3Suite, p []byte, expectedErrorC
 	serverAddress := s.VppAddr() + ":" + s.Ports.Port1
 	Log(vpp.Vppctl("http tps no-zc h3 uri https://" + serverAddress))
 
-	socket, err := net.ListenPacket("udp4", s.HostAddr()+":0")
+	socket, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.ParseIP(s.HostAddr())})
 	AssertNil(err)
 	defer socket.Close()
 	packets := &http3ResetPacketConn{
-		PacketConn:      socket,
-		serverPending:   make(map[qlog.PacketNumber]bool),
-		settingsPackets: make(map[qlog.PacketNumber]bool),
-		changed:         make(chan struct{}, 1),
+		quicTestUDPSocket: socket,
+		serverPending:     make(map[qlog.PacketNumber]bool),
+		settingsPackets:   make(map[qlog.PacketNumber]bool),
+		changed:           make(chan struct{}, 1),
 	}
 	transport := quic.Transport{Conn: packets}
 	defer transport.Close()
@@ -2751,7 +2751,7 @@ func http3FinReadResponse(stream *quic.Stream, bodyLength int) {
 // until the server acknowledges a packet carrying FIN, so it sees the final
 // stream size before it can respond to the complete request.
 type http3FinPacketConn struct {
-	net.PacketConn
+	quicTestUDPSocket
 	mu                 sync.Mutex
 	sent               []qlog.PacketSent
 	held               [][]byte
@@ -2762,9 +2762,9 @@ type http3FinPacketConn struct {
 	finAck             chan struct{}
 }
 
-func newHttp3FinPacketConn(socket net.PacketConn) *http3FinPacketConn {
+func newHttp3FinPacketConn(socket quicTestUDPSocket) *http3FinPacketConn {
 	return &http3FinPacketConn{
-		PacketConn:         socket,
+		quicTestUDPSocket:  socket,
 		finPackets:         make(map[qlog.PacketNumber]bool),
 		handshakeConfirmed: make(chan struct{}),
 		requestHeld:        make(chan struct{}, 1),
@@ -2808,7 +2808,7 @@ func (c *http3FinPacketConn) WriteTo(p []byte, addr net.Addr) (int, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.finAcknowledged {
-		return c.PacketConn.WriteTo(p, addr)
+		return c.quicTestUDPSocket.WriteTo(p, addr)
 	}
 	// qlog records each QUIC packet before its datagram reaches WriteTo.
 	length, count := 0, 0
@@ -2842,14 +2842,14 @@ func (c *http3FinPacketConn) WriteTo(p []byte, addr net.Addr) (int, error) {
 		}
 		return len(p), nil
 	}
-	return c.PacketConn.WriteTo(p, addr)
+	return c.quicTestUDPSocket.WriteTo(p, addr)
 }
 
 func (c *http3FinPacketConn) release(addr net.Addr) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for _, p := range c.held {
-		if _, err := c.PacketConn.WriteTo(p, addr); err != nil {
+		if _, err := c.quicTestUDPSocket.WriteTo(p, addr); err != nil {
 			return err
 		}
 	}
@@ -2887,7 +2887,7 @@ func (c *http3FinPacketConn) writeCompleteRequest(ctx context.Context, stream *q
 func http3ConnectWithFinGate(ctx context.Context, hostAddress, serverAddress string) (*quic.Conn, *http3FinPacketConn, func()) {
 	address, err := net.ResolveUDPAddr("udp4", serverAddress)
 	AssertNil(err)
-	socket, err := net.ListenPacket("udp4", net.JoinHostPort(hostAddress, "0"))
+	socket, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.ParseIP(hostAddress)})
 	AssertNil(err)
 	packets := newHttp3FinPacketConn(socket)
 	transport := quic.Transport{Conn: packets}
