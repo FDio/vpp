@@ -1107,7 +1107,7 @@ cli_parse_line (const cli_arg_t *args, u8 *line, cli_ctx_t *ctx)
   p.line = line;
   p.tok = toks;
   p.n_tok = n_args;
-  r = parse_seq (&p, args ? args : cli_no_args, 1);
+  r = parse_seq (&p, args, 1);
   if (r == P_OK && p.i < p.n_tok)
     {
       cli_candidate_t *kw = 0;
