@@ -374,6 +374,7 @@ mlx5_txq_wqe_send (vlib_main_t *vm, mlx5_txq_t *tq, u32 mask, u16 tail, vlib_buf
   mlx5_tx_ctrl (&wqe->ctrl, tq->tmpl_ctrl, tail, n_ds);
   wqe->eseg = tq->tmpl_eseg;
   wqe->eseg.cs_flags = mlx5_tx_cs_flags (b);
+  /* coverity[overrun-buffer-arg] - the inline header continues past eseg into the wqe */
   clib_memcpy_fast (wqe->eseg.inline_hdr_start, b->data + b->current_data,
 		    MLX5_ETH_L2_INLINE_HEADER_SIZE);
   mlx5_txq_wqe_dsegs (vm, tq, mask, tail, MLX5_TX_SEND_DS, t, b, MLX5_ETH_L2_INLINE_HEADER_SIZE);
