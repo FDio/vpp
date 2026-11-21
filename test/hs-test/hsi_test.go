@@ -29,7 +29,8 @@ func init() {
 		HsiProxyLiteUdpDrainCacheOverflowTest,
 		HsiProxyLiteUdpDrainTimeoutTest, HsiProxyLiteDrainTransportClosedTest, HsiProxyLiteLossTest,
 		HsiProxyLiteDrainActiveSenderTest, HsiProxyLiteUdpDrainIcmpTest,
-		HsiTrackerTcpDrainedRstTest, HsiProxyLiteClientCloseWhileConnectingTest)
+		HsiTrackerTcpDrainedRstTest, HsiProxyLiteClientCloseWhileConnectingTest,
+		HsiProxyLiteDrainTransportDeletedTest)
 	RegisterHsiMWTests(HsiProxyLiteOffloadMWTest, HsiProxyLiteRepeatedOffloadMWTest,
 		HsiProxyLiteDrainOffloadMWTest,
 		HsiProxyLiteUdpConnectedMWTest, HsiProxyLiteUdpDrainOffloadMWTest,
@@ -703,6 +704,12 @@ func HsiProxyLiteNoOffloadMWTest(s *HsiSuite) {
 }
 
 func HsiProxyLiteDrainTransportClosedTest(s *HsiSuite) {
+	runHsiProxyLiteDrainTransportClosedTest(s)
+}
+
+// TCP's 1 ms cleanup runs before HSI's drain scan. The deleted transport
+// must still result in both session cleanup notifications.
+func HsiProxyLiteDrainTransportDeletedTest(s *HsiSuite) {
 	runHsiProxyLiteDrainTransportClosedTest(s)
 }
 
