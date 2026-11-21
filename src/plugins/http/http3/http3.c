@@ -1189,6 +1189,7 @@ http3_req_state_wait_transport_method (http_ctx_t *stream, http_ctx_t *req,
       return HTTP_SM_STOP;
     }
   req->method = control_data.method;
+  /* coverity[overflow_assign] - ~0 is truncated to ~0 */
   req->content_len_header_index = control_data.content_len_header_index;
   if (req->content_len_header_index != ~0)
     {
@@ -1360,6 +1361,7 @@ http3_req_state_wait_transport_reply (http_ctx_t *stream, http_ctx_t *req,
   req->headers_len = control_data.headers_len;
   req->status_code = control_data.sc;
   req->body_len = 0;
+  /* coverity[overflow_assign] - ~0 is truncated to ~0 */
   req->content_len_header_index = control_data.content_len_header_index;
 
   if (!(control_data.parsed_bitmap & HPACK_PSEUDO_HEADER_STATUS_PARSED))
