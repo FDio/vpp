@@ -1619,7 +1619,7 @@ vperf_process_http_server_read_msg (vperf_session_t *ts, void *buf, uint32_t nby
 	}
       else if (PREDICT_FALSE (vperf_http_ctx->test_state == VPERF_HTTP_IDLE))
 	{
-	  msg = *(http_msg_t *) buf;
+	  clib_memcpy_fast (&msg, buf, sizeof (msg));
 
 	  /* verify that we have received http post request from client */
 	  if (msg.type != HTTP_MSG_REQUEST || msg.method_type != HTTP_REQ_POST)
