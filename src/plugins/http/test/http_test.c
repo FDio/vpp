@@ -523,6 +523,8 @@ http_test_http_token_is_case (vlib_main_t *vm)
   static const char ne_4[] = "content-len";
   static const char ne_5[] = "comtent-length";
   static const char ne_6[] = "content-lengtR";
+  _Alignas (uword) static const char actual[] = "xHTTPS://";
+  _Alignas (uword) static const char expected[] = "xxhttps://";
   u8 rv;
 
   rv = http_token_is_case (
@@ -576,6 +578,9 @@ http_test_http_token_is_case (vlib_main_t *vm)
     ne_6, strlen (ne_6), http_header_name_token (HTTP_HEADER_CONTENT_LENGTH));
   HTTP_TEST ((rv == 0), "'%s' and '%s' are not equal", ne_6,
 	     http_header_name_str (HTTP_HEADER_CONTENT_LENGTH))
+
+  rv = http_token_is_case (actual + 1, sizeof (actual) - 2, expected + 2, sizeof (expected) - 3);
+  HTTP_TEST (rv == 1, "case comparison accepts unaligned tokens");
 
   return 0;
 }
@@ -1663,9 +1668,7 @@ http_test_hpack (vlib_main_t *vm)
 
   vlib_cli_output (vm, "hpack_decode_header");
 
-  static hpack_error_t (*_hpack_decode_header) (u8 * *src, u8 * end, u8 * *buf, uword * buf_len,
-						u32 * name_len, u32 * value_len,
-						hpack_dynamic_table_t * dt, u8 * never_index);
+  static hpack_header_decoder_fn *_hpack_decode_header;
 
   _hpack_decode_header =
     vlib_get_plugin_symbol ("http_plugin.so", "hpack_decode_header");
@@ -2099,8 +2102,7 @@ http_test_h2_frame (vlib_main_t *vm)
 
   vlib_cli_output (vm, "http2_frame_write_rst_stream");
 
-  static void (*_http2_frame_write_rst_stream) (u32 increment, u32 stream_id,
-						u8 * *dst);
+  static typeof (http2_frame_write_rst_stream) *_http2_frame_write_rst_stream;
 
   _http2_frame_write_rst_stream =
     vlib_get_plugin_symbol ("http_plugin.so", "http2_frame_write_rst_stream");

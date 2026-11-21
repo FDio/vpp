@@ -865,31 +865,31 @@ http_tolower_word (uword x)
  * @return @c 1 if tokens are same, @c 0 otherwise.
  */
 always_inline u8
-http_token_is_case (const char *actual, uword actual_len, const char *expected,
-		    uword expected_len)
+http_token_is_case (const char *actual, uword actual_len, const char *expected, uword expected_len)
 {
-  uword i, last_a = 0, last_e = 0;
-  uword *a, *e;
+  uword i = expected_len;
   ASSERT (actual != 0);
   if (actual_len != expected_len)
     return 0;
 
-  i = expected_len;
-  a = (uword *) actual;
-  e = (uword *) expected;
+  /* Tokens may be unaligned, so use memcpy for word loads. */
   while (i >= sizeof (uword))
     {
-      if (http_tolower_word (*a) != http_tolower_word (*e))
+      uword a, e;
+      clib_memcpy_fast (&a, actual, sizeof (a));
+      clib_memcpy_fast (&e, expected, sizeof (e));
+      if (http_tolower_word (a) != http_tolower_word (e))
 	return 0;
-      a++;
-      e++;
+      actual += sizeof (uword);
+      expected += sizeof (uword);
       i -= sizeof (uword);
     }
   if (i > 0)
     {
-      clib_memcpy_fast (&last_a, a, i);
-      clib_memcpy_fast (&last_e, e, i);
-      if (http_tolower_word (last_a) != http_tolower_word (last_e))
+      uword a = 0, e = 0;
+      clib_memcpy_fast (&a, actual, i);
+      clib_memcpy_fast (&e, expected, i);
+      if (http_tolower_word (a) != http_tolower_word (e))
 	return 0;
     }
   return 1;
@@ -982,7 +982,7 @@ _http_ht_hash_key_sum (hash_t *h, uword key)
 {
   http_token_t *name = uword_to_pointer (key, http_token_t *);
   uword last[3] = {};
-  uwordu *q = (uword *) name->base;
+  const uwordu *q = (const uwordu *) name->base;
   u64 a, b, c, n;
 
   a = b = (uword_bits == 64) ? 0x9e3779b97f4a7c13LL : 0x9e3779b9;
@@ -1145,11 +1145,12 @@ typedef struct
   u8 *buf;	   /**< start of header data */
 } http_headers_ctx_t;
 
+/* Serialized headers follow variable-length tokens without alignment padding. */
 typedef struct
 {
   u32 len;
   u8 token[0];
-} http_custom_token_t;
+} __clib_packed http_custom_token_t;
 
 typedef struct
 {
@@ -1163,13 +1164,19 @@ typedef struct
       u8 token[0];
     };
   };
-} http_app_header_name_t;
+} __clib_packed http_app_header_name_t;
 
 typedef struct
 {
   http_app_header_name_t name;
   http_custom_token_t value;
-} http_app_header_t;
+} __clib_packed http_app_header_t;
+
+STATIC_ASSERT_SIZEOF (http_custom_token_t, 4);
+STATIC_ASSERT_SIZEOF (http_app_header_name_t, 4);
+STATIC_ASSERT_OFFSET_OF (http_app_header_name_t, len, 2);
+STATIC_ASSERT_SIZEOF (http_app_header_t, 8);
+STATIC_ASSERT_OFFSET_OF (http_app_header_t, value, 4);
 
 /**
  * Initialize headers list context.

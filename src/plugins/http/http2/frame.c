@@ -44,7 +44,7 @@ http2_frame_header_read (u8 *src, http2_frame_header_t *fh)
   src = http2_decode_u24 (src, &fh->length);
   fh->type = *src++;
   fh->flags = *src++;
-  fh->stream_id = *(u32 *) src;
+  clib_memcpy_fast (&fh->stream_id, src, sizeof (fh->stream_id));
   /* mask reserved bit */
   fh->stream_id &= clib_host_to_net_u32 (0x7FFFFFFF);
 }
@@ -130,17 +130,17 @@ http2_frame_write_settings (http2_settings_entry_t *settings, u8 **dst)
 __clib_export http2_error_t
 http2_frame_read_window_update (u32 *increment, u8 *payload, u32 payload_len)
 {
-  u32 *value;
+  u32 value;
 
   if (payload_len != HTTP2_WINDOW_UPDATE_LENGTH)
     return HTTP2_ERROR_FRAME_SIZE_ERROR;
 
-  value = (u32 *) payload;
+  clib_memcpy_fast (&value, payload, sizeof (value));
 
-  if (*value == 0)
+  if (value == 0)
     return HTTP2_ERROR_PROTOCOL_ERROR;
 
-  *increment = clib_net_to_host_u32 (*value) & 0x7FFFFFFF;
+  *increment = clib_net_to_host_u32 (value) & 0x7FFFFFFF;
   return HTTP2_ERROR_NO_ERROR;
 }
 
@@ -166,14 +166,13 @@ http2_frame_write_window_update (u32 increment, u32 stream_id, u8 **dst)
 __clib_export http2_error_t
 http2_frame_read_rst_stream (u32 *error_code, u8 *payload, u32 payload_len)
 {
-  u32 *value;
+  u32 value;
 
   if (payload_len != HTTP2_RST_STREAM_LENGTH)
     return HTTP2_ERROR_FRAME_SIZE_ERROR;
 
-  value = (u32 *) payload;
-
-  *error_code = clib_net_to_host_u32 (*value);
+  clib_memcpy_fast (&value, payload, sizeof (value));
+  *error_code = clib_net_to_host_u32 (value);
   return HTTP2_ERROR_NO_ERROR;
 }
 
@@ -201,17 +200,17 @@ __clib_export http2_error_t
 http2_frame_read_goaway (u32 *error_code, u32 *last_stream_id, u8 *payload,
 			 u32 payload_len)
 {
-  u32 *value;
+  u32 value;
 
   if (payload_len < HTTP2_GOAWAY_MIN_SIZE)
     return HTTP2_ERROR_FRAME_SIZE_ERROR;
 
-  value = (u32 *) payload;
-  *last_stream_id = clib_net_to_host_u32 (*value) & 0x7FFFFFFF;
-  payload += 4;
+  clib_memcpy_fast (&value, payload, sizeof (value));
+  *last_stream_id = clib_net_to_host_u32 (value) & 0x7FFFFFFF;
+  payload += sizeof (value);
 
-  value = (u32 *) payload;
-  *error_code = clib_net_to_host_u32 (*value);
+  clib_memcpy_fast (&value, payload, sizeof (value));
+  *error_code = clib_net_to_host_u32 (value);
 
   return HTTP2_ERROR_NO_ERROR;
 }
