@@ -283,7 +283,6 @@ int vnet_pppoe_add_del_session
   pppoe_entry_key_t key;
   pppoe_entry_result_t result;
   vnet_hw_interface_t *hi;
-  vnet_sw_interface_t *si;
   fib_prefix_t pfx;
 
   cached_key.raw = ~0;
@@ -312,8 +311,8 @@ int vnet_pppoe_add_del_session
   if (a->encap_if_index == ~0)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
-  si = vnet_get_sw_interface (vnm, a->encap_if_index);
-  hi = vnet_get_hw_interface (vnm, si->hw_if_index);
+  /* a sub-interface has no hardware of its own, use its parent's */
+  hi = vnet_get_sup_hw_interface (vnm, a->encap_if_index);
 
   /* lookup session_table */
   pppoe_lookup_1 (&pem->session_table, &cached_key, &cached_result,

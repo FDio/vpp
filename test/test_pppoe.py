@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
+import re
 import socket
 import unittest
 
 from scapy.packet import Raw
-from scapy.layers.l2 import Ether
+from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.ppp import PPPoE, PPPoED, PPP
 from scapy.layers.inet import IP
 
@@ -12,6 +13,7 @@ from framework import VppTestCase
 from asfframework import VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath
 from vpp_pppoe_interface import VppPppoeInterface
+from vpp_sub_interface import VppDot1QSubint
 from util import ppp
 from config import config
 
@@ -644,6 +646,53 @@ class TestPPPoE(VppTestCase):
 
         # Delete a route that resolves the server's destination
         route_sever_dst.remove_vpp_config()
+
+    def test_PPPoE_Session_Vlan_Local_Mac(self):
+        """PPPoE Session Local MAC On Dot1Q Sub-interface Test"""
+
+        client_mac = "02:00:00:00:64:01"
+
+        # Create a dot1q sub-interface
+        sub_if = VppDot1QSubint(self, self.pg0, 100)
+        sub_if.admin_up()
+
+        # Send PPPoE Discovery tagged for the sub-interface
+        tx0 = [
+            Ether(dst=self.pg0.local_mac, src=client_mac)
+            / Dot1Q(vlan=100)
+            / PPPoED(sessionid=0)
+        ]
+        self.pg0.add_stream(tx0)
+        self.pg_start()
+
+        # Create PPPoE session
+        pppoe_if = VppPppoeInterface(
+            self, self.pg0.remote_ip4, client_mac, self.session_id
+        )
+        pppoe_if.add_vpp_config()
+
+        #
+        # The session is on the sub-interface, and its local MAC address
+        # is the one of the sub-interface's parent
+        #
+        sessions = self.vapi.cli("show pppoe session")
+        self.logger.info(sessions)
+        session = re.search(
+            r"encap-if-index %d .*\n +local-mac (\S+)" % sub_if.sw_if_index,
+            sessions,
+        )
+        self.assertIsNotNone(session)
+        self.assertEqual(session.group(1), self.pg0.local_mac)
+
+        #
+        # test case cleanup
+        #
+
+        # Delete PPPoE session
+        pppoe_if.remove_vpp_config()
+
+        # Delete the dot1q sub-interface
+        sub_if.remove_vpp_config()
 
 
 if __name__ == "__main__":
