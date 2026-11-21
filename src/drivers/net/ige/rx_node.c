@@ -189,6 +189,7 @@ ige_rx_deq_64_desc (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queu
 
   if (PREDICT_FALSE (n_drop))
     {
+      /* coverity[overrun-buffer-val] - at most one drop per descriptor, n_descs <= 64 */
       vlib_buffer_free (vm, drop, n_drop);
       vlib_error_count (vm, node->node_index, IGE_RX_NODE_CTR_DESC_ERROR, n_drop);
     }
