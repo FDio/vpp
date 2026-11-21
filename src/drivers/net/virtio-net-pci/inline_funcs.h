@@ -209,6 +209,7 @@ vnp_txq_reclaim (vlib_main_t *vm, vnp_txq_t *q, u16 size)
 
       if (n_buffers == ARRAY_LEN (buffers))
 	{
+	  /* coverity[overrun-buffer-val] - flushed when n_buffers reaches ARRAY_LEN */
 	  vlib_buffer_free (vm, buffers, n_buffers);
 	  n_buffers = 0;
 	}
@@ -229,6 +230,7 @@ vnp_txq_reclaim (vlib_main_t *vm, vnp_txq_t *q, u16 size)
   q->n_free = n_free;
 
   if (n_buffers)
+    /* coverity[overrun-buffer-val] - n_buffers is at most ARRAY_LEN (buffers) */
     vlib_buffer_free (vm, buffers, n_buffers);
 }
 
