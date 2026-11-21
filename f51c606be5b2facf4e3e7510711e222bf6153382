@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c41cbc06_0501ca95",
+        "filename": "src/plugins/hsi/hsi_tracker_tcp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1323,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2026-11-21T06:42:38Z",
+      "side": 1,
+      "message": "shouldn\u0027t this be the other way around? if !drain is cheaper to evaluate first.",
+      "revId": "f51c606be5b2facf4e3e7510711e222bf6153382",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
