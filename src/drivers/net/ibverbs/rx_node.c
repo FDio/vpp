@@ -157,6 +157,7 @@ ibv_rx_one_queue (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queue_
 
       for (u32 i = 0; i < n && n_trace; i++)
 	{
+	  /* coverity[uninit_use] - to_drop is filled for every failed completion above */
 	  u32 bi = wc[i].status == IBV_WC_SUCCESS ? *rx++ : *drop++;
 	  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
 
