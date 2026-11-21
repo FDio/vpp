@@ -703,7 +703,11 @@ VLIB_CLI_COMMAND (set_trace_filter_function_cli, static) = {
 static clib_error_t *
 set_trace_timestamp_format_cli (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  vlib_trace_filter_main.timestamp_format = cli_index (ctx, "format");
+  u32 format = cli_index (ctx, "format");
+
+  if (format != ~0)
+    vlib_trace_filter_main.timestamp_format = format;
+
   return 0;
 }
 
