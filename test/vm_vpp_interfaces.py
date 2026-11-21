@@ -240,6 +240,8 @@ class TestVPPInterfacesQemu:
              --vppaf_packet_int2--host-int2--iperfServer--Linux_ns2
     """
 
+    vapi_response_timeout = config.qemu_api_timeout
+
     # The iperf client and server run concurrently with VPP.
     helper_count = 2
 
