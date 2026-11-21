@@ -29,6 +29,7 @@ typedef struct
   u32 max_in_flight;
   vnet_crypto_op_type_t type;
   vnet_crypto_alg_t alg;
+  u8 running;
 } crypto_test_async_perf_main_t;
 
 static crypto_test_async_perf_main_t crypto_test_async_perf_main;
@@ -267,6 +268,9 @@ test_crypto_async_perf (vlib_main_t *vm, crypto_test_main_t *tm)
   u8 key_data[128];
   uword ti;
 
+  if (pm->running)
+    return clib_error_return (0, "test already running");
+
   n_buffers = tm->n_buffers ? tm->n_buffers : 4096;
   buffer_size = tm->buffer_size ? tm->buffer_size : 2048;
   rounds = tm->rounds ? tm->rounds : 5;
@@ -341,6 +345,8 @@ test_crypto_async_perf (vlib_main_t *vm, crypto_test_main_t *tm)
 
   for (u32 i = 0; i < key_sz; i++)
     key_data[i] = i;
+
+  pm->running = 1;
 
   if (pm->sink_next_index == 0)
     pm->sink_next_index = vnet_crypto_register_post_node (vm, "crypto-test-async-sink");
@@ -505,5 +511,6 @@ done:
   for (u32 i = 0; i < n_types; i++)
     vec_free (mops[i]);
   clib_bitmap_free (threads);
+  pm->running = 0;
   return err;
 }
