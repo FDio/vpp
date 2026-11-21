@@ -287,6 +287,7 @@ mlx5_add_port (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_port_id_t port_id)
       return VNET_DEV_OK;
     }
 
+  /* coverity[overflow_sink] - netdev_ifindex is a kernel ifindex, 0 is excluded above */
   err = vnet_netlink_get_link_max_mtu (port_data.netdev_ifindex, &netdev_max_mtu);
   if (err)
     {
