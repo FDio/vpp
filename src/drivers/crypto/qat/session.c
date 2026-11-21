@@ -155,7 +155,6 @@ qat_cd_cipher (u8 *cd, const qat_fw_la_req_t *req, const qat_alg_t *a, const u8 
 	.config = cfg,
 	.config_upper = {
 	  .aad_size_lower = a->aad_len,
-	  .aad_size_upper = a->aad_len >> 8,
 	},
       };
       clib_memcpy (b->key, key, a->key_len);
