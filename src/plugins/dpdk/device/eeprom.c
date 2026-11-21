@@ -183,6 +183,7 @@ dpdk_eeprom_read_port (dpdk_portid_t port_id, dpdk_eeprom_port_t *ep)
     }
 
   pthread_mutex_lock (&ep->lock);
+  /* coverity[atomicity] - rv and buf are local to this thread */
   ep->last_rv = rv;
   if (rv == 0)
     {
