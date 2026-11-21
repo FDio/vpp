@@ -354,7 +354,7 @@ apply_where (cli_ctx_t *ctx, clib_json_text_t *j)
     {
       if (f->kind != CLI_FILTER_WHERE)
 	continue;
-      for (int i = vec_len (arr->array_val_indices) - 1; i >= 0; i--)
+      for (u32 i = vec_len (arr->array_val_indices); i-- > 0;)
 	if (!row_matches (j, arr->array_val_indices[i], f))
 	  vec_del1 (arr->array_val_indices, i);
     }
