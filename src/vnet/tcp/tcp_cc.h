@@ -96,7 +96,7 @@ tcp_cc_get_pacing_rate (tcp_connection_t *tc)
   if (tc->cc_algo->get_pacing_rate)
     return tc->cc_algo->get_pacing_rate (tc);
 
-  return tcp_cc_window_pacing_rate (tc, 1.0);
+  return tcp_cc_window_pacing_rate (tc, TCP_PACING_GAIN);
 }
 
 static inline void *

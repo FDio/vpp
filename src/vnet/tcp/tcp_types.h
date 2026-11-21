@@ -80,6 +80,9 @@ typedef enum _tcp_timers
 #define TCP_RTO_BOFF_MAX 8	/* Max number of retries before reset */
 #define TCP_ESTABLISH_TIME (60 * THZ)	/* Connection establish timeout */
 
+/** Pacing rate over cwnd / rtt, past early slow start */
+#define TCP_PACING_GAIN 1.1
+
 /** Connection configuration flags */
 #define foreach_tcp_cfg_flag                                                                       \
   _ (BYTE_TRACKER, "Byte tracker")                                                                 \
