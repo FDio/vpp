@@ -222,6 +222,9 @@ typedef struct tcp_configuration_
   /** Retransmit timeouts backed off before resetting the connection */
   u32 max_rto_backoffs;
 
+  /** Pacing rate as a multiple of cwnd / rtt, past early slow start */
+  f64 pacing_gain;
+
   /** Number of preallocated connections */
   u32 preallocated_connections;
 

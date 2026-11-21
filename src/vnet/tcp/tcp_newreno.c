@@ -82,6 +82,12 @@ newreno_unformat_config (unformat_input_t * input)
   return 1;
 }
 
+static u64
+newreno_get_pacing_rate (tcp_connection_t *tc)
+{
+  return tcp_cc_window_pacing_rate (tc, tcp_cfg.pacing_gain);
+}
+
 const static tcp_cc_algorithm_t tcp_newreno = {
   .name = "newreno",
   .unformat_cfg = newreno_unformat_config,
@@ -90,6 +96,7 @@ const static tcp_cc_algorithm_t tcp_newreno = {
   .recovered = newreno_recovered,
   .rcv_ack = newreno_rcv_ack,
   .init = newreno_conn_init,
+  .get_pacing_rate = newreno_get_pacing_rate,
 };
 
 clib_error_t *

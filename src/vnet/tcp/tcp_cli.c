@@ -903,6 +903,7 @@ format_tcp_cfg (u8 *s, va_list *args)
 	      (u32) (tm_cfg.syn_rcvd_time * TCP_TICK));
   s = format (s, "syn_sent time: %u sec\n", (u32) (tm_cfg.syn_sent_time * TCP_TICK));
   s = format (s, "max rto backoffs: %u\n", tm_cfg.max_rto_backoffs);
+  s = format (s, "pacing gain: %.2f\n", tm_cfg.pacing_gain);
   s = format (s, "tcp allocation error cleanup time: %0.2f sec\n",
 	      (f32) (tm_cfg.alloc_err_timeout * TCP_TIMER_TICK));
   s = format (s, "connection cleanup time: %.2f sec\n", tm_cfg.cleanup_time);
@@ -966,7 +967,9 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
   u8 rack_set = 0;
   u8 cc_algo_set = 0;
   u8 max_rto_backoffs_set = 0;
+  u8 pacing_gain_set = 0;
   u32 mtu, min_mtu = 1280, initial_cwnd_multiplier, max_rto_backoffs;
+  f64 pacing_gain;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1046,15 +1049,22 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 	  tcp_cfg.max_rto_backoffs = max_rto_backoffs;
 	  max_rto_backoffs_set = 1;
 	}
+      else if (unformat (input, "pacing-gain %f", &pacing_gain))
+	{
+	  if (pacing_gain < 1 || pacing_gain > 2)
+	    return clib_error_return (0, "pacing-gain must be between 1 and 2");
+	  tcp_cfg.pacing_gain = pacing_gain;
+	  pacing_gain_set = 1;
+	}
       else
 	return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
     }
 
   if (!byte_tracker_set && !csum_offload_set && !dsack_set && !mtu_set && !initial_cwnd_set &&
-      !rack_set && !cc_algo_set && !max_rto_backoffs_set)
+      !rack_set && !cc_algo_set && !max_rto_backoffs_set && !pacing_gain_set)
     return clib_error_return (0, "expected byte-tracker, csum-offload, "
 				 "dsack, mtu, initial-cwnd-multiplier, [no-]rack, "
-				 "cc-algo or max-rto-backoffs");
+				 "cc-algo, max-rto-backoffs or pacing-gain");
 
   if (byte_tracker_set)
     vlib_cli_output (vm, "TCP byte tracker for new connections: %s",
@@ -1077,6 +1087,8 @@ tcp_set_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 		     tcp_cc_algo_get (tcp_cfg.cc_algo)->name);
   if (max_rto_backoffs_set)
     vlib_cli_output (vm, "TCP max rto backoffs: %u", tcp_cfg.max_rto_backoffs);
+  if (pacing_gain_set)
+    vlib_cli_output (vm, "TCP pacing gain: %.2f", tcp_cfg.pacing_gain);
   return 0;
 }
 
@@ -1085,7 +1097,7 @@ VLIB_CLI_COMMAND (tcp_set_command, static) = {
   .short_help = "set tcp [byte-tracker [enable|disable]] "
 		"[csum-offload [enable|disable]] [dsack [enable|disable]] "
 		"[mtu <mtu>] [initial-cwnd-multiplier <n>] [rack|no-rack] "
-		"[cc-algo <name>] [max-rto-backoffs <n>]",
+		"[cc-algo <name>] [max-rto-backoffs <n>] [pacing-gain <1.0-2.0>]",
   .function = tcp_set_fn,
 };
 
@@ -1182,6 +1194,7 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 {
   u32 cwnd_multiplier, tmp_time, mtu, max_gso_size, tmp;
   uword memory_size;
+  f64 pacing_gain;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1290,6 +1303,12 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	  if (!tmp)
 	    return clib_error_return (0, "max-rto-backoffs must be positive");
 	  tcp_cfg.max_rto_backoffs = tmp;
+	}
+      else if (unformat (input, "pacing-gain %f", &pacing_gain))
+	{
+	  if (pacing_gain < 1 || pacing_gain > 2)
+	    return clib_error_return (0, "pacing-gain must be between 1 and 2");
+	  tcp_cfg.pacing_gain = pacing_gain;
 	}
       else
 	return clib_error_return (0, "unknown input `%U'",

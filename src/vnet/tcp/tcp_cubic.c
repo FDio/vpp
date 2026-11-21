@@ -556,15 +556,17 @@ cubic_event (tcp_connection_t *tc, tcp_cc_event_t evt)
 static u64
 cubic_get_pacing_rate (tcp_connection_t *tc)
 {
-  f64 gain = 1.0;
+  /* Above cwnd / rtt, so the window, not the pacer, limits the flight */
+  f64 gain = tcp_cfg.pacing_gain;
 
   if (tcp_in_slowstart (tc))
     {
       cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
 
-      /* CSS needs less headroom */
+      /* CSS grows cwnd by at most a quarter per rtt, so it needs less
+       * headroom than slow start, but no less than avoidance */
       if (cd->mode == CUBIC_MODE_CSS)
-	gain = 1.25;
+	gain = clib_max (1.25, gain);
       else if (tc->cwnd < tc->ssthresh / 2)
 	gain = 2.0;
     }

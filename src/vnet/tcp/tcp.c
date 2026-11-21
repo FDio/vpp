@@ -1784,6 +1784,7 @@ tcp_configuration_init (void)
   tcp_cfg.syn_rcvd_time = TCP_ESTABLISH_TIME;
   tcp_cfg.syn_sent_time = TCP_ESTABLISH_TIME;
   tcp_cfg.max_rto_backoffs = TCP_RTO_BOFF_MAX;
+  tcp_cfg.pacing_gain = TCP_PACING_GAIN;
 }
 
 static clib_error_t *
