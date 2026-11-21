@@ -3796,7 +3796,7 @@ unix_cli_set_terminal_history (vlib_main_t *vm, cli_ctx_t *ctx)
     return clib_error_return (0, "invalid for non-interactive sessions");
 
   if (cli_flag (ctx, "state"))
-    cf->has_history = cli_index (ctx, "state");
+    cf->has_history = cli_index (ctx, "state") == 1;
   if (cli_flag (ctx, "limit"))
     cf->history_limit = cli_u64 (ctx, "limit", 0);
 
