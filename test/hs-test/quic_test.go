@@ -803,16 +803,24 @@ func QuicHandshakeTimeoutMWTest(s *NoTopoSuite) {
 	}
 }
 
+// Let quic-go resize the UDP buffers while keeping I/O on ReadFrom and WriteTo.
+// Exposing the UDP message methods would let quic-go bypass the packet hooks.
+type quicTestUDPSocket interface {
+	net.PacketConn
+	SetReadBuffer(int) error
+	SetWriteBuffer(int) error
+}
+
 // Keep the socket alive while making the peer disappear in both directions.
 // This suppresses QUIC close packets as well as ordinary traffic.
 type quicDropPacketConn struct {
-	net.PacketConn
+	quicTestUDPSocket
 	drop atomic.Bool
 }
 
 func (c *quicDropPacketConn) ReadFrom(p []byte) (int, net.Addr, error) {
 	for {
-		n, addr, err := c.PacketConn.ReadFrom(p)
+		n, addr, err := c.quicTestUDPSocket.ReadFrom(p)
 		if err != nil || !c.drop.Load() {
 			return n, addr, err
 		}
@@ -823,7 +831,7 @@ func (c *quicDropPacketConn) WriteTo(p []byte, addr net.Addr) (int, error) {
 	if c.drop.Load() {
 		return len(p), nil
 	}
-	return c.PacketConn.WriteTo(p, addr)
+	return c.quicTestUDPSocket.WriteTo(p, addr)
 }
 
 func QuicIdleTimeoutMWTest(s *NoTopoSuite) {
@@ -850,7 +858,7 @@ func QuicIdleTimeoutMWTest(s *NoTopoSuite) {
 			socket, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.ParseIP(s.HostAddr())})
 			AssertNil(err)
 			defer socket.Close()
-			peer := &quicDropPacketConn{PacketConn: socket}
+			peer := &quicDropPacketConn{quicTestUDPSocket: socket}
 			transport := &quic.Transport{Conn: peer}
 			defer transport.Close()
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
