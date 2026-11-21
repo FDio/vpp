@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "06cdbeb7_a0ccc3d7",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3398
+      },
+      "writtenOn": "2026-11-21T00:28:37Z",
+      "side": 1,
+      "message": "My apologies if I have misunderstood how things should be reported here. I hope the problem is self-explanatory. Thank you for your work and your time.",
+      "revId": "7ab2bf4f7e5865287cc9bcc8f453a5a17f207a7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
