@@ -1470,18 +1470,9 @@ _http_parse_port (u8 **pos, u8 *end, u16 *port)
   return 0;
 }
 
-/**
- * Parse authority to components.
- *
- * @param authority     Target URL to parse.
- * @param authority_len Length of URL.
- * @param parsed        Parsed authority (port is set to 0 if not present).
- *
- * @return @c 0 on success.
- */
 always_inline int
-http_parse_authority (u8 *authority, u32 authority_len,
-		      http_uri_authority_t *parsed)
+_http_parse_authority (u8 *authority, u32 authority_len, http_uri_authority_t *parsed,
+		       u8 require_port)
 {
   u8 *token_start, *p, *end;
   int rv;
@@ -1496,7 +1487,7 @@ http_parse_authority (u8 *authority, u32 authority_len,
   };
 
   /* reg-name max 255 chars + colon + port max 5 chars */
-  if (authority_len > 261)
+  if (!authority_len || authority_len > 261)
     return -1;
 
   end = authority + authority_len;
@@ -1549,6 +1540,8 @@ http_parse_authority (u8 *authority, u32 authority_len,
 	    }
 	  p++;
 	}
+      if (p == token_start)
+	return -1;
       parsed->reg_name.len = p - token_start;
       if (parsed->reg_name.len > 255)
 	{
@@ -1561,17 +1554,39 @@ http_parse_authority (u8 *authority, u32 authority_len,
     }
 
   /* parse port, if any */
-  if ((end - token_start) > 1 && *token_start == ':')
+  if (token_start != end && *token_start++ != ':')
+    return -1;
+  if (token_start == end)
+    return require_port ? -1 : 0;
+  if (_http_parse_port (&token_start, end, &parsed->port))
     {
-      token_start++;
-      if (_http_parse_port (&token_start, end, &parsed->port))
-	{
-	  clib_warning ("invalid port");
-	  return -1;
-	}
+      clib_warning ("invalid port");
+      return -1;
     }
 
   return token_start == end ? 0 : -1;
+}
+
+/**
+ * Parse authority to components.
+ *
+ * @param authority     Authority to parse.
+ * @param authority_len Length of authority.
+ * @param parsed        Parsed authority (port is 0 if omitted or empty).
+ *
+ * @return @c 0 on success.
+ */
+always_inline int
+http_parse_authority (u8 *authority, u32 authority_len, http_uri_authority_t *parsed)
+{
+  return _http_parse_authority (authority, authority_len, parsed, 0);
+}
+
+/* CONNECT requires an explicit port number (RFC 9112 section 3.2.3). */
+always_inline int
+http_parse_connect_authority (u8 *authority, u32 authority_len, http_uri_authority_t *parsed)
+{
+  return _http_parse_authority (authority, authority_len, parsed, 1);
 }
 
 typedef struct

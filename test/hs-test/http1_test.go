@@ -4034,6 +4034,12 @@ func HttpInvalidAuthorityFormUriTest(s *Http1Suite) {
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	vpp.Vppctl("test proxy server fifo-size 512k server-uri http://%s", serverAddress)
 
+	for _, target := range []string{"1.2.3.4", "1.2.3.4:", "[dead:beef::1234]", "[dead:beef::1234]:"} {
+		resp, err := TcpSendReceive(serverAddress, "CONNECT "+target+" HTTP/1.1\r\nHost: example.com\r\n\r\n")
+		AssertNil(err, fmt.Sprint(err))
+		AssertContains(resp, "HTTP/1.1 400 Bad Request", "CONNECT requires an explicit port in "+target)
+	}
+
 	resp, err := TcpSendReceive(serverAddress, "CONNECT 1.2.3.4:80a HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	AssertNil(err, fmt.Sprint(err))
 	AssertContains(resp, "HTTP/1.1 400 Bad Request")

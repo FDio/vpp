@@ -629,8 +629,7 @@ proxy_http_connect (session_t *s, vnet_connect_args_t *a)
       rv = svm_fifo_peek (s->rx_fifo, msg.data.target_authority_offset,
 			  msg.data.target_authority_len, rx_buf);
       ASSERT (rv == msg.data.target_authority_len);
-      rv = http_parse_authority (rx_buf, msg.data.target_authority_len,
-				 &target_uri);
+      rv = http_parse_connect_authority (rx_buf, msg.data.target_authority_len, &target_uri);
       if (rv)
 	{
 	  PROXY_DBG ("authority parsing failed");
