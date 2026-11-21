@@ -2288,7 +2288,7 @@ tcp_test_bbr (vlib_main_t *vm, unformat_input_t *input)
   int switch_rv;
   u32 i;
   u16 multiplier;
-  u8 *state, switch_rejected, no_sack_rejected, bbr_selected;
+  u8 *state, switch_rejected, no_sack_rejected, bbr_selected, bbr_min_burst;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -2562,6 +2562,8 @@ tcp_test_bbr (vlib_main_t *vm, unformat_input_t *input)
 
   switch_tc = tcp_connection_alloc (thread_index);
   switch_tc->snd_mss = 1000;
+  /* Larger than snd_mss, as when options shrink the send mss */
+  switch_tc->mss = switch_tc->rcv_opts.mss = 1460;
   switch_tc->snd_wnd = switch_tc->tx_fifo_size = 1 << 30;
   switch_tc->mrtt_us = 0.1;
   switch_tc->srtt = 0.1 / TCP_TICK;
@@ -2585,6 +2587,9 @@ tcp_test_bbr (vlib_main_t *vm, unformat_input_t *input)
   switch_tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK_PERMITTED;
   switch_rv = transport_connection_attribute (TRANSPORT_PROTO_TCP, switch_tc->c_c_index,
 					      thread_index, 0, &attr);
+  /* Enabling pacing on the switch keeps bbr's minimum burst of two of the largest segments.
+   * Check before calling the rate getter below, which also sets it */
+  bbr_min_burst = switch_tc->connection.pacer.min_burst == 2 * 1460;
   bbr_selected =
     switch_rv == 0 && switch_tc->cc_algo == tcp_cc_algo_get (TCP_CC_BBR) &&
     tcp_rack_enabled (switch_tc) && switch_tc->bt &&
@@ -2600,6 +2605,7 @@ tcp_test_bbr (vlib_main_t *vm, unformat_input_t *input)
   TCP_TEST (switch_rejected, "cc switch rejects outstanding data");
   TCP_TEST (no_sack_rejected, "bbr rejects connections without sack");
   TCP_TEST (bbr_selected, "bbr enables connection prerequisites");
+  TCP_TEST (bbr_min_burst, "bbr pacer minimum is two of the largest segments");
 
   return 0;
 }

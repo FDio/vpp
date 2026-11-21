@@ -704,6 +704,7 @@ static u64
 bbr_get_pacing_rate (tcp_connection_t *tc)
 {
   bbr_data_t *bd = bbr_data (tc);
+  u32 seg, min_burst;
 
   if (!bbr_has_flag (bd, BBR_F_HAS_SEEN_RTT) && bbr_has_rtt_estimate (tc))
     {
@@ -716,6 +717,18 @@ bbr_get_pacing_rate (tcp_connection_t *tc)
       bd->pacing_rate = bbr_initial_pacing_rate (tc, bd);
       bbr_update_offload_budget (tc, bd);
     }
+
+  /* Pacer bursts can shrink to one mss for slow flows, so keep at least the minimum send quantum.
+   * Single segment sends would otherwise bound a busy sender's throughput. The send path rounds
+   * bursts down to snd_mss, which shrinks with options, so count the largest possible segments.
+   * Tcp asks for the rate after initializing the pacer, which resets the minimum. */
+  seg = clib_max ((u32) tc->snd_mss, clib_min ((u32) tc->mss, tc->rcv_opts.mss));
+  min_burst =
+    clib_clamp (2 * seg, (u32) TRANSPORT_PACER_MIN_BURST, (u32) TRANSPORT_PACER_MAX_BURST);
+  if (tc->connection.pacer.min_burst != min_burst)
+    transport_connection_tx_pacer_set_burst_limits (&tc->connection, min_burst,
+						    TRANSPORT_PACER_MAX_BURST);
+
   return clib_max ((u64) bd->pacing_rate, 1ULL);
 }
 
