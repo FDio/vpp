@@ -70,7 +70,14 @@ func (s *HsiSuite) SetupSuite() {
 func (s *HsiSuite) SetupTest() {
 	s.HstSuite.SetupTest()
 
-	vpp, err := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus)
+	var configs []Stanza
+	if strings.Contains(CurrentSpecReport().LeafNodeText, "DrainTransportDeleted") {
+		// Delete TCP before HSI's 100 ms drain scan.
+		var tcpConfig Stanza
+		tcpConfig.NewStanza("tcp").Append("cleanup-time 1").Close()
+		configs = append(configs, tcpConfig)
+	}
+	vpp, err := s.Containers.Vpp.newVppInstance(s.Containers.Vpp.AllocatedCpus, configs...)
 	AssertNotNil(vpp, fmt.Sprint(err))
 
 	AssertNil(vpp.Start())
