@@ -48,6 +48,7 @@ ibv_rxq_refill (vlib_main_t *vm, vlib_node_runtime_t *node, vnet_dev_rx_queue_t 
 	  u32 *bufs = iq->buffers + (slot + i) * IBV_RXQ_MAX_CHAIN_SZ;
 
 	  for (u32 j = 0; j < iq->n_used[slot + i]; j++)
+	    /* coverity[uninit_use] - alloc holds n_alloc buffers, the sum of n_used */
 	    bufs[j] = alloc[k++];
 	  iq->n_used[slot + i] = 0;
 	  for (u32 j = 0; j < n_ds; j++)
