@@ -3843,7 +3843,7 @@ unix_cli_set_terminal_ansi (vlib_main_t *vm, cli_ctx_t *ctx)
   if (!(cf = unix_cli_file_if_interactive (cm)))
     return clib_error_return (0, "invalid for non-interactive sessions");
 
-  cf->ansi_capable = cli_index (ctx, "state");
+  cf->ansi_capable = cli_index (ctx, "state") == 1;
 
   return 0;
 }
