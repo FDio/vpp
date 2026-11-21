@@ -269,8 +269,22 @@ http_test_parse_authority (vlib_main_t *vm)
   HTTP_TEST ((rv == -1), "'%v' should be invalid", authority);
   vec_free (authority);
 
-  /* no port after colon */
-  authority = format (0, "example.com:");
+  /* An empty port is equivalent to an omitted port in a URI. */
+  const char *hosts[] = { "example.com", "10.255.2.1", "[dead:beef::1234]" };
+  for (u32 i = 0; i < ARRAY_LEN (hosts); i++)
+    {
+      authority = format (0, "%s:", hosts[i]);
+      rv = http_parse_authority (authority, vec_len (authority), &parsed);
+      HTTP_TEST (rv == 0 && parsed.port == 0, "'%v' should have an unspecified port", authority);
+      formated = http_serialize_authority (&parsed);
+      HTTP_TEST (http_token_is ((char *) formated, vec_len (formated), hosts[i], strlen (hosts[i])),
+		 "'%v' should serialize as '%s'", authority, hosts[i]);
+      vec_free (authority);
+      vec_free (formated);
+    }
+
+  /* An empty port still requires a host. */
+  authority = format (0, ":");
   rv = http_parse_authority (authority, vec_len (authority), &parsed);
   HTTP_TEST ((rv == -1), "'%v' should be invalid", authority);
   vec_free (authority);
