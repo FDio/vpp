@@ -1584,7 +1584,6 @@ static inline int
 vperf_process_http_server_read_msg (vperf_session_t *ts, void *buf, uint32_t nbytes)
 {
   http_msg_t msg;
-  u8 *target_path = 0;
   vperf_http_ctx_t *vperf_http_ctx = (vperf_http_ctx_t *) ts->opaque;
   vperf_stats_t *stats = &ts->stats;
   int rv = 0;
@@ -1619,6 +1618,12 @@ vperf_process_http_server_read_msg (vperf_session_t *ts, void *buf, uint32_t nby
 	}
       else if (PREDICT_FALSE (vperf_http_ctx->test_state == VPERF_HTTP_IDLE))
 	{
+	  if (rv < sizeof (msg))
+	    {
+	      vperf_http_send_reply_msg (ts, HTTP_STATUS_BAD_REQUEST);
+	      vperf_err ("error! incomplete HTTP request metadata", 0);
+	      return 0;
+	    }
 	  clib_memcpy_fast (&msg, buf, sizeof (msg));
 
 	  /* verify that we have received http post request from client */
@@ -1629,20 +1634,17 @@ vperf_process_http_server_read_msg (vperf_session_t *ts, void *buf, uint32_t nby
 	      return 0;
 	    }
 
-	  /* validate target path syntax */
-	  if (msg.data.target_path_len)
+	  /* Local cut-through sessions can bypass the HTTP transport parser. */
+	  u32 data_len = rv - sizeof (msg);
+	  if (msg.data.target_path_len &&
+	      (msg.data.target_path_offset > data_len ||
+	       msg.data.target_path_len > data_len - msg.data.target_path_offset ||
+	       http_validate_target_syntax ((u8 *) buf + sizeof (msg) + msg.data.target_path_offset,
+					    msg.data.target_path_len, 0, 0)))
 	    {
-	      vec_validate (target_path, msg.data.target_path_len - 1);
-	      memcpy (target_path, buf + sizeof (msg) + msg.data.target_path_offset,
-		      msg.data.target_path_len);
-	      if (http_validate_abs_path_syntax (target_path, 0))
-		{
-		  vperf_http_send_reply_msg (ts, HTTP_STATUS_BAD_REQUEST);
-		  vperf_err ("error! target path is not absolute", 0);
-		  vec_free (target_path);
-		  return 0;
-		}
-	      vec_free (target_path);
+	      vperf_http_send_reply_msg (ts, HTTP_STATUS_BAD_REQUEST);
+	      vperf_err ("error! invalid HTTP request path", 0);
+	      return 0;
 	    }
 
 	  /* read body */

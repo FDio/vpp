@@ -321,11 +321,44 @@ http1_parse_state_reset (http_ctx_t *req)
 static http1_parse_result_t
 http1_parse_non_origin_target (http_ctx_t *req, u8 *rx_buf)
 {
-  u32 i;
-  u8 *p, *end;
+  const http_token_t http_prefix = { http_token_lit ("http://") };
+  const http_token_t https_prefix = { http_token_lit ("https://") };
+  u8 *target = rx_buf + req->target_path_offset;
+  u32 target_len = req->target_path_len, prefix_len = 0;
+
+  if (req->method == HTTP_REQ_CONNECT || req->method == HTTP_REQ_CONNECT_UDP)
+    {
+      http_target_authority_t parsed;
+      u8 *authority = target;
+      u32 authority_len = target_len;
+
+      if (req->method == HTTP_REQ_CONNECT_UDP)
+	{
+	  /* Draft-03 requires masque://host:port/. */
+	  const http_token_t masque_prefix = { http_token_lit ("masque://") };
+	  if (target_len <= masque_prefix.len + 1 || target[target_len - 1] != '/' ||
+	      !http_token_is_case ((char *) target, masque_prefix.len, masque_prefix.base,
+				   masque_prefix.len))
+	    return HTTP1_PARSE_ERROR;
+	  authority += masque_prefix.len;
+	  authority_len -= masque_prefix.len + 1;
+	  req->scheme = HTTP_URL_SCHEME_MASQUE;
+	  req->target_form = HTTP_TARGET_ABSOLUTE_FORM;
+	}
+      else
+	req->target_form = HTTP_TARGET_AUTHORITY_FORM;
+
+      if (!http_target_authority_parse (authority, authority_len, 1, 0, &parsed))
+	return HTTP1_PARSE_ERROR;
+
+      req->target_authority_offset = authority - rx_buf;
+      req->target_authority_len = authority_len;
+      req->target_path_offset = req->target_path_len = 0;
+      return HTTP1_PARSE_OK;
+    }
 
   /* asterisk-form  = "*" */
-  if ((rx_buf[req->target_path_offset] == '*') && (req->target_path_len == 1))
+  if (target_len == 1 && target[0] == '*')
     {
       req->target_form = HTTP_TARGET_ASTERISK_FORM;
       return req->method == HTTP_REQ_OPTIONS ? HTTP1_PARSE_OK : HTTP1_PARSE_ERROR;
@@ -333,80 +366,42 @@ http1_parse_non_origin_target (http_ctx_t *req, u8 *rx_buf)
 
   /* absolute-form =
    * scheme "://" host [ ":" port ] *( "/" segment ) [ "?" query ] */
-  if (req->target_path_len > 8 && !memcmp (rx_buf + req->target_path_offset, "http", 4))
+  if (target_len >= http_prefix.len &&
+      http_token_is_case ((char *) target, http_prefix.len, http_prefix.base, http_prefix.len))
     {
       req->scheme = HTTP_URL_SCHEME_HTTP;
-      p = rx_buf + req->target_path_offset + 4;
-      if (*p == 's')
-	{
-	  p++;
-	  req->scheme = HTTP_URL_SCHEME_HTTPS;
-	}
-      if (*p++ == ':')
-	{
-	  expect_char ('/');
-	  expect_char ('/');
-	  req->target_form = HTTP_TARGET_ABSOLUTE_FORM;
-	  req->target_authority_offset = p - rx_buf;
-	  req->target_authority_len = 0;
-	  end = rx_buf + req->target_path_offset + req->target_path_len;
-	  while (p < end)
-	    {
-	      if (*p == '/')
-		{
-		  p++; /* drop leading slash */
-		  req->target_path_offset = p - rx_buf;
-		  req->target_path_len = end - p;
-		  break;
-		}
-	      req->target_authority_len++;
-	      p++;
-	    }
-	  if (!req->target_path_len)
-	    {
-	      clib_warning ("zero length host");
-	      return HTTP1_PARSE_ERROR;
-	    }
-	  if (req->target_query_offset)
-	    {
-	      if (req->target_query_offset <= req->target_path_offset ||
-		  req->target_query_offset - req->target_path_offset > req->target_path_len)
-		return HTTP1_PARSE_ERROR;
-	      req->target_path_len = req->target_query_offset - req->target_path_offset - 1;
-	    }
-	  /* can't be CONNECT method */
-	  return req->method == HTTP_REQ_CONNECT ? HTTP1_PARSE_ERROR : HTTP1_PARSE_OK;
-	}
+      prefix_len = http_prefix.len;
+    }
+  else if (target_len >= https_prefix.len &&
+	   http_token_is_case ((char *) target, https_prefix.len, https_prefix.base,
+			       https_prefix.len))
+    {
+      req->scheme = HTTP_URL_SCHEME_HTTPS;
+      prefix_len = https_prefix.len;
     }
 
-  /* masque-connect-udp-draft-03 masque://host:port/ */
-  if (req->target_path_len > 10 && !memcmp (rx_buf + req->target_path_offset, "masque://", 9))
+  if (prefix_len)
     {
-      p = rx_buf + req->target_path_offset + req->target_path_len - 1;
-      expect_char ('/');
-      req->scheme = HTTP_URL_SCHEME_MASQUE;
+      http_target_authority_t parsed;
+      u8 *authority = target + prefix_len;
+      u8 *p, *end = target + target_len;
+
+      if (req->target_query_offset)
+	end = rx_buf + req->target_query_offset - 1;
+      p = memchr (authority, '/', end - authority);
+      if (!p)
+	p = end;
+      if (!http_target_authority_parse (authority, p - authority, 0, 0, &parsed))
+	return HTTP1_PARSE_ERROR;
+
       req->target_form = HTTP_TARGET_ABSOLUTE_FORM;
-      req->target_authority_offset = 9;
-      req->target_authority_len = req->target_path_len - 10;
-      req->target_path_len = 0;
-      req->target_path_offset = 0;
-      /* can be CONNECT-UDP method only */
-      return req->method == HTTP_REQ_CONNECT_UDP ? HTTP1_PARSE_OK : HTTP1_PARSE_ERROR;
-    }
-
-  /* authority-form = host ":" port */
-  for (i = req->target_path_offset; i + 1 < (req->target_path_offset + req->target_path_len); i++)
-    {
-      if ((rx_buf[i] == ':') && (isdigit (rx_buf[i + 1])))
-	{
-	  req->target_authority_len = req->target_path_len;
-	  req->target_path_len = 0;
-	  req->target_authority_offset = req->target_path_offset;
-	  req->target_path_offset = 0;
-	  req->target_form = HTTP_TARGET_AUTHORITY_FORM;
-	  /* "authority-form" is only used for CONNECT requests */
-	  return req->method == HTTP_REQ_CONNECT ? HTTP1_PARSE_OK : HTTP1_PARSE_ERROR;
-	}
+      req->target_authority_offset = authority - rx_buf;
+      req->target_authority_len = p - authority;
+      if (p != end)
+	p++; /* drop leading slash */
+      req->target_path_offset = p - rx_buf;
+      req->target_path_len = end - p;
+      return HTTP1_PARSE_OK;
     }
 
   return HTTP1_PARSE_ERROR;
@@ -581,7 +576,7 @@ http1_parse_request_line (http_ctx_t *hc, http_ctx_t *req, http_status_code_t *e
 	      http1_peek_into (hc, req, req->target_path_offset, 1, &first);
 	      if (first == '/')
 		{
-		  if (req->method == HTTP_REQ_CONNECT)
+		  if (req->method == HTTP_REQ_CONNECT || req->method == HTTP_REQ_CONNECT_UDP)
 		    return HTTP1_PARSE_ERROR;
 		  req->target_form = HTTP_TARGET_ORIGIN_FORM;
 		  req->target_path_offset++;
@@ -1363,6 +1358,12 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
   rx_buf = http1_read_control_data (hc, req);
   ASSERT (rx_buf);
   HTTP_DBG (3, "%v", rx_buf);
+
+  if ((req->target_path_len && http_validate_target_syntax (rx_buf + req->target_path_offset,
+							    req->target_path_len, 0, 0)) ||
+      (req->target_query_len && http_validate_target_syntax (rx_buf + req->target_query_offset,
+							     req->target_query_len, 1, 0)))
+    goto error;
 
   http_stats_requests_received_inc (hc->c_thread_index);
 
