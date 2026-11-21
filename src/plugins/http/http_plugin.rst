@@ -15,7 +15,8 @@ Usage
 -----
 
 The plugin exposes following inline functions: ``http_validate_abs_path_syntax``, ``http_validate_query_syntax``,
-``http_percent_decode``, ``http_path_sanitize``, ``http_build_header_table``, ``http_get_header``,
+``http_path_iter_init``, ``http_path_iter_next``, ``http_percent_decode``, ``http_percent_decode_to``,
+``http_path_sanitize``, ``http_build_header_table``, ``http_get_header``,
 ``http_reset_header_table``, ``http_free_header_table``, ``http_init_headers_ctx``, ``http_add_header``,
 ``http_add_custom_header``, ``http_validate_target_syntax``, ``http_parse_authority``, ``http_serialize_authority``,
 ``http_parse_masque_host_port``, ``http_decap_udp_payload_datagram``, ``http_encap_udp_payload_datagram``,
@@ -187,6 +188,12 @@ The HTTP transport validates the path and query syntax before delivering them
 in their encoded form. The path slice omits the leading slash when present and
 can be empty. Applications decide how to normalize the path, such as removing
 dot segments when serving files, and when to decode percent escapes.
+
+Use ``http_path_iter_init`` and ``http_path_iter_next`` to split the validated
+path on literal slashes. The iterator yields borrowed slices, including empty
+segments, and reports whether each contains percent escapes. Decode each
+encoded slice with ``http_percent_decode_to`` to preserve an escaped slash as
+data within its segment.
 
 Let's move to target query which is optional. Percent encoding might be used too, but we skip it for brevity:
 

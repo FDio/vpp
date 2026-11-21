@@ -1243,6 +1243,51 @@ http_test_validation (vlib_main_t *vm)
 }
 
 static int
+http_test_path_iter (vlib_main_t *vm)
+{
+  const struct
+  {
+    const char *path;
+    const char *segments[8];
+    u8 encoded;
+  } cases[] = {
+    { "", { 0 }, 0 },
+    { "/a//", { "", "a", "", "" }, 0 },
+    { "0123456789abcde/", { "0123456789abcde", "" }, 0 },
+    { "/%20/ab//12345678901%2F/yz/",
+      { "", "%20", "ab", "", "12345678901%2F", "yz", "" },
+      (1 << 1) | (1 << 4) },
+    { "12345678901234%2F/a/bcdefghijklmnop/%25",
+      { "12345678901234%2F", "a", "bcdefghijklmnop", "%25" },
+      (1 << 0) | (1 << 3) },
+  };
+
+  for (u32 i = 0; i < ARRAY_LEN (cases); i++)
+    {
+      const char *path = cases[i].path;
+      http_path_iter_t iter = http_path_iter_init ((const u8 *) path, strlen (path));
+      http_path_segment_t segment;
+
+      for (u32 j = 0; j < ARRAY_LEN (cases[i].segments) && cases[i].segments[j]; j++)
+	{
+	  const char *expected = cases[i].segments[j];
+	  HTTP_TEST (http_path_iter_next (&iter, &segment) && segment.len == strlen (expected) &&
+		       !memcmp (segment.data, expected, segment.len) &&
+		       segment.is_encoded == ((cases[i].encoded >> j) & 1),
+		     "path '%s' segment %u and encoding flag", path, j);
+	}
+      HTTP_TEST (!http_path_iter_next (&iter, &segment), "path '%s' iteration ends", path);
+    }
+
+  u8 data[] = "prea%2Fb%252F%00%ff";
+  const u8 expected[] = { 'a', '/', 'b', '%', '2', 'F', 0, 0xff };
+  u32 len = http_percent_decode_to (data, data + 3, sizeof (data) - 4);
+  HTTP_TEST (len == sizeof (expected) && !memcmp (data, expected, len),
+	     "decode overlapping buffers and preserve decoded bytes");
+  return 0;
+}
+
+static int
 http_test_schemes (vlib_main_t *vm)
 {
   const char first_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -5916,6 +5961,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_reply_framing (vm);
       else if (unformat (input, "parse-authority"))
 	res = http_test_parse_authority (vm);
+      else if (unformat (input, "path-iter"))
+	res = http_test_path_iter (vm);
       else if (unformat (input, "parse-masque-host-port"))
 	res = http_test_parse_masque_host_port (vm);
       else if (unformat (input, "udp-payload-datagram"))
@@ -5973,6 +6020,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  if ((res = http_test_decode_varint (vm)))
 	    goto done;
 	  if ((res = http_test_parse_authority (vm)))
+	    goto done;
+	  if ((res = http_test_path_iter (vm)))
 	    goto done;
 	  if ((res = http_test_parse_masque_host_port (vm)))
 	    goto done;
