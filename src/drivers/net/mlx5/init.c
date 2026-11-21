@@ -87,7 +87,7 @@ mlx5_max_sq_wqe_sz (mlx5_dev_t *rd)
 }
 
 static int
-mlx5_tx_min_inline (vlib_main_t *vm, mlx5_dev_t *rd, u16 *min_inline)
+mlx5_tx_min_inline (vlib_main_t *vm, vnet_dev_t *dev, mlx5_dev_t *rd, u16 *min_inline)
 {
   struct ibv_qp_init_attr_ex qpia = {
     .cap.max_send_wr = 1,
@@ -102,7 +102,7 @@ mlx5_tx_min_inline (vlib_main_t *vm, mlx5_dev_t *rd, u16 *min_inline)
   struct ibv_qp_ex *qpx;
   struct ibv_qp *qp;
   struct ibv_cq *cq;
-  int rv = -1;
+  int rv = -1, rv_ibv;
 
   cq = ibv_create_cq (rd->ctx, 1, 0, 0, 0);
   if (cq == 0)
@@ -129,7 +129,9 @@ mlx5_tx_min_inline (vlib_main_t *vm, mlx5_dev_t *rd, u16 *min_inline)
 
   ibv_destroy_qp (qp);
 done:
-  ibv_destroy_cq (cq);
+  rv_ibv = ibv_destroy_cq (cq);
+  if (rv_ibv)
+    log_err (dev, "ibv_destroy_cq failed rv %d", rv_ibv);
   return rv;
 }
 
@@ -252,7 +254,7 @@ mlx5_add_port (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_port_id_t port_id)
 
 	  u32 max_wqe_sz = mlx5_max_sq_wqe_sz (rd);
 
-	  if (mlx5_tx_min_inline (vm, rd, &min_inline) || min_inline)
+	  if (mlx5_tx_min_inline (vm, dev, rd, &min_inline) || min_inline)
 	    log_debug (dev, "port %u: no eMPW, tx requires %u inline bytes", ibv_port, min_inline);
 	  else if (max_wqe_sz < MLX5_TX_EMPW_MAX_WQE_SZ)
 	    log_notice (dev, "port %u: eMPW disabled, max sq wqe size %u < %u", ibv_port,
