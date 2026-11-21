@@ -214,6 +214,7 @@ dev_done:
 done:
   close (fd);
 free:
+  /* coverity[tainted_data] - buf is our own allocation, netlink data does not change it */
   clib_mem_free (buf);
   return ifindex;
 }
