@@ -476,7 +476,8 @@ static clib_error_t *
 show_init_function_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_global_main_t *vgm = vlib_get_global_main ();
-  int which = cli_index (ctx, "list") == ~0 ? 1 : cli_index (ctx, "list");
+  u32 list = cli_index (ctx, "list");
+  int which = list == ~0 ? 1 : list;
   int verbose = cli_u64 (ctx, "level", cli_flag (ctx, "verbose"));
   int i, n_init_fns;
   _vlib_init_function_list_elt_t *head, *this;
