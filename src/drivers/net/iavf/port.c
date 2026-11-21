@@ -334,9 +334,14 @@ iavf_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
   if ((rv = iavf_port_init_rss (vm, port)))
     return rv;
 
-  vnet_dev_pci_msix_add_handler (vm, dev, &avf_msix_n_handler, 1,
-				 ap->n_rx_vectors);
-  vnet_dev_pci_msix_enable (vm, dev, 1, ap->n_rx_vectors);
+  rv = vnet_dev_pci_msix_add_handler (vm, dev, &avf_msix_n_handler, 1, ap->n_rx_vectors);
+  if (rv)
+    return rv;
+
+  rv = vnet_dev_pci_msix_enable (vm, dev, 1, ap->n_rx_vectors);
+  if (rv)
+    return rv;
+
   for (u32 i = 0; i < ap->n_rx_vectors; i++)
     vnet_dev_pci_msix_set_polling_thread (vm, dev, i + 1, i);
 
