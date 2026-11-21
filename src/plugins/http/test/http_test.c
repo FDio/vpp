@@ -100,8 +100,8 @@ http_test_parse_ip6 (vlib_main_t *vm)
 	}
 
       u8 *authority = format (0, "[%s]:443", cases[i].text);
-      hpack_authority_t parsed;
-      u8 valid = hpack_authority_parse (authority, vec_len (authority), 1, 0, &parsed);
+      http_target_authority_t parsed;
+      u8 valid = http_target_authority_parse (authority, vec_len (authority), 1, 0, &parsed);
       HTTP_TEST (valid == cases[i].valid, "pseudo-header authority '%v' syntax", authority);
       if (valid)
 	HTTP_TEST (parsed.is_ip6 && !memcmp (&parsed.ip6, &ip6, sizeof (ip6)),
@@ -581,6 +581,19 @@ http_test_http_token_is_case (vlib_main_t *vm)
 
   rv = http_token_is_case (actual + 1, sizeof (actual) - 2, expected + 2, sizeof (expected) - 3);
   HTTP_TEST (rv == 1, "case comparison accepts unaligned tokens");
+
+  const char long_expected[] = "ab12CdEf[gHiJkLmNoPqRsTuVwXyZ12345";
+  char long_actual[] = "AB12cDeF[GhIjKlMnOpQrStUvWxYz12345";
+  uword len = sizeof (long_actual) - 1;
+  HTTP_TEST (http_token_is_case (long_actual, len, long_expected, len),
+	     "case comparison matches mixed-case tokens across blocks and tail");
+  long_actual[8] = '{';
+  HTTP_TEST (!http_token_is_case (long_actual, len, long_expected, len),
+	     "case comparison preserves punctuation within a block");
+  long_actual[8] = '[';
+  long_actual[len - 1] = '6';
+  HTTP_TEST (!http_token_is_case (long_actual, len, long_expected, len),
+	     "case comparison detects a mismatch in the tail");
 
   return 0;
 }
@@ -1113,18 +1126,24 @@ http_test_validation (vlib_main_t *vm)
   HTTP_TEST (!http_token_is_valid (value, 0) && !hpack_header_name_is_valid (value, 0),
 	     "empty tokens and field names are invalid");
 
+  u8 long_value[33];
+  memset (long_value, 'x', sizeof (long_value));
   for (u32 component = 0; component < ARRAY_LEN (component_chars); component++)
     {
       u32 failed_byte = ~0U;
       for (u32 byte = 0; byte < 256; byte++)
 	{
 	  value[1] = byte;
+	  long_value[15] = byte;
 	  u8 expected =
 	    memchr (reg_name_chars, byte, sizeof (reg_name_chars) - 1) ||
 	    memchr (component_chars[component], byte, strlen (component_chars[component]));
-	  int encoded = -1;
+	  int encoded = -1, long_encoded = -1;
 	  int rv = http_validate_uri_component (value, sizeof (value), component, &encoded);
-	  if ((rv == 0) != expected || (rv == 0 && encoded != 0))
+	  int long_rv =
+	    http_validate_uri_component (long_value, sizeof (long_value), component, &long_encoded);
+	  if ((rv == 0) != expected || long_rv != rv || long_encoded != encoded ||
+	      (rv == 0 && encoded != 0))
 	    failed_byte = byte;
 	}
       HTTP_TEST (failed_byte == ~0U, "all 256 URI component %u bytes (failure 0x%x)", component,
@@ -1155,6 +1174,36 @@ http_test_validation (vlib_main_t *vm)
 	       !http_validate_target_syntax (target, sizeof (target) - 1, 1, &encoded) && encoded,
 	     "path and combined path/query delimiters remain distinct");
 
+  for (u32 pos = 14; pos <= 16; pos++)
+    {
+      u8 target[37];
+      u32 query;
+      memset (target, 'x', sizeof (target));
+      target[0] = '/';
+      clib_memcpy_fast (target + pos, "%3F??%2F", 8);
+      HTTP_TEST (!_http_validate_uri_component (target, sizeof (target), HTTP_URI_COMPONENT_QUERY,
+						&encoded, &query) &&
+		   encoded && query == pos + 3,
+		 "find first literal query delimiter after escape at offset %u", pos);
+      http_ctx_t req;
+      http_set_target_path (&req, target, target, sizeof (target), query);
+      HTTP_TEST (req.target_path_offset == 1 && req.target_path_len == query - 1 &&
+		   req.target_query_offset == query + 1 &&
+		   req.target_query_len == sizeof (target) - query - 1,
+		 "split target with escape at offset %u", pos);
+      target[pos + 2] = 'G';
+      HTTP_TEST (_http_validate_uri_component (target, sizeof (target), HTTP_URI_COMPONENT_QUERY, 0,
+					       &query) == -1,
+		 "reject invalid escape at offset %u", pos);
+    }
+
+  const u8 empty_query[] = "/?";
+  http_ctx_t req;
+  http_set_target_path (&req, empty_query, empty_query, 2, 1);
+  HTTP_TEST (req.target_path_offset == 1 && req.target_path_len == 0 &&
+	       req.target_query_offset == 2 && req.target_query_len == 0,
+	     "retain the offset of an empty query");
+
   const struct
   {
     const char *text;
@@ -1180,9 +1229,10 @@ http_test_validation (vlib_main_t *vm)
       u8 *authority = format (0, "example.com:%s", ports[i].text);
       for (u32 required = 0; required < 2; required++)
 	{
-	  hpack_authority_t parsed;
+	  http_target_authority_t parsed;
 	  u8 expected = len ? ports[i].valid && ports[i].consumed == len : !required;
-	  u8 valid = hpack_authority_parse (authority, vec_len (authority), required, 0, &parsed);
+	  u8 valid =
+	    http_target_authority_parse (authority, vec_len (authority), required, 0, &parsed);
 	  HTTP_TEST (valid == expected &&
 		       (!valid || (parsed.has_port == (len != 0) && parsed.port == ports[i].port)),
 		     "authority '%v' port policy %u", authority, required);

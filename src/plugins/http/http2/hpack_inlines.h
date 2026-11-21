@@ -431,89 +431,6 @@ hpack_parse_scheme (u8 *value, u32 value_len)
   return HTTP_URL_SCHEME_UNKNOWN;
 }
 
-typedef struct
-{
-  u8 *host;
-  u32 host_len;
-  u32 port;
-  u8 has_port;
-  u8 is_ip6;
-  ip6_address_t ip6;
-} hpack_authority_t;
-
-always_inline u8
-hpack_authority_parse (u8 *value, u32 len, u8 require_port, u8 allow_userinfo,
-		       hpack_authority_t *out)
-{
-  u8 *p, *end, *host = value;
-  clib_memset (out, 0, sizeof (*out));
-  if (!len)
-    return 0;
-  end = value + len;
-  p = memchr (value, '@', len);
-  if (p)
-    {
-      if (!allow_userinfo ||
-	  http_validate_uri_component (value, p - value, HTTP_URI_COMPONENT_USERINFO, 0))
-	return 0;
-      host = p + 1;
-    }
-  if (host == end)
-    return 0;
-  if (*host == '[')
-    {
-      u8 *close = memchr (host, ']', end - host);
-      if (!close || close - host < 3)
-	return 0;
-      p = host + 1;
-      if (*p == 'v' || *p == 'V')
-	{
-	  /* IPvFuture = 'v' 1*HEXDIG '.' 1*(unreserved / sub-delims / ':') */
-	  u8 *version = ++p;
-	  while (p < close && isxdigit (*p))
-	    p++;
-	  if (p == version || p == close || *p++ != '.' || p == close)
-	    return 0;
-	  for (; p < close; p++)
-	    if (!http_uri_reg_name_char_is_valid (*p) && *p != ':')
-	      return 0;
-	}
-      else
-	{
-	  if (_http_parse_ip6 (&p, close, &out->ip6) || p != close)
-	    return 0;
-	  out->is_ip6 = 1;
-	}
-      out->host_len = close + 1 - host;
-      p = close + 1;
-    }
-  else
-    {
-      p = memchr (host, ':', end - host);
-      if (!p)
-	p = end;
-      out->host_len = p - host;
-      if (!out->host_len ||
-	  http_validate_uri_component (host, out->host_len, HTTP_URI_COMPONENT_REG_NAME, 0))
-	return 0;
-    }
-  out->host = host;
-  if (p != end)
-    {
-      if (*p++ != ':')
-	return 0;
-      out->has_port = p != end;
-      if (out->has_port)
-	{
-	  u16 port;
-	  if (_http_parse_port (&p, end, &port) || p != end)
-	    return 0;
-	  out->port = clib_net_to_host_u16 (port);
-	}
-    }
-  return !require_port || out->has_port;
-}
-
 always_inline u8
 hpack_normalized_host_byte (u8 **p, u8 *end)
 {
@@ -531,7 +448,7 @@ hpack_normalized_host_byte (u8 **p, u8 *end)
 }
 
 always_inline u8
-hpack_authority_hosts_equal (hpack_authority_t *a, hpack_authority_t *b)
+hpack_authority_hosts_equal (http_target_authority_t *a, http_target_authority_t *b)
 {
   if (a->is_ip6 && b->is_ip6)
     return !memcmp (&a->ip6, &b->ip6, sizeof (a->ip6));
@@ -550,7 +467,7 @@ hpack_validate_request_pseudo_headers (hpack_request_control_data_t *cd, u8 enab
   const u16 scheme_path = HPACK_PSEUDO_HEADER_SCHEME_PARSED | HPACK_PSEUDO_HEADER_PATH_PARSED;
   const u16 authority = HPACK_PSEUDO_HEADER_AUTHORITY_PARSED;
   const u16 protocol = HPACK_PSEUDO_HEADER_PROTOCOL_PARSED;
-  hpack_authority_t a, h;
+  http_target_authority_t a, h;
   u8 connect = cd->method == HTTP_REQ_CONNECT;
   u8 extended = (cd->parsed_bitmap & protocol) != 0;
 
@@ -569,19 +486,21 @@ hpack_validate_request_pseudo_headers (hpack_request_control_data_t *cd, u8 enab
 	return HPACK_ERROR_PROTOCOL;
       if (!cd->path_len ||
 	  (cd->path[0] != '/' && !(cd->is_options && cd->path_len == 1 && cd->path[0] == '*')) ||
-	  http_validate_target_syntax (cd->path, cd->path_len, 1, 0))
+	  _http_validate_uri_component (cd->path, cd->path_len, HTTP_URI_COMPONENT_QUERY, 0,
+					&cd->query_offset))
 	return HPACK_ERROR_PROTOCOL;
       if (extended && !(cd->parsed_bitmap & authority))
 	return HPACK_ERROR_PROTOCOL;
     }
 
-  if (cd->host_parsed && !hpack_authority_parse (cd->host, cd->host_len, 0, 0, &h))
+  if (cd->host_parsed && !http_target_authority_parse (cd->host, cd->host_len, 0, 0, &h))
     return HPACK_ERROR_PROTOCOL;
   if (cd->parsed_bitmap & authority)
     {
       u8 require_port = (connect && !extended) || cd->method == HTTP_REQ_CONNECT_UDP;
       u8 userinfo = !connect && cd->scheme == HTTP_URL_SCHEME_UNKNOWN;
-      if (!hpack_authority_parse (cd->authority, cd->authority_len, require_port, userinfo, &a))
+      if (!http_target_authority_parse (cd->authority, cd->authority_len, require_port, userinfo,
+					&a))
 	return HPACK_ERROR_PROTOCOL;
       if (cd->host_parsed)
 	{
