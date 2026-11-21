@@ -160,6 +160,7 @@ rdma_device_output_free_mlx5 (vlib_main_t *vm, const vlib_node_runtime_t *node, 
     {
       /* free sent buffers and update txq head */
       if (mode == RDMA_MLX5_TX_MODE_SEND)
+	/* coverity[tainted_data] - the used size is validated against buf_sz above */
 	rdma_buffer_free_from_ring_mlx5 (vm, txq->bufs, txq->head & mask, buf_sz,
 					 RDMA_TXQ_USED_SZ (txq->head, buf_tail));
       else
