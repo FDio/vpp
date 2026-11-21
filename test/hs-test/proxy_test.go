@@ -25,6 +25,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/quic-go/quic-go"
 	"github.com/quic-go/quic-go/http3"
+	"github.com/quic-go/quic-go/qlog"
+	"github.com/quic-go/quic-go/qlogwriter"
 )
 
 func init() {
@@ -1776,6 +1778,8 @@ func VppConnectProxyHttp3StopSendingAfterFinMWTest(s *VppProxySuite) {
 	proxyAddress := net.JoinHostPort(s.VppProxyAddr(), fmt.Sprint(s.Ports.Proxy))
 	targetAddress := net.JoinHostPort(s.ServerAddr(), fmt.Sprint(s.Ports.Server))
 	Log(vpp.Vppctl("test proxy server fifo-size 64k max-fifo-size 64k server-uri https://" + proxyAddress + " http3"))
+	checkCleanup := quicCleanupCheck(timeout, vpp)
+	listenerSessions := vpp.Vppctl("show session")
 
 	payload := bytes.Repeat([]byte("stop-sending-after-fin"), 2048)
 	serverDone, serverReady := runFinDrainTcpServer(targetAddress, timeout, func(conn *net.TCPConn) error {
@@ -1796,12 +1800,29 @@ func VppConnectProxyHttp3StopSendingAfterFinMWTest(s *VppProxySuite) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+	resets := make(chan qlog.ResetStreamFrame, 1)
 	conn, err := quic.DialAddr(ctx, proxyAddress,
 		&tls.Config{InsecureSkipVerify: true, NextProtos: []string{"h3"}},
 		&quic.Config{
 			InitialStreamReceiveWindow: 4096,
 			MaxStreamReceiveWindow:     4096,
 			KeepAlivePeriod:            time.Second,
+			Tracer: func(context.Context, bool, quic.ConnectionID) qlogwriter.Trace {
+				return http3TraceFunc(func(event qlogwriter.Event) {
+					packet, ok := event.(qlog.PacketReceived)
+					if !ok {
+						return
+					}
+					for _, frame := range packet.Frames {
+						if reset, ok := frame.Frame.(*qlog.ResetStreamFrame); ok {
+							select {
+							case resets <- *reset:
+							default:
+							}
+						}
+					}
+				})
+			},
 		})
 	AssertNil(err)
 	defer conn.CloseWithError(0, "")
@@ -1818,19 +1839,23 @@ func VppConnectProxyHttp3StopSendingAfterFinMWTest(s *VppProxySuite) {
 	AssertHttpStatus(resp, http.StatusOK)
 
 	streamID := fmt.Sprintf(" stream-id 0x%x conn ", stream.StreamID())
-	streamState := func() string {
-		for _, section := range strings.Split(vpp.Vppctl("show session verbose 2"), "\n[") {
+	sessionDetails := func() string { return vpp.Vppctl("show session verbose 2") }
+	streamState := func(output string) string {
+		for section := range strings.SplitSeq(output, "\n[") {
 			if strings.Contains(section, "[Q] stream ") && strings.Contains(section, streamID) {
 				return section
 			}
 		}
 		return ""
 	}
-	Eventually(streamState, timeout, 100*time.Millisecond).Should(And(
-		Or(ContainSubstring("app-tx-closed"), ContainSubstring("snd-side-closed")),
-		MatchRegexp(`app_tx_data_len [1-9]\d*`),
+	Eventually(sessionDetails, timeout, 100*time.Millisecond).Should(And(
+		Not(ContainSubstring("Verbose output suppressed")),
+		WithTransform(streamState, And(
+			ContainSubstring("app-tx-closed"),
+			MatchRegexp(`(?m)^ +pending-ranges \[`),
+		)),
 	), "quic must receive half-close from app while data is pending")
-	Log(streamState())
+	Log(streamState(sessionDetails()))
 
 	select {
 	case err := <-serverDone:
@@ -1840,16 +1865,22 @@ func VppConnectProxyHttp3StopSendingAfterFinMWTest(s *VppProxySuite) {
 	}
 
 	stream.CancelRead(quic.StreamErrorCode(http3.ErrCodeRequestCanceled))
-	Eventually(streamState, timeout, 100*time.Millisecond).Should(Or(
-		BeEmpty(),
-		MatchRegexp(`(?m) pending-ranges\r?$`),
-	), "STOP_SENDING must reset send side after app half-close")
+	// CancelRead ends the local receive side before the peer responds. Use the
+	// packet trace to verify the peer's RESET_STREAM and its error code.
+	var reset qlog.ResetStreamFrame
+	Eventually(resets, timeout).Should(Receive(&reset), "STOP_SENDING must elicit RESET_STREAM")
+	AssertEqual(stream.StreamID(), reset.StreamID)
+	AssertEqual(quic.StreamErrorCode(http3.ErrCodeRequestCanceled), reset.ErrorCode)
 	AssertNil(stream.Close())
 
-	Eventually(streamState, timeout, 100*time.Millisecond).Should(BeEmpty(),
-		"STOP_SENDING after FIN must delete quic stream")
-	Eventually(func() int {
-		return strings.Count(vpp.Vppctl("show session verbose"), "[H3]")
-	}, timeout, 100*time.Millisecond).Should(Equal(1), "only h3 connection should remain")
+	Eventually(sessionDetails, timeout, 100*time.Millisecond).Should(And(
+		Not(ContainSubstring("Verbose output suppressed")),
+		WithTransform(streamState, BeEmpty()),
+		WithTransform(func(output string) int { return strings.Count(output, "[H3]") }, Equal(1)),
+	), "only the HTTP/3 connection should remain after the request stream closes")
 	AssertNil(context.Cause(conn.Context()), "h3 connection must stay open during stream cleanup")
+	AssertNil(conn.CloseWithError(0, ""))
+	checkCleanup()
+	Eventually(func() string { return vpp.Vppctl("show session") }, timeout, 100*time.Millisecond).
+		Should(Equal(listenerSessions), "only the proxy listeners should remain")
 }

@@ -154,6 +154,7 @@ func QuicEngineObjectCountTest(s *NoTopoSuite) {
 	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
 	Log(vpp.Vppctl("test tls server alpn-proto1 3 uri quic://" + address))
 	checkCleanup := quicCleanupCheck(5*time.Second, vpp)
+	listenerSessions := vpp.Vppctl("show session")
 	counts := func() []uint64 {
 		return quicEngineObjectCounts(vpp)
 	}
@@ -226,6 +227,8 @@ func QuicEngineObjectCountTest(s *NoTopoSuite) {
 		waitCounts([]uint64{1, 1})
 		AssertNil(conn.CloseWithError(0, "test complete"))
 		checkCleanup()
+		Eventually(func() string { return vpp.Vppctl("show session") }, defaultHttpTimeout, 100*time.Millisecond).
+			Should(Equal(listenerSessions))
 		Eventually(verbose, 5*time.Second, 100*time.Millisecond).Should(And(
 			Not(ContainSubstring("conn state ")),
 			Not(MatchRegexp(`(?m)^Thread \d+: connections \d+ streams [1-9]`)),
@@ -249,6 +252,8 @@ func QuicEngineObjectCountTest(s *NoTopoSuite) {
 	}
 	AssertNotNil(err, "ALPN mismatch must fail the handshake")
 	checkCleanup()
+	Eventually(func() string { return vpp.Vppctl("show session") }, defaultHttpTimeout, 100*time.Millisecond).
+		Should(Equal(listenerSessions))
 	Log(vpp.Vppctl("show quic"))
 }
 
@@ -276,6 +281,23 @@ func QuicStreamCloseTest(s *NoTopoSuite) {
 					InitialStreamReceiveWindow: 1024, MaxStreamReceiveWindow: 1024})
 			AssertNil(err)
 			defer conn.CloseWithError(0, "test complete")
+			frameStats := func() string { return vpp.Vppctl("show session verbose 2") }
+			// Capture the parent baseline before opening any streams. The engine
+			// stream count can reach zero before VPP releases its session record.
+			Eventually(frameStats, defaultHttpTimeout, 100*time.Millisecond).
+				Should(MatchRegexp(`(?m)^\[\d+:\d+\]\[Q\] conn [^\r\n]*\bESTABLISHED\b`))
+			parentContexts := quicReadCleanupCounts(vpp.Vppctl("show quic verbose")).ContextsPerThread
+			parentSessions := vpp.Vppctl("show session")
+			waitParentCleanup := func() {
+				waitCounts(0)
+				Eventually(func() []uint64 {
+					return quicReadCleanupCounts(vpp.Vppctl("show quic verbose")).ContextsPerThread
+				}, defaultHttpTimeout, 100*time.Millisecond).Should(Equal(parentContexts),
+					"stream context must be released while the parent remains open")
+				Eventually(func() string { return vpp.Vppctl("show session") }, defaultHttpTimeout, 100*time.Millisecond).
+					Should(Equal(parentSessions))
+				AssertNil(context.Cause(conn.Context()), "stream closure must preserve the parent connection")
+			}
 			roundTrip := func() {
 				stream, err := conn.OpenStream()
 				AssertNil(err)
@@ -286,13 +308,9 @@ func QuicStreamCloseTest(s *NoTopoSuite) {
 				response, err := io.ReadAll(stream)
 				AssertNil(err)
 				AssertEqual("stream cleanup probe", string(response))
-				waitCounts(0)
 			}
-			// Complete a stream before taking the connection-only baseline.
 			roundTrip()
-			parentContexts := quicReadCleanupCounts(vpp.Vppctl("show quic verbose")).ContextsPerThread
-			parentSessions := vpp.Vppctl("show session")
-			frameStats := func() string { return vpp.Vppctl("show session verbose 2") }
+			waitParentCleanup()
 			switch test {
 			case "bidi FIN":
 				roundTrip()
@@ -332,7 +350,7 @@ func QuicStreamCloseTest(s *NoTopoSuite) {
 					Expect(err).To(BeAssignableToTypeOf(&quic.StreamError{}))
 				}
 				Eventually(frameStats, 5*time.Second, 100*time.Millisecond).
-					Should(MatchRegexp(`reset-stream [1-9][0-9]* stop-sending 0`))
+					Should(MatchRegexp(`rx frames: reset-stream [1-9][0-9]* stop-sending 0 `))
 			case "bidi STOP_SENDING":
 				stream, err := conn.OpenStream()
 				AssertNil(err)
@@ -349,7 +367,7 @@ func QuicStreamCloseTest(s *NoTopoSuite) {
 					Should(MatchRegexp(`(?m)\[Q\] stream .*ESTABLISHED\s+[0-9]+\s+[1-9][0-9]*\s*\r?$`))
 				stream.CancelRead(0x42)
 				Eventually(frameStats, 5*time.Second, 100*time.Millisecond).
-					Should(MatchRegexp(`reset-stream 0 stop-sending [1-9][0-9]*`))
+					Should(MatchRegexp(`rx frames: reset-stream 0 stop-sending [1-9][0-9]* `))
 				// Abort the flow-controlled writer only after STOP_SENDING
 				// arrived, then check cleanup with both directions terminated.
 				stream.CancelWrite(0x42)
@@ -368,17 +386,12 @@ func QuicStreamCloseTest(s *NoTopoSuite) {
 				} else {
 					stream.CancelWrite(0x43)
 					Eventually(frameStats, 5*time.Second, 100*time.Millisecond).
-						Should(MatchRegexp(`reset-stream [1-9][0-9]* stop-sending 0`))
+						Should(MatchRegexp(`rx frames: reset-stream [1-9][0-9]* stop-sending 0 `))
 				}
 			}
-			waitCounts(0)
-			Eventually(func() []uint64 {
-				return quicReadCleanupCounts(vpp.Vppctl("show quic verbose")).ContextsPerThread
-			}, 5*time.Second, 100*time.Millisecond).Should(Equal(parentContexts), "stream context must be released while parent remains open")
-			Eventually(func() string { return vpp.Vppctl("show session") },
-				5*time.Second, 100*time.Millisecond).Should(Equal(parentSessions))
-			AssertNil(context.Cause(conn.Context()), "stream closure must preserve the parent connection")
+			waitParentCleanup()
 			roundTrip()
+			waitParentCleanup()
 			AssertNil(conn.CloseWithError(0, "test complete"))
 			checkCleanup()
 			Eventually(func() string { return vpp.Vppctl("show session") },
@@ -393,9 +406,10 @@ func QuicStreamResetCloseTest(s *NoTopoSuite) {
 	AssertContains(vpp.Vppctl("test tls server alpn-proto1 3 uri quic://"+address), "server started")
 	checkCleanup := quicCleanupCheck(5*time.Second, vpp)
 	sessions := vpp.Vppctl("show session")
-	for range 2 {
+	for _, waitForReset := range []bool{false, true} {
 		for _, unidirectional := range []bool{false, true} {
 			func() {
+				Log("QUIC reset and close: unidirectional=%t wait for peer reset=%t", unidirectional, waitForReset)
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
 				conn, err := quic.DialAddr(ctx, address,
@@ -417,7 +431,13 @@ func QuicStreamResetCloseTest(s *NoTopoSuite) {
 				Eventually(func() []uint64 { return quicEngineObjectCounts(vpp) },
 					5*time.Second, 50*time.Millisecond).Should(Equal([]uint64{1, 1}))
 				stream.CancelWrite(0x44)
-				AssertNil(conn.CloseWithError(0, "close races with stream reset"))
+				if waitForReset {
+					// An immediate connection close can preempt quic-go's pending
+					// RESET_STREAM. Also verify cleanup after VPP receives the reset.
+					Eventually(func() string { return vpp.Vppctl("show session verbose 2") }, defaultHttpTimeout, 100*time.Millisecond).
+						Should(MatchRegexp(`rx frames: reset-stream [1-9][0-9]* `))
+				}
+				AssertNil(conn.CloseWithError(0, "close after canceling stream"))
 				checkCleanup()
 				Eventually(func() string { return vpp.Vppctl("show session") },
 					5*time.Second, 100*time.Millisecond).Should(Equal(sessions))
@@ -624,8 +644,9 @@ func QuicAlpnEmptyClientListTest(s *QuicSuite) {
 func QuicFailedHandshakeTest(s *NoTopoSuite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.Interfaces.Tap.Ip4AddressString() + ":" + s.Ports.Http
-	Log(vpp.Vppctl("test tls server uri quic://" + serverAddress))
+	AssertContains(vpp.Vppctl("test tls server uri quic://"+serverAddress), "server started")
 	checkCleanup := quicCleanupCheck(5*time.Second, vpp)
+	listenerSessions := vpp.Vppctl("show session")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -636,14 +657,12 @@ func QuicFailedHandshakeTest(s *NoTopoSuite) {
 		// set QUIC version 2 because we want failed accept
 		&quic.Config{Versions: []quic.Version{quic.Version2}},
 	)
-	Log(err)
-	// connect should fail (context deadline exceeded)
-	AssertNotNil(err, "connect should failed")
+	AssertMatchError(err, context.DeadlineExceeded, "the unsupported QUIC version must time out")
+	Expect(vpp.Vppctl("show errors")).To(MatchRegexp(`(?m)^ *[1-9][0-9]* +udp4-input +Accepted session `),
+		"VPP must receive the handshake attempt before the client times out")
 	checkCleanup()
-	// expect only two sessions (UDP and QUIC listener)
-	o := vpp.Vppctl("show session verbose")
-	Log(o)
-	AssertContains(o, "active sessions 2", "expected only listeners")
+	Eventually(func() string { return vpp.Vppctl("show session") }, defaultHttpTimeout, 100*time.Millisecond).
+		Should(Equal(listenerSessions), "only the UDP and QUIC listeners should remain")
 }
 
 func QuicConnectFailureMWTest(s *NoTopoSuite) {
@@ -882,6 +901,7 @@ func QuicRxDatagramSizeTest(s *NoTopoSuite) {
 	Log(o)
 	AssertContains(o, "server started")
 	checkCleanup := quicCleanupCheck(5*time.Second, vpp)
+	listenerSessions := vpp.Vppctl("show session")
 
 	counterPattern := regexp.MustCompile(`(?m)^\s*(\d+)\s+quic-input\s+quic RX datagrams too large\s+error\s*$`)
 	oversizedDatagrams := func() int {
@@ -937,6 +957,8 @@ func QuicRxDatagramSizeTest(s *NoTopoSuite) {
 	Log(vpp.Vppctl("show errors"))
 	AssertNil(conn.CloseWithError(0, "test complete"))
 	checkCleanup()
+	Eventually(func() string { return vpp.Vppctl("show session") }, defaultHttpTimeout, 100*time.Millisecond).
+		Should(Equal(listenerSessions))
 }
 
 func QuicCryptoContextTest(s *NoTopoSuite) {
@@ -978,6 +1000,7 @@ func QuicCryptoContextTest(s *NoTopoSuite) {
 	AssertContains(o, "[0][test_tls_server n_sub: 2, ckpair: 1]")
 	AssertContains(o, "[1][test_tls_server n_sub: 1, ckpair: 1]")
 	AssertContains(o, "[2][test_tls_server n_sub: 1, ckpair: 2][tls_profile: 0]")
+	listenerSessions := vpp.Vppctl("show session")
 	checkCleanup := quicCleanupCheck(5*time.Second, vpp)
 
 	// start anonther app which should use it own quic crypto context
@@ -1007,13 +1030,20 @@ func QuicCryptoContextTest(s *NoTopoSuite) {
 	)
 	AssertNil(err)
 	defer conn.CloseWithError(0, "test complete")
-	o = vpp.Vppctl("show session proto quic state ready verbose 2")
+	readyConnection := regexp.MustCompile(`(?m)^\[\d+:\d+\]\[Q\] conn [^\r\n]*\bESTABLISHED\b`)
+	Eventually(func() string {
+		o = vpp.Vppctl("show session verbose 2")
+		return o
+	}, defaultHttpTimeout, 100*time.Millisecond).Should(And(
+		Not(ContainSubstring("Verbose output suppressed")),
+		WithTransform(func(output string) []string { return readyConnection.FindAllString(output, -1) }, HaveLen(1)),
+		ContainSubstring("alpn-selected: h3 crctx: 1"),
+	))
 	Log(o)
-	AssertContains(o, "1 sessions matched filter")
-	AssertContains(o, "alpn-selected: h3")
-	AssertContains(o, "crctx: 1")
 	AssertNil(conn.CloseWithError(0, "test complete"))
 	checkCleanup()
+	Eventually(func() string { return vpp.Vppctl("show session") }, defaultHttpTimeout, 100*time.Millisecond).
+		Should(Equal(listenerSessions))
 }
 
 func quicBuiltinVperf(s *QuicSuite, uni bool) {

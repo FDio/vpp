@@ -95,16 +95,11 @@ func (s *Http3Suite) TeardownTest() {
 
 func (s *Http3Suite) StartNginx() {
 	AssertNil(s.Containers.Nginx.Create())
-	nginxSettings := struct {
-		LogPrefix string
-		Address   string
-		PortSsl   string
-		Port      string
-	}{
-		LogPrefix: s.Containers.Nginx.Name,
-		Address:   s.HostAddr(),
-		PortSsl:   s.Ports.Port1,
-		Port:      s.Ports.Port2,
+	nginxSettings := nginxMasqueSettings{
+		LogPrefix:  s.Containers.Nginx.Name,
+		Address:    s.HostAddr(),
+		PortSsl:    s.Ports.Port1,
+		StatusPort: s.Ports.Port2,
 	}
 	s.Containers.Nginx.CreateConfigFromTemplate(
 		"/nginx.conf",

@@ -327,14 +327,17 @@ func (s *MasqueSuite) ProxyClientConnect(proto, port string, extraArgs ...string
 	AssertEqual(connected, true, "client not connected to the server")
 }
 
+type nginxMasqueSettings struct {
+	LogPrefix  string
+	Address    string
+	Port       string
+	PortSsl    string
+	StatusPort string
+}
+
 func (s *MasqueSuite) StartNginxServer() {
 	AssertNil(s.Containers.NginxServer.Create())
-	nginxSettings := struct {
-		LogPrefix string
-		Address   string
-		Port      string
-		PortSsl   string
-	}{
+	nginxSettings := nginxMasqueSettings{
 		LogPrefix: s.Containers.NginxServer.Name,
 		Address:   s.NginxAddr(),
 		Port:      s.Ports.Nginx,
