@@ -52,28 +52,27 @@ hsi_tcp_fin_wait_del (tcp_connection_t *tc)
 }
 
 static void
-hsi_tcp_drain_stop (tcp_connection_t *tc)
+hsi_tcp_drain_stop_key (clib_thread_index_t thread_index, uword key)
 {
   hsi_tcp_drain_t *drain;
   hsi_worker_t *wrk;
   u32 n_dropped;
   u32 drain_index;
-  uword key;
 
-  key = hsi_tcp_session_conn_key_from_connection (tc);
-  drain_index = hsi_tcp_drain_index_get (tc->c_thread_index, key);
+  drain_index = hsi_tcp_drain_index_get (thread_index, key);
   if (drain_index == HSI_TCP_DRAIN_INDEX_INVALID)
     return;
 
-  wrk = hsi_worker_get (tc->c_thread_index);
+  wrk = hsi_worker_get (thread_index);
   drain = pool_elt_at_index (wrk->tcp_drains, drain_index);
-  n_dropped = hsi_drain_drop_cached_buffers (vlib_get_main_by_index (tc->c_thread_index),
+  n_dropped = hsi_drain_drop_cached_buffers (vlib_get_main_by_index (thread_index),
 					     &drain->cached_buffers, &drain->cached_bytes);
   hsi_worker_counter_add (wrk, tcp_drain_cache_dropped, n_dropped);
 
   hash_unset (wrk->tcp_drain_by_session_conn, key);
   hsi_tcp_drain_pool_put_index (wrk, drain_index);
 }
+
 void
 hsi_tcp_session_cleanup_state (session_t *s)
 {
@@ -82,11 +81,10 @@ hsi_tcp_session_cleanup_state (session_t *s)
   if (hsi_tcp_connection_is_committed (tc))
     hsi_wheel_disarm (s->thread_index, &hsi_tcp_tracker_from_connection (tc)->idle_timer);
   hsi_tcp_fin_wait_del (tc);
-  hsi_tcp_drain_stop (tc);
+  hsi_tcp_drain_stop_key (tc->c_thread_index, hsi_tcp_session_conn_key_from_connection (tc));
 }
 
-static int hsi_tcp_drain_transport_closed (session_t *s, tcp_connection_t *tc,
-					   hsi_tcp_drain_t *drain);
+static int hsi_tcp_drain_transport_closed (session_t *s, hsi_tcp_drain_t *drain);
 static int hsi_tcp_drain_try_complete (session_t *s, tcp_connection_t *tc, hsi_tcp_drain_t *drain,
 				       f64 now);
 
@@ -98,12 +96,12 @@ hsi_tcp_track_abort_session_inline (session_t *s, u8 send_rst)
 
   ASSERT (s->thread_index == vlib_get_thread_index ());
 
-  tc = hsi_tcp_connection_at_session (s);
-  if (!(tc->cfg_flags & TCP_CFG_F_TRACKED))
+  drain = hsi_tcp_drain_get (s->thread_index, hsi_session_conn_key_from_session (s));
+  if (drain && hsi_tcp_drain_transport_closed (s, drain))
     return;
 
-  drain = hsi_tcp_drain_get (s->thread_index, hsi_session_conn_key_from_session (s));
-  if (drain && hsi_tcp_drain_transport_closed (s, tc, drain))
+  tc = hsi_tcp_connection_at_session (s);
+  if (!(tc->cfg_flags & TCP_CFG_F_TRACKED))
     return;
 
   if (tc->state != TCP_STATE_CLOSED)
@@ -769,7 +767,7 @@ hsi_tcp_track_commit_flush (tcp_connection_t *tc)
   hsi_tcp_drain_flush_cached_buffers (tc);
   if (hsi_tcp_drain_get (tc->c_thread_index, hsi_tcp_session_conn_key_from_connection (tc)))
     hsi_worker_counter_inc (wrk, tcp_drain_completed);
-  hsi_tcp_drain_stop (tc);
+  hsi_tcp_drain_stop_key (tc->c_thread_index, hsi_tcp_session_conn_key_from_connection (tc));
 }
 
 /*
@@ -841,20 +839,13 @@ hsi_tcp_track_commit_no_flush (session_t *s, hsi_tcp_track_snapshot_t *self,
 
   ASSERT (s->thread_index == vlib_get_thread_index ());
 
-  tc = hsi_tcp_connection_at_session (s);
-  if (hsi_tcp_connection_is_committed (tc))
+  drain = hsi_tcp_drain_get (s->thread_index, hsi_session_conn_key_from_session (s));
+  if (drain && hsi_tcp_drain_transport_closed (s, drain))
     return 0;
 
-  drain = hsi_tcp_drain_get (s->thread_index, hsi_session_conn_key_from_session (s));
-
-  /* Closed while draining. If not by hsi, tcp closed it */
-  if (tc->state == TCP_STATE_CLOSED)
-    {
-      ASSERT (tc->cfg_flags & TCP_CFG_F_TRACKED);
-      if (drain)
-	hsi_tcp_drain_transport_closed (s, tc, drain);
-      return 0;
-    }
+  tc = hsi_tcp_connection_at_session (s);
+  if (hsi_tcp_connection_is_committed (tc) || tc->state == TCP_STATE_CLOSED)
+    return 0;
 
   /* Drain failed and aborts are on their way */
   if (drain && drain->state == HSI_TCP_DRAIN_STATE_FAILED)
@@ -895,12 +886,15 @@ hsi_tcp_track_ready_msg (hsi_tcp_track_ready_req_t *a)
   if (!s)
     return;
 
+  drain = hsi_tcp_drain_get (sh.thread_index, hsi_session_conn_key_from_session (s));
+  if (!drain || hsi_tcp_drain_transport_closed (s, drain))
+    return;
+
   tc = hsi_tcp_connection_at_session (s);
   if (!(tc->cfg_flags & TCP_CFG_F_TRACKED) || hsi_tcp_connection_is_committed (tc))
     return;
 
-  drain = hsi_tcp_drain_get (sh.thread_index, hsi_session_conn_key_from_session (s));
-  if (!drain || !hsi_tcp_drain_flag_is_set (drain, HSI_TCP_DRAIN_F_COMMITTER))
+  if (!hsi_tcp_drain_flag_is_set (drain, HSI_TCP_DRAIN_F_COMMITTER))
     return;
 
   drain->peer_snapshot = a->snapshot;
@@ -958,20 +952,39 @@ hsi_tcp_track_send_ready (session_t *s, tcp_connection_t *tc, hsi_tcp_drain_t *d
  * connection. Returns 1 if that was the case.
  */
 static int
-hsi_tcp_drain_transport_closed (session_t *s, tcp_connection_t *tc, hsi_tcp_drain_t *drain)
+hsi_tcp_drain_transport_closed (session_t *s, hsi_tcp_drain_t *drain)
 {
-  if (PREDICT_TRUE (tc->state != TCP_STATE_CLOSED) || hsi_tcp_connection_is_committed (tc) ||
-      hsi_tcp_drain_flag_is_set (drain, HSI_TCP_DRAIN_F_HSI_CLOSED))
-    return 0;
+  u8 is_deleted = s->session_state == SESSION_STATE_TRANSPORT_DELETED;
+  tcp_connection_t *tc = 0;
+  uword key = hsi_session_conn_key_from_session (s);
+
+  /* TCP may have already deleted the connection before the next drain scan.
+   * In that case only the session and drain state are still valid. */
+  if (!is_deleted)
+    {
+      tc = hsi_tcp_connection_at_session (s);
+      if (PREDICT_TRUE (tc->state != TCP_STATE_CLOSED) || hsi_tcp_connection_is_committed (tc) ||
+	  hsi_tcp_drain_flag_is_set (drain, HSI_TCP_DRAIN_F_HSI_CLOSED))
+	return 0;
+    }
 
   hsi_worker_counter_inc (hsi_worker_get (s->thread_index), tcp_drain_transport_closed);
   if (!hsi_tcp_drain_flag_is_set (drain, HSI_TCP_DRAIN_F_ABORT_SENT))
     hsi_tcp_track_send_abort (drain->peer_session_handle);
   /* Session lingers until tcp deletes the connection, no tx without fifos */
-  hsi_tcp_track_cleanup_pending_tx (s, tc);
+  if (tc)
+    hsi_tcp_track_cleanup_pending_tx (s, tc);
+  else
+    s->flags &= ~SESSION_F_CUSTOM_TX;
   hsi_session_cleanup_fifos (s);
-  hsi_tcp_session_cleanup_state (s);
+  hsi_tcp_fin_wait_del_key (s->thread_index, key);
+  hsi_tcp_drain_stop_key (s->thread_index, key);
   hsi_session_release (s);
+  if (is_deleted)
+    {
+      s->session_state = SESSION_STATE_TRANSPORT_DELETED;
+      session_program_cleanup (s);
+    }
 
   return 1;
 }
@@ -1023,16 +1036,17 @@ hsi_tcp_drain_try_complete (session_t *s, tcp_connection_t *tc, hsi_tcp_drain_t 
   session_t *peer_s;
   int rv;
 
-  ASSERT (tc->cfg_flags & TCP_CFG_F_TRACKED);
   ASSERT (s->thread_index == vlib_get_thread_index ());
-  ASSERT (tc->c_thread_index == vlib_get_thread_index ());
   ASSERT (drain);
+
+  if (hsi_tcp_drain_transport_closed (s, drain))
+    return -1;
+
+  ASSERT (tc->cfg_flags & TCP_CFG_F_TRACKED);
+  ASSERT (tc->c_thread_index == vlib_get_thread_index ());
 
   if (hsi_tcp_connection_is_committed (tc))
     return 1;
-
-  if (hsi_tcp_drain_transport_closed (s, tc, drain))
-    return -1;
 
   if (drain->state == HSI_TCP_DRAIN_STATE_FAILED)
     return -1;
@@ -1272,13 +1286,15 @@ hsi_tcp_drain_timer (clib_thread_index_t thread_index, f64 time_now)
 	continue;
       ASSERT (s->thread_index == thread_index);
 
+      drain = hsi_tcp_drain_get (thread_index, hsi_session_conn_key_from_session (s));
+      if (!drain || hsi_tcp_drain_transport_closed (s, drain))
+	continue;
+
       tc = hsi_tcp_connection_at_session (s);
       if (!(tc->cfg_flags & TCP_CFG_F_TRACKED) || hsi_tcp_connection_is_committed (tc))
 	continue;
 
-      drain = hsi_tcp_drain_get (thread_index, hsi_session_conn_key_from_session (s));
-      if (drain)
-	hsi_tcp_drain_try_complete (s, tc, drain, time_now);
+      hsi_tcp_drain_try_complete (s, tc, drain, time_now);
     }
 
   return pool_elts (wrk->tcp_drains) ? wrk->tcp_drain_next_scan : HSI_TIMER_NONE;
