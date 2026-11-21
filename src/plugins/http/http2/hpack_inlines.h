@@ -489,6 +489,11 @@ hpack_validate_request_pseudo_headers (hpack_request_control_data_t *cd, u8 enab
 	  _http_validate_uri_component (cd->path, cd->path_len, HTTP_URI_COMPONENT_QUERY, 0,
 					&cd->query_offset))
 	return HPACK_ERROR_PROTOCOL;
+      /* http_set_target_path stores each component in a u16 without its delimiter. */
+      if (cd->path_len > UINT16_MAX &&
+	  (cd->query_offset - (cd->path[0] == '/') > UINT16_MAX ||
+	   (cd->query_offset < cd->path_len && cd->path_len - cd->query_offset - 1 > UINT16_MAX)))
+	return HPACK_ERROR_PROTOCOL;
       if (extended && !(cd->parsed_bitmap & authority))
 	return HPACK_ERROR_PROTOCOL;
     }

@@ -22,6 +22,7 @@ import (
 
 	"github.com/onsi/gomega/ghttp"
 	"github.com/onsi/gomega/gmeasure"
+	"github.com/quic-go/quic-go/http3"
 
 	. "fd.io/hs-test/infra"
 	. "github.com/onsi/ginkgo/v2"
@@ -42,7 +43,7 @@ func init() {
 		HttpClientGet128kbResponseTest, HttpClientGetResponseBodyTest, HttpClientGetTlsNoRespBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest,
 		HttpClientEmptyContentLengthResponseTest, HttpClientDuplicateHeadersTest,
 		HttpRequestLineTest, HttpClientGetTimeout, HttpConnTimeoutTest, HttpClientGetRepeatTest, HttpClientPostRepeatTest,
-		HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpHeaderErrorConnectionDropTest,
+		HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpConnectUdpDraft03TargetTest, HttpHeaderErrorConnectionDropTest,
 		HttpClientInvalidHeaderNameTest, HttpTimerSessionDisable, HttpClientBodySizeTest, HttpClientResponseLengthOverflowTest,
 		HttpCliSmallRxFifoReplyTest, HttpCliFragmentedReplyTest, HttpContentLengthLongerBodyTest,
 		HttpCliClientGetBodyTest, HttpCliClientGetBodyPtrTest,
@@ -4019,14 +4020,60 @@ func HttpUriDecodeTest(s *Http1Suite) {
 	AssertHttpHeaderWithValue(resp, "Content-Type", "text/html")
 }
 
+func http1ReadTargetHeaders(address, method, target string) *http.Response {
+	conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+	AssertNil(err, target)
+	defer conn.Close()
+	AssertNil(conn.SetDeadline(time.Now().Add(defaultHttpTimeout)))
+	_, err = fmt.Fprintf(conn, "%s %s HTTP/1.1\r\nHost: %s\r\n\r\n", method, target, address)
+	AssertNil(err, target)
+	resp, err := http.ReadResponse(bufio.NewReader(conn), &http.Request{Method: method})
+	AssertNil(err, target)
+	return resp
+}
+
 func HttpAbsoluteFormUriTest(s *Http1Suite) {
 	vpp := s.Containers.Vpp.VppInstance
 	serverAddress := s.VppAddr() + ":" + s.Ports.Http
 	vpp.Vppctl("http cli server uri http://" + serverAddress)
 
-	resp, err := TcpSendReceive(serverAddress, "GET http://"+serverAddress+"/show/version HTTP/1.1\r\nHost: "+serverAddress+"\r\n\r\n")
-	AssertNil(err, fmt.Sprint(err))
-	AssertContains(resp, "HTTP/1.1 200 OK")
+	for _, requestLine := range []string{
+		"GET http://" + serverAddress + "/show/version",
+		"GET http://" + serverAddress + "/show%20version?q=a%2Fb/?",
+		"GET hTtPs://[::1]:443/show/version",
+		"OPTIONS http://a",
+		"OPTIONS http://a/",
+		"OPTIONS http://a/?",
+		"OPTIONS http://a?q=a/b",
+		"OPTIONS HTTP://%65xample.com",
+		"OPTIONS https://[::1]:443",
+	} {
+		method, target, _ := strings.Cut(requestLine, " ")
+		resp := http1ReadTargetHeaders(serverAddress, method, target)
+		AssertHttpStatus(resp, http.StatusOK, requestLine)
+	}
+	// The CLI server ignores the authority and query, so the transport must reject these.
+	for _, target := range []string{
+		"/show/version?q=%", "http://a/show/version?q=%", "http://a?q=%",
+		"http://example%", "http://example%/", "http://example:bad", "http://[::1",
+	} {
+		resp := http1ReadTargetHeaders(serverAddress, "OPTIONS", target)
+		AssertHttpStatus(resp, http.StatusBadRequest, target)
+		AssertEqual(true, resp.Close, target)
+	}
+
+	for _, target := range []string{"http:443", "https:80", "[::1]:443"} {
+		resp := http1ReadTargetHeaders(serverAddress, "CONNECT", target)
+		// The CLI's Allow header confirms the request reached the application.
+		AssertHttpStatus(resp, http.StatusMethodNotAllowed, target)
+		AssertHttpHeaderWithValue(resp, "Allow", "GET, HEAD, OPTIONS", target)
+	}
+
+	for _, target := range []string{"http:443x", "https:", "example.com:65536", "[::1]:443?x=1"} {
+		resp := http1ReadTargetHeaders(serverAddress, "CONNECT", target)
+		AssertHttpStatus(resp, http.StatusBadRequest, target)
+		AssertEqual(true, resp.Close, target)
+	}
 }
 
 func HttpInvalidAuthorityFormUriTest(s *Http1Suite) {
@@ -4065,6 +4112,49 @@ func HttpInvalidAuthorityFormUriTest(s *Http1Suite) {
 	resp, err = TcpSendReceive(serverAddress, "CONNECT example.org:443 HTTP/1.1\r\nHost: example.com\r\n\r\n")
 	AssertNil(err, fmt.Sprint(err))
 	AssertContains(resp, "HTTP/1.1 400 Bad Request", "name resolution not supported")
+}
+
+func HttpConnectUdpDraft03TargetTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	Log(vpp.Vppctl("test proxy server enable-masque-draft-03 fifo-size 512k server-uri http://%s", address))
+	upstream := StartUdpEchoServer(s.HostAddr(), 0)
+	defer upstream.Close()
+	authority := upstream.LocalAddr().String()
+
+	for _, target := range []string{"http://" + authority + "/", "https://" + authority + "/", "/tunnel",
+		"masque://" + authority + "/extra", "masque://" + authority + "/?q=1", "masque://" + s.HostAddr() + "/"} {
+		resp := http1ReadTargetHeaders(address, "CONNECT-UDP", target)
+		AssertHttpStatus(resp, http.StatusBadRequest, target)
+		AssertEqual(true, resp.Close, target)
+	}
+
+	conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+	AssertNil(err)
+	defer conn.Close()
+	AssertNil(conn.SetDeadline(time.Now().Add(defaultHttpTimeout)))
+	_, err = fmt.Fprintf(conn, "CONNECT-UDP masque://%s/ HTTP/1.1\r\nHost: %s\r\n\r\n", authority, address)
+	AssertNil(err)
+	reader := bufio.NewReader(conn)
+	resp, err := http.ReadResponse(reader, &http.Request{Method: "CONNECT-UDP"})
+	AssertNil(err)
+	defer resp.Body.Close()
+	AssertHttpStatus(resp, http.StatusSwitchingProtocols)
+
+	// Draft-03 DATAGRAM capsules contain the UDP payload without a context ID.
+	const payload = "draft-03 echo"
+	const datagramCapsule http3.CapsuleType = 0
+	var capsule bytes.Buffer
+	AssertNil(http3.WriteCapsule(&capsule, datagramCapsule, []byte(payload)))
+	AssertNil(conn.SetDeadline(time.Now().Add(defaultHttpTimeout)))
+	_, err = conn.Write(capsule.Bytes())
+	AssertNil(err)
+	capsuleType, echoed, err := http3.NewCapsuleParser(reader).Next()
+	AssertNil(err)
+	AssertEqual(datagramCapsule, capsuleType)
+	data, err := io.ReadAll(echoed)
+	AssertNil(err)
+	AssertEqual(payload, string(data))
 }
 
 func HttpHeadersTest(s *Http1Suite) {

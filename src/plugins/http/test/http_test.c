@@ -1399,6 +1399,41 @@ http_test_pseudo_headers (vlib_main_t *vm)
 		 "request pseudo-header presence/value rules, case %u", i);
     }
 
+  const struct
+  {
+    u32 path_len, query_len;
+    hpack_error_t expected;
+  } target_lengths[] = {
+    { UINT16_MAX, 0, HPACK_ERROR_NONE },
+    { UINT16_MAX, UINT16_MAX, HPACK_ERROR_NONE },
+    { UINT16_MAX + 1, 0, HPACK_ERROR_PROTOCOL },
+    { 1, UINT16_MAX + 1, HPACK_ERROR_PROTOCOL },
+  };
+  for (u32 i = 0; i < ARRAY_LEN (target_lengths); i++)
+    {
+      u32 path_len = target_lengths[i].path_len, query_len = target_lengths[i].query_len;
+      u32 len = 1 + path_len + (query_len ? 1 + query_len : 0);
+      u8 *target = 0;
+      vec_validate_init_empty (target, len - 1, 'a');
+      target[0] = '/';
+      if (query_len)
+	target[1 + path_len] = '?';
+      hpack_request_control_data_t cd = {
+	.parsed_bitmap = HPACK_PSEUDO_HEADER_METHOD_PARSED | HPACK_PSEUDO_HEADER_SCHEME_PARSED |
+			 HPACK_PSEUDO_HEADER_AUTHORITY_PARSED | HPACK_PSEUDO_HEADER_PATH_PARSED,
+	.method = HTTP_REQ_GET,
+	.scheme = HTTP_URL_SCHEME_HTTPS,
+	.authority = (u8 *) "example.com",
+	.authority_len = sizeof ("example.com") - 1,
+	.path = target,
+	.path_len = len,
+      };
+      hpack_error_t rv = hpack_validate_request_pseudo_headers (&cd, 0);
+      vec_free (target);
+      HTTP_TEST (rv == target_lengths[i].expected, "target with path length %u and query length %u",
+		 path_len, query_len);
+    }
+
   static http2_error_t (*parse_h2) (u8 *, u32, u8 *, u32, hpack_response_control_data_t *,
 				    http_field_line_t **, hpack_dynamic_table_t *);
   static http3_error_t (*parse_h3) (u8 *, u32, u8 *, u32, hpack_response_control_data_t *,
