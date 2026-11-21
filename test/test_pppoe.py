@@ -440,6 +440,44 @@ class TestPPPoE(VppTestCase):
         # Delete a route that resolves the server's destination
         route_sever_dst.remove_vpp_config()
 
+    def test_PPPoE_Session_Dump(self):
+        """PPPoE Session Dump Test"""
+
+        # Send PPPoE Discovery
+        tx0 = self.create_stream_pppoe_discovery(
+            self.pg0, self.pg1, self.pg0.remote_mac
+        )
+        self.pg0.add_stream(tx0)
+        self.pg_start()
+
+        # Create PPPoE session
+        pppoe_if = VppPppoeInterface(
+            self, self.pg0.remote_ip4, self.pg0.remote_mac, self.session_id
+        )
+        pppoe_if.add_vpp_config()
+
+        #
+        # The session is reported by a dump of all sessions, and by a dump
+        # of its own interface
+        #
+        for sw_if_index in (0xFFFFFFFF, pppoe_if.sw_if_index):
+            sessions = self.vapi.pppoe_session_dump(sw_if_index=sw_if_index)
+            self.assertEqual(len(sessions), 1)
+            session = sessions[0]
+            self.assertEqual(session.sw_if_index, pppoe_if.sw_if_index)
+            self.assertEqual(session.session_id, self.session_id)
+            self.assertEqual(session.encap_if_index, self.pg0.sw_if_index)
+            self.assertEqual(str(session.client_ip), self.pg0.remote_ip4)
+            self.assertEqual(str(session.client_mac), self.pg0.remote_mac)
+            self.assertEqual(str(session.local_mac), self.pg0.local_mac)
+
+        #
+        # test case cleanup
+        #
+
+        # Delete PPPoE session
+        pppoe_if.remove_vpp_config()
+
     def test_PPPoE_Decap_Multiple(self):
         """PPPoE Decap Multiple Sessions Test"""
 

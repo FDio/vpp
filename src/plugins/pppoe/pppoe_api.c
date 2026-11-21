@@ -63,13 +63,14 @@ static void send_pppoe_session_details
   (pppoe_session_t * t, vl_api_registration_t * reg, u32 context)
 {
   vl_api_pppoe_session_details_t *rmp;
+  pppoe_main_t *pem = &pppoe_main;
   ip4_main_t *im4 = &ip4_main;
   ip6_main_t *im6 = &ip6_main;
   u8 is_ipv6 = !ip46_address_is_ip4 (&t->client_ip);
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   clib_memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_PPPOE_SESSION_DETAILS);
+  rmp->_vl_msg_id = ntohs (VL_API_PPPOE_SESSION_DETAILS + pem->msg_id_base);
   ip_address_encode (&t->client_ip, is_ipv6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
 		     &rmp->client_ip);
 
