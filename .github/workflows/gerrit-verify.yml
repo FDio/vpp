@@ -1,4 +1,5 @@
 name: gerrit-verify
+run-name: "gerrit-verify ${{ inputs.GERRIT_CHANGE_NUMBER }}/${{ inputs.GERRIT_PATCHSET_NUMBER }}"
 
 on:
   workflow_dispatch:
@@ -54,34 +55,65 @@ defaults:
 
 permissions:
   contents: read
-  actions: read
+  actions: read   # Needed to read local actions
 
 concurrency:
-  group: ${{ inputs.GERRIT_PROJECT }}-${{ inputs.GERRIT_BRANCH }}-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.FDIO_NAMESPACE }}
+  group: ${{ github.workflow }}-${{ inputs.GERRIT_PROJECT }}-${{ inputs.GERRIT_BRANCH }}-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.FDIO_NAMESPACE }}
   cancel-in-progress: true
 
 jobs:
   start-verify:
     name: Start Verify
     runs-on: ubuntu-latest
+    environment: production
     outputs:
       log_prefix: ${{ steps.start-time.outputs.log_prefix }}
 
     steps:
       - name: Start Time
         id: start-time
+        env:
+          GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+          GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+          GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+          GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
         run: |
           set -euxo pipefail
           timestamp=$(date -u +%Y_%m_%d_%H%M%S_UTC)
-          branch=${{ inputs.GERRIT_BRANCH }}
+          branch="$GERRIT_BRANCH"
           branch=${branch/\//-}
-          log_prefix="gha-vpp-gerrit-patchset/verify-${branch}-${timestamp}-gerrit-${{ inputs.GERRIT_CHANGE_NUMBER }}-${{ inputs.GERRIT_PATCHSET_NUMBER}}"
+          log_prefix="gha-vpp-gerrit-patchset/verify-${branch}-${timestamp}-gerrit-$GERRIT_CHANGE_NUMBER-$GERRIT_PATCHSET_NUMBER"
           echo "log_prefix=$log_prefix" >> "$GITHUB_OUTPUT"
-          echo "Gerrit Change: ${{ inputs.GERRIT_CHANGE_URL }}"
+          echo "Gerrit Change: $GERRIT_CHANGE_URL"
+
+      - name: Job Details
+        env:
+          GERRIT_CHANGE_URL: ${{ inputs.GERRIT_CHANGE_URL }}
+          GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+          GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
+          GERRIT_CHANGE_ID: ${{ inputs.GERRIT_CHANGE_ID }}
+          GERRIT_PATCHSET_REVISION: ${{ inputs.GERRIT_PATCHSET_REVISION }}
+          GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
+          GERRIT_EVENT_TYPE: ${{ inputs.GERRIT_EVENT_TYPE }}
+          FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
+        run: |
+          {
+            echo "### Gerrit Verify Handler"
+            echo
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Gerrit change | $GERRIT_CHANGE_URL/$GERRIT_PATCHSET_NUMBER |"
+            echo "| Branch | $GERRIT_BRANCH |"
+            echo "| Gerrit Change ID | $GERRIT_CHANGE_ID |"
+            echo "| Patchset Revision | $GERRIT_PATCHSET_REVISION |"
+            echo "| Refspec | $GERRIT_REFSPEC |"
+            echo "| Gerrit Event | $GERRIT_EVENT_TYPE |"
+            echo "| Namespace | $FDIO_NAMESPACE |"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Clear Gerrit vote
         # yamllint disable-line rule:line-length
-        uses: lfreleng-actions/gerrit-review-action@537251ec667665b386f70b330b05446e3fc29087 # v0.9
+        uses: lfreleng-actions/gerrit-review-action@31093af31cec3755c34d8563ee54e2b7eb3a4eac  # 1.3.1
         with:
           host: ${{ vars.GERRIT_SERVER }}
           username: ${{ vars.GERRIT_SSH_REQUIRED_USER }}
@@ -96,7 +128,7 @@ jobs:
     name: Checkstyle
     needs:
       - start-verify
-    uses: fdio/vpp/.github/workflows/vpp-verify-checkstyle.yml@3d8fab035e440ef25d177784c336c0c036913c5a
+    uses: fdio/vpp/.github/workflows/vpp-verify-checkstyle.yml@25e2784d997d02529c84f308aadd62c98ed65ff0
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -109,7 +141,9 @@ jobs:
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
       GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
       LOG_PREFIX: ${{ needs.start-verify.outputs.log_prefix }}
-    secrets: inherit
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
   verify-maketest:
     name: Maketest
@@ -117,7 +151,7 @@ jobs:
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/vpp/.github/workflows/vpp-verify-maketest.yml@3d8fab035e440ef25d177784c336c0c036913c5a
+    uses: fdio/vpp/.github/workflows/vpp-verify-maketest.yml@78bd74ac226aea0c1c3e8e3b071c2ab132e8c242
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -127,7 +161,9 @@ jobs:
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
       GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
       LOG_PREFIX: ${{ needs.start-verify.outputs.log_prefix }}
-    secrets: inherit
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
   verify-gcc:
     name: GCC
@@ -135,7 +171,7 @@ jobs:
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/vpp/.github/workflows/vpp-verify-gcc.yml@3d8fab035e440ef25d177784c336c0c036913c5a
+    uses: fdio/vpp/.github/workflows/vpp-verify-gcc.yml@25e2784d997d02529c84f308aadd62c98ed65ff0
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -148,7 +184,9 @@ jobs:
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
       GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
       LOG_PREFIX: ${{ needs.start-verify.outputs.log_prefix }}
-    secrets: inherit
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
   verify-csit-api:
     name: CSIT API
@@ -156,7 +194,7 @@ jobs:
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/vpp/.github/workflows/vpp-csit-verify-api.yml@3d8fab035e440ef25d177784c336c0c036913c5a
+    uses: fdio/vpp/.github/workflows/vpp-csit-verify-api.yml@25e2784d997d02529c84f308aadd62c98ed65ff0
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -166,7 +204,9 @@ jobs:
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
       GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
       LOG_PREFIX: ${{ needs.start-verify.outputs.log_prefix }}
-    secrets: inherit
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
   verify-arm-drivers:
     name: ARM Drivers
@@ -174,7 +214,7 @@ jobs:
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/vpp/.github/workflows/vpp-verify-arm-drivers.yml@3d8fab035e440ef25d177784c336c0c036913c5a
+    uses: fdio/vpp/.github/workflows/vpp-verify-arm-drivers.yml@25e2784d997d02529c84f308aadd62c98ed65ff0
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -184,7 +224,9 @@ jobs:
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
       GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
       LOG_PREFIX: ${{ needs.start-verify.outputs.log_prefix }}
-    secrets: inherit
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
   verify-hst:
     name: HST
@@ -192,7 +234,7 @@ jobs:
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/vpp/.github/workflows/vpp-verify-hst.yml@3d8fab035e440ef25d177784c336c0c036913c5a
+    uses: fdio/vpp/.github/workflows/vpp-verify-hst.yml@25e2784d997d02529c84f308aadd62c98ed65ff0
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -202,7 +244,9 @@ jobs:
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
       GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
       LOG_PREFIX: ${{ needs.start-verify.outputs.log_prefix }}
-    secrets: inherit
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
   detect-docs-changes:
     name: Detect Docs Changes
@@ -210,6 +254,7 @@ jobs:
       - start-verify
       - verify-checkstyle
     runs-on:
+      # zizmor: ignore[self-hosted-runner]
       - self-hosted
       - nomad
       - fdio:arch=x86_64
@@ -236,7 +281,7 @@ jobs:
         id: checkout-vpp
         continue-on-error: true
         # yamllint disable-line rule:line-length
-        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@f9e0f384d665800c8e580da853e26558dd6d2668
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@46f6412a326f82e8ce4c1aa2ac29ba78b2a952d2
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
@@ -272,7 +317,7 @@ jobs:
       - detect-docs-changes
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' && needs.detect-docs-changes.outputs.docs_changed == 'true' }}
-    uses: fdio/vpp/.github/workflows/vpp-verify-docs.yml@3d8fab035e440ef25d177784c336c0c036913c5a
+    uses: fdio/vpp/.github/workflows/vpp-verify-docs.yml@25e2784d997d02529c84f308aadd62c98ed65ff0
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -282,7 +327,11 @@ jobs:
       GERRIT_PROJECT: ${{ inputs.GERRIT_PROJECT }}
       GERRIT_REFSPEC: ${{ inputs.GERRIT_REFSPEC }}
       LOG_PREFIX: ${{ needs.start-verify.outputs.log_prefix }}
-    secrets: inherit
+    secrets:
+      AWS_DOCS_7DAY_ACCESS_KEY_ID: ${{ secrets.AWS_DOCS_7DAY_ACCESS_KEY_ID }}
+      AWS_DOCS_7DAY_SECRET_ACCESS_KEY: ${{ secrets.AWS_DOCS_7DAY_SECRET_ACCESS_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
   final-vote:
     name: Vote
@@ -292,31 +341,44 @@ jobs:
       - detect-docs-changes
       - verify-checkstyle
       - verify-maketest
+      - verify-gcc
       - verify-docs
       - verify-csit-api
       - verify-arm-drivers
       - verify-hst
     runs-on: ubuntu-latest
+    environment: production
     env:
       GERRIT_CHANGE_NUMBER: ${{ inputs.GERRIT_CHANGE_NUMBER }}
       GERRIT_PATCHSET_NUMBER: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
     steps:
       - name: Collect workflow results
         id: overall
+        env:
+          DOCS_CHANGED: ${{ needs.detect-docs-changes.outputs.docs_changed }}
+          VERIFY_DOCS_RESULT: ${{ needs.verify-docs.result }}
+          START_VERIFY_RESULT: ${{ needs.start-verify.result }}
+          VERIFY_CHECKSTYLE_RESULT: ${{ needs.verify-checkstyle.result }}
+          VERIFY_MAKETEST_RESULT: ${{ needs.verify-maketest.result }}
+          VERIFY_GCC_RESULT: ${{ needs.verify-gcc.result }}
+          VERIFY_CSIT_API_RESULT: ${{ needs.verify-csit-api.result }}
+          VERIFY_ARM_DRIVERS_RESULT: ${{ needs.verify-arm-drivers.result }}
+          VERIFY_HST_RESULT: ${{ needs.verify-hst.result }}
         run: |
           set -euxo pipefail
           docs_ok="true"
-          if [[ "${{ needs.detect-docs-changes.outputs.docs_changed }}" == "true" ]]; then
-            [[ "${{ needs.verify-docs.result }}" == "success" ]] || docs_ok="false"
+          if [[ "$DOCS_CHANGED" == "true" ]]; then
+            [[ "$VERIFY_DOCS_RESULT" == "success" ]] || docs_ok="false"
           fi
 
-          if [[ "${{ needs.start-verify.result }}" == "success" && \
-                "${{ needs.verify-checkstyle.result }}" == "success" && \
-                "${{ needs.verify-maketest.result }}" == "success" && \
+          if [[ "$START_VERIFY_RESULT" == "success" && \
+                "$VERIFY_CHECKSTYLE_RESULT" == "success" && \
+                "$VERIFY_MAKETEST_RESULT" == "success" && \
+                "$VERIFY_GCC_RESULT" == "success" && \
                 "$docs_ok" == "true" && \
-                "${{ needs.verify-csit-api.result }}" == "success" && \
-                "${{ needs.verify-arm-drivers.result }}" == "success" && \
-                "${{ needs.verify-hst.result }}" == "success" ]]; then
+                "$VERIFY_CSIT_API_RESULT" == "success" && \
+                "$VERIFY_ARM_DRIVERS_RESULT" == "success" && \
+                "$VERIFY_HST_RESULT" == "success" ]]; then
             echo "result=success" >> "$GITHUB_OUTPUT"
           else
             echo "result=failure" >> "$GITHUB_OUTPUT"
@@ -324,7 +386,7 @@ jobs:
 
       - name: Gerrit Vote
         # yamllint disable-line rule:line-length
-        uses: lfreleng-actions/gerrit-review-action@537251ec667665b386f70b330b05446e3fc29087 # v0.9
+        uses: lfreleng-actions/gerrit-review-action@31093af31cec3755c34d8563ee54e2b7eb3a4eac  # 1.3.1
         with:
           host: ${{ vars.GERRIT_SERVER }}
           username: ${{ vars.GERRIT_SSH_USER }}
