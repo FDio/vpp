@@ -16,6 +16,24 @@
       "message": "shouldn\u0027t this be the other way around? if !drain is cheaper to evaluate first.",
       "revId": "f51c606be5b2facf4e3e7510711e222bf6153382",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a2b8ef6f_59b9cf6d",
+        "filename": "src/plugins/hsi/hsi_tracker_tcp.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1323,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-21T15:43:41Z",
+      "side": 1,
+      "message": "Ack, fixed in latest amended commit.",
+      "parentUuid": "c41cbc06_0501ca95",
+      "revId": "f51c606be5b2facf4e3e7510711e222bf6153382",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
