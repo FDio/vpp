@@ -131,6 +131,16 @@ parser.add_argument(
     "(default: half of --timeout); must be less than --timeout",
 )
 
+default_qemu_api_timeout = 30
+
+parser.add_argument(
+    "--qemu-api-timeout",
+    type=positive_int_or_default(default_qemu_api_timeout),
+    help="binary API response timeout in seconds for namespace interface tests; "
+    "allows kernel interface setup to finish on loaded hosts "
+    f"(default: the smaller of {default_qemu_api_timeout} seconds and half of --timeout)",
+)
+
 parser.add_argument(
     "--failed-dir",
     action="store",
@@ -492,6 +502,10 @@ if config.net_helper_lock_timeout is None:
     config.net_helper_lock_timeout = config.timeout / 2
 if not 0 < config.net_helper_lock_timeout < config.timeout:
     parser.error("--net-helper-lock-timeout must be positive and less than --timeout")
+if config.qemu_api_timeout is None:
+    config.qemu_api_timeout = min(default_qemu_api_timeout, config.timeout / 2)
+if not 0 < config.qemu_api_timeout < config.timeout:
+    parser.error("--qemu-api-timeout must be positive and less than --timeout")
 
 ws = config.vpp_ws_dir
 br = f"{ws}/build-root"
