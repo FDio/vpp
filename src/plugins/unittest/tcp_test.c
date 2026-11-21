@@ -3025,8 +3025,8 @@ tcp_test_cubic_hystart (void)
   tc->ssthresh = tc->cwnd;
   pacing_rate = tcp_cc_get_pacing_rate (tc);
   tc->ssthresh = initial_ssthresh;
-  TCP_TEST ((pacing_rate == (u64) ((f64) tc->cwnd / 0.010)),
-	    "CSS uses 1x pacing once cwnd reaches ssthresh");
+  TCP_TEST ((pacing_rate == (u64) (TCP_PACING_GAIN * tc->cwnd / 0.010)),
+	    "CSS uses the avoidance pacing gain once cwnd reaches ssthresh");
 
   /* CSS grows at a quarter of the slow start rate */
   before = tc->cwnd;
@@ -3060,8 +3060,14 @@ tcp_test_cubic_hystart (void)
     }
   TCP_TEST ((tc->ssthresh == tc->cwnd), "HyStart++ exits CSS after five rounds");
   TCP_TEST ((tc->cwnd % snd_mss == 0), "lossless HyStart++ exit rounds cwnd to segments");
-  TCP_TEST ((tcp_cc_get_pacing_rate (tc) == (u64) ((f64) tc->cwnd / 0.010)),
-	    "HyStart++ exit restores 1x avoidance pacing");
+  TCP_TEST ((tcp_cc_get_pacing_rate (tc) == (u64) (TCP_PACING_GAIN * tc->cwnd / 0.010)),
+	    "HyStart++ exit restores the avoidance pacing gain");
+
+  /* NewReno paces at the same gain */
+  tc->cc_algo = tcp_cc_algo_get (TCP_CC_NEWRENO);
+  TCP_TEST ((tcp_cc_get_pacing_rate (tc) == (u64) (TCP_PACING_GAIN * tc->cwnd / 0.010)),
+	    "newreno paces at the avoidance pacing gain");
+  tc->cc_algo = tcp_cc_algo_get (TCP_CC_CUBIC);
 
   /* Unpaced growth capped at 8 mss per ack */
   tcp_test_cubic_hystart_init (tc, thread_index, snd_mss);
@@ -14494,8 +14500,9 @@ tcp_test_initial_cwnd (void)
   return 0;
 }
 
-/* CUBIC paces at 2x in early slow start and 1x from ssthresh / 2.
- * NewReno uses the default window rate without a gain. */
+/* CUBIC paces at 2x in early slow start and at the avoidance gain from
+ * ssthresh / 2. NewReno paces at the avoidance gain. That gain is above the
+ * window rate, cwnd / rtt, so the window, not the pacer, limits the flight */
 static int
 tcp_test_cc_pacing (void)
 {
@@ -14503,15 +14510,15 @@ tcp_test_cc_pacing (void)
   const struct
   {
     u32 ssthresh;
-    u64 cubic_rate;
+    u8 early_slow_start;
     const char *phase;
   } cases[] = {
-    { 0x7FFFFFFFU, 20000000, "initial slow start" },
-    { 200002, 20000000, "below ssthresh / 2" },
-    { 200000, 10000000, "at ssthresh / 2" },
-    { 199998, 10000000, "above ssthresh / 2" },
-    { 100000, 10000000, "at ssthresh" },
-    { 99998, 10000000, "above ssthresh" },
+    { 0x7FFFFFFFU, 1, "initial slow start" },
+    { 200002, 1, "below ssthresh / 2" },
+    { 200000, 0, "at ssthresh / 2" },
+    { 199998, 0, "above ssthresh / 2" },
+    { 100000, 0, "at ssthresh" },
+    { 99998, 0, "above ssthresh" },
   };
   tcp_connection_t _tc = {}, *tc = &_tc;
   u64 rate, expected_rate;
@@ -14521,13 +14528,19 @@ tcp_test_cc_pacing (void)
   tc->mrtt_us = 0.01;
   tc->cwnd = 100000;
 
+  TCP_TEST ((tcp_cc_window_pacing_rate (tc, TCP_PACING_GAIN) > 10000000),
+	    "avoidance pacing is above the window rate");
+
   for (i = 0; i < ARRAY_LEN (cc_types); i++)
     {
       tc->cc_algo = tcp_cc_algo_get (cc_types[i]);
       for (j = 0; j < ARRAY_LEN (cases); j++)
 	{
 	  tc->ssthresh = cases[j].ssthresh;
-	  expected_rate = cc_types[i] == TCP_CC_CUBIC ? cases[j].cubic_rate : 10000000;
+	  if (cc_types[i] == TCP_CC_CUBIC && cases[j].early_slow_start)
+	    expected_rate = 20000000;
+	  else
+	    expected_rate = tcp_cc_window_pacing_rate (tc, TCP_PACING_GAIN);
 	  rate = tcp_cc_get_pacing_rate (tc);
 	  TCP_TEST ((rate == expected_rate), "%s pacing in %s: %llu bytes/s (expected %llu)",
 		    tc->cc_algo->name, cases[j].phase, rate, expected_rate);

@@ -556,7 +556,8 @@ cubic_event (tcp_connection_t *tc, tcp_cc_event_t evt)
 static u64
 cubic_get_pacing_rate (tcp_connection_t *tc)
 {
-  f64 gain = 1.0;
+  /* Above cwnd / rtt, so the window, not the pacer, limits the flight */
+  f64 gain = TCP_PACING_GAIN;
 
   if (tcp_in_slowstart (tc))
     {
