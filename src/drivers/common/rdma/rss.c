@@ -77,6 +77,9 @@ rdma_rss_enable (rdma_rss_t *rss, const rdma_rss_caps_t *caps, struct ibv_wq **w
       if (cfg->lut[i] >= n_rxq || wqs[cfg->lut[i]] == 0)
 	use_lut = 0;
 
+  if (n_rxq == 0)
+    return VNET_DEV_ERR_INVALID_NUM_RX_QUEUES;
+
   if (n_rxq == 1)
     n_ind = 1;
   else if (use_lut)
