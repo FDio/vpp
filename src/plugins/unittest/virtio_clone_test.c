@@ -37,6 +37,7 @@ test_virtio_clone_tx (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command
   if (n_alloc != n_buffers)
     {
       if (n_alloc)
+	/* coverity[overrun-buffer-val] - n_alloc is at most n_buffers */
 	vlib_buffer_free (vm, bis, n_alloc);
       return clib_error_return (0, "buffer allocation failed");
     }
