@@ -59,6 +59,26 @@ What uses them
   JSON. VPP does not register the generated ``vl_api_<msg>_t_fromjson``
   functions any more.
 
+* ``vl_api_desc_msg_format ()`` creates the text of a message, which is what
+  ``format_vl_api_msg_text ()`` and the text output of ``api trace dump``
+  print. VPP does not register the generated ``vl_api_<msg>_t_format``
+  functions any more.
+
+* ``vl_api_desc_msg_calc_size ()`` calculates the size of a received message
+  from the lengths in its fields. The message handler drops a message which
+  is smaller than that, as such a message could make the byte order
+  conversion or the handler read past its end. VPP does not register the
+  generated ``vl_api_<msg>_t_calc_size`` functions any more, and a message
+  which has no descriptor is not checked.
+
+* ``vl_api_msg_endian (am, msg_id, msg, to_net)`` converts a message to or from
+  network byte order, which is big endian, by interpreting its descriptor.
+  VPP does not register the generated ``vl_api_<msg>_t_endian`` functions any
+  more, a message which has no descriptor is still converted by the handler it
+  was registered with. The descriptor tells which fields are tags of unions
+  and which are lengths, the conversion reads them before it converts them. The
+  steps of a message are worked out when it is first used, and kept.
+
 Showing the descriptors
 -----------------------
 

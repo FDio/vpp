@@ -17,6 +17,7 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlibapi/api.h>
+#include <vlibapi/api_desc.h>
 #include <vppinfra/elog.h>
 #include <vppinfra/callback.h>
 
@@ -44,13 +45,13 @@ vl_msg_api_increment_missing_client_counter (void)
 }
 
 int
-vl_msg_api_rx_trace_enabled (api_main_t * am)
+vl_msg_api_rx_trace_enabled (api_main_t *am)
 {
   return (am->rx_trace && am->rx_trace->enabled);
 }
 
 int
-vl_msg_api_tx_trace_enabled (api_main_t * am)
+vl_msg_api_tx_trace_enabled (api_main_t *am)
 {
   return (am->tx_trace && am->tx_trace->enabled);
 }
@@ -59,7 +60,7 @@ vl_msg_api_tx_trace_enabled (api_main_t * am)
  * vl_msg_api_trace
  */
 void
-vl_msg_api_trace (api_main_t * am, vl_api_trace_t * tp, void *msg)
+vl_msg_api_trace (api_main_t *am, vl_api_trace_t *tp, void *msg)
 {
   u8 **this_trace;
   u8 **old_trace;
@@ -105,8 +106,7 @@ vl_msg_api_trace (api_main_t * am, vl_api_trace_t * tp, void *msg)
 }
 
 int
-vl_msg_api_trace_onoff (api_main_t * am, vl_api_trace_which_t which,
-			int onoff)
+vl_msg_api_trace_onoff (api_main_t *am, vl_api_trace_which_t which, int onoff)
 {
   vl_api_trace_t *tp;
   int rv;
@@ -147,7 +147,7 @@ vl_msg_api_trace_onoff (api_main_t * am, vl_api_trace_which_t which,
 }
 
 int
-vl_msg_api_trace_free (api_main_t * am, vl_api_trace_which_t which)
+vl_msg_api_trace_free (api_main_t *am, vl_api_trace_which_t which)
 {
   vl_api_trace_t *tp;
   int i;
@@ -184,7 +184,7 @@ vl_msg_api_trace_free (api_main_t * am, vl_api_trace_which_t which)
 }
 
 u8 *
-vl_api_serialize_message_table (api_main_t * am, u8 * vector)
+vl_api_serialize_message_table (api_main_t *am, u8 *vector)
 {
   serialize_main_t _sm, *sm = &_sm;
   hash_pair_t *hp;
@@ -195,11 +195,10 @@ vl_api_serialize_message_table (api_main_t * am, u8 * vector)
   /* serialize the count */
   serialize_integer (sm, nmsg, sizeof (u32));
 
-  hash_foreach_pair (hp, am->msg_index_by_name_and_crc,
-  ({
-    serialize_likely_small_unsigned_integer (sm, hp->value[0]);
-    serialize_cstring (sm, (char *) hp->key);
-  }));
+  hash_foreach_pair (hp, am->msg_index_by_name_and_crc, ({
+		       serialize_likely_small_unsigned_integer (sm, hp->value[0]);
+		       serialize_cstring (sm, (char *) hp->key);
+		     }));
 
   return serialize_close_vector (sm);
 }
@@ -216,10 +215,8 @@ vl_msg_api_trace_write_one (api_main_t *am, u8 *msg, FILE *fp)
   u16 id = clib_net_to_host_u16 (*((u16 *) msg));
   vl_api_msg_data_t *m = vl_api_get_msg_data (am, id);
 
-  if (m && m->endian_handler)
-    {
-      m->endian_handler (tmpmem, 0 /* host endian */);
-    }
+  if (m)
+    vl_api_msg_endian (am, id, tmpmem, 0 /* host endian */);
 
   if (vl_api_msg_to_json_text (am, id, tmpmem, &s) == 0)
     {
@@ -285,8 +282,7 @@ vl_msg_api_trace_write_json (api_main_t *am, vl_api_trace_t *tp, FILE *fp)
 }
 
 int
-vl_msg_traverse_trace (vl_api_trace_t *tp, vl_msg_traverse_trace_fn fn,
-		       void *ctx)
+vl_msg_traverse_trace (vl_api_trace_t *tp, vl_msg_traverse_trace_fn fn, void *ctx)
 {
   int i;
   u8 *msg;
@@ -353,8 +349,7 @@ vl_api_msg_write_fn (u8 *msg, void *ctx)
 }
 
 int
-vl_msg_api_trace_save (api_main_t *am, vl_api_trace_which_t which, FILE *fp,
-		       u8 is_json)
+vl_msg_api_trace_save (api_main_t *am, vl_api_trace_which_t which, FILE *fp, u8 is_json)
 {
   vl_api_trace_t *tp;
   vl_api_trace_file_header_t fh;
@@ -410,8 +405,7 @@ vl_msg_api_trace_save (api_main_t *am, vl_api_trace_which_t which, FILE *fp,
 }
 
 int
-vl_msg_api_trace_configure (api_main_t * am, vl_api_trace_which_t which,
-			    u32 nitems)
+vl_msg_api_trace_configure (api_main_t *am, vl_api_trace_which_t which, u32 nitems)
 {
   vl_api_trace_t *tp;
   int was_on = 0;
@@ -439,7 +433,6 @@ vl_msg_api_trace_configure (api_main_t * am, vl_api_trace_which_t which,
 
     default:
       return -1;
-
     }
 
   if (tp->enabled)
@@ -481,19 +474,18 @@ vl_msg_api_barrier_release (void)
 }
 
 always_inline void
-msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
-		      int trace_it, int do_it, int free_it)
+msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len, int trace_it, int do_it,
+		      int free_it)
 {
   u16 id = clib_net_to_host_u16 (*((u16 *) the_msg));
   vl_api_msg_data_t *m = vl_api_get_msg_data (am, id);
 
   if (PREDICT_FALSE (am->elog_trace_api_messages))
     {
-      ELOG_TYPE_DECLARE (e) =
-        {
-          .format = "api-msg: %s",
-          .format_args = "T4",
-        };
+      ELOG_TYPE_DECLARE (e) = {
+	.format = "api-msg: %s",
+	.format_args = "T4",
+      };
       struct
       {
 	u32 c;
@@ -517,24 +509,21 @@ msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
 	}
 
       uword calc_size = 0;
-      ASSERT (NULL != m->calc_size_func);
-      if (m->calc_size_func)
-	{
-	  calc_size = m->calc_size_func (the_msg);
-	  if (calc_size > msg_len)
-	    {
-	      clib_warning (
-		"Truncated message '%s' (id %u) received, calculated size "
-		"%lu is bigger than actual size %llu, message dropped.",
-		m->name, id, calc_size, msg_len);
-	    }
-	}
+      const vl_api_desc_msg_t *d = vl_api_desc_find_msg (am, id);
+
+      if (d)
+	calc_size = vl_api_desc_msg_calc_size (d, the_msg);
+      else if (m->calc_size_func)
+	calc_size = m->calc_size_func (the_msg);
       else
-	{
-	  clib_warning ("Message '%s' (id %u) has NULL calc_size_func, cannot "
-			"verify message size is correct",
-			m->name, id);
-	}
+	clib_warning ("Message '%s' (id %u) has no descriptor and NULL "
+		      "calc_size_func, cannot verify message size is correct",
+		      m->name, id);
+
+      if (calc_size > msg_len)
+	clib_warning ("Truncated message '%s' (id %u) received, calculated size "
+		      "%lu is bigger than actual size %llu, message dropped.",
+		      m->name, id, calc_size, msg_len);
 
       /* don't process message if it's truncated, otherwise byte swaps
        * and stuff could corrupt memory even beyond message if it's malicious
@@ -549,17 +538,15 @@ msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
 	    }
 
 	  if (m->is_autoendian)
-	    m->endian_handler (the_msg, 0);
+	    vl_api_msg_endian (am, id, the_msg, 0);
 
 	  if (PREDICT_FALSE (vec_len (am->perf_counter_cbs) != 0))
-	    clib_call_callbacks (am->perf_counter_cbs, am, id,
-				 0 /* before */ );
+	    clib_call_callbacks (am->perf_counter_cbs, am, id, 0 /* before */);
 
 	  m->handler (the_msg);
 
 	  if (PREDICT_FALSE (vec_len (am->perf_counter_cbs) != 0))
-	    clib_call_callbacks (am->perf_counter_cbs, am, id,
-				 1 /* after */ );
+	    clib_call_callbacks (am->perf_counter_cbs, am, id, 1 /* after */);
 
 	  if (!m->is_mp_safe)
 	    vl_msg_api_barrier_release ();
@@ -575,17 +562,13 @@ msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
 
   if (PREDICT_FALSE (am->elog_trace_api_messages))
     {
-      ELOG_TYPE_DECLARE (e) =
-        {
-          .format = "api-msg-done(%s): %s",
-          .format_args = "t4T4",
-          .n_enum_strings = 2,
-          .enum_strings =
-          {
-            "barrier",
-            "mp-safe",
-          }
-        };
+      ELOG_TYPE_DECLARE (e) = { .format = "api-msg-done(%s): %s",
+				.format_args = "t4T4",
+				.n_enum_strings = 2,
+				.enum_strings = {
+				  "barrier",
+				  "mp-safe",
+				} };
 
       struct
       {
@@ -612,8 +595,8 @@ vl_msg_api_handler (void *the_msg, uword msg_len)
   api_main_t *am = vlibapi_get_main ();
 
   msg_handler_internal (am, the_msg, msg_len,
-			(am->rx_trace && am->rx_trace->enabled) /* trace_it */,
-			1 /* do_it */, 1 /* free_it */);
+			(am->rx_trace && am->rx_trace->enabled) /* trace_it */, 1 /* do_it */,
+			1 /* free_it */);
 }
 
 void
@@ -621,16 +604,15 @@ vl_msg_api_handler_no_free (void *the_msg, uword msg_len)
 {
   api_main_t *am = vlibapi_get_main ();
   msg_handler_internal (am, the_msg, msg_len,
-			(am->rx_trace && am->rx_trace->enabled) /* trace_it */,
-			1 /* do_it */, 0 /* free_it */);
+			(am->rx_trace && am->rx_trace->enabled) /* trace_it */, 1 /* do_it */,
+			0 /* free_it */);
 }
 
 void
 vl_msg_api_handler_no_trace_no_free (void *the_msg, uword msg_len)
 {
   api_main_t *am = vlibapi_get_main ();
-  msg_handler_internal (am, the_msg, msg_len, 0 /* trace_it */, 1 /* do_it */,
-			0 /* free_it */);
+  msg_handler_internal (am, the_msg, msg_len, 0 /* trace_it */, 1 /* do_it */, 0 /* free_it */);
 }
 
 /*
@@ -648,8 +630,8 @@ vl_msg_api_trace_only (void *the_msg, uword msg_len)
   api_main_t *am = vlibapi_get_main ();
 
   msg_handler_internal (am, the_msg, msg_len,
-			(am->rx_trace && am->rx_trace->enabled) /* trace_it */,
-			0 /* do_it */, 0 /* free_it */);
+			(am->rx_trace && am->rx_trace->enabled) /* trace_it */, 0 /* do_it */,
+			0 /* free_it */);
 }
 
 void
@@ -707,12 +689,12 @@ vl_msg_api_socket_handler (void *the_msg, uword msg_len)
   api_main_t *am = vlibapi_get_main ();
 
   msg_handler_internal (am, the_msg, msg_len,
-			(am->rx_trace && am->rx_trace->enabled) /* trace_it */,
-			1 /* do_it */, 0 /* free_it */);
+			(am->rx_trace && am->rx_trace->enabled) /* trace_it */, 1 /* do_it */,
+			0 /* free_it */);
 }
 
 void
-vl_msg_api_config (vl_msg_api_msg_config_t * c)
+vl_msg_api_config (vl_msg_api_msg_config_t *c)
 {
   api_main_t *am = vlibapi_get_main ();
   vl_api_msg_data_t *m;
@@ -787,7 +769,7 @@ vl_msg_api_set_cleanup_handler (int msg_id, void *fp)
 }
 
 void
-vl_msg_api_queue_handler (svm_queue_t * q)
+vl_msg_api_queue_handler (svm_queue_t *q)
 {
   uword msg;
 
@@ -815,7 +797,7 @@ vl_msg_api_max_length (void *mp)
 }
 
 vl_api_trace_t *
-vl_msg_api_trace_get (api_main_t * am, vl_api_trace_which_t which)
+vl_msg_api_trace_get (api_main_t *am, vl_api_trace_which_t which)
 {
   switch (which)
     {
@@ -847,8 +829,7 @@ vl_msg_api_post_mortem_dump (void)
   if (post_mortem_dump_enabled == 0)
     return;
 
-  snprintf (filename, sizeof (filename), "/tmp/api_post_mortem.%d",
-	    getpid ());
+  snprintf (filename, sizeof (filename), "/tmp/api_post_mortem.%d", getpid ());
 
   fp = fopen (filename, "w");
   if (fp == NULL)
@@ -866,7 +847,6 @@ vl_msg_api_post_mortem_dump (void)
       rv = write (2, filename, strlen (filename));
       rv = write (2, "\n", 1);
     }
-
 }
 
 /* Layered message handling support */
@@ -896,19 +876,16 @@ vl_msg_api_get_msg_ids (const char *name, int n)
   p = hash_get_mem (am->msg_range_by_name, name_copy);
   if (p)
     {
-      clib_warning ("WARNING: duplicate message range registration for '%s'",
-		    name_copy);
+      clib_warning ("WARNING: duplicate message range registration for '%s'", name_copy);
       vec_free (name_copy);
-      return ((u16) ~ 0);
+      return ((u16) ~0);
     }
 
   if (n < 0 || n > 1024)
     {
-      clib_warning
-	("WARNING: bad number of message-IDs (%d) requested by '%s'",
-	 n, name_copy);
+      clib_warning ("WARNING: bad number of message-IDs (%d) requested by '%s'", n, name_copy);
       vec_free (name_copy);
-      return ((u16) ~ 0);
+      return ((u16) ~0);
     }
 
   vec_add2 (am->msg_ranges, rp, 1);
@@ -924,7 +901,7 @@ vl_msg_api_get_msg_ids (const char *name, int n)
 }
 
 void
-vl_msg_api_add_msg_name_crc (api_main_t * am, const char *string, u32 id)
+vl_msg_api_add_msg_name_crc (api_main_t *am, const char *string, u32 id)
 {
   uword *p;
 
@@ -942,17 +919,16 @@ vl_msg_api_add_msg_name_crc (api_main_t * am, const char *string, u32 id)
 }
 
 void
-vl_msg_api_add_version (api_main_t * am, const char *string,
-			u32 major, u32 minor, u32 patch)
+vl_msg_api_add_version (api_main_t *am, const char *string, u32 major, u32 minor, u32 patch)
 {
-  api_version_t version = {.major = major,.minor = minor,.patch = patch };
+  api_version_t version = { .major = major, .minor = minor, .patch = patch };
   ASSERT (strlen (string) < 64);
   strncpy (version.name, string, 64 - 1);
   vec_add1 (am->api_version_list, version);
 }
 
 u32
-vl_msg_api_get_msg_index (u8 * name_and_crc)
+vl_msg_api_get_msg_index (u8 *name_and_crc)
 {
   api_main_t *am = vlibapi_get_main ();
   uword *p;
@@ -967,7 +943,7 @@ vl_msg_api_get_msg_index (u8 * name_and_crc)
 }
 
 void *
-vl_msg_push_heap_w_region (svm_region_t * vlib_rp)
+vl_msg_push_heap_w_region (svm_region_t *vlib_rp)
 {
   pthread_mutex_lock (&vlib_rp->mutex);
   return svm_push_data_heap (vlib_rp);
@@ -981,7 +957,7 @@ vl_msg_push_heap (void)
 }
 
 void
-vl_msg_pop_heap_w_region (svm_region_t * vlib_rp, void *oldheap)
+vl_msg_pop_heap_w_region (svm_region_t *vlib_rp, void *oldheap)
 {
   svm_pop_heap (oldheap);
   pthread_mutex_unlock (&vlib_rp->mutex);
@@ -996,7 +972,7 @@ vl_msg_pop_heap (void *oldheap)
 
 /* Must be nul terminated */
 int
-vl_api_c_string_to_api_string (const char *buf, vl_api_string_t * str)
+vl_api_c_string_to_api_string (const char *buf, vl_api_string_t *str)
 {
   /* copy without nul terminator */
   u32 len = strlen (buf);
@@ -1008,7 +984,7 @@ vl_api_c_string_to_api_string (const char *buf, vl_api_string_t * str)
 
 /* Must NOT be nul terminated */
 int
-vl_api_vec_to_api_string (const u8 * vec, vl_api_string_t * str)
+vl_api_vec_to_api_string (const u8 *vec, vl_api_string_t *str)
 {
   u32 len = vec_len (vec);
   clib_memcpy (str->buf, vec, len);
@@ -1017,13 +993,13 @@ vl_api_vec_to_api_string (const u8 * vec, vl_api_string_t * str)
 }
 
 u32
-vl_api_string_len (vl_api_string_t * astr)
+vl_api_string_len (vl_api_string_t *astr)
 {
   return clib_net_to_host_u32 (astr->length);
 }
 
 u8 *
-vl_api_format_string (u8 * s, va_list * args)
+vl_api_format_string (u8 *s, va_list *args)
 {
   vl_api_string_t *a = va_arg (*args, vl_api_string_t *);
   vec_add (s, a->buf, clib_net_to_host_u32 (a->length));
@@ -1035,13 +1011,12 @@ vl_api_format_string (u8 * s, va_list * args)
  * NOT nul terminated.
  */
 u8 *
-vl_api_from_api_to_new_vec (void *mp, vl_api_string_t * astr)
+vl_api_from_api_to_new_vec (void *mp, vl_api_string_t *astr)
 {
   u8 *v = 0;
 
   if (vl_msg_api_max_length (mp) < clib_net_to_host_u32 (astr->length))
-    return format (0, "Invalid astr->length %u > max (%u)%c",
-		   clib_net_to_host_u32 (astr->length),
+    return format (0, "Invalid astr->length %u > max (%u)%c", clib_net_to_host_u32 (astr->length),
 		   vl_msg_api_max_length (mp), 0);
   vec_add (v, astr->buf, clib_net_to_host_u32 (astr->length));
   return v;
@@ -1052,7 +1027,7 @@ vl_api_from_api_to_new_vec (void *mp, vl_api_string_t * astr)
  * Nul terminated.
  */
 char *
-vl_api_from_api_to_new_c_string (vl_api_string_t * astr)
+vl_api_from_api_to_new_c_string (vl_api_string_t *astr)
 {
   char *v = 0;
   if (clib_net_to_host_u32 (astr->length) > 0)
@@ -1064,7 +1039,7 @@ vl_api_from_api_to_new_c_string (vl_api_string_t * astr)
 }
 
 void
-vl_api_set_elog_main (elog_main_t * m)
+vl_api_set_elog_main (elog_main_t *m)
 {
   api_main_t *am = vlibapi_get_main ();
   am->elog_main = m;

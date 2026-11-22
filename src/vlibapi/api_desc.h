@@ -22,6 +22,8 @@
 #include <vppinfra/clib.h>
 #include <vppinfra/json.h>
 
+struct api_main_t;
+
 /* Kind of a field (of its element type for arrays) */
 typedef enum
 {
@@ -53,6 +55,8 @@ typedef enum
 #define VL_API_DF_TAGGED (1 << 4)
 /* the arm of a union which is selected when the tag is the value of case_name */
 #define VL_API_DF_CASE (1 << 5)
+/* not converted to and from network byte order */
+#define VL_API_DF_NO_ENDIAN (1 << 6)
 
 typedef enum
 {
@@ -107,6 +111,8 @@ typedef struct vl_api_desc_field
   const char *case_name;
   /* what the comment of the message or the type says about the field */
   const char *description;
+  /* the value of the tag for which this is the arm, for VL_API_DF_CASE */
+  i64 case_value;
   u32 length; /* number of elements of a fixed array */
   u16 offset; /* offset in the packed C structure */
   u16 size;   /* size of one element */
@@ -272,3 +278,24 @@ int vl_api_desc_msg_to_json (const vl_api_desc_msg_t *m, const void *msg, clib_j
  * vl_api_<msg>_t_fromjson function does. Returns a vector with the
  * message, or 0 if the JSON does not match the message. */
 u8 *vl_api_desc_msg_from_json (const vl_api_desc_msg_t *m, clib_json_text_t *j, int value_index);
+
+/* Appends the text of a message in host byte order, the same text as the
+ * generated vl_api_<msg>_t_format function creates. */
+u8 *vl_api_desc_msg_format (u8 *s, const vl_api_desc_msg_t *m, const void *msg);
+
+/* The size of a message in network byte order, including its variable length
+ * parts, the same as the generated vl_api_<msg>_t_calc_size function. */
+uword vl_api_desc_msg_calc_size (const vl_api_desc_msg_t *m, const void *msg);
+
+/* Converts a message to network byte order, or from it, in place, the same as
+ * the generated vl_api_<msg>_t_endian function does. Fields of types which are
+ * not tagged unions are converted by their kind, a tagged union by the arm
+ * which its tag selects. Does nothing on a big endian host. */
+void vl_api_desc_msg_endian (const vl_api_desc_msg_t *m, void *msg, int to_net);
+
+/* Converts the message with the id to or from network byte order, by its
+ * descriptor, or by the endian handler it was registered with if it has no
+ * descriptor. Does nothing for an unknown id. */
+/* Whether vl_api_msg_endian converts the message of the id. */
+int vl_api_msg_has_endian (struct api_main_t *am, u32 msg_id);
+void vl_api_msg_endian (struct api_main_t *am, u32 msg_id, void *msg, int to_net);
