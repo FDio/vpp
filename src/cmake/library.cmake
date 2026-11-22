@@ -19,8 +19,14 @@ macro(add_vpp_library lib)
     ${ARGN}
   )
 
+  # the API descriptors of the files
+  set(api_sources)
+  foreach(file ${ARG_API_FILES})
+    list(APPEND api_sources ${CMAKE_CURRENT_BINARY_DIR}/${file}_desc.c)
+  endforeach()
+
   set (lo ${lib}_objs)
-  add_library(${lo} OBJECT ${ARG_SOURCES})
+  add_library(${lo} OBJECT ${ARG_SOURCES} ${api_sources})
   set_target_properties(${lo} PROPERTIES POSITION_INDEPENDENT_CODE ON)
   target_compile_options(${lo} PUBLIC ${VPP_DEFAULT_MARCH_FLAGS})
   if(ARG_HIDDEN)
@@ -32,6 +38,10 @@ macro(add_vpp_library lib)
 
   add_library(${lib} SHARED)
   target_sources(${lib} PRIVATE $<TARGET_OBJECTS:${lo}>)
+  if(api_sources)
+    # the API descriptors have a relative relocation for each pointer
+    target_link_options(${lib} PRIVATE ${VPP_LINK_PACK_RELR})
+  endif()
 
   if(VPP_LIB_VERSION)
     set_target_properties(${lib} PROPERTIES SOVERSION ${VPP_LIB_VERSION})
