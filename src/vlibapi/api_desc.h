@@ -308,3 +308,15 @@ const vl_api_desc_msg_t *vl_api_desc_file_find (const vl_api_desc_file_t *f, con
 void vl_api_desc_file_endian (const vl_api_desc_file_t *f, const char *name, void *msg, int to_net);
 uword vl_api_desc_file_calc_size (const vl_api_desc_file_t *f, const char *name, const void *msg);
 u8 *vl_api_desc_file_format (u8 *s, const vl_api_desc_file_t *f, const char *name, const void *msg);
+
+/* Creates the descriptors of a file from its .api.json text, the JSON object
+ * with the "messages", "types"... which get_api_json returns for each file.
+ * It is for the programs which do not have the descriptors compiled in. The
+ * descriptors are the same as the ones vppapigen creates, except for what the
+ * JSON does not have: the flags of the types which tell how they are
+ * converted by hand (they are set for the types which are known), which
+ * types were imported and which messages use autoendian. Free the result with
+ * vl_api_desc_file_free (). */
+clib_error_t *vl_api_desc_file_from_json (clib_json_text_t *j, int value_index,
+					  const vl_api_desc_file_t **file);
+void vl_api_desc_file_free (const vl_api_desc_file_t *f);

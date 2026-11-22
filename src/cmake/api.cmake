@@ -41,7 +41,6 @@ function(vpp_generate_api_c_header file)
     "${CMAKE_CURRENT_BINARY_DIR}/${file}.c"
     "${CMAKE_CURRENT_BINARY_DIR}/${file}_desc.c"
     "${CMAKE_CURRENT_BINARY_DIR}/${file}_test.c"
-    "${CMAKE_CURRENT_BINARY_DIR}/${file}_test2.c"
   )
 
   get_filename_component(barename ${file} NAME)
@@ -92,11 +91,14 @@ function(vpp_generate_api_json_header file dir component)
     DEPENDS ${VPP_APIGEN} ${CMAKE_CURRENT_SOURCE_DIR}/${file}
     COMMENT "Generating API header ${output_name}"
   )
-  install(
-    FILES ${output_name}
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/vpp/api/${dir}/
-    COMPONENT ${component}
-  )
+  # without a component the file is not installed
+  if(NOT "${component}" STREQUAL "")
+    install(
+      FILES ${output_name}
+      DESTINATION ${CMAKE_INSTALL_DATADIR}/vpp/api/${dir}/
+      COMPONENT ${component}
+    )
+  endif()
 endfunction()
 
 ##############################################################################
