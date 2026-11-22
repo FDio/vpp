@@ -22,7 +22,4 @@ add_vpp_plugin(vrrp
 
   INSTALL_HEADERS
   vrrp.h
-
-  API_TEST_SOURCES
-  vrrp_test.c
 )

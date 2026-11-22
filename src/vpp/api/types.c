@@ -4,7 +4,8 @@
 
 #include <vlib/vlib.h>
 #include <vpp/api/types.h>
-#include <vat/vat.h>
+#include <vnet/ip/ip.h>
+#include <vnet/ethernet/ethernet.h>
 
 const vl_api_mac_address_t VL_API_ZERO_MAC_ADDRESS;
 const vl_api_address_t VL_API_ZERO_ADDRESS;

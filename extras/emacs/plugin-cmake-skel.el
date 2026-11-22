@@ -48,8 +48,5 @@ add_vpp_plugin("plugin-name"
 
   API_FILES
   " plugin-name".api
-
-  API_TEST_SOURCES
-  " plugin-name "_test.c
 )
 ")

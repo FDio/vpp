@@ -14,8 +14,6 @@ Vector Packet Processing executables. This is the primary package that must be
 installed to use VPP. This package contains:
 
 * vpp - the vector packet engine
-* vpp_api_test - vector packet engine API test tool
-* vpp_json_test - vector packet engine JSON test tool
 
 vpp-lib
 -------
