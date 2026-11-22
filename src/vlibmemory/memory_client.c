@@ -360,8 +360,6 @@ vl_client_install_client_message_handlers (void)
     .handler = vl_api_##n##_t_handler,                                                             \
     .size = sizeof (vl_api_##n##_t),                                                               \
     .traced = 0,                                                                                   \
-    .tojson = vl_api_##n##_t_tojson,                                                               \
-    .fromjson = vl_api_##n##_t_fromjson,                                                           \
   });                                                                                              \
   vl_api_desc_register_msg (am, &memclnt_api_desc, #n, VL_API_##N);                                \
   am->msg_data[VL_API_##N].replay_allowed = 0;

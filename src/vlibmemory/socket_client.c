@@ -457,8 +457,6 @@ vl_sock_client_install_message_handlers (void)
     .handler = vl_api_##n##_t_handler,                                                             \
     .size = sizeof (vl_api_##n##_t),                                                               \
     .traced = 0,                                                                                   \
-    .tojson = vl_api_##n##_t_tojson,                                                               \
-    .fromjson = vl_api_##n##_t_fromjson,                                                           \
   });                                                                                              \
   vl_api_desc_register_msg (am, vl_memclnt_client_api_desc (), #n, VL_API_##N);
   foreach_sock_client_api_msg;

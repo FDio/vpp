@@ -308,8 +308,6 @@ manual_setup_message_id_table (vat_main_t * vam)
     .handler = vl_api_trace_details_t_handler,
     .size = sizeof (vl_api_trace_details_t),
     .traced = 1,
-    .tojson = vl_api_trace_details_t_tojson,
-    .fromjson = vl_api_trace_details_t_fromjson,
   });
 }
 
