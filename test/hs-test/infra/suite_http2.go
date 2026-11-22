@@ -402,41 +402,28 @@ var extrasTests = []h2specTest{
 	{desc: "extras/5/1"},
 }
 
-const (
-	GenericTestGroup int = 1
-	HpackTestGroup   int = 2
-	Http2TestGroup   int = 3
-	ExtrasTestGroup  int = 4
-)
+var _ = describeH2SpecSuite("H2SpecSuite", http2Tests, http2.Spec)
+var _ = describeH2SpecSuite("H2SpecSuiteGeneric", genericTests, generic.Spec)
+var _ = describeH2SpecSuite("H2SpecSuiteHPACK", hpackTests, hpack.Spec)
+var _ = describeH2SpecSuite("H2SpecSuiteExtras", extrasTests, h2spec_extras.Spec)
 
-var specs = []struct {
-	tg    int
-	tests []h2specTest
-}{
-	{GenericTestGroup, genericTests},
-	{HpackTestGroup, hpackTests},
-	{Http2TestGroup, http2Tests},
-	{ExtrasTestGroup, extrasTests},
-}
+func describeH2SpecSuite(name string, tests []h2specTest, newTestGroup func() *spec.TestGroup) bool {
+	return Describe(name, Ordered, ContinueOnFailure, Label("HTTP", "HTTP2", "H2Spec"), func() {
+		var s Http2Suite
+		BeforeAll(func() {
+			s.SetupSuite()
+		})
+		BeforeEach(func() {
+			s.SetupTest()
+		})
+		AfterAll(func() {
+			s.TeardownSuite()
+		})
+		AfterEach(func() {
+			s.TeardownTest()
+		})
 
-var _ = Describe("H2SpecSuite", Ordered, ContinueOnFailure, Label("HTTP", "HTTP2", "H2Spec"), func() {
-	var s Http2Suite
-	BeforeAll(func() {
-		s.SetupSuite()
-	})
-	BeforeEach(func() {
-		s.SetupTest()
-	})
-	AfterAll(func() {
-		s.TeardownSuite()
-	})
-	AfterEach(func() {
-		s.TeardownTest()
-	})
-
-	for _, sp := range specs {
-		for _, test := range sp.tests {
-			test := test
+		for _, test := range tests {
 			testName := "http2_test.go/h2spec_" + strings.ReplaceAll(test.desc, "/", "_")
 			It(testName, func(ctx SpecContext) {
 				Log("[* TEST BEGIN]: " + testName)
@@ -470,17 +457,7 @@ var _ = Describe("H2SpecSuite", Ordered, ContinueOnFailure, Label("HTTP", "HTTP2
 				r, w, _ := os.Pipe()
 				os.Stdout = w
 
-				var tg *spec.TestGroup
-				switch sp.tg {
-				case GenericTestGroup:
-					tg = generic.Spec()
-				case HpackTestGroup:
-					tg = hpack.Spec()
-				case Http2TestGroup:
-					tg = http2.Spec()
-				case ExtrasTestGroup:
-					tg = h2spec_extras.Spec()
-				}
+				tg := newTestGroup()
 				tg.Test(conf)
 
 				oChan := make(chan string)
@@ -498,8 +475,8 @@ var _ = Describe("H2SpecSuite", Ordered, ContinueOnFailure, Label("HTTP", "HTTP2
 				AssertEqual(0, tg.FailedCount)
 			}, SpecTimeout(TestTimeout))
 		}
-	}
-})
+	})
+}
 
 func h2specdVerifyResult(s Http2Suite, nExecuted int) bool {
 	client := NewHttpClient(time.Second*5, false)
