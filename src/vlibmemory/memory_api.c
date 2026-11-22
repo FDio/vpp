@@ -498,7 +498,6 @@ vl_mem_api_init (const char *region_name)
       c->name = #n;                                                           \
       c->handler = vl_api_##n##_t_handler;                                    \
       c->endian = vl_api_##n##_t_endian;                                      \
-      c->format_fn = vl_api_##n##_t_format;                                   \
       c->size = sizeof (vl_api_##n##_t);                                      \
       c->traced = t;	     /* trace, so these msgs print */                 \
       c->replay = 0;	     /* don't replay client create/delete msgs */     \
@@ -817,9 +816,7 @@ vl_mem_api_handler_with_vm_node (api_main_t *am, svm_region_t *vlib_rp,
 
       if (m->is_autoendian)
 	{
-	  void (*endian_fp) (void *, bool);
-	  endian_fp = am->msg_data[id].endian_handler;
-	  (*endian_fp) (the_msg, 0);
+	  vl_api_msg_endian (am, id, the_msg, 0);
 	}
       if (PREDICT_FALSE (vec_len (am->perf_counter_cbs) != 0))
 	clib_call_callbacks (am->perf_counter_cbs, am, id, 0 /* before */);

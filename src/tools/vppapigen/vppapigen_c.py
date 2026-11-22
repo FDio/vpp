@@ -1755,11 +1755,8 @@ def generate_c_boilerplate(s, services, defines, counters, file_crc, module, str
             " {{.id = VL_API_{ID} + msg_id_base,\n"
             '   .name = "{n}",\n'
             "   .handler = vl_api_{n}_t_handler,\n"
-            "   .endian = vl_api_{n}_t_endian,\n"
-            "   .format_fn = vl_api_{n}_t_format,\n"
             "   .traced = 1,\n"
             "   .replay = 1,\n"
-            "   .calc_size = vl_api_{n}_t_calc_size,\n"
             "   .is_autoendian = {auto}}};\n".format(
                 n=s.caller, ID=s.caller.upper(), auto=d.autoendian
             )
@@ -1772,11 +1769,8 @@ def generate_c_boilerplate(s, services, defines, counters, file_crc, module, str
                 "{{.id = VL_API_{ID} + msg_id_base,\n"
                 '  .name = "{n}",\n'
                 "  .handler = 0,\n"
-                "  .endian = vl_api_{n}_t_endian,\n"
-                "  .format_fn = vl_api_{n}_t_format,\n"
                 "  .traced = 1,\n"
                 "  .replay = 1,\n"
-                "  .calc_size = vl_api_{n}_t_calc_size,\n"
                 "  .is_autoendian = {auto}}};\n".format(
                     n=s.reply, ID=s.reply.upper(), auto=d.autoendian
                 )
@@ -1793,11 +1787,8 @@ def generate_c_boilerplate(s, services, defines, counters, file_crc, module, str
                     "{{.id = VL_API_{ID} + msg_id_base,\n"
                     '  .name = "{n}",\n'
                     "  .handler = 0,\n"
-                    "  .endian = vl_api_{n}_t_endian,\n"
-                    "  .format_fn = vl_api_{n}_t_format,\n"
                     "  .traced = 1,\n"
                     "  .replay = 1,\n"
-                    "  .calc_size = vl_api_{n}_t_calc_size,\n"
                     "  .is_autoendian = {auto}}};\n".format(
                         n=s.stream_message,
                         ID=s.stream_message.upper(),
@@ -1905,8 +1896,6 @@ def generate_c_test_boilerplate(services, defines, file_crc, module, plugin, str
             "    .id = VL_API_{ID} + msg_id_base,\n"
             '    .name = "{n}",\n'
             "    .handler = vl_api_{n}_t_handler,\n"
-            "    .endian = vl_api_{n}_t_endian,\n"
-            "    .format_fn = vl_api_{n}_t_format,\n"
             "    .size = sizeof(vl_api_{n}_t),\n"
             "    .traced = 1,\n"
             "    .calc_size = vl_api_{n}_t_calc_size,\n"
@@ -1933,8 +1922,6 @@ def generate_c_test_boilerplate(services, defines, file_crc, module, plugin, str
                 "    .id = VL_API_{ID} + msg_id_base,\n"
                 '    .name = "{n}",\n'
                 "    .handler = vl_api_{n}_t_handler,\n"
-                "    .endian = vl_api_{n}_t_endian,\n"
-                "    .format_fn = vl_api_{n}_t_format,\n"
                 "    .size = sizeof(vl_api_{n}_t),\n"
                 "    .traced = 1,\n"
                 "    .calc_size = vl_api_{n}_t_calc_size,\n"
@@ -2519,7 +2506,10 @@ class DescBuilder:
             if getattr(b, "is_lengthfield", False):
                 flags.append("VL_API_DF_LENGTH")
             related = 0
+            case_value = 0
             limit = getattr(b, "limit", None) if b.type == "Field" else None
+            if b.type == "Field" and b.fieldname in NO_ENDIAN_CONVERSION:
+                flags.append("VL_API_DF_NO_ENDIAN")
             if limit and "discriminator" in limit:
                 flags.append("VL_API_DF_TAGGED")
                 related = [x.fieldname for x in fields].index(limit["discriminator"])
@@ -2527,6 +2517,7 @@ class DescBuilder:
                 related = [x.fieldname for x in fields].index(len_field)
             if limit and "case" in limit:
                 flags.append("VL_API_DF_CASE")
+                case_value = self.enum_value(limit["case"])
             ebuf = []
             ew = ebuf.append
             ew("    .name = %s,\n" % _c_str(b.fieldname))
@@ -2547,6 +2538,8 @@ class DescBuilder:
                 ew("    .description = %s,\n" % _c_str(params[b.fieldname]))
             if related:
                 ew("    .related = %d,\n" % related)
+            if case_value:
+                ew("    .case_value = %dLL,\n" % case_value)
             self.field_entries.append(
                 "  [%d] = {\n%s  },\n" % (len(self.field_entries), "".join(ebuf))
             )
@@ -2635,6 +2628,15 @@ class DescBuilder:
                 % (len(self.option_entries), _c_str(k), _c_str(v))
             )
         return first, len(opts)
+
+    def enum_value(self, name):
+        """The value of an enum constant, the names of them are unique"""
+        for o in _global_types().values():
+            if o.__class__.__name__ in ("Enum", "EnumFlag"):
+                for b in o.block:
+                    if b[0] == name:
+                        return b[1]
+        raise ValueError("no enum value %s" % name)
 
     def type_flags(self, o):
         f = []
