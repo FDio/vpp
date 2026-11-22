@@ -286,7 +286,6 @@ vcl_bapi_hookup (void)
     .name = #n,                                                               \
     .handler = vl_api_##n##_t_handler,                                        \
     .endian = vl_api_##n##_t_endian,                                          \
-    .format_fn = vl_api_##n##_t_format,                                       \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = (u32) 1,                                                        \
     .calc_size = vl_api_##n##_t_calc_size,                                    \

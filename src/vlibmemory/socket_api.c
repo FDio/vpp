@@ -796,10 +796,8 @@ vl_sock_api_init (vlib_main_t * vm)
     .name = #n,                                                               \
     .handler = vl_api_##n##_t_handler,                                        \
     .endian = vl_api_##n##_t_endian,                                          \
-    .format_fn = vl_api_##n##_t_format,                                       \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = t,                                                              \
-    .calc_size = vl_api_##n##_t_calc_size,                                    \
   });                                                                         \
   am->msg_data[VL_API_##N].replay_allowed = 0;
   foreach_vlib_api_msg;
