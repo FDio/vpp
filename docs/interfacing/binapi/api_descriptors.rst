@@ -40,6 +40,19 @@ message and ``am->desc_files`` has the descriptors of all the files.
 What uses them
 --------------
 
+* ``vl_api_desc_msg_to_json ()`` converts a message to JSON. It is used by
+  ``api trace save-json``, ``api trace dump-json`` and by
+  ``format_vl_api_msg_json ()``. The members are ``_msgname``, ``_crc`` and the
+  fields, except ``_vl_msg_id``, ``client_index`` and ``context``. The text is
+  written by clib_json. VPP does not register the generated
+  ``vl_api_<msg>_t_tojson`` functions any more.
+
+* ``vl_api_desc_msg_from_json ()`` converts JSON to a message, the opposite of
+  the conversion above. It is used by ``api trace replay-json``, which
+  parses the file with clib_json. Every field of the message has to be in the
+  JSON. VPP does not register the generated ``vl_api_<msg>_t_fromjson``
+  functions any more.
+
 * ``vl_api_desc_msg_format ()`` creates the text of a message, which is what
   ``format_vl_api_msg_text ()`` and the text output of ``api trace dump``
   print. VPP does not register the generated ``vl_api_<msg>_t_format``

@@ -7,6 +7,7 @@
 #define included_vat2_helpers_h
 
 #include <vlibmemory/vlib.api_types.h>
+#include <vat2/vat2_json.h>
 
 static inline void
 vat2_control_ping (u32 context)
