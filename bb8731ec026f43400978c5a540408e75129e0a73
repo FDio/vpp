@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fb9cdf91_c66faf8e",
+        "filename": "test/config.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-22T19:19:28Z",
+      "side": 1,
+      "message": "why does qemu timeout need 50% vs 30s whereas net helper timeout is 50% only?\n\nif it\u0027s really required then declare the value as constant and use it:\n\n1. in help text\n2. in the actual calculation\n\nso that it only comes from one place preferably\n\nsee e.g. default_test_run_timeout \u003d 600 and its use",
+      "revId": "bb8731ec026f43400978c5a540408e75129e0a73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
