@@ -33,10 +33,6 @@
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_endianfun
 
-#define vl_calcsizefun
-#include <vlibmemory/vl_memory_api_h.h>
-#undef vl_calcsizefun
-
 /* instantiate all the print functions we know about */
 #define vl_printfun
 #include <vlibmemory/vl_memory_api_h.h>
@@ -453,7 +449,6 @@ vl_sock_client_install_message_handlers (void)
     .endian = vl_api_##n##_t_endian,                                          \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = 0,                                                              \
-    .calc_size = vl_api_##n##_t_calc_size,                                    \
   });
   foreach_sock_client_api_msg;
 #undef _

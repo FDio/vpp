@@ -28,10 +28,6 @@
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_endianfun
 
-#define vl_calcsizefun
-#include <vlibmemory/vl_memory_api_h.h>
-#undef vl_calcsizefun
-
 /* instantiate all the print functions we know about */
 #define vl_printfun
 #include <vlibmemory/vl_memory_api_h.h>
@@ -359,7 +355,6 @@ vl_client_install_client_message_handlers (void)
     .endian = vl_api_##n##_t_endian,                                          \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = 0,                                                              \
-    .calc_size = vl_api_##n##_t_calc_size,                                    \
   });                                                                         \
   am->msg_data[VL_API_##N].replay_allowed = 0;
   foreach_api_msg;
@@ -621,11 +616,6 @@ vl_client_get_first_plugin_msg_id (const char *plugin_name)
   /* Push this plugin's first_msg_id_reply handler */
   old_handler = m->handler;
   m->handler = (void *) vl_api_get_first_msg_id_reply_t_handler;
-  if (!m->calc_size_func)
-    {
-      m->calc_size_func =
-	(uword (*) (void *)) vl_api_get_first_msg_id_reply_t_calc_size;
-    }
 
   /* Ask the data-plane for the message-ID base of the indicated plugin */
   mm->first_msg_id_reply_ready = 0;
