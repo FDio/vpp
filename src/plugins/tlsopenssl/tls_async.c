@@ -52,7 +52,10 @@ typedef struct openssl_event_
   u32 ctx_index;
   int session_index;
   ssl_evt_status_type_t status;
-  transport_send_params_t *tran_sp;
+  /* Byte budget of the write the event resumes. Kept by value because the
+   * send params of the tx call that armed the event are reused as soon as
+   * that call returns */
+  u32 wr_max_burst;
   openssl_tls_callback_arg_t cb_args;
 
 #define thread_idx cb_args.thread_index
@@ -474,11 +477,12 @@ vpp_tls_async_init_event (tls_ctx_t *ctx, openssl_resume_handler *handler,
       if (wr_size > 0)
 	{
 	  transport_connection_deschedule (&ctx->connection);
-	  sp->flags |= TRANSPORT_SND_F_DESCHED;
+	  if (sp)
+	    sp->flags |= TRANSPORT_SND_F_DESCHED;
 	  oc->async_ctx.total_async_write = wr_size;
 	}
     }
-  event->tran_sp = sp;
+  event->wr_max_burst = wr_size;
   return 1;
 }
 
@@ -970,7 +974,8 @@ tls_async_write_event_handler (void *async_evt, void *unused)
   int wrote = 0, wrote_sum = 0, err;
   u32 space, enq_buf;
   svm_fifo_t *app_tx_fifo, *tls_tx_fifo;
-  transport_send_params_t *sp = event->tran_sp;
+  /* Read before arming a new event, that can grow the event pool */
+  u32 max_burst = event->wr_max_burst;
 
   app_session = session_get_from_handle (ctx->app_session_handle);
   tls_session = session_get_from_handle (ctx->tls_session_handle);
@@ -992,9 +997,8 @@ tls_async_write_event_handler (void *async_evt, void *unused)
   err = SSL_get_error (ssl, wrote);
   if (err == SSL_ERROR_WANT_WRITE)
     {
-      vpp_tls_async_init_event (ctx, tls_async_write_event_handler,
-				tls_session, SSL_ASYNC_EVT_WR, sp,
-				sp->max_burst_size);
+      vpp_tls_async_init_event (ctx, tls_async_write_event_handler, tls_session, SSL_ASYNC_EVT_WR,
+				NULL, max_burst);
       return 0;
     }
 
@@ -1025,7 +1029,7 @@ tls_async_write_event_handler (void *async_evt, void *unused)
       u32 deq_max = svm_fifo_max_dequeue_cons (app_tx_fifo);
 
       deq_max = clib_min (deq_max, space);
-      deq_max = clib_min (deq_max, sp->max_burst_size);
+      deq_max = clib_min (deq_max, max_burst);
       if (!deq_max)
 	goto check_tls_fifo;
 
@@ -1068,7 +1072,6 @@ check_tls_fifo:
     {
       svm_fifo_add_want_deq_ntf (tls_tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
       transport_connection_deschedule (&ctx->connection);
-      sp->flags |= TRANSPORT_SND_F_DESCHED;
     }
   else
     {
