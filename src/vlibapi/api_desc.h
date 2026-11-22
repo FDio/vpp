@@ -258,3 +258,13 @@ void vl_api_desc_register_msg (struct api_main_t *am, const vl_api_desc_file_t *
 
 /* Descriptor of the message with the given id, 0 if none. */
 const vl_api_desc_msg_t *vl_api_desc_find_msg (struct api_main_t *am, u32 msg_id);
+
+/* Converts a message in host byte order to JSON, the same JSON as the
+ * generated vl_api_<msg>_t_tojson function creates. t is the descriptor of
+ * the message. Returns 0 or a negative value on error. */
+int vl_api_desc_msg_to_json (const vl_api_desc_msg_t *m, const void *msg, clib_json_text_t *j);
+
+/* Converts a JSON object to a message in host byte order, as the generated
+ * vl_api_<msg>_t_fromjson function does. Returns a vector with the
+ * message, or 0 if the JSON does not match the message. */
+u8 *vl_api_desc_msg_from_json (const vl_api_desc_msg_t *m, clib_json_text_t *j, int value_index);

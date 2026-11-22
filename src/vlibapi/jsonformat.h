@@ -80,6 +80,9 @@ CJSON_PUBLIC (u8 *) u8string_fromjson (cJSON *o, char *fieldname);
 CJSON_PUBLIC (int) u8string_fromjson2 (cJSON *o, char *fieldname, u8 *data);
 CJSON_PUBLIC (int) vl_api_u8_string_fromjson (cJSON *o, u8 *s, int len);
 
+/* The text of a MAC address, aa:bb:cc:dd:ee:ff */
+format_function_t format_vl_api_mac_address_t;
+
 #define foreach_type_tojson                                                   \
   _ (ip4_address)                                                             \
   _ (ip4_prefix)                                                              \

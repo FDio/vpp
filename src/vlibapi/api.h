@@ -139,4 +139,8 @@ vl_api_allow_msg_replay (api_main_t *am, u32 msg_id, int v)
 format_function_t format_vl_api_msg_text;
 format_function_t format_vl_api_msg_json;
 
+/* Appends the JSON text of a message in host byte order to *s. Returns
+ * -1 if the message cannot be converted. */
+int vl_api_msg_to_json_text (api_main_t *am, u32 msg_id, void *msg, u8 **s);
+
 #endif /* included_api_h */
