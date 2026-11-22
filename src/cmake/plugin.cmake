@@ -51,6 +51,7 @@ macro(add_vpp_plugin name)
   endif()
   set(plugin_name ${name}_plugin)
   set(api_includes)
+  set(api_sources)
   if(NOT PLUGIN_COMPONENT)
     set(PLUGIN_COMPONENT vpp-plugin-core)
   endif()
@@ -66,6 +67,7 @@ macro(add_vpp_plugin name)
   foreach(f ${PLUGIN_API_FILES})
     get_filename_component(dir ${f} DIRECTORY)
     list(APPEND api_includes ${f}.h ${f}_enum.h ${f}_types.h ${f}.json)
+    list(APPEND api_sources ${f}_desc.c)
     install(
       FILES
       ${CMAKE_CURRENT_BINARY_DIR}/${f}.h
@@ -75,7 +77,9 @@ macro(add_vpp_plugin name)
       COMPONENT ${PLUGIN_DEV_COMPONENT}
     )
   endforeach()
-  add_library(${plugin_name} SHARED ${api_includes} ${PLUGIN_SOURCES})
+  add_library(${plugin_name} SHARED ${api_includes} ${api_sources} ${PLUGIN_SOURCES})
+  # the API descriptors have a relative relocation for each pointer
+  target_link_options(${plugin_name} PRIVATE ${VPP_LINK_PACK_RELR})
   target_compile_options(${plugin_name} PUBLIC ${VPP_DEFAULT_MARCH_FLAGS})
   set_target_properties(${plugin_name} PROPERTIES NO_SONAME 1)
   target_compile_options(${plugin_name} PRIVATE "-fvisibility=hidden")
