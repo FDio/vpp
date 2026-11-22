@@ -22,7 +22,4 @@ add_vpp_plugin(idpf
 
   API_FILES
   idpf.api
-
-  API_TEST_SOURCES
-  idpf_test.c
 )

@@ -18,7 +18,4 @@ add_vpp_plugin(arping
 
   API_FILES
   arping.api
-
-  API_TEST_SOURCES
-  arping_test.c
 )

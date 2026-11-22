@@ -295,13 +295,6 @@ vl_api_save_msg_table (void)
   vec_free (serialized_message_table);
 }
 
-clib_error_t *vat_builtin_main_init (vlib_main_t *vm) __attribute__ ((weak));
-clib_error_t *
-vat_builtin_main_init (vlib_main_t *vm)
-{
-  return 0;
-}
-
 static uword
 vl_api_clnt_process (vlib_main_t *vm, vlib_node_runtime_t *node,
 		     vlib_frame_t *f)
@@ -339,10 +332,6 @@ vl_api_clnt_process (vlib_main_t *vm, vlib_node_runtime_t *node,
 
   e = vlib_call_init_exit_functions (vm, &vgm->api_init_function_registrations,
 				     1 /* call_once */, 1 /* is_global */);
-  if (e)
-    clib_error_report (e);
-
-  e = vat_builtin_main_init (vm);
   if (e)
     clib_error_report (e);
 

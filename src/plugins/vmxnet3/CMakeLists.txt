@@ -27,7 +27,4 @@ add_vpp_plugin(vmxnet3
 
   API_FILES
   vmxnet3.api
-
-  API_TEST_SOURCES
-  vmxnet3_test.c
 )

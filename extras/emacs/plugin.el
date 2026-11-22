@@ -39,8 +39,6 @@
       (find-file "node.c")
       (if (string= plugin-flavor "qs")
           (skel-plugin-qsnode) (skel-plugin-node))
-      (find-file (concat plugin-name "_test.c"))
-      (skel-plugin-test)
       (find-file (concat plugin-name "_periodic.c"))
       (skel-plugin-periodic)
       (find-file "setup.pg")

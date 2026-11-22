@@ -26,9 +26,6 @@ if(OPENSSL_FOUND AND OPENSSL_VERSION VERSION_GREATER_EQUAL "1.1.0")
     API_FILES
     tls_openssl.api
 
-    API_TEST_SOURCES
-    tls_openssl_test.c
-
     LINK_LIBRARIES
     ${OPENSSL_LIBRARIES}
   )
@@ -40,7 +37,6 @@ if(OPENSSL_FOUND AND OPENSSL_VERSION VERSION_GREATER_EQUAL "1.1.0")
   if (HAVE_OPENSSL_ASYNC)
     add_definitions(-DHAVE_OPENSSL_ASYNC)
   endif()
-
 
 endif()
 
