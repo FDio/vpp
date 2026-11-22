@@ -79,6 +79,7 @@ set(VPP_SOURCES
   app/vpe_cli.c
   app/version.c
   api/api.c
+  api/binary_api.c
   api/json_format.c
   api/types.c
 )
