@@ -16,7 +16,6 @@
 
 #include <vppinfra/clib_error.h>
 #include <vppinfra/elog.h>
-#include <vppinfra/cJSON.h>
 #include <vlibapi/api_types.h>
 #include <svm/svm_common.h>
 #include <svm/queue.h>
@@ -330,7 +329,7 @@ typedef struct api_main_t
 
   /** client message index hash table */
   uword *msg_index_by_name_and_crc;
-  /** plugin JSON representation vector table */
+  /** not used, plugins built with an older vppapigen still add to it */
   u8 **json_api_repr;
 
   /** api version list */
