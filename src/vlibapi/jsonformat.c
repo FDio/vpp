@@ -3,70 +3,16 @@
  * Copyright (c) 2020 Cisco and/or its affiliates.
  */
 
-#include <vppinfra/cJSON.h>
 #include <vnet/ethernet/mac_address.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/ip_format_fns.h>
 #include <vlibapi/api_types.h>
 #include "jsonformat.h"
 
-#define _(T)                                                                  \
-  int vl_api_##T##_fromjson (cJSON *o, T *d)                                  \
-  {                                                                           \
-    if (!cJSON_IsNumber (o))                                                  \
-      return -1;                                                              \
-    d[0] = (T) cJSON_GetNumberValue (o);                                      \
-    return 0;                                                                 \
-  }
-foreach_type_fromjson
-#undef _
 
-  int
-  vl_api_bool_fromjson (cJSON *o, bool *d)
-{
-    if (!cJSON_IsBool(o)) return -1;
-    *d = o->valueint ? true : false;
-    return 0;
-}
 
-int vl_api_u8_string_fromjson(cJSON *o, u8 *s, int len)
-{
-    unformat_input_t input;
-    char *p = cJSON_GetStringValue(o);
-    unformat_init_string (&input, p, strlen(p));
-    if (!unformat (&input, "0x%U", unformat_hex_string, s))
-      return -1;
-    return 0;
-}
 
-u8 *
-u8string_fromjson(cJSON *o, char *fieldname)
-{
-    u8 *s = 0;
-    unformat_input_t input;
-    cJSON *item = cJSON_GetObjectItem(o, fieldname);
-    if (!item) {
-        printf("Illegal JSON, no such fieldname %s\n", fieldname);
-        return 0;
-    }
 
-    char *p = cJSON_GetStringValue(item);
-    unformat_init_string (&input, p, strlen(p));
-    if (!unformat (&input, "0x%U", unformat_hex_string, &s))
-      return 0;
-    return s;
-}
-
-int
-u8string_fromjson2(cJSON *o, char *fieldname, u8 *data)
-{
-    u8 *s = u8string_fromjson(o, fieldname);
-    if (!s)
-      return -1;
-    memcpy(data, s, vec_len(s));
-    vec_free(s);
-    return 0;
-}
 
 /* Parse an IP4 address %d.%d.%d.%d. */
 uword
@@ -253,121 +199,13 @@ format_ip6_address (u8 * s, va_list * args)
   return s;
 }
 
-int
-vl_api_ip4_address_t_fromjson (void **mp, int *len, cJSON *o,
-			       vl_api_ip4_address_t *a)
-{
-    unformat_input_t input;
-    char *p = cJSON_GetStringValue(o);
-    if (!p)
-      return -1;
-    unformat_init_string (&input, p, strlen(p));
-    if (!unformat (&input, "%U", unformat_ip4_address, a))
-      return -1;
-    return 0;
-}
 
-int
-vl_api_ip4_prefix_t_fromjson (void **mp, int *len, cJSON *o,
-			      vl_api_ip4_prefix_t *a)
-{
-    unformat_input_t input;
-    char *p = cJSON_GetStringValue(o);
-    if (!p)
-      return -1;
-    unformat_init_string (&input, p, strlen(p));
-    if (!unformat (&input, "%U/%d", unformat_ip4_address, &a->address,
-		   &a->len))
-      return -1;
-    return 0;
-}
 
-int
-vl_api_ip4_address_with_prefix_t_fromjson (void **mp, int *len, cJSON *o,
-					   vl_api_ip4_prefix_t *a)
-{
-  return vl_api_ip4_prefix_t_fromjson(mp, len, o, a);
-}
-int
-vl_api_ip6_address_t_fromjson (void **mp, int *len, cJSON *o,
-			       vl_api_ip6_address_t *a)
-{
-    unformat_input_t input;
-    char *p = cJSON_GetStringValue(o);
-    if (!p)
-      return -1;
-    unformat_init_string (&input, p, strlen(p));
-    if (!unformat (&input, "%U", unformat_ip6_address, a))
-      return -1;
-    return 0;
-}
 
-int
-vl_api_ip6_prefix_t_fromjson (void **mp, int *len, cJSON *o,
-			      vl_api_ip6_prefix_t *a)
-{
-  unformat_input_t input;
-  char *p = cJSON_GetStringValue(o);
-  if (!p)
-    return -1;
-  unformat_init_string (&input, p, strlen(p));
-  if (!unformat (&input, "%U/%d", unformat_ip6_address, &a->address, &a->len))
-    return -1;
-  return 0;
-}
 
-int
-vl_api_ip6_address_with_prefix_t_fromjson (void **mp, int *len, cJSON *o,
-					   vl_api_ip6_prefix_t *a)
-{
-  return vl_api_ip6_prefix_t_fromjson(mp, len, o, a);
-}
 
-int
-vl_api_address_t_fromjson (void **mp, int *len, cJSON *o, vl_api_address_t *a)
-{
-  unformat_input_t input;
 
-  char *p = cJSON_GetStringValue(o);
-  if (!p)
-    return -1;
-  unformat_init_string (&input, p, strlen(p));
-  if (unformat (&input, "%U", unformat_ip4_address, &a->un.ip4))
-    a->af = ADDRESS_IP4;
-  else if (unformat (&input, "%U", unformat_ip6_address, &a->un.ip6))
-    a->af = ADDRESS_IP6;
-  else
-    return -1;
-  return 0;
-}
 
-int
-vl_api_prefix_t_fromjson (void **mp, int *len, cJSON *o, vl_api_prefix_t *a)
-{
-  unformat_input_t input;
-
-  char *p = cJSON_GetStringValue(o);
-
-  if (!p)
-    return -1;
-  unformat_init_string (&input, p, strlen(p));
-  int plen;
-  if (unformat (&input, "%U/%d", unformat_ip4_address, &a->address.un.ip4, &plen))
-    a->address.af = ADDRESS_IP4;
-  else if (unformat (&input, "%U/%d", unformat_ip6_address, &a->address.un.ip6, &plen))
-    a->address.af = ADDRESS_IP6;
-  else
-    return -1;
-  a->len = plen;
-  return 0;
-}
-
-int
-vl_api_address_with_prefix_t_fromjson (void **mp, int *len, cJSON *o,
-				       vl_api_prefix_t *a)
-{
-  return vl_api_prefix_t_fromjson(mp, len, o, a);
-}
 
 uword
 unformat_mac_address (unformat_input_t * input, va_list * args)
@@ -397,18 +235,6 @@ unformat_mac_address (unformat_input_t * input, va_list * args)
   return (0);
 }
 
-int
-vl_api_mac_address_t_fromjson (void **mp, int *len, cJSON *o,
-			       vl_api_mac_address_t *a)
-{
-  unformat_input_t input;
-
-  char *p = cJSON_GetStringValue(o);
-  unformat_init_string (&input, p, strlen(p));
-  if (!unformat (&input, "%U", unformat_mac_address, a))
-    return -1;
-  return 0;
-}
 
 /* Format an IP4 address. */
 u8 *
@@ -418,19 +244,6 @@ format_ip4_address (u8 * s, va_list * args)
   return format (s, "%d.%d.%d.%d", a[0], a[1], a[2], a[3]);
 }
 
-void
-vl_api_string_cJSON_AddToObject(cJSON * const object, const char * const name, vl_api_string_t *astr)
-{
-
-    if (astr == 0) return;
-    u32 length = clib_net_to_host_u32 (astr->length);
-
-    char *cstr = malloc(length + 1);
-    memcpy(cstr, astr->buf, length);
-    cstr[length] = '\0';
-    cJSON_AddStringToObject(object, name, cstr);
-    free(cstr);
-}
 
 u8 *
 format_vl_api_timestamp_t(u8 * s, va_list * args)
@@ -469,18 +282,6 @@ uword unformat_vl_api_gbp_scope_t(unformat_input_t * input, va_list * args)
     return 0;
 }
 
-cJSON *
-vl_api_ip4_address_with_prefix_t_tojson (vl_api_ip4_prefix_t *a) {
-  return vl_api_ip4_prefix_t_tojson (a);
-}
-cJSON *
-vl_api_ip6_address_with_prefix_t_tojson (vl_api_ip6_prefix_t *a) {
-  return vl_api_ip6_prefix_t_tojson (a);
-}
-cJSON *
-vl_api_address_with_prefix_t_tojson (vl_api_prefix_t *a) {
-  return vl_api_prefix_t_tojson (a);
-}
 u8 *
 format_vl_api_mac_address_t (u8 * s, va_list * args)
 {
@@ -490,13 +291,3 @@ format_vl_api_mac_address_t (u8 * s, va_list * args)
                  mac->bytes[0], mac->bytes[1], mac->bytes[2],
                  mac->bytes[3], mac->bytes[4], mac->bytes[5]);
 }
-#define _(T)                                                                  \
-  cJSON *vl_api_##T##_t_tojson (vl_api_##T##_t *a)                            \
-  {                                                                           \
-    char *s = format_c_string (0, "%U", format_vl_api_##T##_t, a, 0);         \
-    cJSON *o = cJSON_CreateString (s);                                        \
-    vec_free (s);                                                             \
-    return o;                                                                 \
-  }
-foreach_type_tojson
-#undef _

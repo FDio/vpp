@@ -33,10 +33,6 @@
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_endianfun
 
-#define vl_calcsizefun
-#include <vlibmemory/vl_memory_api_h.h>
-#undef vl_calcsizefun
-
 socket_main_t socket_main;
 
 #define SOCK_API_REG_HANDLE_BIT (1<<31)

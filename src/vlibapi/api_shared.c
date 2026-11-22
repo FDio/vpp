@@ -511,14 +511,9 @@ msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len, int trace_it
       uword calc_size = 0;
       const vl_api_desc_msg_t *d = vl_api_desc_find_msg (am, id);
 
+      /* the messages which have no descriptor are not checked */
       if (d)
 	calc_size = vl_api_desc_msg_calc_size (d, the_msg);
-      else if (m->calc_size_func)
-	calc_size = m->calc_size_func (the_msg);
-      else
-	clib_warning ("Message '%s' (id %u) has no descriptor and NULL "
-		      "calc_size_func, cannot verify message size is correct",
-		      m->name, id);
 
       if (calc_size > msg_len)
 	clib_warning ("Truncated message '%s' (id %u) received, calculated size "
@@ -728,10 +723,6 @@ vl_msg_api_config (vl_msg_api_msg_config_t *c)
   m->handler = c->handler;
   m->cleanup_handler = c->cleanup;
   m->endian_handler = c->endian;
-  m->format_fn = c->format_fn;
-  m->tojson_handler = c->tojson;
-  m->fromjson_handler = c->fromjson;
-  m->calc_size_func = c->calc_size;
   m->bounce = c->message_bounce;
   m->is_mp_safe = c->is_mp_safe;
   m->is_autoendian = c->is_autoendian;
