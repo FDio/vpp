@@ -71,6 +71,7 @@ if(NOT DEFINED CMAKE_INSTALL_LIBDIR AND EXISTS "/etc/debian_version")
 endif()
 
 include(CheckCCompilerFlag)
+include(CheckLinkerFlag)
 include(CheckIPOSupported)
 include(GNUInstallDirs)
 include(cmake/misc.cmake)
@@ -229,6 +230,23 @@ endif()
 if(VPP_USE_LTO)
   check_c_compiler_flag("-Wno-stringop-overflow"
 		        compiler_flag_no_stringop_overflow)
+endif()
+
+##############################################################################
+# packed relative relocations
+##############################################################################
+#
+# The API descriptors have a relative relocation for each pointer, DT_RELR
+# stores them in a form which is about fifty times smaller. The linker makes the
+# binary need GLIBC_ABI_DT_RELR, so it can run only with glibc 2.36 or newer.
+
+set(VPP_LINK_PACK_RELR)
+execute_process(COMMAND getconf GNU_LIBC_VERSION
+  OUTPUT_VARIABLE glibc_version OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+string(REGEX REPLACE "^glibc " "" glibc_version "${glibc_version}")
+check_linker_flag(C "-Wl,-z,pack-relative-relocs" linker_flag_pack_relative_relocs)
+if(linker_flag_pack_relative_relocs AND glibc_version VERSION_GREATER_EQUAL 2.36)
+  set(VPP_LINK_PACK_RELR "-Wl,-z,pack-relative-relocs")
 endif()
 
 ##############################################################################
