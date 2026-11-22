@@ -5,6 +5,7 @@
 #include <vppinfra/pool.h>
 #include <vppinfra/json.h>
 #include <math.h>
+#include <float.h>
 
 typedef enum
 {
@@ -268,7 +269,7 @@ __clib_export void
 clib_json_init (clib_json_text_t *j)
 {
   clib_memset_u8 (j, 0, sizeof (j[0]));
-  j->indent = 2;
+  j->indent = 1;
   j->current_value = -1;
   j->root_value = -1;
 }
@@ -311,6 +312,43 @@ clib_json_init_from_string (clib_json_text_t *j, char *str, int len)
 
   unformat_init_string (&input, str, len);
   return clib_json_parse (j, &input);
+}
+
+__clib_export void
+clib_json_set_indent (clib_json_text_t *j, u32 indent)
+{
+  j->indent = indent;
+}
+
+__clib_export void
+clib_json_set_indent_tabs (clib_json_text_t *j, int tabs)
+{
+  j->indent_spaces = tabs == 0;
+}
+
+__clib_export void
+clib_json_set_key_separator (clib_json_text_t *j, const char *separator)
+{
+  j->key_separator = separator;
+}
+
+__clib_export void
+clib_json_set_inline_arrays (clib_json_text_t *j, int inline_arrays)
+{
+  j->array_lines = inline_arrays == 0;
+}
+
+__clib_export void
+clib_json_set_expand_empty (clib_json_text_t *j, int expand)
+{
+  j->compact_empty = expand == 0;
+}
+
+__clib_export void
+clib_json_set_number_digits (clib_json_text_t *j, u32 digits)
+{
+  j->number_exact = digits == 0;
+  j->number_digits = digits;
 }
 
 __clib_export void
@@ -379,6 +417,22 @@ format_json_string (u8 *s, va_list *args)
   return s;
 }
 
+static u8 *
+format_json_indent (u8 *s, va_list *args)
+{
+  clib_json_text_t *j = va_arg (*args, clib_json_text_t *);
+  u32 n = va_arg (*args, u32);
+
+  if (!j->indent_spaces)
+    {
+      while (n--)
+	vec_add1 (s, '\t');
+      return s;
+    }
+
+  return format (s, "%U", format_white_space, n);
+}
+
 __clib_export u8 *
 format_clib_json_value (u8 *s, va_list *args)
 {
@@ -408,35 +462,50 @@ format_clib_json_value (u8 *s, va_list *args)
 	s = format (s, "%lld", (i64) v->number);
       else
 	{
-	  /* vppinfra %g is not JSON compatible (e.g. no leading zero),
-	   * use the shortest precision which round trips */
+	  /* vppinfra %g is not JSON compatible (e.g. no leading zero) */
 	  char buf[32];
 
-	  for (int prec = 15; prec <= 17; prec++)
+	  if (!j->number_exact)
 	    {
-	      snprintf (buf, sizeof (buf), "%.*g", prec, v->number);
-	      if (strtod (buf, 0) == v->number)
-		break;
+	      double t;
+
+	      snprintf (buf, sizeof (buf), "%.*g", j->number_digits ? j->number_digits : 15,
+			v->number);
+	      t = strtod (buf, 0);
+	      if (fabs (t - v->number) > fmax (fabs (t), fabs (v->number)) * DBL_EPSILON)
+		snprintf (buf, sizeof (buf), "%.17g", v->number);
 	    }
+	  else
+	    /* the shortest precision which round trips */
+	    for (int prec = 15; prec <= 17; prec++)
+	      {
+		snprintf (buf, sizeof (buf), "%.*g", prec, v->number);
+		if (strtod (buf, 0) == v->number)
+		  break;
+	      }
 	  s = format (s, "%s", buf);
 	}
       break;
     case CLIB_JSON_VALUE_OBJECT:
       vec_add1 (s, '{');
-      if (pool_elts (v->nvpairs))
+      if (pool_elts (v->nvpairs) || (j->indent && !j->compact_empty))
 	{
 	  clib_json_nvpair_t *nvp;
+	  const char *sep = j->indent ? (j->key_separator ? j->key_separator : ":\t") : ":";
+
 	  j->current_indent += j->indent;
 	  pool_foreach (nvp, v->nvpairs)
 	    {
-	      s = format (s, "\n%U", format_white_space, j->current_indent);
-	      s = format (s, "%U: %U", format_json_string, nvp->name, format_clib_json_value, j,
-			  nvp->value_index);
+	      if (j->indent)
+		s = format (s, "\n%U", format_json_indent, j, j->current_indent);
+	      s = format (s, "%U%s%U", format_json_string, nvp->name, sep, format_clib_json_value,
+			  j, nvp->value_index);
 	      if (nvp != vec_end (v->nvpairs) - 1)
 		s = format (s, ",");
 	    }
 	  j->current_indent -= j->indent;
-	  s = format (s, "\n%U", format_white_space, j->current_indent);
+	  if (j->indent)
+	    s = format (s, "\n%U", format_json_indent, j, j->current_indent);
 	}
       vec_add1 (s, '}');
       break;
@@ -444,16 +513,20 @@ format_clib_json_value (u8 *s, va_list *args)
       vec_add1 (s, '[');
       if (vec_len (v->array_val_indices))
 	{
+	  int lines = j->indent && j->array_lines;
+
 	  j->current_indent += j->indent;
 	  vec_foreach_index (i, v->array_val_indices)
 	    {
-	      s = format (s, "\n%U", format_white_space, j->current_indent);
+	      if (lines)
+		s = format (s, "\n%U", format_json_indent, j, j->current_indent);
 	      s = format (s, "%U", format_clib_json_value, j, v->array_val_indices[i]);
 	      if (i != vec_len (v->array_val_indices) - 1)
-		s = format (s, ",");
+		s = format (s, j->indent && !j->array_lines ? ", " : ",");
 	    }
 	  j->current_indent -= j->indent;
-	  s = format (s, "\n%U", format_white_space, j->current_indent);
+	  if (lines)
+	    s = format (s, "\n%U", format_json_indent, j, j->current_indent);
 	}
       vec_add1 (s, ']');
       break;
