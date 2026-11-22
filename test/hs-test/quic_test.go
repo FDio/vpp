@@ -27,7 +27,7 @@ func init() {
 	RegisterNoTopoTests(QuicFailedHandshakeTest, QuicCryptoContextTest, QuicRxDatagramSizeTest,
 		QuicEngineObjectCountTest, QuicConnectFailureTest, QuicStreamCloseTest, QuicStreamResetCloseTest)
 	RegisterNoTopoMWTests(QuicEngineObjectCountMWTest, QuicAcceptTimeoutMWTest, QuicConnectFailureMWTest,
-		QuicHandshakeTimeoutMWTest, QuicIdleTimeoutMWTest)
+		QuicHandshakeTimeoutMWTest, QuicIdleTimeoutMWTest, QuicMigratedHandshakeDetachMWTest)
 }
 
 func QuicEngineObjectCountMWTest(s *NoTopoSuite) {
@@ -809,6 +809,66 @@ type quicTestUDPSocket interface {
 	net.PacketConn
 	SetReadBuffer(int) error
 	SetWriteBuffer(int) error
+}
+
+// A client half-open migrates with its connection to the worker that owns the
+// UDP session. The client detaching before the handshake completes must close
+// the connection.
+func QuicMigratedHandshakeDetachMWTest(s *NoTopoSuite) {
+	s.CpusPerVppContainer = 3
+	s.SetupTest()
+	vpp := s.Containers.Vpp.VppInstance
+	// Connects start on the first worker. Receive on the second one, so the
+	// peer's first packet migrates the UDP session and QUIC connection.
+	AssertEmpty(vpp.Vppctl("set interface rx-placement " + s.Interfaces.Tap.VppName() +
+		" queue 0 worker 1"))
+	// Keep the port bound, so the host does not answer with ICMP unreachables.
+	peer, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.ParseIP(s.HostAddr())})
+	AssertNil(err)
+	defer peer.Close()
+	uri := "quic://" + peer.LocalAddr().String()
+	baseline := quicReadCleanupCounts(vpp.Vppctl("show quic verbose"))
+	AssertEqual(3, len(baseline.ContextsPerThread), "expected main thread and two workers")
+	AssertEqual(uint64(0), baseline.EngineConnections)
+	checkCleanup := quicCleanupCheck(8*time.Second, vpp)
+	sessions := vpp.Vppctl("show session")
+	cryptoContexts := vpp.Vppctl("show quic crypto context")
+
+	result := make(chan string, 1)
+	go func() { result <- vpp.Vppctl("test tls client uri " + uri) }()
+
+	AssertNil(peer.SetReadDeadline(time.Now().Add(2 * time.Second)))
+	packet := make([]byte, 2048)
+	n, client, err := peer.ReadFromUDP(packet)
+	AssertNil(err)
+	Expect(n).To(BeNumerically(">=", 1200), "the peer must receive a QUIC Initial")
+	// QUIC drops this datagram, so the handshake stays pending, but the UDP
+	// session and the connection move to the second worker.
+	_, err = peer.WriteToUDP([]byte{0}, client)
+	AssertNil(err)
+
+	migrated := baseline
+	migrated.ContextsPerThread = append([]uint64(nil), baseline.ContextsPerThread...)
+	migrated.ContextsPerThread[2]++
+	migrated.EngineConnections++
+	migrated.TxTimers++
+	var output string
+	Eventually(func() quicCleanupCounts {
+		output = vpp.Vppctl("show quic verbose")
+		return quicReadCleanupCounts(output)
+	}, 2*time.Second, 50*time.Millisecond).Should(Equal(migrated),
+		"expected the pending connection on the second worker")
+	AssertContains(output, "conn state HANDSHAKE: 1")
+
+	// The handshake never completes, so the test client gives up and detaches
+	Eventually(result, 12*time.Second).Should(Receive(&output))
+	Log(output)
+	AssertContains(output, "timeout")
+	checkCleanup()
+	Eventually(func() string { return vpp.Vppctl("show session") },
+		2*time.Second, 100*time.Millisecond).Should(Equal(sessions))
+	AssertEqual(cryptoContexts, vpp.Vppctl("show quic crypto context"),
+		"detach must release the client's crypto context")
 }
 
 // Keep the socket alive while making the peer disappear in both directions.

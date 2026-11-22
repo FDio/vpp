@@ -110,7 +110,8 @@ quic_quicly_notify_app_connected (quic_ctx_t *ctx, session_error_t err)
   app_worker_t *app_wrk;
 
   app_wrk = app_worker_get_if_valid (ctx->parent_app_wrk_id);
-  if (!app_wrk)
+  /* App might have detached while the handshake was in progress */
+  if (!app_wrk || (ctx->flags & QUIC_F_NO_APP_SESSION))
     {
       ctx->flags |= QUIC_F_NO_APP_SESSION;
       return -1;
@@ -1188,12 +1189,11 @@ quic_quicly_on_app_closed (u32 ctx_index, clib_thread_index_t thread_index)
       return;
     }
   ctx->flags |= QUIC_F_APP_CLOSED;
-  session_t *stream_session =
-    session_get (ctx->c_s_index, ctx->c_thread_index);
-  QUIC_DBG (2, "App closing session 0x%lx ctx_index %u",
-	    session_handle (stream_session), ctx->c_c_index);
+  /* Connections closed before their handshake completes have no session */
+  QUIC_DBG (2, "App closing ctx_index %u", ctx->c_c_index);
   if (quic_ctx_is_stream (ctx))
     {
+      session_t *stream_session = session_get (ctx->c_s_index, ctx->c_thread_index);
       if (!ctx->stream)
 	{
 	  QUIC_DBG (
