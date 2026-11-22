@@ -347,7 +347,6 @@ help:
 	@echo " test-cov-both	  	 - build and run python and host stack tests, merge coverage data"
 	@echo "   HS_PARALLEL=[<n>|auto] - hs-test processes for coverage (default = TEST_JOBS)"
 	@echo " test-help            - show help on test framework"
-	@echo " run-vat              - run vpp-api-test tool"
 	@echo " pkg-deb              - build DEB packages"
 	@echo " pkg-deb-debug        - build DEB debug packages"
 	@echo " pkg-snap             - build SNAP package"
@@ -811,14 +810,6 @@ build-coverity:
 .PHONY: debug-release
 debug-release:
 	$(call run, $(BR)/install-$(PLATFORM)-native,$(GDB) $(GDB_ARGS) --args)
-
-.PHONY: build-vat
-build-vat:
-	$(call make,$(PLATFORM)_debug,vpp-api-test-install)
-
-.PHONY: run-vat
-run-vat:
-	@$(SUDO) $(BR)/install-$(PLATFORM)_debug-native/vpp/bin/vpp_api_test
 
 .PHONY: pkg-deb
 pkg-deb:

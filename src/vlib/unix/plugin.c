@@ -1065,20 +1065,6 @@ vlib_plugin_early_init (vlib_main_t * vm)
   return vlib_load_new_plugins (pm, 1 /* from_early_init */ );
 }
 
-u8 *
-vlib_get_vat_plugin_path (void)
-{
-  plugin_main_t *pm = &vlib_plugin_main;
-  return (pm->vat_plugin_path);
-}
-
-u8 *
-vlib_get_vat_plugin_name_filter (void)
-{
-  plugin_main_t *pm = &vlib_plugin_main;
-  return (pm->vat_plugin_name_filter);
-}
-
 static clib_error_t *
 vlib_plugins_show_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
@@ -1211,10 +1197,6 @@ done:
 	pm->plugin_path_add = s;
       else if (unformat (input, "name-filter %s", &s))
 	pm->plugin_name_filter = s;
-      else if (unformat (input, "vat-path %s", &s))
-	pm->vat_plugin_path = s;
-      else if (unformat (input, "vat-name-filter %s", &s))
-	pm->vat_plugin_name_filter = s;
       else if (unformat (input, "plugin default %U",
 			 unformat_vlib_cli_sub_input, &sub_input))
 	{

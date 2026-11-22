@@ -24,9 +24,6 @@ add_vpp_plugin(oddbuf
   API_FILES
   oddbuf.api
 
-  API_TEST_SOURCES
-  oddbuf_test.c
-
   COMPONENT
   vpp-plugin-devtools
 )

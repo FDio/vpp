@@ -62,10 +62,8 @@ BuildRequires:  systemd-rpm-macros
 The Vector Packet Processing platform is a framework that provides
 switch/router functionality. It is based on Cisco's packet processing
 stack that can run on commodity CPUs.
-This package provides VPP executables: vpp, vpp_api_test, vpp_json_test
+This package provides VPP executables: vpp
 vpp - the vector packet engine
-vpp_api_test - vector packet engine API test tool
-vpp_json_test - vector packet engine JSON test tool
 
 %package -n %{lname}
 Summary:        VPP libraries
@@ -237,17 +235,10 @@ done
 # vpp-plugins
 #
 mkdir -p -m755 %{buildroot}%{_libdir}/vpp_plugins
-mkdir -p -m755 %{buildroot}%{_libdir}/vpp_api_test_plugins
 for file in $(cd %{_vpp_plugins_lib_dir}/vpp_plugins && find -type f -print)
 do
         install -p -m 644 %{_vpp_plugins_lib_dir}/vpp_plugins/$file \
            %{buildroot}/%{_libdir}/vpp_plugins/$file
-done
-
-for file in $(cd %{_vpp_plugins_lib_dir}/vpp_api_test_plugins && find -type f -print)
-do
-        install -p -m 644 %{_vpp_plugins_lib_dir}/vpp_api_test_plugins/$file \
-           %{buildroot}/%{_libdir}/vpp_api_test_plugins/$file
 done
 
 for file in $(find %{_vpp_install_dir}/vpp/share/vpp/api/plugins -type f -name '*.api.json' -print )
@@ -287,7 +278,6 @@ export NO_BRP_CHECK_RPATH=true
 
 %files -n %{lname}
 %exclude %{_libdir}/vpp_plugins
-%exclude %{_libdir}/vpp_api_test_plugins
 %{_libdir}/*.so.*
 
 %files api-lua
@@ -313,8 +303,6 @@ export NO_BRP_CHECK_RPATH=true
 
 %files plugins
 %dir %{_libdir}/vpp_plugins
-%dir %{_libdir}/vpp_api_test_plugins
 %{_libdir}/vpp_plugins/*.so*
-%{_libdir}/vpp_api_test_plugins/*.so*
 
 %changelog

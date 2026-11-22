@@ -116,7 +116,7 @@ Here are the generated files. We'll go through them in a moment.
     $ cd ./myplugin
     $ ls
     CMakeLists.txt  myplugin.api  myplugin.c  myplugin.h
-    myplugin_periodic.c  myplugin_test.c  node.c  setup.pg
+    myplugin_periodic.c  node.c  setup.pg
 
 Due to recent build system improvements, you **don't** need to touch
 any other files to integrate your new plugin into the vpp build. Simply
@@ -138,7 +138,7 @@ Sanity check: run vpp
 ---------------------
 
 As a quick sanity check, run vpp and make sure that
-"myplugin_plugin.so" and "myplugin_test_plugin.so" are loaded:
+"myplugin_plugin.so" is loaded:
 
 .. code-block:: console
 
@@ -146,8 +146,6 @@ As a quick sanity check, run vpp and make sure that
     $ make run
     <snip>
     load_one_plugin:189: Loaded plugin: myplugin_plugin.so (myplugin description goes here)
-    <snip>
-    load_one_vat_plugin:67: Loaded plugin: myplugin_test_plugin.so
     <snip>
     DBGvpp#
 
@@ -185,9 +183,6 @@ The rest of the build recipe is pretty simple:
 
     API_FILES
     myplugin.api
-
-    API_TEST_SOURCES
-    myplugin_test.c
     )
 
 As you can see, the build recipe consists of several lists of
@@ -269,18 +264,6 @@ mainp->msg_id_base can lead to very confusing failures.
 If you stick to modifying the generated boilerplate with care -
 instead of trying to build code from first principles - you'll save
 yourself a bunch of time and aggravation
-
-myplugin_test.c
----------------
-
-This file contains binary API message **generation** code, which is
-compiled into a separate .so file. The "vpp_api_test" program loads
-these plugins, yielding immediate access to your plugin APIs for
-external client binary API testing.
-
-vpp itself loads test plugins, and makes the code available via the
-"binary-api" debug CLI. This is a favorite way to unit-test binary
-APIs prior to integration testing.
 
 node.c
 ------

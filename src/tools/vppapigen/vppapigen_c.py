@@ -19,8 +19,7 @@
 #
 
 """
-This module creates C code for core VPP, VPP plugins and client side VAT and
-VAT tests.
+This module creates C code for core VPP and VPP plugins.
 """
 
 import datetime
@@ -1820,137 +1819,6 @@ def generate_c_boilerplate(s, services, defines, counters, file_crc, module, str
         write("};\n")
 
 
-def generate_c_test_boilerplate(services, defines, file_crc, module, plugin, stream):
-    """Generate code for legacy style VAT. To be deleted."""
-    write = stream.write
-
-    define_hash = {d.name: d for d in defines}
-
-    hdr = """\
-#define vl_endianfun            /* define message structures */
-#include "{module}.api.h"
-#undef vl_endianfun
-
-#define vl_calcsizefun
-#include "{module}.api.h"
-#undef vl_calsizefun
-
-/* instantiate all the print functions we know about */
-#define vl_printfun
-#include "{module}.api.h"
-#undef vl_printfun
-
-"""
-
-    write(hdr.format(module=module))
-    for s in services:
-        try:
-            d = define_hash[s.reply]
-        except KeyError:
-            continue
-        if d.manual_print:
-            write(
-                "/*\n"
-                " * Manual definition requested for: \n"
-                " * vl_api_{n}_t_handler()\n"
-                " */\n".format(n=s.reply)
-            )
-            continue
-        if not define_hash[s.caller].autoreply:
-            write(
-                "/* Generation not supported (vl_api_{n}_t_handler()) */\n".format(
-                    n=s.reply
-                )
-            )
-            continue
-        write("#ifndef VL_API_{n}_T_HANDLER\n".format(n=s.reply.upper()))
-        write("static void\n")
-        write("vl_api_{n}_t_handler (vl_api_{n}_t * mp) {{\n".format(n=s.reply))
-        write("   vat_main_t * vam = {}_test_main.vat_main;\n".format(module))
-        write("   i32 retval = ntohl(mp->retval);\n")
-        write("   if (vam->async_mode) {\n")
-        write("      vam->async_errors += (retval < 0);\n")
-        write("   } else {\n")
-        write("      vam->retval = retval;\n")
-        write("      vam->result_ready = 1;\n")
-        write("   }\n")
-        write("}\n")
-        write("#endif\n")
-
-        for e in s.events:
-            if define_hash[e].manual_print:
-                continue
-            write("static void\n")
-            write("vl_api_{n}_t_handler (vl_api_{n}_t * mp) {{\n".format(n=e))
-            write('    vlib_cli_output(0, "{n} event called:");\n'.format(n=e))
-            write(
-                '    vlib_cli_output(0, "%U", vl_api_{n}_t_format, mp);\n'.format(n=e)
-            )
-            write("}\n")
-
-    write("static void\n")
-    write("setup_message_id_table (vat_main_t * vam, u16 msg_id_base) {\n")
-    for s in services:
-        write(
-            "   vl_msg_api_config (&(vl_msg_api_msg_config_t){{\n"
-            "    .id = VL_API_{ID} + msg_id_base,\n"
-            '    .name = "{n}",\n'
-            "    .handler = vl_api_{n}_t_handler,\n"
-            "    .size = sizeof(vl_api_{n}_t),\n"
-            "    .traced = 1,\n"
-            "    .calc_size = vl_api_{n}_t_calc_size,\n"
-            "   }});".format(n=s.reply, ID=s.reply.upper())
-        )
-        write(
-            '   hash_set_mem (vam->function_by_name, "{n}", api_{n});\n'.format(
-                n=s.caller
-            )
-        )
-        try:
-            write(
-                '   hash_set_mem (vam->help_by_name, "{n}", "{help}");\n'.format(
-                    n=s.caller, help=define_hash[s.caller].options["vat_help"]
-                )
-            )
-        except KeyError:
-            pass
-
-        # Events
-        for e in s.events:
-            write(
-                "   vl_msg_api_config (&(vl_msg_api_msg_config_t){{\n"
-                "    .id = VL_API_{ID} + msg_id_base,\n"
-                '    .name = "{n}",\n'
-                "    .handler = vl_api_{n}_t_handler,\n"
-                "    .size = sizeof(vl_api_{n}_t),\n"
-                "    .traced = 1,\n"
-                "    .calc_size = vl_api_{n}_t_calc_size,\n"
-                "   }});".format(n=e, ID=e.upper())
-            )
-
-    write("}\n")
-    write("clib_error_t * vat_plugin_register (vat_main_t *vam)\n")
-    write("{\n")
-    write("   {n}_test_main_t * mainp = &{n}_test_main;\n".format(n=module))
-    write("   mainp->vat_main = vam;\n")
-    write(
-        "   mainp->msg_id_base = vl_client_get_first_plugin_msg_id "
-        '                       ("{n}_{crc:08x}");\n'.format(n=module, crc=file_crc)
-    )
-    write("   if (mainp->msg_id_base == (u16) ~0)\n")
-    write(
-        '      return clib_error_return (0, "{} plugin not loaded...");\n'.format(
-            module
-        )
-    )
-    write("   setup_message_id_table (vam, mainp->msg_id_base);\n")
-    write("#ifdef VL_API_LOCAL_SETUP_MESSAGE_ID_TABLE\n")
-    write("    VL_API_LOCAL_SETUP_MESSAGE_ID_TABLE(vam);\n")
-    write("#endif\n")
-    write("   return 0;\n")
-    write("}\n")
-
-
 def apifunc(func):
     """Check if a method is generated already."""
 
@@ -2521,7 +2389,6 @@ def run(output_dir, apifilename, s):
     filename_types = os.path.join(output_dir + "/" + basename + "_types.h")
     filename_c = os.path.join(output_dir + "/" + basename + ".c")
     filename_desc = os.path.join(output_dir + "/" + basename + "_desc.c")
-    filename_c_test = os.path.join(output_dir + "/" + basename + "_test.c")
     filename_c_tojson = os.path.join(output_dir + "/" + basename + "_tojson.h")
     filename_c_fromjson = os.path.join(output_dir + "/" + basename + "_fromjson.h")
 
@@ -2559,17 +2426,6 @@ def run(output_dir, apifilename, s):
     st = StringIO()
     generate_desc(s, modulename, st)
     with open(filename_desc, "w") as fd:
-        st.seek(0)
-        shutil.copyfileobj(st, fd)
-    st.close()
-
-    # Generate separate C test file
-    st = StringIO()
-    plugin = bool("plugin" in apifilename)
-    generate_c_test_boilerplate(
-        s["Service"], s["Define"], s["file_crc"], modulename, plugin, st
-    )
-    with open(filename_c_test, "w") as fd:
         st.seek(0)
         shutil.copyfileobj(st, fd)
     st.close()
