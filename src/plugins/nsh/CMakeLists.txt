@@ -34,8 +34,5 @@ add_vpp_plugin(nsh
 
   API_FILES
   nsh.api
-
-  API_TEST_SOURCES
-  nsh_test.c
 )
 

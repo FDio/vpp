@@ -40,9 +40,6 @@ add_vpp_plugin(sflow
   API_FILES
   sflow.api
 
-  API_TEST_SOURCES
-  sflow_test.c
-
   LINK_LIBRARIES
   vppapiclient
   vapiclient

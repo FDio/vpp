@@ -31,13 +31,11 @@
  */
 char *vlib_plugin_path = NULL;
 char *vlib_plugin_app_version = VPP_BUILD_VER;
-char *vat_plugin_path = NULL;
 char *vlib_default_runtime_dir = "vpp";
 
 static void
 vpp_find_plugin_path ()
 {
-  extern char *vat_plugin_path;
   char *p;
   u8 *s, *path;
 
@@ -63,10 +61,6 @@ vpp_find_plugin_path ()
   s = format (0, "%s/" CLIB_LIB_DIR "/vpp_plugins", path, path);
   vec_add1 (s, 0);
   vlib_plugin_path = (char *) s;
-
-  s = format (0, "%s/" CLIB_LIB_DIR "/vpp_api_test_plugins", path, path);
-  vec_add1 (s, 0);
-  vat_plugin_path = (char *) s;
 
 done:
   vec_free (path);
@@ -280,8 +274,6 @@ main (int argc, char *argv[])
     {
       if (unformat (&input, "plugin_path %s", &vlib_plugin_path))
 	;
-      else if (unformat (&input, "test_plugin_path %s", &vat_plugin_path))
-	;
       else if (unformat (&input, "memory %U", unformat_vlib_cli_sub_input,
 			 &sub_input))
 	{
@@ -398,10 +390,6 @@ main (int argc, char *argv[])
   /* and use the main heap as that numa's numa heap */
   vlib_main_init ();
 
-#if VPP_API_TEST_BUILTIN > 0
-  void vat_plugin_hash_create (void);
-#endif
-
   if (CLIB_DEBUG > 0)
     vlib_unix_cli_set_prompt ("DBGvpp# ");
   else
@@ -409,13 +397,6 @@ main (int argc, char *argv[])
 
   /* Turn off network stack components which we don't want */
   vlib_mark_init_function_complete (vm, srp_init);
-
-  /*
-   * Create the binary api plugin hashes before loading plugins
-   */
-#if VPP_API_TEST_BUILTIN > 0
-  vat_plugin_hash_create ();
-#endif
 
   if (!vlib_plugin_path)
     vpp_find_plugin_path ();
@@ -435,15 +416,8 @@ plugin_path_config (vlib_main_t *vm, unformat_input_t *input)
   return 0;
 }
 
-static clib_error_t *
-test_plugin_path_config (vlib_main_t *vm, unformat_input_t *input)
-{
-  return 0;
-}
-
 VLIB_CONFIG_FUNCTION (memory_config, "memory");
 VLIB_CONFIG_FUNCTION (plugin_path_config, "plugin_path");
-VLIB_CONFIG_FUNCTION (test_plugin_path_config, "test_plugin_path");
 
 void vl_msg_api_post_mortem_dump (void);
 void vlib_post_mortem_dump (void);

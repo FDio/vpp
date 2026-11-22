@@ -18,7 +18,4 @@ add_vpp_plugin(mdata
 
   API_FILES
   mdata.api
-
-  API_TEST_SOURCES
-  mdata_test.c
 )

@@ -29,9 +29,6 @@ add_vpp_plugin(tracenode
   INSTALL_HEADERS
   tracenode.h
 
-  API_TEST_SOURCES
-  test.c
-
   COMPONENT
   vpp-plugin-devtools
 )

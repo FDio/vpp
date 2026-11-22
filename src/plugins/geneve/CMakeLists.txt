@@ -29,7 +29,4 @@ add_vpp_plugin(geneve
   geneve.h
   geneve_packet.h
   geneve_error.def
-
-  API_TEST_SOURCES
-  geneve_test.c
 )

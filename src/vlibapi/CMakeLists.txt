@@ -28,7 +28,6 @@ add_vpp_library (vlibapi
   api_common.h
   api_helper_macros.h
   api_types.h
-  vat_helper_macros.h
   memory_shared.h
   jsonformat.h
   api_desc.h

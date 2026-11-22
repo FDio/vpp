@@ -425,7 +425,6 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
         """Set-up the test case class based on environment variables"""
         cls.step = config.step
         cls.plugin_path = ":".join(config.vpp_plugin_dir)
-        cls.test_plugin_path = ":".join(config.vpp_test_plugin_dir)
         cls.extern_plugin_path = ":".join(config.extern_plugin_dir)
         debug_cli = ""
         if cls.step or cls.debug_gdb or cls.debug_gdbserver:

@@ -12,56 +12,6 @@
 # limitations under the License.
 
 ##############################################################################
-# vat plugin shared library
-##############################################################################
-add_vpp_library(vatplugin
-  SOURCES plugin_api.c
-  LINK_LIBRARIES vppinfra
-)
-
-##############################################################################
-# vpp_api_test
-##############################################################################
-add_vpp_tool(vpp_api_test ENABLE_EXPORTS
-  SOURCES
-  api_format.c
-  main.c
-  plugin.c
-  json_format.c
-  types.c
-  ip_types_api.c
-  ip_types.c
-  protocols.def
-
-  DEPENDS api_headers
-
-  LINK_LIBRARIES
-  vlibmemoryclient
-  svm
-  vatplugin
-  vppinfra
-  Threads::Threads
-  dl
-)
-
-##############################################################################
-#  vpp_json_test
-##############################################################################
-add_vpp_test(vpp_json_test ENABLE_EXPORTS NO_INSTALL
-  SOURCES json_format.c json_test.c
-  LINK_LIBRARIES vppinfra m
-)
-
-##############################################################################
-# vat headers
-##############################################################################
-install(
-  FILES vat.h json_format.h
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vat
-  COMPONENT vpp-dev
-)
-
-##############################################################################
 # restart
 ##############################################################################
 add_vpp_tool(vpp_restart
