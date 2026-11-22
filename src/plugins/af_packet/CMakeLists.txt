@@ -31,8 +31,5 @@ add_vpp_plugin(af_packet
   API_FILES
   af_packet.api
 
-  #  API_TEST_SOURCES
-  #af_packet_test_api.c
-
   SUPPORTED_OS_LIST Linux
 )

@@ -87,7 +87,6 @@ the VPP Custom Policy being installed.
 ::
 
      $ sudo restorecon -Rv /etc/vpp/
-     $ sudo restorecon -Rv /usr/lib/vpp_api_test_plugins/
      $ sudo restorecon -Rv /usr/lib/vpp_plugins/
      $ sudo restorecon -Rv /usr/share/vpp/
      $ sudo restorecon -Rv /var/run/vpp/
@@ -314,7 +313,6 @@ Policy: - ``vpp_t`` - Applied to: - VPP process and spawned threads.
 
 -  ``vpp_lib_t`` - Applied to:
 
-   -  ``/usr/lib/vpp_api_test_plugins/*``
    -  ``/usr/lib/vpp_plugins/*``
 
 -  ``vpp_unit_file_t`` - Applied to:

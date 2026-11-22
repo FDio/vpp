@@ -37,8 +37,6 @@ install(
 ##############################################################################
 # vpp binary
 ##############################################################################
-option(VPP_API_TEST_BUILTIN "Use builtin VPP API test." ON)
-
 configure_file(
   ${CMAKE_SOURCE_DIR}/vpp/vnet/config.h.in
   ${CMAKE_CURRENT_BINARY_DIR}/vnet/config.h
@@ -80,19 +78,8 @@ set(VPP_SOURCES
   app/version.c
   api/api.c
   api/binary_api.c
-  api/json_format.c
   api/types.c
 )
-
-if(VPP_API_TEST_BUILTIN)
-  list(APPEND VPP_SOURCES
-    api/api_format.c
-    api/api_main.c
-    api/plugin.c
-    api/types.c
-  )
-  add_definitions(-DVPP_API_TEST_BUILTIN=1)
-endif()
 
 add_vpp_executable(vpp
   ENABLE_EXPORTS
@@ -144,11 +131,6 @@ add_vpp_test(test_dump_metrics
 
 install(FILES conf/startup.conf DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/vpp COMPONENT vpp)
 install(FILES conf/80-vpp.conf DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/sysctl.d COMPONENT vpp)
-
-
-add_vat_test_library(vpp
-  api/api_test.c
-)
 
 ##############################################################################
 # minimal interactive startup.conf  - only if not present

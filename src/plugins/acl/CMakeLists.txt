@@ -28,9 +28,6 @@ add_vpp_plugin(acl
   acl.api
   acl_types.api
 
-  API_TEST_SOURCES
-  acl_test.c
-
   INSTALL_HEADERS
   exports.h
   exported_types.h

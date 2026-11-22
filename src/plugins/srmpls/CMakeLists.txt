@@ -23,7 +23,4 @@ add_vpp_plugin(srmpls
 
   API_FILES
   sr_mpls.api
-
-  API_TEST_SOURCES
-  sr_mpls_test.c
 )

@@ -23,12 +23,6 @@ class Constants(object):
     # shell scripts location
     RESOURCES_LIB_SH = "resources/libraries/bash"
 
-    # vat templates location
-    RESOURCES_TPL_VAT = "resources/templates/vat"
-
-    # OpenVPP VAT binary name
-    VAT_BIN_NAME = "vpp_api_test"
-
     # QEMU version to install
     QEMU_INSTALL_VERSION = "qemu-2.5.0"
 

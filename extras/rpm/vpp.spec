@@ -83,10 +83,8 @@ Source: %{name}-%{_version}-%{_release}.tar.xz
 # Source: vpp-latest.tar.xz
 
 %description
-This package provides VPP executables: vpp, vpp_api_test, vpp_json_test
+This package provides VPP executables: vpp
 vpp - the vector packet engine
-vpp_api_test - vector packet engine API test tool
-vpp_json_test - vector packet engine JSON test tool
 
 %package lib
 Summary: VPP libraries
@@ -288,24 +286,10 @@ mkdir -p -m755 %{buildroot}%{_localstatedir}/log/vpp
 # vpp-plugins
 #
 mkdir -p -m755 %{buildroot}/usr/%{_lib}/vpp_plugins
-mkdir -p -m755 %{buildroot}/usr/%{_lib}/vpp_api_test_plugins
-mkdir -p -m755 %{buildroot}/usr/%{_lib}/vat2_plugins
 for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/vpp/%{_lib}/vpp_plugins && find -type f -print)
 do
         install -p -m 755 %{_mu_build_dir}/%{_vpp_install_dir}/vpp/%{_lib}/vpp_plugins/$file \
            %{buildroot}/usr/%{_lib}/vpp_plugins/$file
-done
-
-for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/vpp/%{_lib}/vpp_api_test_plugins && find -type f -print)
-do
-        install -p -m 755 %{_mu_build_dir}/%{_vpp_install_dir}/vpp/%{_lib}/vpp_api_test_plugins/$file \
-           %{buildroot}/usr/%{_lib}/vpp_api_test_plugins/$file
-done
-
-for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/vpp/%{_lib}/vat2_plugins && find -type f -print)
-do
-        install -p -m 755 %{_mu_build_dir}/%{_vpp_install_dir}/vpp/%{_lib}/vat2_plugins/$file \
-           %{buildroot}/usr/%{_lib}/vat2_plugins/$file
 done
 
 for file in $(find %{_mu_build_dir}/%{_vpp_install_dir}/vpp/share/vpp/api/plugins -type f -name '*.api.json' -print )
@@ -392,8 +376,6 @@ fi
 %defattr(-,bin,bin)
 %global __requires_exclude_from %{_libdir}/librte_pmd_mlx[45]_glue\\.so.*$
 %exclude %{_libdir}/vpp_plugins
-%exclude %{_libdir}/vpp_api_test_plugins
-%exclude %{_libdir}/vat2_plugins
 %exclude %{_libdir}/libefa.so*
 %exclude %{_libdir}/libibverbs.so*
 %exclude %{_libdir}/libmana.so*
@@ -429,6 +411,4 @@ fi
 %files plugins
 %defattr(-,bin,bin)
 /usr/%{_lib}/vpp_plugins/*
-/usr/%{_lib}/vpp_api_test_plugins/*
-/usr/%{_lib}/vat2_plugins/*
 /usr/share/vpp/api/*
