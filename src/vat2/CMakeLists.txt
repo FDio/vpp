@@ -14,20 +14,19 @@
 ##############################################################################
 # vat2
 ##############################################################################
-add_vpp_tool(vat2 ENABLE_EXPORTS
+add_vpp_tool(vat2
   SOURCES
   main.c
-  plugin.c
 
   DEPENDS api_headers
 
   LINK_LIBRARIES
   vlibmemoryclient
+  vlibapi
   svm
   vppinfra
   vppapiclient
   Threads::Threads
-  dl
 )
 
 #
@@ -37,21 +36,25 @@ add_vpp_tool(vat2 ENABLE_EXPORTS
 #)
 
 vpp_generate_api_c_header (test/vat2_test.api)
-add_vpp_test(test_vat2 ENABLE_EXPORTS NO_INSTALL
+vpp_generate_api_json_header (test/vat2_test.api "" "")
+add_custom_target(vat2_test_json
+  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/test/vat2_test.api.json
+)
+add_vpp_test(test_vat2 NO_INSTALL
   SOURCES
   test/vat2_test.c
 
-  DEPENDS api_headers
+  DEPENDS api_headers vat2_test_json
 
   LINK_LIBRARIES
   vppinfra
-  vlibmemoryclient
   vlibapi
-  svm
-  vppapiclient
-  Threads::Threads
-  dl
 )
+if(TARGET test_vat2)
+  target_compile_definitions(test_vat2 PRIVATE
+    VAT2_TEST_API_JSON="${CMAKE_CURRENT_BINARY_DIR}/test/vat2_test.api.json"
+  )
+endif()
 #target_link_options(test_vat2 PUBLIC "LINKER:-fsanitize=address")
 if(VPP_BUILD_TESTS_WITH_COVERAGE)
   set(TARGET_NAME test_vat2)
@@ -85,16 +88,3 @@ if(VPP_BUILD_TESTS_WITH_COVERAGE)
     COMMENT "Open ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${TARGET_NAME}-llvm-cov/index.html in your browser to view the coverage report."
 )
 endif()
-
-
-
-##############################################################################
-# vat2 headers
-##############################################################################
-install(
-  FILES
-  vat2_helpers.h
-  vat2_json.h
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vat2
-  COMPONENT vpp-dev
-)
