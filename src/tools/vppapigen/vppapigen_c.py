@@ -1761,7 +1761,6 @@ def generate_c_boilerplate(s, services, defines, counters, file_crc, module, str
             "   .format_fn = vl_api_{n}_t_format,\n"
             "   .traced = 1,\n"
             "   .replay = 1,\n"
-            "   .fromjson = vl_api_{n}_t_fromjson,\n"
             "   .calc_size = vl_api_{n}_t_calc_size,\n"
             "   .is_autoendian = {auto}}};\n".format(
                 n=s.caller, ID=s.caller.upper(), auto=d.autoendian
@@ -1779,7 +1778,6 @@ def generate_c_boilerplate(s, services, defines, counters, file_crc, module, str
                 "  .format_fn = vl_api_{n}_t_format,\n"
                 "  .traced = 1,\n"
                 "  .replay = 1,\n"
-                "  .fromjson = vl_api_{n}_t_fromjson,\n"
                 "  .calc_size = vl_api_{n}_t_calc_size,\n"
                 "  .is_autoendian = {auto}}};\n".format(
                     n=s.reply, ID=s.reply.upper(), auto=d.autoendian
@@ -1801,7 +1799,6 @@ def generate_c_boilerplate(s, services, defines, counters, file_crc, module, str
                     "  .format_fn = vl_api_{n}_t_format,\n"
                     "  .traced = 1,\n"
                     "  .replay = 1,\n"
-                    "  .fromjson = vl_api_{n}_t_fromjson,\n"
                     "  .calc_size = vl_api_{n}_t_calc_size,\n"
                     "  .is_autoendian = {auto}}};\n".format(
                         n=s.stream_message,
@@ -1914,7 +1911,6 @@ def generate_c_test_boilerplate(services, defines, file_crc, module, plugin, str
             "    .format_fn = vl_api_{n}_t_format,\n"
             "    .size = sizeof(vl_api_{n}_t),\n"
             "    .traced = 1,\n"
-            "    .fromjson = vl_api_{n}_t_fromjson,\n"
             "    .calc_size = vl_api_{n}_t_calc_size,\n"
             "   }});".format(n=s.reply, ID=s.reply.upper())
         )
@@ -1943,7 +1939,6 @@ def generate_c_test_boilerplate(services, defines, file_crc, module, plugin, str
                 "    .format_fn = vl_api_{n}_t_format,\n"
                 "    .size = sizeof(vl_api_{n}_t),\n"
                 "    .traced = 1,\n"
-                "    .fromjson = vl_api_{n}_t_fromjson,\n"
                 "    .calc_size = vl_api_{n}_t_calc_size,\n"
                 "   }});".format(n=e, ID=e.upper())
             )

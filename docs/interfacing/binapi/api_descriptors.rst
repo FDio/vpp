@@ -46,6 +46,12 @@ What uses them
   written by clib_json. VPP does not register the generated
   ``vl_api_<msg>_t_tojson`` functions any more.
 
+* ``vl_api_desc_msg_from_json ()`` converts JSON to a message, the opposite of
+  the conversion above. It is used by ``api trace replay-json``, which
+  parses the file with clib_json. Every field of the message has to be in the
+  JSON. VPP does not register the generated ``vl_api_<msg>_t_fromjson``
+  functions any more.
+
 Showing the descriptors
 -----------------------
 

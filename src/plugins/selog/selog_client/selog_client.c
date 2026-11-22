@@ -402,7 +402,6 @@ selog_client_bapi_hookup (void)
     .format_fn = vl_api_##n##_t_format,                                       \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = (u32) 1,                                                        \
-    .fromjson = vl_api_##n##_t_fromjson,                                      \
     .calc_size = vl_api_##n##_t_calc_size,                                    \
   });
   foreach_selog_msg;
@@ -417,7 +416,6 @@ selog_client_bapi_hookup (void)
     .format_fn = vl_api_##n##_t_format,                                       \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = (u32) 1,                                                        \
-    .fromjson = vl_api_##n##_t_fromjson,                                      \
     .calc_size = vl_api_##n##_t_calc_size,                                    \
   });
   foreach_memclnt_msg;

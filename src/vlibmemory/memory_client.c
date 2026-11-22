@@ -360,7 +360,6 @@ vl_client_install_client_message_handlers (void)
     .format_fn = vl_api_##n##_t_format,                                       \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = 0,                                                              \
-    .fromjson = vl_api_##n##_t_fromjson,                                      \
     .calc_size = vl_api_##n##_t_calc_size,                                    \
   });                                                                         \
   am->msg_data[VL_API_##N].replay_allowed = 0;

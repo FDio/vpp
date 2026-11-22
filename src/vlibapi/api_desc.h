@@ -206,3 +206,8 @@ const vl_api_desc_type_t *vl_api_desc_find_msg (struct api_main_t *am, u32 msg_i
  * generated vl_api_<msg>_t_tojson function creates. t is the descriptor of
  * the message. Returns 0 or a negative value on error. */
 int vl_api_desc_msg_to_json (const vl_api_desc_type_t *t, const void *msg, clib_json_text_t *j);
+
+/* Converts a JSON object to a message in host byte order, as the generated
+ * vl_api_<msg>_t_fromjson function does. Returns a vector with the
+ * message, or 0 if the JSON does not match the message. */
+u8 *vl_api_desc_msg_from_json (const vl_api_desc_type_t *t, clib_json_text_t *j, int value_index);

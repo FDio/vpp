@@ -202,7 +202,6 @@ vlib_api_init (void)
       c->handler = vl_api_##n##_t_handler;                                    \
       c->endian = vl_api_##n##_t_endian;                                      \
       c->format_fn = vl_api_##n##_t_format;                                   \
-      c->fromjson = vl_api_##n##_t_fromjson;                                  \
       c->calc_size = vl_api_##n##_t_calc_size;                                \
       c->size = sizeof (vl_api_##n##_t);                                      \
       c->traced = 1;	     /* trace, so these msgs print */                 \
@@ -706,7 +705,6 @@ rpc_api_hookup (vlib_main_t *vm)
     .format_fn = vl_api_##n##_t_format,                                       \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = 0,                                                              \
-    .fromjson = vl_api_##n##_t_fromjson,                                      \
     .calc_size = vl_api_##n##_t_calc_size,                                    \
   });
   foreach_rpc_api_msg;
@@ -721,7 +719,6 @@ rpc_api_hookup (vlib_main_t *vm)
     .format_fn = vl_api_##n##_t_format,                                       \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = 1,                                                              \
-    .fromjson = vl_api_##n##_t_fromjson,                                      \
     .calc_size = vl_api_##n##_t_calc_size,                                    \
   });
   foreach_plugin_trace_msg

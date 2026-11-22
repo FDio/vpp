@@ -751,68 +751,73 @@ vl_msg_find_id_by_name (vlib_main_t *vm, api_main_t *am, char *name)
 }
 
 static int
-vl_msg_exec_json_command (vlib_main_t *vm, cJSON *o)
+vl_msg_exec_json_command (vlib_main_t *vm, clib_json_text_t *j, int o)
 {
   api_main_t *am = vlibapi_get_main ();
   u16 msg_id;
-  int len = 0, rv = -1;
+  int rv = -1, name_idx, crc_idx;
   vl_api_msg_data_t *m;
-  u8 *msg = 0;
+  const vl_api_desc_type_t *d;
+  u8 *msg = 0, *name, *crc, *name_crc;
+  u8 proc_warning = 0;
 
-  cJSON *msg_id_obj = cJSON_GetObjectItem (o, "_msgname");
-  if (!msg_id_obj)
+  name_idx = clib_json_find_object_value_by_name (j, o, "_msgname");
+  if (name_idx < 0 || !clib_json_value_is_string (j, name_idx))
     {
       vlib_cli_output (vm, "Missing '_msgname' element!\n");
       return rv;
     }
-  char *name = cJSON_GetStringValue (msg_id_obj);
+  name = pool_elt_at_index (j->values, name_idx)->string;
 
-  cJSON *crc_obj = cJSON_GetObjectItem (o, "_crc");
-  if (!crc_obj)
+  crc_idx = clib_json_find_object_value_by_name (j, o, "_crc");
+  if (crc_idx < 0 || !clib_json_value_is_string (j, crc_idx))
     {
       vlib_cli_output (vm, "Missing '_crc' element!\n");
       return rv;
     }
-  char *crc = cJSON_GetStringValue (crc_obj);
-  u8 proc_warning = 0;
+  crc = pool_elt_at_index (j->values, crc_idx)->string;
 
-  u8 *name_crc = format (0, "%s_%s%c", name, crc, 0);
+  name_crc = format (0, "%v_%v%c", name, crc, 0);
   msg_id = vl_msg_find_id_by_name_and_crc (vm, am, (char *) name_crc);
-  m = vl_api_get_msg_data (am, msg_id);
+  vec_free (name_crc);
+
   if (msg_id == (u16) ~0)
     {
-      msg_id = vl_msg_find_id_by_name (vm, am, name);
+      u8 *n = format (0, "%v%c", name, 0);
+
+      msg_id = vl_msg_find_id_by_name (vm, am, (char *) n);
+      vec_free (n);
       if (msg_id == (u16) ~0)
 	{
 	  vlib_cli_output (vm, "unknown msg id %d!\n", msg_id);
-	  vec_free (name_crc);
 	  return rv;
 	}
+
       proc_warning = 1;
     }
-  vec_free (name_crc);
+
+  m = vl_api_get_msg_data (am, msg_id);
 
   if (m->replay_allowed)
     {
       if (proc_warning)
 	vlib_cli_output (vm, "warning: msg %d has different signature\n");
 
-      if (!m->fromjson_handler)
+      d = vl_api_desc_find_msg (am, msg_id);
+      if (!d)
 	{
-	  vlib_cli_output (vm, "missing fromjson convert function! id %d\n",
-			   msg_id);
+	  vlib_cli_output (vm, "missing fromjson convert function! id %d\n", msg_id);
 	  return rv;
 	}
 
-      msg = (u8 *) m->fromjson_handler (o, &len);
+      msg = vl_api_desc_msg_from_json (d, j, o);
       if (!msg)
 	{
-	  vlib_cli_output (vm, "failed to convert JSON (msg id %d)!\n",
-			   msg_id);
+	  vlib_cli_output (vm, "failed to convert JSON (msg id %d)!\n", msg_id);
 	  return rv;
 	}
 
-      if (clib_arch_is_little_endian)
+      if (clib_arch_is_little_endian && m->endian_handler)
 	m->endian_handler (msg, 1 /* to network */);
 
       if (!m->handler)
@@ -821,20 +826,18 @@ vl_msg_exec_json_command (vlib_main_t *vm, cJSON *o)
 	  goto end;
 	}
 
-      if (m->handler)
-	{
-	  if (!m->is_mp_safe)
-	    vl_msg_api_barrier_sync ();
-	  m->handler (msg);
-	  if (!m->is_mp_safe)
-	    vl_msg_api_barrier_release ();
-	}
+      if (!m->is_mp_safe)
+	vl_msg_api_barrier_sync ();
+
+      m->handler (msg);
+
+      if (!m->is_mp_safe)
+	vl_msg_api_barrier_release ();
     }
 
   rv = 0;
 end:
-  if (msg)
-    cJSON_free (msg);
+  vec_free (msg);
   return rv;
 }
 
@@ -842,9 +845,11 @@ static void
 vl_msg_replay_json (vlib_main_t *vm, u8 *filename)
 {
   api_main_t *am = vlibapi_get_main ();
-  cJSON *o = 0;
+  clib_json_text_t j;
+  clib_error_t *err;
   int rv = 0;
   FILE *f = fopen ((char *) filename, "r");
+  char *buf;
 
   if (!f)
     {
@@ -852,25 +857,27 @@ vl_msg_replay_json (vlib_main_t *vm, u8 *filename)
       return;
     }
 
-  char *buf = vl_msg_read_file (f);
+  buf = vl_msg_read_file (f);
   fclose (f);
 
-  o = cJSON_Parse (buf);
+  /* the buffer is nul terminated */
+  err = clib_json_init_from_string (&j, buf, vec_len (buf) ? vec_len (buf) - 1 : 0);
   vec_free (buf);
-  if (!o)
+  if (err)
     {
-      vlib_cli_output (vm, "%s: Failed parsing JSON input: %s\n", filename,
-		       cJSON_GetErrorPtr ());
+      vlib_cli_output (vm, "%s: Failed parsing JSON input: %U\n", filename, format_clib_error, err);
+      clib_error_free (err);
       return;
     }
 
-  if (cJSON_IsArray (o))
+  if (clib_json_value_is_array (&j, j.root_value))
     {
+      int *e;
+
       am->replay_in_progress = 1;
-      size_t size = cJSON_GetArraySize (o);
-      for (int i = 0; i < size; i++)
+      vec_foreach (e, pool_elt_at_index (j.values, j.root_value)->array_val_indices)
 	{
-	  rv = vl_msg_exec_json_command (vm, cJSON_GetArrayItem (o, i));
+	  rv = vl_msg_exec_json_command (vm, &j, *e);
 	  if (rv < 0)
 	    {
 	      am->replay_in_progress = 0;
@@ -879,14 +886,12 @@ vl_msg_replay_json (vlib_main_t *vm, u8 *filename)
 	}
     }
   else
-    {
-      rv = vl_msg_exec_json_command (vm, o);
-    }
+    rv = vl_msg_exec_json_command (vm, &j, j.root_value);
 
   if (rv < 0)
     vlib_cli_output (vm, "error during replaying API trace");
 
-  cJSON_Delete (o);
+  clib_json_free (&j);
 }
 
 static void
