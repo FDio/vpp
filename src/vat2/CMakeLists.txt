@@ -17,12 +17,12 @@
 add_vpp_tool(vat2 ENABLE_EXPORTS
   SOURCES
   main.c
-  plugin.c
 
   DEPENDS api_headers
 
   LINK_LIBRARIES
   vlibmemoryclient
+  vlibapi
   svm
   vppinfra
   vppapiclient
@@ -85,15 +85,3 @@ if(VPP_BUILD_TESTS_WITH_COVERAGE)
     COMMENT "Open ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${TARGET_NAME}-llvm-cov/index.html in your browser to view the coverage report."
 )
 endif()
-
-
-
-##############################################################################
-# vat2 headers
-##############################################################################
-install(
-  FILES
-  vat2_helpers.h
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vat2
-  COMPONENT vpp-dev
-)
