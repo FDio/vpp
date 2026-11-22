@@ -2717,10 +2717,24 @@ tcp_test_cwnd_limited_marking (void)
   TCP_TEST ((tc->cwnd_limited_seq == tc->snd_una),
 	    "short queued flight is not marked cwnd-limited");
 
-  /* Enough data to fill cwnd is not application limited merely because
-   * pacing or output scheduling ended this burst early. */
+  /* Enough data to fill cwnd does not make a short flight cwnd-limited: the
+   * cpu or output scheduling, not cwnd, ended the burst. A sender that cannot
+   * keep up with cwnd does not grow it */
   tcp_cc_update_cwnd_limited (tc, cwnd);
-  TCP_TEST ((tc->cwnd_limited_seq == tc->snd_nxt), "backlogged flight is marked cwnd-limited");
+  TCP_TEST ((tc->cwnd_limited_seq == tc->snd_una),
+	    "backlogged flight short of cwnd is not marked cwnd-limited");
+  tc->snd_nxt = tc->snd_una + cwnd / 4;
+  tcp_cc_update_cwnd_limited (tc, 40 * cwnd);
+  TCP_TEST ((tc->cwnd_limited_seq == tc->snd_una),
+	    "sender with a full fifo and a short flight is not marked cwnd-limited");
+
+  /* Nor if the pacer holds the data back */
+  tc->connection.flags |= TRANSPORT_CONNECTION_F_IS_TX_PACED;
+  tcp_cc_update_cwnd_limited (tc, 40 * cwnd);
+  TCP_TEST ((tc->cwnd_limited_seq == tc->snd_una),
+	    "paced flight short of cwnd is not marked cwnd-limited");
+  tc->connection.flags &= ~TRANSPORT_CONNECTION_F_IS_TX_PACED;
+  tc->snd_nxt = tc->snd_una + cwnd - 2 * snd_mss;
 
   /* Sub-MSS headroom cannot be used for another full segment. If the receive
    * window has no room for one either, it limits the sender as much as cwnd */
@@ -2753,11 +2767,17 @@ tcp_test_cwnd_limited_marking (void)
   TCP_TEST ((tc->cwnd_limited_seq == tc->snd_una),
 	    "partly sacked flight with the receive window full is not marked cwnd-limited");
 
-  /* Data the receive window lets refill the pipe to cwnd makes it cwnd-limited */
+  /* With room in the receive window, data to refill the pipe is not enough,
+   * the refill must be sent */
   tc->snd_wnd = cwnd + 4 * snd_mss;
   tcp_cc_update_cwnd_limited (tc, cwnd + 4 * snd_mss);
+  TCP_TEST ((tc->cwnd_limited_seq == tc->snd_una),
+	    "partly sacked flight with data to refill the pipe is not marked cwnd-limited");
+  tc->snd_nxt += 4 * snd_mss;
+  tcp_cc_update_cwnd_limited (tc, cwnd + 4 * snd_mss);
   TCP_TEST ((tc->cwnd_limited_seq == tc->snd_nxt),
-	    "partly sacked flight with data to refill the pipe is marked cwnd-limited");
+	    "partly sacked flight refilled to cwnd is marked cwnd-limited");
+  tc->snd_nxt -= 4 * snd_mss;
 
   /* Sub-MSS cwnd headroom and less queued than it, with less than a segment
    * of receive window room left: the window, not cwnd, stops the next segment */
