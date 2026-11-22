@@ -32,20 +32,27 @@ func init() {
 	RegisterVethTests(HttpCliTest, HttpCliConnectErrorTest, HttpCliConnectNoRouteTest,
 		HttpCliListenTcpPortInUseTest, HttpCliTlsTest, HttpCliEchoTest)
 	RegisterSoloVethTests(HttpClientGetMemLeakTest)
-	RegisterHttp1Tests(HeaderServerTest, HttpPersistentConnectionTest, HttpPipeliningTest,
-		HttpMethodsTest, HttpMethodsFragmentedTest, HttpMethodsClientTest, HttpHeadResponseFramingTest, HttpCliOptionsStreamTest,
+	RegisterHttp1Suite("Http1Suite", HeaderServerTest, HttpPersistentConnectionTest, HttpPipeliningTest,
+		HttpMethodsTest, HttpMethodsFragmentedTest, HttpHeadResponseFramingTest, HttpCliOptionsStreamTest,
 		HttpCliHeadStreamCleanupTest,
-		HttpHeadClientReuseTest, HttpInterimResponsesTest, HttpHeadContentLengthTest,
+		HttpHeadContentLengthTest,
 		HttpCliMethodNotAllowedTest, HttpAbsoluteFormUriTest, HttpCliBadRequestTest,
 		HttpInvalidRequestLineTest, HttpIncrementalRequestLineTest, HttpFragmentedH2PrefaceTest, HttpMethodNotImplementedTest, HttpInvalidHeadersTest, HttpMissingHostHeaderTest,
 		HttpContentLengthTest, HttpVersionNotSupportedTest, HttpInvalidContentLengthTest, HttpInvalidTargetSyntaxTest, HttpUriDecodeTest,
-		HttpHeadersTest, HttpClientTest, HttpClientErrRespTest, HttpClientPostFormTest, HttpClientPostFormPtrTest,
+		HttpHeadersTest, HttpRequestLineTest, HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpConnectUdpDraft03TargetTest,
+		HttpHeaderErrorConnectionDropTest, HttpContentLengthLongerBodyTest, HttpFragmentedHeadersTest,
+		HttpHeaderListSizeLimitTest, HttpOversizedHeaderNameTest)
+	RegisterHttp1Suite("Http1SuiteClient", HttpMethodsClientTest, HttpHeadClientReuseTest, HttpInterimResponsesTest,
+		HttpClientTest, HttpClientErrRespTest, HttpClientPostFormTest, HttpClientPostFormPtrTest,
 		HttpClientGet128kbResponseTest, HttpClientGetResponseBodyTest, HttpClientGetTlsNoRespBodyTest, HttpClientPostFileTest, HttpClientPostFilePtrTest,
 		HttpClientEmptyContentLengthResponseTest, HttpClientDuplicateHeadersTest,
-		HttpRequestLineTest, HttpClientGetTimeout, HttpConnTimeoutTest, HttpClientGetRepeatTest, HttpClientPostRepeatTest,
-		HttpIgnoreH2UpgradeTest, HttpInvalidAuthorityFormUriTest, HttpConnectUdpDraft03TargetTest, HttpHeaderErrorConnectionDropTest,
-		HttpClientInvalidHeaderNameTest, HttpTimerSessionDisable, HttpClientBodySizeTest, HttpClientResponseLengthOverflowTest,
-		HttpCliSmallRxFifoReplyTest, HttpCliFragmentedReplyTest, HttpContentLengthLongerBodyTest,
+		HttpClientGetTimeout, HttpClientGetRepeatTest, HttpClientPostRepeatTest,
+		HttpClientInvalidHeaderNameTest, HttpClientBodySizeTest, HttpClientResponseLengthOverflowTest,
+		HttpClientNoPrintTest, HttpClientChunkedDownloadTest, HttpClientChunkedBodyTest, HttpClientChunkedRedirectTest,
+		HttpClientPutStreamingTest, HttpClientPostRejectedTest,
+		HttpClientRedirect302Test, HttpClientRedirect308Test, HttpClientRedirectLimitTest, HttpClientRedirectGetMemLeakTest,
+		HttpClientRedirectPostMemLeakTest, HttpClientFragmentedHeadersTest)
+	RegisterHttp1Suite("Http1SuiteStreaming", HttpCliSmallRxFifoReplyTest, HttpCliFragmentedReplyTest,
 		HttpCliClientGetBodyTest, HttpCliClientGetBodyPtrTest,
 		HttpCliClientPostBodyTest, HttpCliClientPostBodyPtrTest,
 		HttpCliClientPutBodyTest, HttpCliClientPutBodyPtrTest,
@@ -67,21 +74,20 @@ func init() {
 		HttpCliServerChunkedResetBeforeAcceptTest,
 		HttpCliServerChunkedEarlyReplyTest, HttpCliServerChunkedCliTest, HttpCliServerChunkedTlsTest,
 		HttpCliServerChunkedCurlUploadTest, HttpCliServerChunkedCurlDownloadTest,
-		HttpClientNoPrintTest, HttpClientChunkedDownloadTest, HttpClientChunkedBodyTest, HttpClientChunkedRedirectTest,
-		HttpClientPutStreamingTest, HttpClientPostRejectedTest,
-		HttpClientRedirect302Test, HttpClientRedirect308Test, HttpSendGetAndCloseTest, HttpClientRedirectLimitTest, HttpClientRedirectGetMemLeakTest,
-		HttpClientRedirectPostMemLeakTest, HttpGetTpsTest, HttpPostTpsTest, HttpGetTpsInterruptModeTest, HttpPostTpsInterruptModeTest,
+		Http1StreamingInteropTest, Http1ServerStreamingInteropTest)
+	RegisterHttp1Suite("Http1SuiteLifecycle", HttpConnTimeoutTest, HttpTimerSessionDisable, HttpSendGetAndCloseTest,
+		HttpGetTpsTest, HttpPostTpsTest, HttpGetTpsInterruptModeTest, HttpPostTpsInterruptModeTest,
 		HttpPostTpsTlsTest, HttpGetTpsTlsTest, HttpTpsTest,
-		HttpFragmentedHeadersTest, HttpClientFragmentedHeadersTest, HttpClientPartialResponseFinTest,
+		HttpClientPartialResponseFinTest,
 		HttpPartialRequestPeerResetTest, HttpPartialRequestPeerFinTest, HttpPartialRequestListenerRemovedTest,
 		HttpIncompleteHeadersFullFifoTest, HttpClientIncompleteHeadersFullFifoTest,
-		HttpIncompleteHeadersTimeoutTest, Http1StreamingInteropTest, Http1ServerStreamingInteropTest)
+		HttpIncompleteHeadersTimeoutTest)
 	var headerLimitConfig Stanza
 	headerLimitConfig.NewStanza("http").NewStanza("http1").Append("max-header-list-size 128").Close().Close()
-	RegisterHttp1TestsWithConfig(headerLimitConfig, HttpHeaderListSizeLimitTest)
+	SetHttp1TestStartupConfig(headerLimitConfig, HttpHeaderListSizeLimitTest)
 	var largeHeaderLimitConfig Stanza
 	largeHeaderLimitConfig.NewStanza("http").NewStanza("http1").Append("max-header-list-size 131072").Close().Close()
-	RegisterHttp1TestsWithConfig(largeHeaderLimitConfig, HttpOversizedHeaderNameTest)
+	SetHttp1TestStartupConfig(largeHeaderLimitConfig, HttpOversizedHeaderNameTest)
 	RegisterHttp1SoloTests(HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpTpsMemLeakTest)
 	RegisterHttp1MWTests(HttpClientGetRepeatMWTest, HttpClientPtrGetRepeatMWTest, HttpTsFifoMemPressureMWTest)
 	RegisterNoTopo6SoloTests(HttpClientGetResponseBody6Test, HttpClientGetTlsResponseBody6Test)

@@ -10,6 +10,7 @@ import (
 )
 
 var vperfTests = map[string][]func(s *VperfSuite){}
+var vperfHttpTests = map[string][]func(s *VperfSuite){}
 var vperfSoloTests = map[string][]func(s *VperfSuite){}
 var vperfManualTests = map[string][]func(s *VperfSuite){}
 var vperfMWTests = map[string][]func(s *VperfSuite){}
@@ -21,6 +22,9 @@ type VperfSuite struct {
 func RegisterVperfTests(tests ...func(s *VperfSuite)) {
 	vperfTests[GetTestFilename()] = tests
 }
+func RegisterVperfHttpTests(tests ...func(s *VperfSuite)) {
+	vperfHttpTests[GetTestFilename()] = tests
+}
 func RegisterSoloVperfTests(tests ...func(s *VperfSuite)) {
 	vperfSoloTests[GetTestFilename()] = tests
 }
@@ -31,53 +35,47 @@ func RegisterVperfMWTests(tests ...func(s *VperfSuite)) {
 	vperfMWTests[GetTestFilename()] = tests
 }
 
-var _ = Describe("VperfSuite", Ordered, ContinueOnFailure, Label("Tap", "Vperf"), func() {
-	var s VperfSuite
-	BeforeAll(func() {
-		s.SetupSuite()
-	})
-	BeforeEach(func() {
-		s.SetupTest()
-	})
-	AfterAll(func() {
-		s.TeardownSuite()
+var _ = describeVperfSuite("VperfSuite", vperfTests, false)
+var _ = describeVperfSuite("VperfSuiteHttp", vperfHttpTests, false)
+var _ = describeVperfSuite("VperfSuiteManual", vperfManualTests, true)
 
-	})
-	AfterEach(func() {
-		s.TeardownTest()
-	})
+func describeVperfSuite(name string, registeredTests map[string][]func(s *VperfSuite), manual bool) bool {
+	return Describe(name, Ordered, ContinueOnFailure, Label("Tap", "Vperf"), func() {
+		var s VperfSuite
+		BeforeAll(func() {
+			s.SetupSuite()
+		})
+		BeforeEach(func() {
+			s.SetupTest()
+		})
+		AfterAll(func() {
+			s.TeardownSuite()
+		})
+		AfterEach(func() {
+			s.TeardownTest()
+		})
 
-	// https://onsi.github.io/ginkgo/#dynamically-generating-specs
-	for filename, tests := range vperfTests {
-		for _, test := range tests {
-			test := test
-			pc := reflect.ValueOf(test).Pointer()
-			funcValue := runtime.FuncForPC(pc)
-			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			It(testName, func(ctx SpecContext) {
-				Log("[* TEST BEGIN]: " + testName)
-				test(&s)
-			}, SpecTimeout(TestTimeout))
-		}
-	}
-	for filename, tests := range vperfManualTests {
-		for _, test := range tests {
-			test := test
-			pc := reflect.ValueOf(test).Pointer()
-			funcValue := runtime.FuncForPC(pc)
-			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
-			decorators := []any{Label("Manual"), SpecTimeout(TestTimeout)}
-			if os.Getenv("GITHUB_REPO_URL") != "" {
-				decorators = append(decorators, Pending)
+		for filename, tests := range registeredTests {
+			for _, test := range tests {
+				pc := reflect.ValueOf(test).Pointer()
+				funcValue := runtime.FuncForPC(pc)
+				testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
+				decorators := []any{SpecTimeout(TestTimeout)}
+				if manual {
+					decorators = append(decorators, Label("Manual"))
+					if os.Getenv("GITHUB_REPO_URL") != "" {
+						decorators = append(decorators, Pending)
+					}
+				}
+				decorators = append(decorators, func(ctx SpecContext) {
+					Log("[* TEST BEGIN]: " + testName)
+					test(&s)
+				})
+				It(testName, decorators...)
 			}
-			decorators = append(decorators, func(ctx SpecContext) {
-				Log("[* TEST BEGIN]: " + testName)
-				test(&s)
-			})
-			It(testName, decorators...)
 		}
-	}
-})
+	})
+}
 
 var _ = Describe("VperfSuiteSolo", Ordered, ContinueOnFailure, Serial, Label("Tap", "Vperf"), func() {
 	var s VperfSuite

@@ -19,10 +19,11 @@ func init() {
 		VperfBuiltinTcpEchoBytesTest,
 		VperfBuiltinPeriodicReportTotalTest, TlsSingleConnectionTest, VperfBuiltinPeriodicReportUDPTest, VperfBuiltinUdpTest,
 		VperfBuiltinTestBytesTest, VperfBuiltinUdpTestBytesTest, VperfBuiltinTcpNoTxCsumOffloadTest, VperfBuiltinTcpChainedBufferTest,
-		VperfBuiltinUdpNoTxCsumOffloadTest, VperfBuiltinHttpTest, VperfBuiltinHttpsTest, VperfBuiltinHttp2Test,
+		VperfBuiltinUdpNoTxCsumOffloadTest, TlsPicotlsTransferTest, TlsPicotlsSmallFifoTransferTest,
+		VperfBuiltinUdpUsoTestBytesTest)
+	RegisterVperfHttpTests(VperfBuiltinHttpTest, VperfBuiltinHttpsTest, VperfBuiltinHttp2Test,
 		VperfBuiltinHttp3Test, VperfBuiltinHttpTestBytesTest, VperfBuiltinHttp2ConnectTcpTest, VperfBuiltinHttp3ConnectTcpTest,
-		VperfBuiltinHttp2ConnectUdpTest, VperfBuiltinHttp3ConnectUdpTest, VperfBuiltinHttp2ConnectUdpBackpressureTest,
-		TlsPicotlsTransferTest, TlsPicotlsSmallFifoTransferTest, VperfBuiltinUdpUsoTestBytesTest)
+		VperfBuiltinHttp2ConnectUdpTest, VperfBuiltinHttp3ConnectUdpTest, VperfBuiltinHttp2ConnectUdpBackpressureTest)
 	RegisterVperfMWTests(TcpWithLossMWTest, TcpChainedBufferWithLossMWTest, VperfBuiltinHttp1CpsMWTest,
 		VperfBuiltinHttp2CpsMWTest, VperfBuiltinHttp3CpsMWTest, VperfBuiltinHttp2ConnectUdpBackpressureMWTest)
 	RegisterVperf6Tests(TcpWithLoss6Test)

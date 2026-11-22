@@ -8,7 +8,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 )
 
-var http1Tests = map[string][]func(s *Http1Suite){}
 var http1SoloTests = map[string][]func(s *Http1Suite){}
 var http1MWTests = map[string][]func(s *Http1Suite){}
 var http1StartupConfigs = map[string]Stanza{}
@@ -32,16 +31,11 @@ type Http1Suite struct {
 	}
 }
 
-func RegisterHttp1Tests(tests ...func(s *Http1Suite)) {
-	http1Tests[GetTestFilename()] = tests
-}
-
-func RegisterHttp1TestsWithConfig(config Stanza, tests ...func(s *Http1Suite)) {
+func SetHttp1TestStartupConfig(config Stanza, tests ...func(s *Http1Suite)) {
 	filename := GetTestFilename()
-	http1Tests[filename] = append(http1Tests[filename], tests...)
 	for _, test := range tests {
 		funcName := runtime.FuncForPC(reflect.ValueOf(test).Pointer()).Name()
-		testName := strings.Split(funcName, ".")[2]
+		testName := filename + "/" + strings.Split(funcName, ".")[2]
 		http1StartupConfigs[testName] = config
 	}
 }
@@ -156,31 +150,24 @@ func (s *Http1Suite) HostAddr() string {
 	return s.Interfaces.Tap.Host.Ip4AddressString()
 }
 
-var _ = Describe("Http1Suite", Ordered, ContinueOnFailure, Label("HTTP", "HTTP1"), func() {
-	var s Http1Suite
-	BeforeAll(func() {
-		s.SetupSuite()
-	})
-	BeforeEach(func() {
-		var startupConf []Stanza
-		for testName, config := range http1StartupConfigs {
-			if strings.Contains(CurrentSpecReport().LeafNodeText, testName) {
-				startupConf = append(startupConf, config)
-				break
-			}
-		}
-		s.SetupTest(startupConf...)
-	})
-	AfterAll(func() {
-		s.TeardownSuite()
-	})
-	AfterEach(func() {
-		s.TeardownTest()
-	})
+func RegisterHttp1Suite(name string, tests ...func(s *Http1Suite)) {
+	filename := GetTestFilename()
+	Describe(name, Ordered, ContinueOnFailure, Label("HTTP", "HTTP1"), func() {
+		var s Http1Suite
+		BeforeAll(func() {
+			s.SetupSuite()
+		})
+		BeforeEach(func() {
+			s.SetupTest(http1StartupConfigs[CurrentSpecReport().LeafNodeText])
+		})
+		AfterAll(func() {
+			s.TeardownSuite()
+		})
+		AfterEach(func() {
+			s.TeardownTest()
+		})
 
-	for filename, tests := range http1Tests {
 		for _, test := range tests {
-			test := test
 			pc := reflect.ValueOf(test).Pointer()
 			funcValue := runtime.FuncForPC(pc)
 			testName := filename + "/" + strings.Split(funcValue.Name(), ".")[2]
@@ -189,8 +176,8 @@ var _ = Describe("Http1Suite", Ordered, ContinueOnFailure, Label("HTTP", "HTTP1"
 				test(&s)
 			}, SpecTimeout(TestTimeout))
 		}
-	}
-})
+	})
+}
 
 var _ = Describe("Http1SuiteSolo", Ordered, ContinueOnFailure, Serial, Label("HTTP", "HTTP1"), func() {
 	var s Http1Suite

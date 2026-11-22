@@ -60,7 +60,8 @@ For adding a new suite, please see `Modifying the framework`_ below.
    #. Use ``exechelper`` or just plain ``exec`` packages to run whatever else
    #. Verify results of your tests using ``Assert`` methods provided by the test suite.
 
-#. Create an ``init()`` function and register the test using ``Register[SuiteName]Tests(testCaseFunction)``
+#. Create an ``init()`` function and register the test using ``Register[SuiteName]Tests(testCaseFunction)``.
+   For HTTP/1, H2Spec, and Vperf, see `Parallel suite groups`_ for where to add the test.
 
 
 **Example test case**
@@ -134,6 +135,45 @@ Tests can also be filtered using labels. In our case, operators have to be escap
 * ``make test LABEL=\!veth``
 
 See `<https://onsi.github.io/ginkgo/#spec-labels>`_ for more information.
+
+
+Parallel suite groups
+---------------------
+
+Ginkgo schedules each top-level ``Ordered`` suite on one worker. HTTP/1,
+H2Spec server checks, and Vperf use several independently scheduled suites so
+the groups can run concurrently with ``PARALLEL=auto``.
+
+* In ``http1_test.go``, add new tests to the existing ``RegisterHttp1Suite``
+  call for the relevant group. Use ``Http1Suite`` for core protocol and server
+  checks, ``Http1SuiteClient`` for client behavior, ``Http1SuiteStreaming`` for
+  streaming and chunked CLI cases, and ``Http1SuiteLifecycle`` for timeouts and
+  session cleanup. For per-test VPP startup options, register the function in
+  its group and pass it to ``SetHttp1TestStartupConfig``.
+* In ``infra/suite_http2.go``, add H2Spec server cases to the corresponding
+  list. The ``http2Tests``, ``genericTests``, ``hpackTests``, and ``extrasTests``
+  lists feed ``H2SpecSuite``, ``H2SpecSuiteGeneric``, ``H2SpecSuiteHPACK``,
+  and ``H2SpecSuiteExtras``. ``H2SpecClientSuite`` runs serially because its
+  cases share an h2spec server.
+* Use ``RegisterVperfTests`` for transport and TLS tests in ``VperfSuite``,
+  ``RegisterVperfHttpTests`` for HTTP tests in ``VperfSuiteHttp``, and
+  ``RegisterManualVperfTests`` for manual comparisons in ``VperfSuiteManual``.
+  Manual comparisons are marked pending in CI.
+
+Use a shared prefix to select all matching suites or a unique group name
+for a focused run. For example::
+
+        make test TEST=Http1SuiteStreaming PARALLEL=auto
+        make test TEST=H2SpecSuite PARALLEL=auto
+        make test TEST=VperfSuiteHttp PARALLEL=auto
+
+``TEST=H2SpecSuite`` selects all four H2Spec server groups. When qualifying
+a spec with a suite name, use the group that registers it. For example::
+
+        make test TEST=Http1SuiteClient.http1_test.go.HttpClientGetResponseBodyTest
+
+To run focused groups in parallel, set ``PARALLEL=auto``. The
+``MW_PARALLEL=true`` mode supports full runs and the MW-only selections below.
 
 
 Parallel multi-worker test execution
