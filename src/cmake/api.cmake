@@ -41,6 +41,7 @@ function(vpp_generate_api_c_header file)
     "${CMAKE_CURRENT_BINARY_DIR}/${file}_enum.h"
     "${CMAKE_CURRENT_BINARY_DIR}/${file}_types.h"
     "${CMAKE_CURRENT_BINARY_DIR}/${file}.c"
+    "${CMAKE_CURRENT_BINARY_DIR}/${file}_desc.c"
     "${CMAKE_CURRENT_BINARY_DIR}/${file}_test.c"
     "${CMAKE_CURRENT_BINARY_DIR}/${file}_test2.c"
   )
