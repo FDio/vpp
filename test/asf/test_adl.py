@@ -92,8 +92,8 @@ class TestAdl(VppAsfTestCase):
             "ip6 table 1\n",
             "ip route add 2001:db01::1/128 via drop\n",
             "ip route add table 1 2001:db01::2/128 via local\n",
-            "bin adl_interface_enable_disable loop0\n",
-            "bin adl_allowlist_enable_disable loop0 fib-id 1 ip4 ip6\n",
+            "bin adl_interface_enable_disable sw_if_index loop0 enable_disable on\n",
+            "bin adl_allowlist_enable_disable sw_if_index loop0 fib_id 1 ip4 on ip6 on\n",
             "pa en\n",
         ]
 
