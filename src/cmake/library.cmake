@@ -95,8 +95,6 @@ macro(add_vpp_library lib)
 	FILES ${file} ${CMAKE_CURRENT_BINARY_DIR}/${file}.h
 	${CMAKE_CURRENT_BINARY_DIR}/${file}_enum.h
 	${CMAKE_CURRENT_BINARY_DIR}/${file}_types.h
-	${CMAKE_CURRENT_BINARY_DIR}/${file}_tojson.h
-	${CMAKE_CURRENT_BINARY_DIR}/${file}_fromjson.h
 	DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${lib}/${dir}
 	COMPONENT vpp-dev
       )
