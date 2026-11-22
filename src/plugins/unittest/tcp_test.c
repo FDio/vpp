@@ -14402,6 +14402,47 @@ cleanup:
   return rv;
 }
 
+/* The handshake rtt does not depend on how long the half-open's thread was
+ * idle. Connects may run on main while the half-open belongs to another
+ * thread, whose cached clock is stale while it is idle */
+static int
+tcp_test_syn_rtt (vlib_main_t *vm)
+{
+  tcp_e2e_params_t params = {
+    .name = "syn_rtt",
+    .client_addr = 0x34343401,
+    .server_addr = 0x35353501,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2287,
+    .client_port = 0,
+    .secret = 2286,
+  };
+  tcp_e2e_ctx_t _ctx = {}, *ctx = &_ctx;
+  f64 idle = 0.5, srtt;
+  int rv = 0;
+
+  /* As if the half-open's thread had been idle */
+  tcp_set_time_now (tcp_get_worker (transport_cl_thread ()), vlib_time_now (vm) - idle);
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "syn_rtt: e2e setup"))
+    {
+      rv = 1;
+      goto cleanup;
+    }
+
+  srtt = ctx->client_tc->srtt * TCP_TICK;
+  if (!TCP_TEST_I ((srtt < idle / 2 && ctx->client_tc->mrtt_us < idle / 2),
+		   "handshake rtt ignores the idle time of the half-open's thread (srtt %.1f ms, "
+		   "mrtt %.1f ms)",
+		   srtt * 1e3, ctx->client_tc->mrtt_us * 1e3))
+    rv = 1;
+
+cleanup:
+  if (!tcp_e2e_teardown (vm, ctx))
+    rv = 1;
+  return rv;
+}
+
 /* RFC 6928 initial window, min (10 * MSS, max (2 * MSS, 14600)), unless the
  * multiplier is configured */
 static int
@@ -14500,6 +14541,9 @@ tcp_test_startup (vlib_main_t *vm, unformat_input_t *input)
   for (i = 0; i < ARRAY_LEN (cases); i++)
     if ((rv = tcp_test_synack_wnd (vm, cases[i].fifo_size, cases[i].expected_wnd)))
       return rv;
+
+  if ((rv = tcp_test_syn_rtt (vm)))
+    return rv;
 
   if ((rv = tcp_test_initial_cwnd ()))
     return rv;

@@ -756,8 +756,8 @@ tcp_send_syn (tcp_connection_t * tc)
   tcp_init_buffer (vm, b);
   tcp_make_syn (tc, b);
 
-  /* Measure RTT with this */
-  tc->rtt_ts = tcp_time_now_us (vlib_num_workers ()? 1 : 0);
+  /* Measure RTT with this. tcp_init_snd_vars updated the clock */
+  tc->rtt_ts = tcp_time_now_us (tc->c_thread_index);
   tc->rtt_seq = tc->snd_nxt;
   tc->rto_boff = 0;
 
