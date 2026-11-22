@@ -18,6 +18,7 @@ add_vpp_library (vlibmemory
   memclnt_api.c
   vlib_api_cli.c
   vlib_api.c
+  api_desc_core.c
 
   INSTALL_HEADERS
   vl_memory_msg_enum.h

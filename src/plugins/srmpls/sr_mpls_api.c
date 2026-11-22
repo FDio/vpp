@@ -16,6 +16,7 @@
 #include <vnet/format_fns.h>
 #include <plugins/srmpls/sr_mpls.api_enum.h>
 #include <plugins/srmpls/sr_mpls.api_types.h>
+extern const vl_api_desc_file_t sr_mpls_api_desc __attribute__ ((visibility ("hidden")));
 
 #define vl_api_version(n, v) static u32 api_version = v;
 #include <plugins/srmpls/sr_mpls.api.h>
@@ -178,6 +179,8 @@ sr_mpls_api_hookup (vlib_main_t * vm)
   REPLY_MSG_ID_BASE =
     vl_msg_api_get_msg_ids ((char *) name, VL_MSG_SR_MPLS_LAST);
   vec_free (name);
+
+  vl_api_desc_register (am, &sr_mpls_api_desc, REPLY_MSG_ID_BASE);
 
 #define _(N, n)                                                               \
   vl_msg_api_config (&(vl_msg_api_msg_config_t){                              \
