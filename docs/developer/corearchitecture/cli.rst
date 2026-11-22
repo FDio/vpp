@@ -438,6 +438,15 @@ when the user adds ``| json``, and rows can be filtered with
 
 The JSON API is in ``src/vppinfra/json.h``.
 
+The text which ``format_clib_json_text`` writes has a tab for each level of
+nesting, ``:`` and a tab between the name and the value of a member, arrays
+on one line, an empty object over two lines and 15 significant digits for the
+numbers which are not integers. The style is a property of the text, and
+``clib_json_set_indent ()``, ``clib_json_set_indent_tabs ()``,
+``clib_json_set_key_separator ()``, ``clib_json_set_inline_arrays ()``,
+``clib_json_set_expand_empty ()`` and ``clib_json_set_number_digits ()`` change
+it. An indentation of 0 gives text without white space.
+
 ``cli_is_structured (ctx)`` is true if the user asked for ``| json`` or
 ``| where``, and ``cli_is_json (ctx)`` if the output has to be JSON. A handler
 builds the table only then, and prints text otherwise.

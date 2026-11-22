@@ -88,7 +88,7 @@ test_json_checks (void)
   clib_json_parent (&j);
   TEST_ASSERT (clib_json_add_true (&j, 0) < 0); /* second root value */
   s = format (0, "%U", format_clib_json_text, &j);
-  TEST_ASSERT (strstr ((char *) format (s, "%c", 0), "\"n1\": 42") != 0);
+  TEST_ASSERT (strstr ((char *) format (s, "%c", 0), "\"n1\":\t42") != 0);
   TEST_ASSERT (strstr ((char *) s, "\"a\\\"b\"") != 0);
   vec_free (s);
 
@@ -99,6 +99,184 @@ test_json_checks (void)
     &to, clib_json_get_array_value_indices (&to, to.root_value)[0], "n%d", 1);
   TEST_ASSERT (idx >= 0 && pool_elt_at_index (to.values, idx)->number == 42.0);
   clib_json_free (&to);
+  clib_json_free (&j);
+
+  return 0;
+}
+
+/* The text of the default style, tabs, one member of an object on a line,
+ * ":\t", arrays on one line and an empty object with the bracket on the next
+ * line, and the compact text. The texts were created by a JSON library which
+ * has that style. */
+static const struct
+{
+  const char *input, *styled, *compact;
+} styles[] = {
+  {
+    "null", /* input */
+    "null", /* styled */
+    "null", /* compact */
+  },
+  {
+    "true", /* input */
+    "true", /* styled */
+    "true", /* compact */
+  },
+  {
+    "false", /* input */
+    "false", /* styled */
+    "false", /* compact */
+  },
+  {
+    "\"\"", /* input */
+    "\"\"", /* styled */
+    "\"\"", /* compact */
+  },
+  {
+    "\"q\\\" b\\\\ \\n \\t \\r \\b \\f \\u0001 \\u001f \\u00e9 \\ud83d\\ude00 / \"", /* input */
+    "\"q\\\" b\\\\ \\n \\t \\r \\b \\f \\u0001 \\u001f é 😀 / \"",		      /* styled */
+    "\"q\\\" b\\\\ \\n \\t \\r \\b \\f \\u0001 \\u001f é 😀 / \"",		      /* compact */
+  },
+  {
+    "[]", /* input */
+    "[]", /* styled */
+    "[]", /* compact */
+  },
+  {
+    "{}",   /* input */
+    "{\n}", /* styled */
+    "{}",   /* compact */
+  },
+  {
+    "[[]]", /* input */
+    "[[]]", /* styled */
+    "[[]]", /* compact */
+  },
+  {
+    "[{}]",	/* input */
+    "[{\n\t}]", /* styled */
+    "[{}]",	/* compact */
+  },
+  {
+    "{\"a\": {}}",	      /* input */
+    "{\n\t\"a\":\t{\n\t}\n}", /* styled */
+    "{\"a\":{}}",	      /* compact */
+  },
+  {
+    "{\"a\": []}",	  /* input */
+    "{\n\t\"a\":\t[]\n}", /* styled */
+    "{\"a\":[]}",	  /* compact */
+  },
+  {
+    "{\"a\": [[], {}, [[1]], {\"b\": {}}]}",					 /* input */
+    "{\n\t\"a\":\t[[], {\n\t\t}, [[1]], {\n\t\t\t\"b\":\t{\n\t\t\t}\n\t\t}]\n}", /* styled */
+    "{\"a\":[[],{},[[1]],{\"b\":{}}]}",						 /* compact */
+  },
+  {
+    "[0, -0, 1, -1, 7, 2147483647, 2147483648, -2147483648, -2147483649]", /* input */
+    "[0, 0, 1, -1, 7, 2147483647, 2147483648, -2147483648, -2147483649]",  /* styled */
+    "[0,0,1,-1,7,2147483647,2147483648,-2147483648,-2147483649]",	   /* compact */
+  },
+  {
+    "[4294967295, 4294967296, 999999999999999, 1000000000000000, 1e15, 1e16]", /* input */
+    "[4294967295, 4294967296, 999999999999999, 1e+15, 1e+15, 1e+16]",	       /* styled */
+    "[4294967295,4294967296,999999999999999,1e+15,1e+15,1e+16]",	       /* compact */
+  },
+  {
+    "[123456789012345678, 18446744073709551615, 9007199254740993]",	      /* input */
+    "[1.2345678901234568e+17, 1.8446744073709552e+19, 9.00719925474099e+15]", /* styled */
+    "[1.2345678901234568e+17,1.8446744073709552e+19,9.00719925474099e+15]",   /* compact */
+  },
+  {
+    "[0.1, 0.5, -0.5, 1.5, 3.141592653589793, 1e-7, 1.23e-5, 1e300, -1e300, 5e-324]", /* input */
+    "[0.1, 0.5, -0.5, 1.5, 3.1415926535897931, 1e-07, 1.23e-05, 1e+300, -1e+300, "
+    "4.94065645841247e-324]", /* styled */
+    "[0.1,0.5,-0.5,1.5,3.1415926535897931,1e-07,1.23e-05,1e+300,-1e+300,4.94065645841247e-324]", /* compact */
+  },
+  {
+    "[0.30000000000000004, 100.25, 1e21, 12345.6789e3]", /* input */
+    "[0.3, 100.25, 1e+21, 12345678.9]",			 /* styled */
+    "[0.3,100.25,1e+21,12345678.9]",			 /* compact */
+  },
+  {
+    "[1, \"two\", null, true, false, [3], {\"four\": 4}]",	      /* input */
+    "[1, \"two\", null, true, false, [3], {\n\t\t\"four\":\t4\n\t}]", /* styled */
+    "[1,\"two\",null,true,false,[3],{\"four\":4}]",		      /* compact */
+  },
+  {
+    "{\"_msgname\": \"x\", \"_crc\": \"0x1234\", \"n\": [1, 2, {\"deep\": [{\"x\": []}]}], \"s\": "
+    "\"\"}", /* input */
+    "{\n\t\"_msgname\":\t\"x\",\n\t\"_crc\":\t\"0x1234\",\n\t\"n\":\t[1, 2, "
+    "{\n\t\t\t\"deep\":\t[{\n\t\t\t\t\t\"x\":\t[]\n\t\t\t\t}]\n\t\t}],\n\t\"s\":\t\"\"\n}", /* styled
+											     */
+    "{\"_msgname\":\"x\",\"_crc\":\"0x1234\",\"n\":[1,2,{\"deep\":[{\"x\":[]}]}],\"s\":\"\"}", /* compact
+												*/
+  },
+  {
+    "{\"a\": 1, \"b\": {\"c\": [1, 2, 3], \"d\": {\"e\": {\"f\": \"g\"}}}, \"h\": []}", /* input */
+    "{\n\t\"a\":\t1,\n\t\"b\":\t{\n\t\t\"c\":\t[1, 2, "
+    "3],\n\t\t\"d\":\t{\n\t\t\t\"e\":\t{\n\t\t\t\t\"f\":\t\"g\"\n\t\t\t}\n\t\t}\n\t},\n\t\"h\":\t[]"
+    "\n}",								    /* styled */
+    "{\"a\":1,\"b\":{\"c\":[1,2,3],\"d\":{\"e\":{\"f\":\"g\"}}},\"h\":[]}", /* compact */
+  },
+};
+
+static clib_error_t *
+test_json_styles (void)
+{
+  for (int n = 0; n < ARRAY_LEN (styles); n++)
+    {
+      clib_json_text_t j;
+      u8 *s;
+
+      TEST_ASSERT (
+	clib_json_init_from_string (&j, (char *) styles[n].input, strlen (styles[n].input)) == 0);
+
+      s = format (0, "%U%c", format_clib_json_text, &j, 0);
+      if (strcmp ((char *) s, styles[n].styled))
+	return clib_error_return (0, "styled text of '%s' is '%s', expected '%s'", styles[n].input,
+				  s, styles[n].styled);
+      vec_free (s);
+
+      clib_json_set_indent (&j, 0);
+      s = format (0, "%U%c", format_clib_json_text, &j, 0);
+      if (strcmp ((char *) s, styles[n].compact))
+	return clib_error_return (0, "compact text of '%s' is '%s', expected '%s'", styles[n].input,
+				  s, styles[n].compact);
+      vec_free (s);
+      clib_json_free (&j);
+    }
+
+  return 0;
+}
+
+/* the setters change the style */
+static clib_error_t *
+test_json_setters (void)
+{
+  static char *input = "{\"a\": [1, 2], \"b\": {}, \"c\": 9007199254740993}";
+  static char *spaces = "{\n"
+			"  \"a\": [\n"
+			"    1,\n"
+			"    2\n"
+			"  ],\n"
+			"  \"b\": {},\n"
+			"  \"c\": 9007199254740992\n"
+			"}";
+  clib_json_text_t j;
+  u8 *s;
+
+  TEST_ASSERT (clib_json_init_from_string (&j, input, strlen (input)) == 0);
+  clib_json_set_indent (&j, 2);
+  clib_json_set_indent_tabs (&j, 0);
+  clib_json_set_key_separator (&j, ": ");
+  clib_json_set_inline_arrays (&j, 0);
+  clib_json_set_expand_empty (&j, 0);
+  clib_json_set_number_digits (&j, 0);
+  s = format (0, "%U%c", format_clib_json_text, &j, 0);
+  if (strcmp ((char *) s, spaces))
+    return clib_error_return (0, "text is '%s', expected '%s'", s, spaces);
+  vec_free (s);
   clib_json_free (&j);
 
   return 0;
@@ -217,6 +395,12 @@ main (int argc, char *argv[])
     }
 
   if ((err = test_json_checks ()))
+    goto done;
+
+  if ((err = test_json_styles ()))
+    goto done;
+
+  if ((err = test_json_setters ()))
     goto done;
 
 done:

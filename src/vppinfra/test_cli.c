@@ -369,9 +369,9 @@ test_help_and_schema (void)
   clib_json_parent (&j);
   clib_json_parent (&j);
   js = format (0, "%U%c", format_clib_json_text, &j, 0);
-  TEST_ASSERT (strstr ((char *) js, "\"kind\": \"group\"") != 0);
-  TEST_ASSERT (strstr ((char *) js, "\"name\": \"fast\"") != 0);
-  TEST_ASSERT (strstr ((char *) js, "\"name\": \"name\"") != 0);
+  TEST_ASSERT (strstr ((char *) js, "\"kind\":\t\"group\"") != 0);
+  TEST_ASSERT (strstr ((char *) js, "\"name\":\t\"fast\"") != 0);
+  TEST_ASSERT (strstr ((char *) js, "\"name\":\t\"name\"") != 0);
   vec_free (js);
   clib_json_free (&j);
   return 0;
