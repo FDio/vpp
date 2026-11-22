@@ -788,8 +788,6 @@ vl_sock_api_init (vlib_main_t * vm)
     .handler = vl_api_##n##_t_handler,                                        \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = t,                                                              \
-    .tojson = vl_api_##n##_t_tojson,                                          \
-    .fromjson = vl_api_##n##_t_fromjson,                                      \
   });                                                                         \
   am->msg_data[VL_API_##N].replay_allowed = 0;
   foreach_vlib_api_msg;

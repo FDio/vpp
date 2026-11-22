@@ -45,8 +45,6 @@
 
 #include <vlibmemory/memclnt.api_enum.h>
 #include <vlibmemory/memclnt.api_types.h>
-#include <vlibmemory/memclnt.api_tojson.h>
-#include <vlibmemory/memclnt.api_fromjson.h>
 
 /* instantiate all the print functions we know about */
 #define vl_printfun
@@ -2732,8 +2730,6 @@ vat_api_hookup (vat_main_t * vam)
     .handler = vl_api_##n##_t_handler_uni,                                                         \
     .size = sizeof (vl_api_##n##_t),                                                               \
     .traced = 1,                                                                                   \
-    .tojson = vl_api_##n##_t_tojson,                                                               \
-    .fromjson = vl_api_##n##_t_fromjson,                                                           \
   });                                                                                              \
   VAT_DESC_REGISTER (n, VL_API_##N + 1);
   foreach_vpe_api_reply_msg;

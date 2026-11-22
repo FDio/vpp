@@ -13,11 +13,6 @@
 # limitations under the License.
 #
 
-#
-# Provide two classes FromJSON and TOJSON that converts between JSON and VPP's
-# binary API format
-#
-
 """
 This module creates C code for core VPP, VPP plugins and client side VAT and
 VAT2 tests.
@@ -75,700 +70,6 @@ process_imports = False
 
 
 ###############################################################################
-class ToJSON:
-    """Class to generate functions converting from VPP binary API to JSON."""
-
-    _dispatch = {}
-    noprint_fields = {"_vl_msg_id": None, "client_index": None, "context": None}
-    is_number = {
-        "u8": None,
-        "i8": None,
-        "u16": None,
-        "i16": None,
-        "u32": None,
-        "i32": None,
-        "u64": None,
-        "i64": None,
-        "f64": None,
-    }
-
-    def __init__(self, module, types, defines, imported_types, stream):
-        self.stream = stream
-        self.module = module
-        self.defines = defines
-        self.types = types
-        self.types_hash = {"vl_api_" + d.name + "_t": d for d in types + imported_types}
-        self.defines_hash = {d.name: d for d in defines}
-
-    def header(self):
-        """Output the top boilerplate."""
-        write = self.stream.write
-        write("#ifndef included_{}_api_tojson_h\n".format(self.module))
-        write("#define included_{}_api_tojson_h\n".format(self.module))
-        write("#include <vppinfra/cJSON.h>\n\n")
-        write("#include <vlibapi/jsonformat.h>\n\n")
-        if self.module == "interface_types":
-            write("#define vl_printfun\n")
-            write("#include <vnet/interface_types.api.h>\n\n")
-
-    def footer(self):
-        """Output the bottom boilerplate."""
-        write = self.stream.write
-        write("#endif\n")
-
-    def get_base_type(self, t):
-        vt_type = None
-        try:
-            vt = self.types_hash[t]
-            if vt.type == "Using" and "length" not in vt.alias:
-                vt_type = vt.alias["type"]
-        except KeyError:
-            vt = t
-        return vt, vt_type
-
-    def get_json_func(self, t):
-        """Given the type, returns the function to use to create a
-        cJSON object"""
-        vt, vt_type = self.get_base_type(t)
-
-        if t in self.is_number or vt_type in self.is_number:
-            return "cJSON_AddNumberToObject", "", False
-        if t == "bool":
-            return "cJSON_AddBoolToObject", "", False
-
-        # Lookup type name check if it's enum
-        if vt.type == "Enum" or vt.type == "EnumFlag":
-            return "{t}_tojson".format(t=t), "", True
-        return "{t}_tojson".format(t=t), "&", True
-
-    def get_json_array_func(self, t):
-        """Given a type returns the function to create a cJSON object
-        for arrays."""
-        if t in self.is_number:
-            return "cJSON_CreateNumber", ""
-        if t == "bool":
-            return "cJSON_CreateBool", ""
-        vt, vt_type = self.get_base_type(t)
-        if vt.type == "Enum" or vt.type == "EnumFlag":
-            return "{t}_tojson".format(t=t), ""
-        return "{t}_tojson".format(t=t), "&"
-
-    def print_string(self, o):
-        """Create cJSON object from vl_api_string_t"""
-        write = self.stream.write
-        if o.modern_vla:
-            write(
-                '    vl_api_string_cJSON_AddToObject(o, "{n}", &a->{n});\n'.format(
-                    n=o.fieldname
-                )
-            )
-        else:
-            # the string is received from the wire, it may be not terminated
-            write(
-                "    {{\n"
-                "    char s[sizeof (a->{n}) + 1];\n"
-                "    memcpy (s, a->{n}, sizeof (a->{n}));\n"
-                "    s[sizeof (a->{n})] = 0;\n"
-                '    cJSON_AddStringToObject(o, "{n}", s);\n'
-                "    }}\n".format(n=o.fieldname)
-            )
-
-    def print_field(self, o):
-        """Called for every field in a typedef or define."""
-        write = self.stream.write
-        if o.fieldname in self.noprint_fields:
-            return
-
-        f, p, newobj = self.get_json_func(o.fieldtype)
-
-        if newobj:
-            write(
-                '    cJSON_AddItemToObject(o, "{n}", {f}({p}a->{n}));\n'.format(
-                    f=f, p=p, n=o.fieldname
-                )
-            )
-        else:
-            write('    {f}(o, "{n}", {p}a->{n});\n'.format(f=f, p=p, n=o.fieldname))
-
-    _dispatch["Field"] = print_field
-
-    def print_array(self, o):
-        """Converts a VPP API array to cJSON array."""
-        write = self.stream.write
-
-        forloop = """\
-    {{
-        int i;
-        cJSON *array = cJSON_AddArrayToObject(o, "{n}");
-        for (i = 0; i < {lfield}; i++) {{
-            cJSON_AddItemToArray(array, {f}({p}a->{n}[i]));
-        }}
-    }}
-"""
-
-        if o.fieldtype == "string":
-            self.print_string(o)
-            return
-
-        lfield = "a->" + o.lengthfield if o.lengthfield else o.length
-        if o.fieldtype == "u8":
-            write("    {\n")
-            # What is length field doing here?
-            write(
-                '    char *s = format_c_string(0, "0x%U", format_hex_bytes_no_wrap, '
-                "&a->{n}, {lfield});\n".format(n=o.fieldname, lfield=lfield)
-            )
-            write('    cJSON_AddStringToObject(o, "{n}", s);\n'.format(n=o.fieldname))
-            write("    vec_free(s);\n")
-            write("    }\n")
-            return
-
-        f, p = self.get_json_array_func(o.fieldtype)
-        write(forloop.format(lfield=lfield, t=o.fieldtype, n=o.fieldname, f=f, p=p))
-
-    _dispatch["Array"] = print_array
-
-    def print_enum(self, o):
-        """Create cJSON object (string) for VPP API enum"""
-        write = self.stream.write
-        write(
-            "static inline cJSON *vl_api_{name}_t_tojson "
-            "(vl_api_{name}_t a) {{\n".format(name=o.name)
-        )
-
-        write("    switch(a) {\n")
-        for b in o.block:
-            write("    case %s:\n" % b[1])
-            write('        return cJSON_CreateString("{}");\n'.format(b[0]))
-        write('    default: return cJSON_CreateString("Invalid ENUM");\n')
-        write("    }\n")
-        write("    return 0;\n")
-        write("}\n")
-
-    _dispatch["Enum"] = print_enum
-
-    def print_enum_flag(self, o):
-        """Create cJSON object (string) for VPP API enum"""
-        write = self.stream.write
-        write(
-            "static inline cJSON *vl_api_{name}_t_tojson "
-            "(vl_api_{name}_t a) {{\n".format(name=o.name)
-        )
-        write("    cJSON *array = cJSON_CreateArray();\n")
-
-        for b in o.block:
-            if b[1] == 0:
-                continue
-            write("    if (a & {})\n".format(b[0]))
-            write(
-                '       cJSON_AddItemToArray(array, cJSON_CreateString("{}"));\n'.format(
-                    b[0]
-                )
-            )
-        write("    return array;\n")
-        write("}\n")
-
-    _dispatch["EnumFlag"] = print_enum_flag
-
-    def print_typedef(self, o):
-        """Create cJSON (dictionary) object from VPP API typedef"""
-        write = self.stream.write
-        write(
-            "static inline cJSON *vl_api_{name}_t_tojson "
-            "(vl_api_{name}_t *a) {{\n".format(name=o.name)
-        )
-        write("    cJSON *o = cJSON_CreateObject();\n")
-
-        for t in o.block:
-            self._dispatch[t.type](self, t)
-
-        write("    return o;\n")
-        write("}\n")
-
-    def print_define(self, o):
-        """Create cJSON (dictionary) object from VPP API define"""
-        write = self.stream.write
-        write(
-            "static inline cJSON *vl_api_{name}_t_tojson "
-            "(vl_api_{name}_t *a) {{\n".format(name=o.name)
-        )
-        write("    cJSON *o = cJSON_CreateObject();\n")
-        write('    cJSON_AddStringToObject(o, "_msgname", "{}");\n'.format(o.name))
-        write(
-            '    cJSON_AddStringToObject(o, "_crc", "{crc:08x}");\n'.format(crc=o.crc)
-        )
-
-        for t in o.block:
-            self._dispatch[t.type](self, t)
-
-        write("    return o;\n")
-        write("}\n")
-
-    def print_using(self, o):
-        """Create cJSON (dictionary) object from VPP API aliased type"""
-        if o.manual_print:
-            return
-
-        write = self.stream.write
-        write(
-            "static inline cJSON *vl_api_{name}_t_tojson "
-            "(vl_api_{name}_t *a) {{\n".format(name=o.name)
-        )
-
-        write(
-            '    char *s = format_c_string(0, "%U", format_vl_api_{}_t, a);\n'.format(
-                o.name
-            )
-        )
-        write("    cJSON *o = cJSON_CreateString(s);\n")
-        write("    vec_free(s);\n")
-        write("    return o;\n")
-        write("}\n")
-
-    _dispatch["Typedef"] = print_typedef
-    _dispatch["Define"] = print_define
-    _dispatch["Using"] = print_using
-    _dispatch["Union"] = print_typedef
-
-    def generate_function(self, t):
-        """Main entry point"""
-        write = self.stream.write
-        if t.manual_print:
-            write("/* Manual print {} */\n".format(t.name))
-            return
-        self._dispatch[t.type](self, t)
-
-    def generate_types(self):
-        """Main entry point"""
-        for t in self.types:
-            self.generate_function(t)
-
-    def generate_defines(self):
-        """Main entry point"""
-        for t in self.defines:
-            self.generate_function(t)
-
-
-class FromJSON:
-    """
-    Parse JSON objects into VPP API binary message structures.
-    """
-
-    _dispatch = {}
-    noprint_fields = {"_vl_msg_id": None, "client_index": None, "context": None}
-    is_number = {
-        "u8": None,
-        "i8": None,
-        "u16": None,
-        "i16": None,
-        "u32": None,
-        "i32": None,
-        "u64": None,
-        "i64": None,
-        "f64": None,
-    }
-
-    def __init__(self, module, types, defines, imported_types, stream):
-        self.stream = stream
-        self.module = module
-        self.defines = defines
-        self.types = types
-        self.types_hash = {"vl_api_" + d.name + "_t": d for d in types + imported_types}
-        self.defines_hash = {d.name: d for d in defines}
-
-    def header(self):
-        """Output the top boilerplate."""
-        write = self.stream.write
-        write("#ifndef included_{}_api_fromjson_h\n".format(self.module))
-        write("#define included_{}_api_fromjson_h\n".format(self.module))
-        write("#include <vppinfra/cJSON.h>\n\n")
-        write("#include <vlibapi/jsonformat.h>\n\n")
-        write('#pragma GCC diagnostic ignored "-Wunused-label"\n')
-
-    def is_base_type(self, t):
-        """Check if a type is one of the VPP API base types"""
-        if t in self.is_number:
-            return True
-        if t == "bool":
-            return True
-        return False
-
-    def footer(self):
-        """Output the bottom boilerplate."""
-        write = self.stream.write
-        write("#endif\n")
-
-    def print_string(self, o, toplevel=False):
-        """Convert JSON string to vl_api_string_t"""
-        write = self.stream.write
-
-        msgvar = "a" if toplevel else "*mp"
-        msgsize = "l" if toplevel else "*len"
-
-        if o.modern_vla:
-            write("    char *p = cJSON_GetStringValue(item);\n")
-            write("    size_t plen = strlen(p);\n")
-            write(
-                "    {msgvar} = cJSON_realloc({msgvar}, {msgsize} + plen);\n".format(
-                    msgvar=msgvar, msgsize=msgsize
-                )
-            )
-            write("    if ({msgvar} == 0) goto error;\n".format(msgvar=msgvar))
-            write(
-                "    vl_api_c_string_to_api_string(p, (void *){msgvar} + "
-                "{msgsize} - sizeof(vl_api_string_t));\n".format(
-                    msgvar=msgvar, msgsize=msgsize
-                )
-            )
-            write("    {msgsize} += plen;\n".format(msgsize=msgsize))
-        else:
-            write(
-                "    strncpy_s((char *)a->{n}, sizeof(a->{n}), "
-                "cJSON_GetStringValue(item), sizeof(a->{n}) - 1);\n".format(
-                    n=o.fieldname
-                )
-            )
-
-    def print_field(self, o, toplevel=False):
-        """Called for every field in a typedef or define."""
-        write = self.stream.write
-        if o.fieldname in self.noprint_fields:
-            return
-        is_bt = self.is_base_type(o.fieldtype)
-        t = "vl_api_{}".format(o.fieldtype) if is_bt else o.fieldtype
-
-        msgvar = "(void **)&a" if toplevel else "mp"
-        msgsize = "&l" if toplevel else "len"
-
-        if is_bt:
-            write(
-                "    vl_api_{t}_fromjson(item, &a->{n});\n".format(
-                    t=o.fieldtype, n=o.fieldname
-                )
-            )
-        else:
-            write(
-                "    if ({t}_fromjson({msgvar}, "
-                "{msgsize}, item, &a->{n}) < 0) goto error;\n".format(
-                    t=t, n=o.fieldname, msgvar=msgvar, msgsize=msgsize
-                )
-            )
-
-    _dispatch["Field"] = print_field
-
-    def print_array(self, o, toplevel=False):
-        """Convert JSON array to VPP API array"""
-        write = self.stream.write
-
-        forloop = """\
-    {{
-        int i;
-        cJSON *array = cJSON_GetObjectItem(o, "{n}");
-        int size = cJSON_GetArraySize(array);
-        if (size != {lfield}) goto error;
-        for (i = 0; i < size; i++) {{
-            cJSON *e = cJSON_GetArrayItem(array, i);
-            {call}
-        }}
-    }}
-"""
-        forloop_vla = """\
-    {{
-        int i;
-        cJSON *array = cJSON_GetObjectItem(o, "{n}");
-        int size = cJSON_GetArraySize(array);
-        {lfield} = size;
-        {realloc} = cJSON_realloc({realloc}, {msgsize} + sizeof({t}) * size);
-        {t} *d = (void *){realloc} + {msgsize};
-        {msgsize} += sizeof({t}) * size;
-        for (i = 0; i < size; i++) {{
-            cJSON *e = cJSON_GetArrayItem(array, i);
-            {call}
-        }}
-    }}
-"""
-        t = o.fieldtype
-        if o.fieldtype == "string":
-            self.print_string(o, toplevel)
-            return
-
-        lfield = "a->" + o.lengthfield if o.lengthfield else o.length
-        msgvar = "(void **)&a" if toplevel else "mp"
-        realloc = "a" if toplevel else "*mp"
-        msgsize = "l" if toplevel else "*len"
-
-        if o.fieldtype == "u8":
-            if o.lengthfield:
-                write('    s = u8string_fromjson(o, "{}");\n'.format(o.fieldname))
-                write("    if (!s) goto error;\n")
-                write("    {} = vec_len(s);\n".format(lfield))
-
-                write(
-                    "    {realloc} = cJSON_realloc({realloc}, {msgsize} + "
-                    "vec_len(s));\n".format(
-                        msgvar=msgvar, msgsize=msgsize, realloc=realloc
-                    )
-                )
-                write(
-                    "    clib_memcpy((void *){realloc} + {msgsize}, s, "
-                    "vec_len(s));\n".format(realloc=realloc, msgsize=msgsize)
-                )
-                write("    {msgsize} += vec_len(s);\n".format(msgsize=msgsize))
-
-                write("    vec_free(s);\n")
-            else:
-                write(
-                    '    if (u8string_fromjson2(o, "{n}", a->{n}) < 0) goto error;\n'.format(
-                        n=o.fieldname
-                    )
-                )
-            return
-
-        is_bt = self.is_base_type(o.fieldtype)
-
-        if o.lengthfield:
-            if is_bt:
-                call = "vl_api_{t}_fromjson(e, &d[i]);".format(t=o.fieldtype)
-            else:
-                call = "if ({t}_fromjson({msgvar}, len, e, &d[i]) < 0) goto error; ".format(
-                    t=o.fieldtype, msgvar=msgvar
-                )
-            write(
-                forloop_vla.format(
-                    lfield=lfield,
-                    t=o.fieldtype,
-                    n=o.fieldname,
-                    call=call,
-                    realloc=realloc,
-                    msgsize=msgsize,
-                )
-            )
-        else:
-            if is_bt:
-                call = "vl_api_{t}_fromjson(e, &a->{n}[i]);".format(t=t, n=o.fieldname)
-            else:
-                call = "if ({}_fromjson({}, len, e, &a->{}[i]) < 0) goto error;".format(
-                    t, msgvar, o.fieldname
-                )
-            write(
-                forloop.format(
-                    lfield=lfield,
-                    t=t,
-                    n=o.fieldname,
-                    call=call,
-                    msgvar=msgvar,
-                    realloc=realloc,
-                    msgsize=msgsize,
-                )
-            )
-
-    _dispatch["Array"] = print_array
-
-    def print_enum(self, o):
-        """Convert to JSON enum(string) to VPP API enum (int)"""
-        write = self.stream.write
-        write(
-            "static inline int vl_api_{n}_t_fromjson"
-            "(void **mp, int *len, cJSON *o, vl_api_{n}_t *a) {{\n".format(n=o.name)
-        )
-        write("    char *p = cJSON_GetStringValue(o);\n")
-        for b in o.block:
-            write(
-                '    if (strcmp(p, "{}") == 0) {{*a = {}; return 0;}}\n'.format(
-                    b[0], b[1]
-                )
-            )
-        write("    *a = 0;\n")
-        write("    return -1;\n")
-        write("}\n")
-
-    _dispatch["Enum"] = print_enum
-
-    def print_enum_flag(self, o):
-        """Convert to JSON enum(string) to VPP API enum (int)"""
-        write = self.stream.write
-        write(
-            "static inline int vl_api_{n}_t_fromjson "
-            "(void **mp, int *len, cJSON *o, vl_api_{n}_t *a) {{\n".format(n=o.name)
-        )
-        write("   int i;\n")
-        write("   *a = 0;\n")
-        write("   for (i = 0; i < cJSON_GetArraySize(o); i++) {\n")
-        write("       cJSON *e = cJSON_GetArrayItem(o, i);\n")
-        write("       char *p = cJSON_GetStringValue(e);\n")
-        write("       if (!p) return -1;\n")
-        for b in o.block:
-            write('       if (strcmp(p, "{}") == 0) *a |= {};\n'.format(b[0], b[1]))
-        write("    }\n")
-        write("   return 0;\n")
-        write("}\n")
-
-    _dispatch["EnumFlag"] = print_enum_flag
-
-    def print_typedef(self, o):
-        """Convert from JSON object to VPP API binary representation"""
-        write = self.stream.write
-
-        write(
-            "static inline int vl_api_{name}_t_fromjson (void **mp, "
-            "int *len, cJSON *o, vl_api_{name}_t *a) {{\n".format(name=o.name)
-        )
-        write("    cJSON *item __attribute__ ((unused));\n")
-        write("    u8 *s __attribute__ ((unused));\n")
-        for t in o.block:
-            if t.type == "Field" and t.is_lengthfield:
-                continue
-            write('\n    item = cJSON_GetObjectItem(o, "{}");\n'.format(t.fieldname))
-            write("    if (!item) goto error;\n")
-            self._dispatch[t.type](self, t)
-
-        write("\n    return 0;\n")
-        write("\n  error:\n")
-        write("    return -1;\n")
-        write("}\n")
-
-    def print_union(self, o):
-        """Convert JSON object to VPP API binary union"""
-        write = self.stream.write
-
-        write(
-            "static inline int vl_api_{name}_t_fromjson (void **mp, "
-            "int *len, cJSON *o, vl_api_{name}_t *a) {{\n".format(name=o.name)
-        )
-        write("    cJSON *item __attribute__ ((unused));\n")
-        write("    u8 *s __attribute__ ((unused));\n")
-        for t in o.block:
-            if t.type == "Field" and t.is_lengthfield:
-                continue
-            write('    item = cJSON_GetObjectItem(o, "{}");\n'.format(t.fieldname))
-            write("    if (item) {\n")
-            self._dispatch[t.type](self, t)
-            write("    };\n")
-        write("\n    return 0;\n")
-        write("\n  error:\n")
-        write("    return -1;\n")
-        write("}\n")
-
-    def print_define(self, o):
-        """Convert JSON object to VPP API message"""
-        write = self.stream.write
-        error = 0
-        write(
-            "static inline vl_api_{name}_t *vl_api_{name}_t_fromjson "
-            "(cJSON *o, int *len) {{\n".format(name=o.name)
-        )
-        write("    cJSON *item __attribute__ ((unused));\n")
-        write("    u8 *s __attribute__ ((unused));\n")
-        write("    int l = sizeof(vl_api_{}_t);\n".format(o.name))
-        write("    vl_api_{}_t *a = cJSON_malloc(l);\n".format(o.name))
-        write("\n")
-
-        for t in o.block:
-            if t.fieldname in self.noprint_fields:
-                continue
-            if t.type == "Field" and t.is_lengthfield:
-                continue
-            write('    item = cJSON_GetObjectItem(o, "{}");\n'.format(t.fieldname))
-            write("    if (!item) goto error;\n")
-            error += 1
-            self._dispatch[t.type](self, t, toplevel=True)
-            write("\n")
-
-        write("    *len = l;\n")
-        write("    return a;\n")
-
-        if error:
-            write("\n  error:\n")
-            write("    cJSON_free(a);\n")
-            write("    return 0;\n")
-        write("}\n")
-
-    def print_using(self, o):
-        """Convert JSON field to VPP type alias"""
-        write = self.stream.write
-
-        if o.manual_print:
-            return
-
-        t = o.using
-        write(
-            "static inline int vl_api_{name}_t_fromjson (void **mp, "
-            "int *len, cJSON *o, vl_api_{name}_t *a) {{\n".format(name=o.name)
-        )
-        if "length" in o.alias:
-            if t.fieldtype != "u8":
-                raise ValueError(
-                    "Error in processing type {} for {}".format(t.fieldtype, o.name)
-                )
-            write(
-                "    vl_api_u8_string_fromjson(o, (u8 *)a, {});\n".format(
-                    o.alias["length"]
-                )
-            )
-        else:
-            write("    vl_api_{t}_fromjson(o, ({t} *)a);\n".format(t=t.fieldtype))
-
-        write("    return 0;\n")
-        write("}\n")
-
-    _dispatch["Typedef"] = print_typedef
-    _dispatch["Define"] = print_define
-    _dispatch["Using"] = print_using
-    _dispatch["Union"] = print_union
-
-    def generate_function(self, t):
-        """Main entry point"""
-        write = self.stream.write
-        if t.manual_print:
-            write("/* Manual print {} */\n".format(t.name))
-            return
-        self._dispatch[t.type](self, t)
-
-    def generate_types(self):
-        """Main entry point"""
-        for t in self.types:
-            self.generate_function(t)
-
-    def generate_defines(self):
-        """Main entry point"""
-        for t in self.defines:
-            self.generate_function(t)
-
-
-def generate_tojson(s, modulename, stream):
-    """Generate all functions to convert from API to JSON"""
-    write = stream.write
-
-    write("/* Imported API files */\n")
-    for i in s["Import"]:
-        f = i.filename.replace("plugins/", "")
-        write("#include <{}_tojson.h>\n".format(f))
-
-    pp = ToJSON(modulename, s["types"], s["Define"], s["imported"]["types"], stream)
-    pp.header()
-    pp.generate_types()
-    pp.generate_defines()
-    pp.footer()
-    return ""
-
-
-def generate_fromjson(s, modulename, stream):
-    """Generate all functions to convert from JSON to API"""
-    write = stream.write
-    write("/* Imported API files */\n")
-    for i in s["Import"]:
-        f = i.filename.replace("plugins/", "")
-        write("#include <{}_fromjson.h>\n".format(f))
-
-    pp = FromJSON(modulename, s["types"], s["Define"], s["imported"]["types"], stream)
-    pp.header()
-    pp.generate_types()
-    pp.generate_defines()
-    pp.footer()
-
-    return ""
-
-
 ###############################################################################
 
 
@@ -1105,8 +406,6 @@ static inline u8 *format_vl_api_{name}_t (u8 *s, va_list * args)
         write("    return s;\n")
         write("}\n\n")
 
-    write('\n#include "{}.api_tojson.h"\n'.format(modulename))
-    write('#include "{}.api_fromjson.h"\n'.format(modulename))
     write("\n#endif")
     write("\n#endif /* vl_printfun_types */\n")
 
@@ -1330,8 +629,6 @@ def generate_c_boilerplate(s, services, defines, counters, file_crc, module, str
             "   .handler = vl_api_{n}_t_handler,\n"
             "   .traced = 1,\n"
             "   .replay = 1,\n"
-            "   .tojson = vl_api_{n}_t_tojson,\n"
-            "   .fromjson = vl_api_{n}_t_fromjson,\n"
             "   .is_autoendian = {auto}}};\n".format(
                 n=s.caller, ID=s.caller.upper(), auto=d.autoendian
             )
@@ -1346,8 +643,6 @@ def generate_c_boilerplate(s, services, defines, counters, file_crc, module, str
                 "  .handler = 0,\n"
                 "  .traced = 1,\n"
                 "  .replay = 1,\n"
-                "  .tojson = vl_api_{n}_t_tojson,\n"
-                "  .fromjson = vl_api_{n}_t_fromjson,\n"
                 "  .is_autoendian = {auto}}};\n".format(
                     n=s.reply, ID=s.reply.upper(), auto=d.autoendian
                 )
@@ -1366,8 +661,6 @@ def generate_c_boilerplate(s, services, defines, counters, file_crc, module, str
                     "  .handler = 0,\n"
                     "  .traced = 1,\n"
                     "  .replay = 1,\n"
-                    "  .tojson = vl_api_{n}_t_tojson,\n"
-                    "  .fromjson = vl_api_{n}_t_fromjson,\n"
                     "  .is_autoendian = {auto}}};\n".format(
                         n=s.stream_message,
                         ID=s.stream_message.upper(),
@@ -1486,8 +779,6 @@ def generate_c_test_boilerplate(services, defines, file_crc, module, plugin, str
             "    .handler = vl_api_{n}_t_handler,\n"
             "    .size = sizeof(vl_api_{n}_t),\n"
             "    .traced = 1,\n"
-            "    .tojson = vl_api_{n}_t_tojson,\n"
-            "    .fromjson = vl_api_{n}_t_fromjson,\n"
             "   }});".format(n=s.reply, ID=s.reply.upper())
         )
         write(
@@ -1513,8 +804,6 @@ def generate_c_test_boilerplate(services, defines, file_crc, module, plugin, str
                 "    .handler = vl_api_{n}_t_handler,\n"
                 "    .size = sizeof(vl_api_{n}_t),\n"
                 "    .traced = 1,\n"
-                "    .tojson = vl_api_{n}_t_tojson,\n"
-                "    .fromjson = vl_api_{n}_t_fromjson,\n"
                 "   }});".format(n=e, ID=e.upper())
             )
 
@@ -1564,7 +853,7 @@ api_{n} (cJSON *o)
   vl_api_{n}_t *mp;
   int len;
   if (!o) return 0;
-  mp = vl_api_{n}_t_fromjson(o, &len);
+  mp = vat2_json_to_msg(&{module}_api_desc, "{n}", o, &len);
   if (!mp) {{
     fprintf(stderr, "Failed converting JSON to API\\n");
     return 0;
@@ -1588,7 +877,7 @@ api_{n} (cJSON *o)
   }}
   vl_api_{r}_t *rmp = (vl_api_{r}_t *)p;
   vl_api_desc_file_endian(&{module}_api_desc, "{r}", rmp, 0);
-  cJSON *json = vl_api_{r}_t_tojson(rmp);
+  cJSON *json = vat2_msg_to_json(&{module}_api_desc, "{r}", rmp);
   vac_free(p);
   return json;
 }}
@@ -1601,7 +890,7 @@ api_{n} (cJSON *o)
   u16 msg_id = vac_get_msg_index(VL_API_{N}_CRC);
   int len;
   if (!o) return 0;
-  vl_api_{n}_t *mp = vl_api_{n}_t_fromjson(o, &len);
+  vl_api_{n}_t *mp = vat2_json_to_msg(&{module}_api_desc, "{n}", o, &len);
   if (!mp) {{
       fprintf(stderr, "Failed converting JSON to API\\n");
       return 0;
@@ -1644,7 +933,7 @@ api_{n} (cJSON *o)
         }}
         vl_api_{r}_t *rmp = (vl_api_{r}_t *)p;
         vl_api_desc_file_endian(&{module}_api_desc, "{r}", rmp, 0);
-        cJSON_AddItemToArray(reply, vl_api_{r}_t_tojson(rmp));
+        cJSON_AddItemToArray(reply, vat2_msg_to_json(&{module}_api_desc, "{r}", rmp));
     }}
     vac_free(p);
   }}
@@ -1659,7 +948,7 @@ api_{n} (cJSON *o)
     u16 msg_id = vac_get_msg_index(VL_API_{N}_CRC);
   int len = 0;
   if (!o) return 0;
-  vl_api_{n}_t *mp = vl_api_{n}_t_fromjson(o, &len);
+  vl_api_{n}_t *mp = vat2_json_to_msg(&{module}_api_desc, "{n}", o, &len);
   if (!mp) {{
     fprintf(stderr, "Failed converting JSON to API\\n");
     return 0;
@@ -1688,7 +977,7 @@ api_{n} (cJSON *o)
     if (msg_id == reply_msg_id) {{
         vl_api_{r}_t *rmp = (vl_api_{r}_t *)p;
         vl_api_desc_file_endian(&{module}_api_desc, "{r}", rmp, 0);
-        cJSON_AddItemToArray(reply, vl_api_{r}_t_tojson(rmp));
+        cJSON_AddItemToArray(reply, vat2_msg_to_json(&{module}_api_desc, "{r}", rmp));
         vac_free(p);
         break;
     }}
@@ -1696,7 +985,7 @@ api_{n} (cJSON *o)
     if (msg_id == details_msg_id) {{
         vl_api_{d}_t *rmp = (vl_api_{d}_t *)p;
         vl_api_desc_file_endian(&{module}_api_desc, "{d}", rmp, 0);
-        cJSON_AddItemToArray(reply, vl_api_{d}_t_tojson(rmp));
+        cJSON_AddItemToArray(reply, vat2_msg_to_json(&{module}_api_desc, "{d}", rmp));
     }}
     vac_free(p);
   }}
@@ -1767,8 +1056,6 @@ def generate_c_test2_boilerplate(services, defines, module, stream):
 #include "{module}.api.h"
 #undef vl_printfun
 
-#include "{module}.api_tojson.h"
-#include "{module}.api_fromjson.h"
 #include <vpp-api/client/vppapiclient.h>
 #include <vlibapi/api_desc.h>
 
@@ -1785,6 +1072,13 @@ def generate_c_test2_boilerplate(services, defines, module, stream):
         if s.reply not in define_hash:
             continue
         c_test_api_service(s, s.stream, module, stream)
+        write(
+            "static cJSON *\n"
+            "tojson_{n} (void *mp)\n"
+            "{{\n"
+            '  return vat2_msg_to_json (&{m}_api_desc, "{n}", mp);\n'
+            "}}\n\n".format(n=s.caller, m=module)
+        )
 
     write(
         "void vat2_register_function(char *, cJSON * (*)(cJSON *), cJSON * (*)(void *), u32);\n"
@@ -1799,7 +1093,7 @@ def generate_c_test2_boilerplate(services, defines, module, stream):
             continue
         crc = define_hash[s.caller].crc
         write(
-            '   vat2_register_function("{n}", api_{n}, (cJSON * (*)(void *))vl_api_{n}_t_tojson, 0x{crc:08x});\n'.format(
+            '   vat2_register_function("{n}", api_{n}, tojson_{n}, 0x{crc:08x});\n'.format(
                 n=s.caller, crc=crc
             )
         )
@@ -2367,8 +1661,6 @@ def run(output_dir, apifilename, s):
     filename_desc = os.path.join(output_dir + "/" + basename + "_desc.c")
     filename_c_test = os.path.join(output_dir + "/" + basename + "_test.c")
     filename_c_test2 = os.path.join(output_dir + "/" + basename + "_test2.c")
-    filename_c_tojson = os.path.join(output_dir + "/" + basename + "_tojson.h")
-    filename_c_fromjson = os.path.join(output_dir + "/" + basename + "_fromjson.h")
 
     # Generate separate types file
     st = StringIO()
@@ -2426,20 +1718,6 @@ def run(output_dir, apifilename, s):
         st.seek(0)
         shutil.copyfileobj(st, fd)
     st.close()  #
-
-    # Generate separate JSON file
-    st = StringIO()
-    generate_tojson(s, modulename, st)
-    with open(filename_c_tojson, "w") as fd:
-        st.seek(0)
-        shutil.copyfileobj(st, fd)
-    st.close()
-    st = StringIO()
-    generate_fromjson(s, modulename, st)
-    with open(filename_c_fromjson, "w") as fd:
-        st.seek(0)
-        shutil.copyfileobj(st, fd)
-    st.close()
 
     output = TOP_BOILERPLATE.format(datestring=DATESTRING, input_filename=basename)
     output += generate_imports(s["Import"])

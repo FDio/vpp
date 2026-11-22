@@ -181,8 +181,6 @@ sr_mpls_api_hookup (vlib_main_t * vm)
     .handler = vl_api_##n##_t_handler,                                        \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = 1,                                                              \
-    .tojson = vl_api_##n##_t_tojson,                                          \
-    .fromjson = vl_api_##n##_t_fromjson,                                      \
   });
   foreach_vpe_api_msg;
 #undef _
@@ -197,8 +195,6 @@ sr_mpls_api_hookup (vlib_main_t * vm)
     .handler = vl_api_sr_mpls_policy_add_t_handler,
     .size = 256,
     .traced = 1,
-    .tojson = vl_api_sr_mpls_policy_add_t_tojson,
-    .fromjson = vl_api_sr_mpls_policy_add_t_fromjson,
   });
   /*
    * Manually register the sr policy mod msg, so we trace enough bytes
@@ -210,8 +206,6 @@ sr_mpls_api_hookup (vlib_main_t * vm)
     .handler = vl_api_sr_mpls_policy_mod_t_handler,
     .size = 256,
     .traced = 1,
-    .tojson = vl_api_sr_mpls_policy_mod_t_tojson,
-    .fromjson = vl_api_sr_mpls_policy_mod_t_fromjson,
   });
 
   /*

@@ -154,8 +154,6 @@ connect_to_vpp (char *name, char *socket_name)
     .handler = vl_api_##n##_t_handler,                                                             \
     .size = sizeof (vl_api_##n##_t),                                                               \
     .traced = 1,                                                                                   \
-    .tojson = vl_api_##n##_t_tojson,                                                               \
-    .fromjson = vl_api_##n##_t_fromjson,                                                           \
   });
   foreach_mactime_api_msg;
 #undef _

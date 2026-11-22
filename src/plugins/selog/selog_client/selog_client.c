@@ -388,8 +388,6 @@ selog_client_bapi_hookup (void)
     .is_autoendian = 1,                                                                            \
     .size = sizeof (vl_api_##n##_t),                                                               \
     .traced = (u32) 1,                                                                             \
-    .tojson = vl_api_##n##_t_tojson,                                                               \
-    .fromjson = vl_api_##n##_t_fromjson,                                                           \
   });
   foreach_selog_msg;
 #undef _
@@ -404,8 +402,6 @@ selog_client_bapi_hookup (void)
     .is_autoendian = 1,                                                                            \
     .size = sizeof (vl_api_##n##_t),                                                               \
     .traced = (u32) 1,                                                                             \
-    .tojson = vl_api_##n##_t_tojson,                                                               \
-    .fromjson = vl_api_##n##_t_fromjson,                                                           \
   });                                                                                              \
   vl_api_desc_register_msg (vlibapi_get_main (), vl_memclnt_client_api_desc (), #n, VL_API_##N + 1);
   foreach_memclnt_msg;

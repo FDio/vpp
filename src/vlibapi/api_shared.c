@@ -208,7 +208,7 @@ vl_api_serialize_message_table (api_main_t * am, u8 * vector)
 static int
 vl_msg_api_trace_write_one (api_main_t *am, u8 *msg, FILE *fp)
 {
-  u8 *tmpmem = 0;
+  u8 *tmpmem = 0, *s = 0;
   int tlen, slen;
 
   u32 msg_length = vec_len (msg);
@@ -220,14 +220,11 @@ vl_msg_api_trace_write_one (api_main_t *am, u8 *msg, FILE *fp)
   if (m)
     vl_api_msg_endian (am, id, tmpmem, 0 /* host endian */);
 
-  if (m && m->tojson_handler)
+  if (vl_api_msg_to_json_text (am, id, tmpmem, &s) == 0)
     {
-      cJSON *o = m->tojson_handler (tmpmem);
-      char *s = cJSON_Print (o);
-      slen = strlen (s);
+      slen = vec_len (s);
       tlen = fwrite (s, 1, slen, fp);
-      cJSON_free (s);
-      cJSON_Delete (o);
+      vec_free (s);
       vec_free (tmpmem);
       if (tlen != slen)
 	{
@@ -236,7 +233,10 @@ vl_msg_api_trace_write_one (api_main_t *am, u8 *msg, FILE *fp)
 	}
     }
   else
-    fformat (stderr, "  [no registered tojson fn]\n");
+    {
+      vec_free (tmpmem);
+      fformat (stderr, "  [no registered tojson fn]\n");
+    }
 
   return 0;
 }
@@ -737,8 +737,6 @@ vl_msg_api_config (vl_msg_api_msg_config_t * c)
   m->handler = c->handler;
   m->cleanup_handler = c->cleanup;
   m->endian_handler = c->endian;
-  m->tojson_handler = c->tojson;
-  m->fromjson_handler = c->fromjson;
   m->bounce = c->message_bounce;
   m->is_mp_safe = c->is_mp_safe;
   m->is_autoendian = c->is_autoendian;
