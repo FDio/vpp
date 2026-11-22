@@ -104,22 +104,18 @@ typedef struct
 /** Message configuration definition */
 typedef struct
 {
-  int id;			/**< the message ID */
-  char *name;			/**< the message name */
-  u32 crc;			/**< message definition CRC  */
-  void *handler;		/**< the message handler  */
-  void *cleanup;		/**< non-default message cleanup handler */
-  void *endian;			/**< message endian function  */
-  void *format_fn;		/**< message format function  */
-  void *tojson;			/**< binary to JSON convert function */
-  void *fromjson;		/**< JSON to binary convert function */
-  void *calc_size;		/**< message size calculation */
-  int size;			/**< message size  */
-  u32 traced : 1;		/**< is this message to be traced?  */
-  u32 replay : 1;		/**< is this message to be replayed?  */
-  u32 message_bounce : 1;	/**< do not free message after processing */
-  u32 is_mp_safe : 1;		/**< worker thread barrier required?  */
-  u32 is_autoendian : 1;	/**< endian conversion required?  */
+  int id;		  /**< the message ID */
+  char *name;		  /**< the message name */
+  u32 crc;		  /**< message definition CRC  */
+  void *handler;	  /**< the message handler  */
+  void *cleanup;	  /**< non-default message cleanup handler */
+  void *endian;		  /**< message endian function  */
+  int size;		  /**< message size  */
+  u32 traced : 1;	  /**< is this message to be traced?  */
+  u32 replay : 1;	  /**< is this message to be replayed?  */
+  u32 message_bounce : 1; /**< do not free message after processing */
+  u32 is_mp_safe : 1;	  /**< worker thread barrier required?  */
+  u32 is_autoendian : 1;  /**< endian conversion required?  */
 } vl_msg_api_msg_config_t;
 
 /** Message header structure */
@@ -212,20 +208,8 @@ typedef struct
   /** Message name vector */
   const char *name;
 
-  /** Message format function */
-  format_function_t *format_fn;
-
-  /** Message convert function vector */
-  void *(*tojson_handler) (void *);
-
-  /** Message convert function vector */
-  void *(*fromjson_handler) (void *, int *);
-
   /** Message endian handler vector. */
   void (*endian_handler) (void *, bool to_net);
-
-  /** Message calc size function vector */
-  uword (*calc_size_func) (void *);
 
   /** trace size for sanity checking */
   int trace_size;
