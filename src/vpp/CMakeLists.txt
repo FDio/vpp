@@ -68,7 +68,13 @@ foreach(file ${VPP_API_FILES})
   )
 endforeach()
 
+set(VPP_API_DESC_SOURCES)
+foreach(file ${VPP_API_FILES})
+  list(APPEND VPP_API_DESC_SOURCES ${CMAKE_CURRENT_BINARY_DIR}/${file}_desc.c)
+endforeach()
+
 set(VPP_SOURCES
+  ${VPP_API_DESC_SOURCES}
   vnet/main.c
   app/vpe_cli.c
   app/version.c
@@ -93,6 +99,8 @@ add_vpp_executable(vpp
   LINK_LIBRARIES svm vlibapi vlib vppinfra vlibmemory vnet Threads::Threads ${CMAKE_DL_LIBS} ${EPOLL_LIB}
   DEPENDS vpp_version_h api_headers
 )
+# the API descriptors have a relative relocation for each pointer
+target_link_options(vpp PRIVATE ${VPP_LINK_PACK_RELR})
 
 ##############################################################################
 # vppctl binary
