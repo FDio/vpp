@@ -18,14 +18,12 @@
 #include <vlibmemory/api.h>
 
 #define vl_typedefs
-#define vl_endianfun
 /* Include the (first) vlib-api API definition layer */
 #include <vlibmemory/vl_memory_api_h.h>
 /* Include the current layer (third) vpp API definition layer */
 #include <vpp/api/vpe_types.api.h>
 #include <vpp/api/vpe.api.h>
 #undef vl_typedefs
-#undef vl_endianfun
 
 #include "kernel_vpp_plugin.h"
 #include "kernel_vpp_shared.h"

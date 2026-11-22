@@ -6,6 +6,7 @@
 #define SRC_VLIBMEMORY_MEMORY_CLIENT_H_
 
 #include <vlibapi/memory_shared.h>
+#include <vlibapi/api_desc.h>
 #include <setjmp.h>
 
 /*
@@ -37,6 +38,10 @@ int vl_client_connect_to_vlib_no_rx_pthread_no_map (const char *svm_name,
 						    int rx_queue_size);
 void vl_client_install_client_message_handlers (void);
 u8 vl_mem_client_is_connected (void);
+
+/* the API descriptors of memclnt.api, for the clients which register their
+ * messages */
+const vl_api_desc_file_t *vl_memclnt_client_api_desc (void);
 void vl_client_stop_rx_thread (svm_queue_t *vl_input_queue);
 
 always_inline memory_client_main_t *

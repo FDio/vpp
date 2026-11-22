@@ -784,10 +784,10 @@ TOP_BOILERPLATE = """\
 
 #include <stdbool.h>
 #if defined(vl_msg_id)||defined(vl_union_id) \\
-    || defined(vl_printfun) ||defined(vl_endianfun) \\
+    || defined(vl_printfun) \\
     || defined(vl_api_version)||defined(vl_typedefs) \\
     || defined(vl_msg_name)||defined(vl_msg_name_crc_list) \\
-    || defined(vl_api_version_tuple) || defined(vl_calcsizefun)
+    || defined(vl_api_version_tuple)
 /* ok, something was selected */
 #else
 #warning no content included from {input_filename}
@@ -1056,59 +1056,6 @@ class Printfun:
             )
 
 
-def printfun(objs, stream, modulename):
-    """Main entry point for pretty print function generation"""
-    write = stream.write
-
-    h = """\
-/****** Print functions *****/
-#ifdef vl_printfun
-#ifndef included_{module}_printfun
-#define included_{module}_printfun
-
-#ifdef LP64
-#define _uword_fmt \"%lld\"
-#define _uword_cast (long long)
-#else
-#define _uword_fmt \"%ld\"
-#define _uword_cast long
-#endif
-
-#include "{module}.api_tojson.h"
-#include "{module}.api_fromjson.h"
-
-"""
-
-    signature = """\
-static inline u8 *vl_api_{name}_t_format (u8 *s,  va_list *args)
-{{
-    __attribute__((unused)) vl_api_{name}_t *a = va_arg (*args, vl_api_{name}_t *);
-    u32 indent __attribute__((unused)) = 2;
-    int i __attribute__((unused));
-"""
-
-    h = h.format(module=modulename)
-    write(h)
-
-    pp = Printfun(stream)
-    for t in objs:
-        if t.manual_print:
-            write("/***** manual: vl_api_%s_t_format *****/\n\n" % t.name)
-            continue
-        write(signature.format(name=t.name, suffix=""))
-        write("    /* Message definition: vl_api_{}_t: */\n".format(t.name))
-        write('    s = format(s, "vl_api_%s_t:");\n' % t.name)
-        for o in t.block:
-            pp.print_obj(o, stream)
-        write("    return s;\n")
-        write("}\n\n")
-
-    write("\n#endif")
-    write("\n#endif /* vl_printfun */\n")
-
-    return ""
-
-
 def printfun_types(objs, stream, modulename):
     """Pretty print API types"""
     write = stream.write
@@ -1158,6 +1105,8 @@ static inline u8 *format_vl_api_{name}_t (u8 *s, va_list * args)
         write("    return s;\n")
         write("}\n\n")
 
+    write('\n#include "{}.api_tojson.h"\n'.format(modulename))
+    write('#include "{}.api_fromjson.h"\n'.format(modulename))
     write("\n#endif")
     write("\n#endif /* vl_printfun_types */\n")
 
@@ -1174,381 +1123,7 @@ def generate_imports(imports):
     return output
 
 
-ENDIAN_STRINGS = {
-    "u16": "clib_net_to_host_u16",
-    "u32": "clib_net_to_host_u32",
-    "u64": "clib_net_to_host_u64",
-    "i16": "clib_net_to_host_i16",
-    "i32": "clib_net_to_host_i32",
-    "i64": "clib_net_to_host_i64",
-    "f64": "clib_net_to_host_f64",
-}
-
-
-def get_endian_string(fieldtype):
-    """Return proper endian string conversion function"""
-    return ENDIAN_STRINGS[fieldtype]
-
-
-def get_lengthfield_type(fieldname, block):
-    """Return the type of the length field"""
-    for o in block:
-        if o.fieldname == fieldname:
-            return o.fieldtype
-    return None
-
-
-def endianfun_array(o, block):
-    """Generate endian functions for arrays"""
-    forloop = """\
-    ASSERT((u32){length} <= (u32)VL_API_MAX_ARRAY_SIZE);
-    for (i = 0; i < {length}; i++) {{
-        a->{name}[i] = {format}(a->{name}[i]);
-    }}
-"""
-
-    forloop_format = """\
-    for (i = 0; i < {length}; i++) {{
-        {type}_endian(&a->{name}[i], to_net);
-    }}
-"""
-
-    output = ""
-    if o.fieldtype == "u8" or o.fieldtype == "string" or o.fieldtype == "bool":
-        output += "    /* a->{n} = a->{n} (no-op) */\n".format(n=o.fieldname)
-    else:
-        # lfield = "a->" + o.lengthfield if o.lengthfield else o.length
-        if o.lengthfield:
-            fieldtype = get_lengthfield_type(o.lengthfield, block)
-            if fieldtype == "u8":
-                output += f"    u32 count = a->{o.lengthfield};\n"
-            else:
-                output += (
-                    f"    u32 count = to_net ? {get_endian_string(fieldtype)}(a->{o.lengthfield}) : "
-                    f"a->{o.lengthfield};\n"
-                )
-            lfield = "count"
-        else:
-            lfield = o.length
-
-        if o.fieldtype in ENDIAN_STRINGS:
-            output += forloop.format(
-                length=lfield,
-                format=get_endian_string(o.fieldtype),
-                name=o.fieldname,
-            )
-        else:
-            output += forloop_format.format(
-                length=lfield, type=o.fieldtype, name=o.fieldname
-            )
-    return output
-
-
 NO_ENDIAN_CONVERSION = {"client_index": None}
-
-
-def endianfun_tagged_union(o):
-    """Emit a switch dispatching union arm endian conversion based on a
-    sibling discriminator field. Relies on the parent function body having
-    already declared a host-order snapshot named _disc_<discriminator>.
-
-    Assumes the surrounding endian helper takes a `bool to_net` parameter
-    (autoendian-with-direction); the parameter is propagated to nested arm
-    helpers and used for scalar arms.
-    """
-    union = global_types[o.fieldtype]
-    disc_name = o.limit["discriminator"]
-    output = "    switch (_disc_{}) {{\n".format(disc_name)
-    for arm in union.block:
-        case_val = arm.limit["case"]
-        output += "    case {}:\n".format(case_val)
-        if arm.fieldtype in ENDIAN_STRINGS:
-            net_to_host = ENDIAN_STRINGS[arm.fieldtype]
-            host_to_net = net_to_host.replace("net_to_host", "host_to_net")
-            output += (
-                "        a->{f}.{a} = to_net ? {h2n}(a->{f}.{a}) "
-                ": {n2h}(a->{f}.{a});\n"
-            ).format(f=o.fieldname, a=arm.fieldname, h2n=host_to_net, n2h=net_to_host)
-        elif arm.fieldtype.startswith("vl_api_"):
-            output += "        {t}_endian(&a->{f}.{a}, to_net);\n".format(
-                t=arm.fieldtype, f=o.fieldname, a=arm.fieldname
-            )
-        # else: byte-oriented arm, nothing to swap.
-        output += "        break;\n"
-    output += "    default: break;\n"
-    output += "    }\n"
-    return output
-
-
-def endianfun_obj(o, block):
-    """Generate endian conversion function for type"""
-    output = ""
-    if o.type == "Array":
-        return endianfun_array(o, block)
-    if o.type != "Field":
-        output += '    s = format(s, "\\n{} {} {} (print not implemented");\n'.format(
-            o.type, o.fieldtype, o.fieldname
-        )
-        return output
-    if o.fieldname in NO_ENDIAN_CONVERSION:
-        output += "    /* a->{n} = a->{n} (no-op) */\n".format(n=o.fieldname)
-        return output
-    # Discriminated union: dispatch to the active arm using the snapshot.
-    if getattr(o, "limit", None) and "discriminator" in o.limit:
-        return endianfun_tagged_union(o)
-    if o.fieldtype in ENDIAN_STRINGS:
-        output += "    a->{name} = {format}(a->{name});\n".format(
-            name=o.fieldname, format=get_endian_string(o.fieldtype)
-        )
-    elif o.fieldtype.startswith("vl_api_"):
-        output += "    {type}_endian(&a->{name}, to_net);\n".format(
-            type=o.fieldtype, name=o.fieldname
-        )
-    else:
-        output += "    /* a->{n} = a->{n} (no-op) */\n".format(n=o.fieldname)
-
-    return output
-
-
-def endianfun(objs, modulename, options=None):
-    """Main entry point for endian function generation"""
-    output = """\
-
-/****** Endian swap functions *****/\n\
-#ifdef vl_endianfun
-#ifndef included_{module}_endianfun
-#define included_{module}_endianfun
-
-#undef clib_net_to_host_uword
-#undef clib_host_to_net_uword
-#ifdef LP64
-#define clib_net_to_host_uword clib_net_to_host_u64
-#define clib_host_to_net_uword clib_host_to_net_u64
-#else
-#define clib_net_to_host_uword clib_net_to_host_u32
-#define clib_host_to_net_uword clib_host_to_net_u32
-#endif
-
-"""
-    output = output.format(module=modulename)
-
-    # Pull in user-supplied manual endian helpers (e.g. for old-style unions
-    # whose endian function we refuse to autogenerate). Must come before any
-    # static inline helper that calls them, so place it right after the
-    # uword macros and before per-type emission.
-    if options and "manual_endian_include" in options:
-        header = options["manual_endian_include"]
-        if header is not None:
-            output += '#include "{}"\n\n'.format(header)
-
-    signature = """\
-static inline void vl_api_{name}_t_endian (vl_api_{name}_t *a, bool to_net)
-{{
-    int i __attribute__((unused));
-"""
-
-    for t in objs:
-        if t.__class__.__name__ == "Enum" or t.__class__.__name__ == "EnumFlag":
-            output += signature.format(name=t.name)
-            if t.enumtype in ENDIAN_STRINGS:
-                output += "    *a = {}(*a);\n".format(get_endian_string(t.enumtype))
-            else:
-                output += "    /* a->{name} = a->{name} (no-op) */\n".format(
-                    name=t.name
-                )
-
-            output += "}\n\n"
-            continue
-
-        if t.manual_endian:
-            output += "/***** manual: vl_api_%s_t_endian  *****/\n\n" % t.name
-            continue
-
-        if t.__class__.__name__ == "Using":
-            output += signature.format(name=t.name)
-            if "length" in t.alias and t.alias["length"] and t.alias["type"] == "u8":
-                output += "    /* a->{name} = a->{name} (no-op) */\n".format(
-                    name=t.name
-                )
-            elif t.alias["type"] in FORMAT_STRINGS:
-                output += "    *a = {}(*a);\n".format(
-                    get_endian_string(t.alias["type"])
-                )
-            else:
-                output += "    /* Not Implemented yet {} */".format(t.name)
-            output += "}\n\n"
-            continue
-        if t.__class__.__name__ == "Union":
-
-            def _type_is_endian_free(tname, _seen=None):
-                # Resolve a type name (possibly vl_api_*) to whether walking
-                # its layout would require any byte swap. Recurses through
-                # Using aliases and simple Typedefs; conservative on Enum
-                # (always treated as needing a swap).
-                if _seen is None:
-                    _seen = set()
-                if tname in _seen:
-                    return False
-                _seen.add(tname)
-                if tname in ("u8", "bool", "string"):
-                    return True
-                if tname in ENDIAN_STRINGS:
-                    return False
-                if not tname.startswith("vl_api_"):
-                    return False
-                resolved = global_types.get(tname)
-                if resolved is None:
-                    return False
-                cls = resolved.__class__.__name__
-                if cls == "Using":
-                    return _type_is_endian_free(resolved.alias["type"], _seen)
-                if cls == "Typedef":
-                    return all(_field_is_endian_free(b, _seen) for b in resolved.block)
-                # Enum/EnumFlag/Union: needs a swap (or in the union case,
-                # we don't recurse — its endian helper is the thing we're
-                # deciding whether to emit).
-                return False
-
-            def _field_is_endian_free(f, _seen=None):
-                if f.type == "Array":
-                    return _type_is_endian_free(f.fieldtype, _seen)
-                if f.type != "Field":
-                    return False
-                return _type_is_endian_free(f.fieldtype, _seen)
-
-            if all(_field_is_endian_free(f) for f in t.block):
-                # All arms are byte-oriented; a no-op endian helper is correct.
-                output += signature.format(name=t.name)
-                output += "    /* union %s: all arms are endian-free */\n" % t.name
-                output += "}\n\n"
-            # else: emit nothing — caller must use manual_endian.
-            continue
-
-        output += signature.format(name=t.name)
-
-        # Snapshot discriminators for any tagged-union fields. The switch
-        # over the snapshot must see a host-order value regardless of swap
-        # direction. With autoendian-with-direction, the parent helper takes
-        # `bool to_net`: when to_net is true the field is already host order
-        # at entry; when false it is net order and we convert at runtime.
-        disc_snapshots = []
-        for f in t.block:
-            limit = getattr(f, "limit", None)
-            if not limit or "discriminator" not in limit:
-                continue
-            disc_name = limit["discriminator"]
-            disc_field = next(
-                (x for x in t.block if getattr(x, "fieldname", None) == disc_name),
-                None,
-            )
-            if disc_field is None or disc_name in disc_snapshots:
-                continue
-            disc_snapshots.append(disc_name)
-            disc_enum = global_types.get(disc_field.fieldtype)
-            snap_ty = disc_field.fieldtype
-            output += "    {ty} _disc_{n} = a->{n};\n".format(ty=snap_ty, n=disc_name)
-            if disc_enum is not None and disc_enum.__class__.__name__ in (
-                "Enum",
-                "EnumFlag",
-            ):
-                if disc_enum.enumtype in ENDIAN_STRINGS:
-                    output += (
-                        "    if (!to_net) {ty}_endian(&_disc_{n}, false);\n"
-                    ).format(ty=snap_ty, n=disc_name)
-            elif disc_field.fieldtype in ENDIAN_STRINGS:
-                n2h = ENDIAN_STRINGS[disc_field.fieldtype]
-                output += ("    if (!to_net) _disc_{n} = {fn}(_disc_{n});\n").format(
-                    n=disc_name, fn=n2h
-                )
-
-        for o in t.block:
-            output += endianfun_obj(o, t.block)
-        output += "}\n\n"
-
-    output += "\n#endif"
-    output += "\n#endif /* vl_endianfun */\n\n"
-
-    return output
-
-
-def calc_size_fun(objs, modulename):
-    """Main entry point for calculate size function generation"""
-    output = """\
-
-/****** Calculate size functions *****/\n\
-#ifdef vl_calcsizefun
-#ifndef included_{module}_calcsizefun
-#define included_{module}_calcsizefun
-
-"""
-    output = output.format(module=modulename)
-
-    signature = """\
-/* calculate message size of message in network byte order */
-static inline uword vl_api_{name}_t_calc_size (vl_api_{name}_t *a)
-{{
-"""
-
-    for o in objs:
-        tname = o.__class__.__name__
-
-        output += signature.format(name=o.name)
-        output += f"      return sizeof(*a)"
-        if tname == "Using":
-            if "length" in o.alias:
-                try:
-                    tmp = int(o.alias["length"])
-                    if tmp == 0:
-                        raise (f"Unexpected length '0' for alias {o}")
-                except:
-                    # output += f" + vl_api_{o.alias.name}_t_calc_size({o.name})"
-                    print("culprit:")
-                    print(o)
-                    print(dir(o.alias))
-                    print(o.alias)
-                    raise
-        elif tname == "Enum" or tname == "EnumFlag":
-            pass
-        else:
-            for b in o.block:
-                if b.type == "Option":
-                    continue
-                elif b.type == "Field":
-                    if b.fieldtype.startswith("vl_api_"):
-                        output += f" - sizeof(a->{b.fieldname})"
-                        output += f" + {b.fieldtype}_calc_size(&a->{b.fieldname})"
-                elif b.type == "Array":
-                    if b.lengthfield:
-                        m = list(
-                            filter(lambda x: x.fieldname == b.lengthfield, o.block)
-                        )
-                        if len(m) != 1:
-                            raise Exception(
-                                f"Expected 1 match for field '{b.lengthfield}', got '{m}'"
-                            )
-                        lf = m[0]
-                        if lf.fieldtype in ENDIAN_STRINGS:
-                            output += f" + {get_endian_string(lf.fieldtype)}(a->{b.lengthfield}) * sizeof(a->{b.fieldname}[0])"
-                        elif lf.fieldtype == "u8":
-                            output += (
-                                f" + a->{b.lengthfield} * sizeof(a->{b.fieldname}[0])"
-                            )
-                        else:
-                            raise Exception(
-                                f"Don't know how to endian swap {lf.fieldtype}"
-                            )
-                    else:
-                        # Fixed length strings decay to nul terminated u8
-                        if b.fieldtype == "string":
-                            if b.modern_vla:
-                                output += f" + vl_api_string_len(&a->{b.fieldname})"
-
-        output += ";\n"
-        output += "}\n\n"
-    output += "\n#endif"
-    output += "\n#endif /* vl_calcsizefun */\n\n"
-
-    return output
 
 
 def version_tuple(s, module):
@@ -1714,14 +1289,6 @@ def generate_c_boilerplate(s, services, defines, counters, file_crc, module, str
     define_hash = {d.name: d for d in defines}
 
     hdr = """\
-#define vl_endianfun		/* define message structures */
-#include "{module}.api.h"
-#undef vl_endianfun
-
-#define vl_calcsizefun
-#include "{module}.api.h"
-#undef vl_calsizefun
-
 /* instantiate all the print functions we know about */
 #define vl_printfun
 #include "{module}.api.h"
@@ -1761,13 +1328,10 @@ def generate_c_boilerplate(s, services, defines, counters, file_crc, module, str
             " {{.id = VL_API_{ID} + msg_id_base,\n"
             '   .name = "{n}",\n'
             "   .handler = vl_api_{n}_t_handler,\n"
-            "   .endian = vl_api_{n}_t_endian,\n"
-            "   .format_fn = vl_api_{n}_t_format,\n"
             "   .traced = 1,\n"
             "   .replay = 1,\n"
             "   .tojson = vl_api_{n}_t_tojson,\n"
             "   .fromjson = vl_api_{n}_t_fromjson,\n"
-            "   .calc_size = vl_api_{n}_t_calc_size,\n"
             "   .is_autoendian = {auto}}};\n".format(
                 n=s.caller, ID=s.caller.upper(), auto=d.autoendian
             )
@@ -1780,13 +1344,10 @@ def generate_c_boilerplate(s, services, defines, counters, file_crc, module, str
                 "{{.id = VL_API_{ID} + msg_id_base,\n"
                 '  .name = "{n}",\n'
                 "  .handler = 0,\n"
-                "  .endian = vl_api_{n}_t_endian,\n"
-                "  .format_fn = vl_api_{n}_t_format,\n"
                 "  .traced = 1,\n"
                 "  .replay = 1,\n"
                 "  .tojson = vl_api_{n}_t_tojson,\n"
                 "  .fromjson = vl_api_{n}_t_fromjson,\n"
-                "  .calc_size = vl_api_{n}_t_calc_size,\n"
                 "  .is_autoendian = {auto}}};\n".format(
                     n=s.reply, ID=s.reply.upper(), auto=d.autoendian
                 )
@@ -1803,13 +1364,10 @@ def generate_c_boilerplate(s, services, defines, counters, file_crc, module, str
                     "{{.id = VL_API_{ID} + msg_id_base,\n"
                     '  .name = "{n}",\n'
                     "  .handler = 0,\n"
-                    "  .endian = vl_api_{n}_t_endian,\n"
-                    "  .format_fn = vl_api_{n}_t_format,\n"
                     "  .traced = 1,\n"
                     "  .replay = 1,\n"
                     "  .tojson = vl_api_{n}_t_tojson,\n"
                     "  .fromjson = vl_api_{n}_t_fromjson,\n"
-                    "  .calc_size = vl_api_{n}_t_calc_size,\n"
                     "  .is_autoendian = {auto}}};\n".format(
                         n=s.stream_message,
                         ID=s.stream_message.upper(),
@@ -1848,18 +1406,14 @@ def generate_c_test_boilerplate(services, defines, file_crc, module, plugin, str
     define_hash = {d.name: d for d in defines}
 
     hdr = """\
-#define vl_endianfun            /* define message structures */
-#include "{module}.api.h"
-#undef vl_endianfun
-
-#define vl_calcsizefun
-#include "{module}.api.h"
-#undef vl_calsizefun
-
 /* instantiate all the print functions we know about */
 #define vl_printfun
 #include "{module}.api.h"
 #undef vl_printfun
+
+/* the API descriptors of the file */
+#include <vlibapi/api_desc.h>
+#include "{module}.api_desc.c"
 
 """
 
@@ -1905,25 +1459,35 @@ def generate_c_test_boilerplate(services, defines, file_crc, module, plugin, str
             write("vl_api_{n}_t_handler (vl_api_{n}_t * mp) {{\n".format(n=e))
             write('    vlib_cli_output(0, "{n} event called:");\n'.format(n=e))
             write(
-                '    vlib_cli_output(0, "%U", vl_api_{n}_t_format, mp);\n'.format(n=e)
+                '    u8 *s = vl_api_desc_file_format(0, &{m}_api_desc, "{n}", mp);\n'.format(
+                    m=module, n=e
+                )
             )
+            write('    vlib_cli_output(0, "%v", s);\n')
+            write("    vec_free(s);\n")
             write("}\n")
 
     write("static void\n")
     write("setup_message_id_table (vat_main_t * vam, u16 msg_id_base) {\n")
+    if len(defines) > 0:
+        # vpp has the descriptors of the files of its plugins
+        write("#if VPP_API_TEST_BUILTIN == 0\n")
+        write(
+            "   vl_api_desc_register (vlibapi_get_main (), &{}_api_desc, msg_id_base);\n".format(
+                module
+            )
+        )
+        write("#endif\n")
     for s in services:
         write(
             "   vl_msg_api_config (&(vl_msg_api_msg_config_t){{\n"
             "    .id = VL_API_{ID} + msg_id_base,\n"
             '    .name = "{n}",\n'
             "    .handler = vl_api_{n}_t_handler,\n"
-            "    .endian = vl_api_{n}_t_endian,\n"
-            "    .format_fn = vl_api_{n}_t_format,\n"
             "    .size = sizeof(vl_api_{n}_t),\n"
             "    .traced = 1,\n"
             "    .tojson = vl_api_{n}_t_tojson,\n"
             "    .fromjson = vl_api_{n}_t_fromjson,\n"
-            "    .calc_size = vl_api_{n}_t_calc_size,\n"
             "   }});".format(n=s.reply, ID=s.reply.upper())
         )
         write(
@@ -1947,13 +1511,10 @@ def generate_c_test_boilerplate(services, defines, file_crc, module, plugin, str
                 "    .id = VL_API_{ID} + msg_id_base,\n"
                 '    .name = "{n}",\n'
                 "    .handler = vl_api_{n}_t_handler,\n"
-                "    .endian = vl_api_{n}_t_endian,\n"
-                "    .format_fn = vl_api_{n}_t_format,\n"
                 "    .size = sizeof(vl_api_{n}_t),\n"
                 "    .traced = 1,\n"
                 "    .tojson = vl_api_{n}_t_tojson,\n"
                 "    .fromjson = vl_api_{n}_t_fromjson,\n"
-                "    .calc_size = vl_api_{n}_t_calc_size,\n"
                 "   }});".format(n=e, ID=e.upper())
             )
 
@@ -1992,7 +1553,7 @@ def apifunc(func):
     return _f
 
 
-def c_test_api_service(s, dump, stream):
+def c_test_api_service(s, dump, module, stream):
     """Generate JSON code for a service."""
     write = stream.write
 
@@ -2010,7 +1571,7 @@ api_{n} (cJSON *o)
   }}
 
   mp->_vl_msg_id = vac_get_msg_index(VL_API_{N}_CRC);
-  vl_api_{n}_t_endian(mp, 1);
+  vl_api_desc_file_endian(&{module}_api_desc, "{n}", mp, 1);
   vac_write((char *)mp, len);
   cJSON_free(mp);
 
@@ -2026,7 +1587,7 @@ api_{n} (cJSON *o)
     return 0;
   }}
   vl_api_{r}_t *rmp = (vl_api_{r}_t *)p;
-  vl_api_{r}_t_endian(rmp, 0);
+  vl_api_desc_file_endian(&{module}_api_desc, "{r}", rmp, 0);
   cJSON *json = vl_api_{r}_t_tojson(rmp);
   vac_free(p);
   return json;
@@ -2046,7 +1607,7 @@ api_{n} (cJSON *o)
       return 0;
   }}
   mp->_vl_msg_id = msg_id;
-  vl_api_{n}_t_endian(mp, 1);
+  vl_api_desc_file_endian(&{module}_api_desc, "{n}", mp, 1);
   vac_write((char *)mp, len);
   cJSON_free(mp);
 
@@ -2082,7 +1643,7 @@ api_{n} (cJSON *o)
             return 0;
         }}
         vl_api_{r}_t *rmp = (vl_api_{r}_t *)p;
-        vl_api_{r}_t_endian(rmp, 0);
+        vl_api_desc_file_endian(&{module}_api_desc, "{r}", rmp, 0);
         cJSON_AddItemToArray(reply, vl_api_{r}_t_tojson(rmp));
     }}
     vac_free(p);
@@ -2105,7 +1666,7 @@ api_{n} (cJSON *o)
   }}
   mp->_vl_msg_id = msg_id;
 
-  vl_api_{n}_t_endian(mp, 1);
+  vl_api_desc_file_endian(&{module}_api_desc, "{n}", mp, 1);
   vac_write((char *)mp, len);
   cJSON_free(mp);
 
@@ -2126,7 +1687,7 @@ api_{n} (cJSON *o)
     u16 msg_id = ntohs(*((u16 *)p));
     if (msg_id == reply_msg_id) {{
         vl_api_{r}_t *rmp = (vl_api_{r}_t *)p;
-        vl_api_{r}_t_endian(rmp, 0);
+        vl_api_desc_file_endian(&{module}_api_desc, "{r}", rmp, 0);
         cJSON_AddItemToArray(reply, vl_api_{r}_t_tojson(rmp));
         vac_free(p);
         break;
@@ -2134,7 +1695,7 @@ api_{n} (cJSON *o)
 
     if (msg_id == details_msg_id) {{
         vl_api_{d}_t *rmp = (vl_api_{d}_t *)p;
-        vl_api_{d}_t_endian(rmp, 0);
+        vl_api_desc_file_endian(&{module}_api_desc, "{d}", rmp, 0);
         cJSON_AddItemToArray(reply, vl_api_{d}_t_tojson(rmp));
     }}
     vac_free(p);
@@ -2151,6 +1712,7 @@ api_{n} (cJSON *o)
                     n=s.caller,
                     r=s.reply,
                     N=s.caller.upper(),
+                    module=module,
                     R=s.reply.upper(),
                     d=s.stream_message,
                     D=s.stream_message.upper(),
@@ -2159,13 +1721,21 @@ api_{n} (cJSON *o)
         else:
             write(
                 dump_details_template.format(
-                    n=s.caller, r=s.reply, N=s.caller.upper(), R=s.reply.upper()
+                    n=s.caller,
+                    r=s.reply,
+                    N=s.caller.upper(),
+                    R=s.reply.upper(),
+                    module=module,
                 )
             )
     else:
         write(
             req_reply_template.format(
-                n=s.caller, r=s.reply, N=s.caller.upper(), R=s.reply.upper()
+                n=s.caller,
+                r=s.reply,
+                N=s.caller.upper(),
+                R=s.reply.upper(),
+                module=module,
             )
         )
 
@@ -2193,14 +1763,6 @@ def generate_c_test2_boilerplate(services, defines, module, stream):
 #include "{module}.api_enum.h"
 #include "{module}.api_types.h"
 
-#define vl_endianfun		/* define message structures */
-#include "{module}.api.h"
-#undef vl_endianfun
-
-#define vl_calcsizefun
-#include "{module}.api.h"
-#undef vl_calsizefun
-
 #define vl_printfun
 #include "{module}.api.h"
 #undef vl_printfun
@@ -2208,6 +1770,10 @@ def generate_c_test2_boilerplate(services, defines, module, stream):
 #include "{module}.api_tojson.h"
 #include "{module}.api_fromjson.h"
 #include <vpp-api/client/vppapiclient.h>
+#include <vlibapi/api_desc.h>
+
+/* the API descriptors of the file */
+#include "{module}.api_desc.c"
 
 #include <vat2/vat2_helpers.h>
 
@@ -2218,7 +1784,7 @@ def generate_c_test2_boilerplate(services, defines, module, stream):
     for s in services:
         if s.reply not in define_hash:
             continue
-        c_test_api_service(s, s.stream, stream)
+        c_test_api_service(s, s.stream, module, stream)
 
     write(
         "void vat2_register_function(char *, cJSON * (*)(cJSON *), cJSON * (*)(void *), u32);\n"
@@ -2882,11 +2448,8 @@ def run(output_dir, apifilename, s):
     output += msg_name_crc_list(s, filename)
     output += typedefs(modulename)
     printfun_types(s["types"], stream, modulename)
-    printfun(s["Define"], stream, modulename)
     output += stream.getvalue()
     stream.close()
-    output += endianfun(s["types"] + s["Define"], modulename, s["Option"])
-    output += calc_size_fun(s["types"] + s["Define"], modulename)
     output += version_tuple(s, basename)
     output += BOTTOM_BOILERPLATE.format(input_filename=basename, file_crc=s["file_crc"])
 

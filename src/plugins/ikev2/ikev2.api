@@ -78,7 +78,7 @@ define ikev2_get_sleep_interval_reply {
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
 */
-define ikev2_profile_dump
+autoendian define ikev2_profile_dump
 {
   u32 client_index;
   u32 context;
@@ -100,7 +100,7 @@ define ikev2_profile_details
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
 */
-define ikev2_sa_dump
+autoendian define ikev2_sa_dump
 {
   u32 client_index;
   u32 context;
@@ -110,7 +110,7 @@ define ikev2_sa_dump
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
 */
-define ikev2_sa_v2_dump
+autoendian define ikev2_sa_v2_dump
 {
   u32 client_index;
   u32 context;
@@ -120,7 +120,7 @@ define ikev2_sa_v2_dump
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
 */
-define ikev2_sa_v3_dump
+autoendian define ikev2_sa_v3_dump
 {
   u32 client_index;
   u32 context;
@@ -172,7 +172,7 @@ define ikev2_sa_v3_details
     @param context - sender context, to match reply w/ request
     @param sa_index - index of specific sa
 */
-define ikev2_child_sa_dump
+autoendian define ikev2_child_sa_dump
 {
   u32 client_index;
   u32 context;
@@ -199,7 +199,7 @@ define ikev2_child_sa_details
     @param context - sender context, to match reply w/ request
     @param sa_index - index of specific sa
 */
-define ikev2_child_sa_v2_dump
+autoendian define ikev2_child_sa_v2_dump
 {
   u32 client_index;
   u32 context;
@@ -265,7 +265,7 @@ define ikev2_nonce_get_reply
     @param child_sa_index - index of specific sa child of specific sa
 */
 
-define ikev2_traffic_selector_dump
+autoendian define ikev2_traffic_selector_dump
 {
   u32 client_index;
   u32 context;

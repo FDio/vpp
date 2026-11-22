@@ -25,14 +25,6 @@
 #include <vnet/l2/l2.api_enum.h>
 #include <vnet/l2/l2.api_types.h>
 
-#define vl_endianfun /* define message structures */
-#include <vnet/l2/l2.api.h>
-#undef vl_endianfun
-
-#define vl_calcsizefun
-#include <vnet/l2/l2.api.h>
-#undef vl_calcsizefun
-
 typedef struct
 {
   /* API message ID base */

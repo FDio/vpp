@@ -178,7 +178,15 @@ function(vpp_add_api_files name dir component)
   set(target ${name}_api_headers)
   file(RELATIVE_PATH rpath ${CMAKE_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
   foreach(file ${ARGN})
-    vpp_generate_api_header (${file} ${dir} ${component})
+    # a file can be listed by more than one library, which compile its
+    # generated code, but it is generated only once
+    get_filename_component(abs_file ${file} ABSOLUTE)
+    set(generated "vpp_api_generated:${abs_file}")
+    get_property(done GLOBAL PROPERTY "${generated}")
+    if(NOT done)
+      vpp_generate_api_header (${file} ${dir} ${component})
+      set_property(GLOBAL PROPERTY "${generated}" TRUE)
+    endif()
     # Basic api headers get installed in a subdirectory according to
     # their component name, but vapi is expected to be found directly under
     # "vapi". Both by in-source components (e.g. vpp-api/vapi/vapi.c), and

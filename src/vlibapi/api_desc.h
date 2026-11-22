@@ -22,6 +22,8 @@
 #include <vppinfra/clib.h>
 #include <vppinfra/json.h>
 
+struct api_main_t;
+
 /* Kind of a field (of its element type for arrays) */
 typedef enum
 {
@@ -262,3 +264,33 @@ void vl_api_desc_register_msg (struct api_main_t *am, const vl_api_desc_file_t *
 
 /* Descriptor of the message with the given id, 0 if none. */
 const vl_api_desc_msg_t *vl_api_desc_find_msg (struct api_main_t *am, u32 msg_id);
+
+/* Appends the text of a message in host byte order, the same text as the
+ * generated vl_api_<msg>_t_format function creates. */
+u8 *vl_api_desc_msg_format (u8 *s, const vl_api_desc_msg_t *m, const void *msg);
+
+/* The size of a message in network byte order, including its variable length
+ * parts, the same as the generated vl_api_<msg>_t_calc_size function. */
+uword vl_api_desc_msg_calc_size (const vl_api_desc_msg_t *m, const void *msg);
+
+/* Converts a message to network byte order, or from it, in place, the same as
+ * the generated vl_api_<msg>_t_endian function does. Fields of types which are
+ * not tagged unions are converted by their kind, a tagged union by the arm
+ * which its tag selects. Does nothing on a big endian host. */
+void vl_api_desc_msg_endian (const vl_api_desc_msg_t *m, void *msg, int to_net);
+
+/* Converts the message with the id to or from network byte order, by its
+ * descriptor, or by the endian handler it was registered with if it has no
+ * descriptor. Does nothing for an unknown id. */
+/* Whether vl_api_msg_endian converts the message of the id. */
+int vl_api_msg_has_endian (struct api_main_t *am, u32 msg_id);
+void vl_api_msg_endian (struct api_main_t *am, u32 msg_id, void *msg, int to_net);
+
+/* For the code which does not register the API descriptors of its files, a
+ * message or a type of a file by its name. The conversions are the same as the
+ * ones above, they do nothing if the file has no such message or type. */
+const vl_api_desc_msg_t *vl_api_desc_file_find (const vl_api_desc_file_t *f, const char *name,
+						vl_api_desc_msg_t *m);
+void vl_api_desc_file_endian (const vl_api_desc_file_t *f, const char *name, void *msg, int to_net);
+uword vl_api_desc_file_calc_size (const vl_api_desc_file_t *f, const char *name, const void *msg);
+u8 *vl_api_desc_file_format (u8 *s, const vl_api_desc_file_t *f, const char *name, const void *msg);

@@ -19,6 +19,8 @@ add_vpp_library (vlibapi
   memory_shared.c
   jsonformat.c
   api_desc.c
+  api_desc_format.c
+  api_desc_endian.c
 
   INSTALL_HEADERS
   api.h

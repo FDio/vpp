@@ -21,10 +21,6 @@
 #include <vnet/l2/l2.api_enum.h>
 #include <vnet/l2/l2.api_types.h>
 
-#define vl_endianfun
-#include <vnet/l2/l2.api.h>
-#undef vl_endianfun
-
 /**
  * @file
  * @brief Ethernet MAC Address FIB Table Management.

@@ -23,11 +23,6 @@
 #include <nsh/nsh.api.h>
 #undef vl_typedefs
 
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <nsh/nsh.api.h>
-#undef vl_endianfun
-
 /* instantiate all the print functions we know about */
 #define vl_printfun
 #include <nsh/nsh.api.h>
