@@ -13,7 +13,6 @@
 #include <vppinfra/callback.h>
 #include <vppinfra/cpu.h>
 #include <vppinfra/elog.h>
-#include <vppinfra/cJSON.h>
 #include <unistd.h>
 #include <ctype.h>
 
@@ -1111,18 +1110,10 @@ save_memory_trace (vlib_main_t *vm, cli_ctx_t *ctx)
   char *file = (char *) format (0, "%v%c", cli_get (ctx, "filename")->str, 0), *chroot_file;
   uword was_enabled;
   clib_mem_trace_t *t, *mem_traces = 0;
-  u8 *tmp;
-  cJSON *traces, *trace, *traceback, *symbol;
+  clib_json_text_t j;
   int i;
   FILE *fp;
-  char *json_str = 0;
-
-  cJSON_Hooks cjson_hooks = {
-    .malloc_fn = clib_mem_alloc,
-    .free_fn = clib_mem_free,
-    .realloc_fn = clib_mem_realloc,
-  };
-  cJSON_InitHooks (&cjson_hooks);
+  u8 *json_str;
 
   /* It's fairly hard to get "../oopsie" through unformat; just in case */
   if (strstr (file, "..") || strchr (file, '/'))
@@ -1143,43 +1134,35 @@ save_memory_trace (vlib_main_t *vm, cli_ctx_t *ctx)
   was_enabled = clib_mem_trace_enable_disable (0);
   vlib_cli_output (vm, "Saving trace to '%s'", chroot_file);
   mem_traces = clib_mem_trace_dup (current_traced_heap);
-  traces = cJSON_CreateArray ();
+  clib_json_init (&j);
+  clib_json_add_array (&j, 0);
   vec_foreach (t, mem_traces)
     {
       /* Skip over free elements. */
       if (t->n_allocations == 0)
 	continue;
 
-      trace = cJSON_CreateObject ();
-      cJSON_AddNumberToObject (trace, "count", t->n_allocations);
-      cJSON_AddNumberToObject (trace, "bytes", t->n_bytes);
-      tmp = format (0, "%p%c", t->offset, 0);
-      cJSON_AddStringToObject (trace, "sample", (char *) tmp);
-      vec_free (tmp);
-      traceback = cJSON_AddArrayToObject (trace, "traceback");
+      clib_json_add_object (&j, 0);
+      clib_json_add_number (&j, "count", t->n_allocations);
+      clib_json_add_number (&j, "bytes", t->n_bytes);
+      clib_json_add_string (&j, "sample", "%p", t->offset);
+      clib_json_add_array (&j, "traceback");
       for (i = 0; i < ARRAY_LEN (t->callers) && t->callers[i]; i++)
-	{
 #if defined(CLIB_UNIX) && !defined(__APPLE__)
-	  tmp = format (0, "%U%c\n", format_clib_elf_symbol_with_address,
-			t->callers[i], 0);
-	  symbol = cJSON_CreateString ((char *) tmp);
-	  cJSON_AddItemToArray (traceback, symbol);
-	  vec_free (tmp);
+	clib_json_add_string (&j, 0, "%U", format_clib_elf_symbol_with_address, t->callers[i]);
 #else
-	  tmp = format (0, "%p%c\n", t->callers[i], 0);
-	  symbol = cJSON_CreateString ((char *) tmp);
-	  cJSON_AddItemToArray (traceback, symbol);
-	  vec_free (tmp);
+	clib_json_add_string (&j, 0, "%p", t->callers[i]);
 #endif
-	}
-
-      cJSON_AddItemToArray (traces, trace);
+      clib_json_parent (&j);
+      clib_json_parent (&j);
     }
-  json_str = cJSON_PrintUnformatted (traces);
-  cJSON_Delete (traces);
-  fputs (json_str, fp);
+
+  clib_json_set_indent (&j, 0);
+  json_str = format (0, "%U", format_clib_json_text, &j);
+  clib_json_free (&j);
+  fwrite (json_str, 1, vec_len (json_str), fp);
   fclose (fp);
-  clib_mem_free (json_str);
+  vec_free (json_str);
 
   vec_free (mem_traces);
   clib_mem_trace_enable_disable (was_enabled);
