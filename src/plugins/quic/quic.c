@@ -920,6 +920,37 @@ quic_cleanup_ho (u32 ctx_index)
     }
 }
 
+static void
+quic_cleanup_rpc (void *arg)
+{
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
+  u32 ctx_index = pointer_to_uword (arg);
+  quic_ctx_t *ctx;
+
+  /* Connection might have been closed meanwhile */
+  if (pool_is_free_index (quic_wrk_ctx_get (&quic_main, thread_index)->ctx_pool, ctx_index))
+    return;
+  ctx = quic_ctx_get (ctx_index, thread_index);
+  if (ctx->flags & QUIC_F_NO_APP_SESSION)
+    quic_eng_proto_on_close (ctx_index, thread_index);
+}
+
+static void
+quic_cleanup (u32 ctx_index, clib_thread_index_t thread_index)
+{
+  quic_ctx_t *ctx;
+
+  /* Client detached after its half-open migrated to the connection's thread
+   * but before the handshake completed. Close connection on its thread */
+  ctx = quic_ctx_get (ctx_index, thread_index);
+  if (ctx->conn_state > QUIC_CONN_STATE_HANDSHAKE)
+    return;
+  QUIC_DBG (2, "app detach before handshake completed, ctx_index %u", ctx_index);
+  ctx->flags |= QUIC_F_NO_APP_SESSION;
+  session_send_rpc_evt_to_thread (thread_index, quic_cleanup_rpc,
+				  uword_to_pointer (ctx_index, void *));
+}
+
 static const transport_proto_vft_t quic_proto = {
   .enable = quic_enable,
   .connect = quic_connect_connection,
@@ -932,6 +963,7 @@ static const transport_proto_vft_t quic_proto = {
   .get_connection = quic_connection_get,
   .get_listener = quic_listener_get,
   .get_half_open = quic_half_open_get,
+  .cleanup = quic_cleanup,
   .cleanup_ho = quic_cleanup_ho,
   .update_time = quic_update_time,
   .app_rx_evt = quic_custom_app_rx_callback,
