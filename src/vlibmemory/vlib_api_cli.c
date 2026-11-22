@@ -11,9 +11,7 @@
 #include <vlibmemory/api.h>
 
 static clib_error_t *
-vl_api_show_histogram_command (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cli_cmd)
+vl_api_show_histogram_command (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   u64 total_counts = 0;
   int i;
@@ -29,16 +27,16 @@ vl_api_show_histogram_command (vlib_main_t * vm,
       return 0;
     }
 
-#define _(n)                                                    \
-    do {                                                        \
-        f64 percent;                                            \
-        percent = ((f64) vector_rate_histogram[SLEEP_##n##_US]) \
-            / (f64) total_counts;                               \
-        percent *= 100.0;                                       \
-        vlib_cli_output (vm, "Sleep %3d us: %llu, %.2f%%",n,    \
-                         vector_rate_histogram[SLEEP_##n##_US], \
-                         percent);                              \
-    } while (0);
+#define _(n)                                                                                       \
+  do                                                                                               \
+    {                                                                                              \
+      f64 percent;                                                                                 \
+      percent = ((f64) vector_rate_histogram[SLEEP_##n##_US]) / (f64) total_counts;                \
+      percent *= 100.0;                                                                            \
+      vlib_cli_output (vm, "Sleep %3d us: %llu, %.2f%%", n, vector_rate_histogram[SLEEP_##n##_US], \
+		       percent);                                                                   \
+    }                                                                                              \
+  while (0);
   foreach_histogram_bucket;
 #undef _
 
@@ -48,17 +46,14 @@ vl_api_show_histogram_command (vlib_main_t * vm,
 /*?
  * Display the binary api sleep-time histogram
 ?*/
-VLIB_CLI_COMMAND (cli_show_api_histogram_command, static) =
-{
+VLIB_CLI_COMMAND (cli_show_api_histogram_command, static) = {
   .path = "show api histogram",
   .short_help = "show api histogram",
-  .function = vl_api_show_histogram_command,
+  .handler = vl_api_show_histogram_command,
 };
 
 static clib_error_t *
-vl_api_clear_histogram_command (vlib_main_t * vm,
-				unformat_input_t * input,
-				vlib_cli_command_t * cli_cmd)
+vl_api_clear_histogram_command (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   int i;
 
@@ -70,16 +65,14 @@ vl_api_clear_histogram_command (vlib_main_t * vm,
 /*?
  * Clear the binary api sleep-time histogram
 ?*/
-VLIB_CLI_COMMAND (cli_clear_api_histogram_command, static) =
-{
+VLIB_CLI_COMMAND (cli_clear_api_histogram_command, static) = {
   .path = "clear api histogram",
   .short_help = "clear api histogram",
-  .function = vl_api_clear_histogram_command,
+  .handler = vl_api_clear_histogram_command,
 };
 
 static clib_error_t *
-vl_api_client_command (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cli_cmd)
+vl_api_client_command (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vl_api_registration_t **regpp, *regp;
   svm_queue_t *q;
@@ -90,33 +83,31 @@ vl_api_client_command (vlib_main_t * vm,
   if (!pool_elts (am->vl_clients))
     goto socket_clients;
   vlib_cli_output (vm, "Shared memory clients");
-  vlib_cli_output (vm, "%20s %8s %14s %18s %s",
-		   "Name", "PID", "Queue Length", "Queue VA", "Health");
+  vlib_cli_output (vm, "%20s %8s %14s %18s %s", "Name", "PID", "Queue Length", "Queue VA",
+		   "Health");
 
   pool_foreach (regpp, am->vl_clients)
-   {
-    regp = *regpp;
+    {
+      regp = *regpp;
 
-    if (regp)
-      {
-        if (regp->unanswered_pings > 0)
-          health = "questionable";
-        else
-          health = "OK";
+      if (regp)
+	{
+	  if (regp->unanswered_pings > 0)
+	    health = "questionable";
+	  else
+	    health = "OK";
 
-        q = regp->vl_input_queue;
+	  q = regp->vl_input_queue;
 
-        vlib_cli_output (vm, "%20s %8d %14d 0x%016llx %s\n",
-                         regp->name, q->consumer_pid, q->cursize,
-                         q, health);
-      }
-    else
-      {
-        clib_warning ("NULL client registration index %d",
-                      regpp - am->vl_clients);
-        vec_add1 (confused_indices, regpp - am->vl_clients);
-      }
-  }
+	  vlib_cli_output (vm, "%20s %8d %14d 0x%016llx %s\n", regp->name, q->consumer_pid,
+			   q->cursize, q, health);
+	}
+      else
+	{
+	  clib_warning ("NULL client registration index %d", regpp - am->vl_clients);
+	  vec_add1 (confused_indices, regpp - am->vl_clients);
+	}
+    }
 
   /* This should "never happen," but if it does, fix it... */
   if (PREDICT_FALSE (vec_len (confused_indices) > 0))
@@ -130,8 +121,7 @@ vl_api_client_command (vlib_main_t * vm,
   vec_free (confused_indices);
 
   if (am->missing_clients)
-    vlib_cli_output (vm, "%u messages with missing clients",
-		     am->missing_clients);
+    vlib_cli_output (vm, "%u messages with missing clients", am->missing_clients);
 socket_clients:
   vl_sock_api_dump_clients (vm, am);
 
@@ -139,8 +129,7 @@ socket_clients:
 }
 
 static clib_error_t *
-vl_api_status_command (vlib_main_t * vm,
-		       unformat_input_t * input, vlib_cli_command_t * cli_cmd)
+vl_api_status_command (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   api_main_t *am = vlibapi_get_main ();
 
@@ -172,8 +161,7 @@ vl_api_status_command (vlib_main_t * vm,
   return 0;
 }
 
-VLIB_CLI_COMMAND (cli_show_api_command, static) =
-{
+VLIB_CLI_COMMAND (cli_show_api_command, static) = {
   .path = "show api",
   .short_help = "Show API information",
 };
@@ -181,55 +169,69 @@ VLIB_CLI_COMMAND (cli_show_api_command, static) =
 /*?
  * Display current api client connections
 ?*/
-VLIB_CLI_COMMAND (cli_show_api_clients_command, static) =
-{
+VLIB_CLI_COMMAND (cli_show_api_clients_command, static) = {
   .path = "show api clients",
   .short_help = "Client information",
-  .function = vl_api_client_command,
+  .handler = vl_api_client_command,
 };
 
 /*?
  * Display the current api message tracing status
 ?*/
-VLIB_CLI_COMMAND (cli_show_api_status_command, static) =
-{
+VLIB_CLI_COMMAND (cli_show_api_status_command, static) = {
   .path = "show api trace-status",
   .short_help = "Display API trace status",
-  .function = vl_api_status_command,
+  .handler = vl_api_status_command,
 };
 
 static clib_error_t *
-vl_api_message_table_command (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cli_cmd)
+vl_api_message_table_command (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   api_main_t *am = vlibapi_get_main ();
   int i;
-  int verbose = 0;
+  int verbose = cli_flag (ctx, "verbose");
 
-  if (unformat (input, "verbose"))
-    verbose = 1;
+  if (cli_is_structured (ctx))
+    {
+      static const cli_column_t cols[] = {
+	{ "id", "ID" }, { "name", "Name" }, { "bounce", "Bounce" }, { "mp_safe", "MP-safe" }, {},
+      };
+      clib_json_text_t j;
 
+      clib_json_init (&j);
+      clib_json_add_array (&j, 0);
+
+      for (i = 1; i < vec_len (am->msg_data); i++)
+	{
+	  vl_api_msg_data_t *m = vl_api_get_msg_data (am, i);
+
+	  clib_json_add_object (&j, 0);
+	  clib_json_add_number (&j, "id", i);
+	  clib_json_add_string (&j, "name", "%s", m->name ? m->name : "");
+	  clib_json_add_number (&j, "bounce", m->bounce);
+	  clib_json_add_number (&j, "mp_safe", m->is_mp_safe);
+	  clib_json_parent (&j);
+	}
+
+      return cli_emit_table (ctx, &j, cols);
+    }
 
   if (verbose == 0)
     vlib_cli_output (vm, "%-4s %s", "ID", "Name");
   else
-    vlib_cli_output (vm, "%-4s %-40s %6s %7s", "ID", "Name", "Bounce",
-		     "MP-safe");
+    vlib_cli_output (vm, "%-4s %-40s %6s %7s", "ID", "Name", "Bounce", "MP-safe");
 
   for (i = 1; i < vec_len (am->msg_data); i++)
     {
       vl_api_msg_data_t *m = vl_api_get_msg_data (am, i);
       if (verbose == 0)
 	{
-	  vlib_cli_output (vm, "%-4d %s", i,
-			   m->name ? m->name : "  [no handler]");
+	  vlib_cli_output (vm, "%-4d %s", i, m->name ? m->name : "  [no handler]");
 	}
       else
 	{
-	  vlib_cli_output (vm, "%-4d %-40s %6d %7d", i,
-			   m->name ? m->name : "  [no handler]", m->bounce,
-			   m->is_mp_safe);
+	  vlib_cli_output (vm, "%-4d %-40s %6d %7d", i, m->name ? m->name : "  [no handler]",
+			   m->bounce, m->is_mp_safe);
 	}
     }
 
@@ -239,15 +241,15 @@ vl_api_message_table_command (vlib_main_t * vm,
 /*?
  * Display the current api message decode tables
 ?*/
-VLIB_CLI_COMMAND (cli_show_api_message_table_command, static) =
-{
+VLIB_CLI_COMMAND (cli_show_api_message_table_command, static) = {
   .path = "show api message-table",
   .short_help = "Message Table",
-  .function = vl_api_message_table_command,
+  .args = CLI_ARGS (CLI_FLAG ("verbose", .help = "show the flags of the messages")),
+  .handler = vl_api_message_table_command,
 };
 
 static int
-range_compare (vl_api_msg_range_t * a0, vl_api_msg_range_t * a1)
+range_compare (vl_api_msg_range_t *a0, vl_api_msg_range_t *a1)
 {
   int len0, len1, clen;
 
@@ -258,23 +260,20 @@ range_compare (vl_api_msg_range_t * a0, vl_api_msg_range_t * a1)
 }
 
 static u8 *
-format_api_msg_range (u8 * s, va_list * args)
+format_api_msg_range (u8 *s, va_list *args)
 {
   vl_api_msg_range_t *rp = va_arg (*args, vl_api_msg_range_t *);
 
   if (rp == 0)
     s = format (s, "%-50s%9s%9s", "Name", "First-ID", "Last-ID");
   else
-    s = format (s, "%-50s%9d%9d", rp->name, rp->first_msg_id,
-		rp->last_msg_id);
+    s = format (s, "%-50s%9d%9d", rp->name, rp->first_msg_id, rp->last_msg_id);
 
   return s;
 }
 
 static clib_error_t *
-vl_api_show_plugin_command (vlib_main_t * vm,
-			    unformat_input_t * input,
-			    vlib_cli_command_t * cli_cmd)
+vl_api_show_plugin_command (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   api_main_t *am = vlibapi_get_main ();
   vl_api_msg_range_t *rp = 0;
@@ -291,7 +290,7 @@ vl_api_show_plugin_command (vlib_main_t * vm,
   vec_sort_with_function (rp, range_compare);
 
   vlib_cli_output (vm, "Plugin API message ID ranges...\n");
-  vlib_cli_output (vm, "%U", format_api_msg_range, 0 /* header */ );
+  vlib_cli_output (vm, "%U", format_api_msg_range, 0 /* header */);
 
   for (i = 0; i < vec_len (rp); i++)
     vlib_cli_output (vm, "%U", format_api_msg_range, rp + i);
@@ -304,11 +303,10 @@ vl_api_show_plugin_command (vlib_main_t * vm,
 /*?
  * Display the plugin binary API message range table
 ?*/
-VLIB_CLI_COMMAND (cli_show_api_plugin_command, static) =
-{
+VLIB_CLI_COMMAND (cli_show_api_plugin_command, static) = {
   .path = "show api plugin",
   .short_help = "show api plugin",
-  .function = vl_api_show_plugin_command,
+  .handler = vl_api_show_plugin_command,
 };
 
 typedef enum
@@ -320,7 +318,7 @@ typedef enum
 } vl_api_replay_t;
 
 u8 *
-format_vl_msg_api_trace_status (u8 * s, va_list * args)
+format_vl_msg_api_trace_status (u8 *s, va_list *args)
 {
   api_main_t *am = va_arg (*args, api_main_t *);
   vl_api_trace_which_t which = va_arg (*args, vl_api_trace_which_t);
@@ -349,15 +347,14 @@ format_vl_msg_api_trace_status (u8 * s, va_list * args)
       return s;
     }
 
-  s = format (s, "%s: used %d of %d items, %s enabled, %s wrapped\n",
-	      trace_name, vec_len (tp->traces), tp->nitems,
-	      tp->enabled ? "is" : "is not", tp->wrapped ? "has" : "has not");
+  s = format (s, "%s: used %d of %d items, %s enabled, %s wrapped\n", trace_name,
+	      vec_len (tp->traces), tp->nitems, tp->enabled ? "is" : "is not",
+	      tp->wrapped ? "has" : "has not");
   return s;
 }
 
 static void
-vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
-			 u32 first_index, u32 last_index,
+vl_msg_api_process_file (vlib_main_t *vm, u8 *filename, u32 first_index, u32 last_index,
 			 vl_api_replay_t which)
 {
   vl_api_trace_file_header_t *hp;
@@ -409,36 +406,35 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 
   nitems = ntohl (hp->nitems);
 
-  if (last_index == (u32) ~ 0)
+  if (last_index == (u32) ~0)
     {
       last_index = nitems - 1;
     }
 
   if (first_index >= nitems || last_index >= nitems)
     {
-      vlib_cli_output (vm, "Range (%d, %d) outside file range (0, %d)\n",
-		       first_index, last_index, nitems - 1);
+      vlib_cli_output (vm, "Range (%d, %d) outside file range (0, %d)\n", first_index, last_index,
+		       nitems - 1);
       munmap (hp, file_size);
       return;
     }
   if (hp->wrapped)
-    vlib_cli_output (vm,
-		     "Note: wrapped/incomplete trace, results may vary\n");
+    vlib_cli_output (vm, "Note: wrapped/incomplete trace, results may vary\n");
 
   size_t file_size_left = file_size;
 
-#define assert_size(size_left, s)                                             \
-  do                                                                          \
-    {                                                                         \
-      if ((s) >= size_left)                                                   \
-	{                                                                     \
-	  vlib_cli_output (vm, "corrupted file");                             \
-	  munmap (hp, file_size);                                             \
-	  vec_free (msgid_vec);                                               \
-	  return;                                                             \
-	}                                                                     \
-      size_left -= s;                                                         \
-    }                                                                         \
+#define assert_size(size_left, s)                                                                  \
+  do                                                                                               \
+    {                                                                                              \
+      if ((s) >= size_left)                                                                        \
+	{                                                                                          \
+	  vlib_cli_output (vm, "corrupted file");                                                  \
+	  munmap (hp, file_size);                                                                  \
+	  vec_free (msgid_vec);                                                                    \
+	  return;                                                                                  \
+	}                                                                                          \
+      size_left -= s;                                                                              \
+    }                                                                                              \
   while (0);
 
   assert_size (file_size_left, sizeof (hp[0]));
@@ -460,8 +456,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       u32 msg_index2 = vl_msg_api_get_msg_index (name_and_crc);
       ASSERT (~0 == msg_index2 || msg_index2 <= 65535);
       if (~0 == msg_index2)
-	vlib_cli_output (vm, "warning: can't find msg index for id %d\n",
-			 msg_index);
+	vlib_cli_output (vm, "warning: can't find msg index for id %d\n", msg_index);
       vec_validate (msgid_vec, msg_index);
       msgid_vec[msg_index] = msg_index2;
     }
@@ -479,10 +474,8 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 
       assert_size (file_size_left, clib_max (size, sizeof (u16)));
       msg_id = ntohs (*((u16 *) msg));
-      if (msg_id >= vec_len (msgid_vec) ||
-	  msgid_vec[msg_id] >= vec_len (am->msg_data))
-	vlib_cli_output (vm, "warning: unknown msg id %d for msg number %d\n",
-			 msg_id, i);
+      if (msg_id >= vec_len (msgid_vec) || msgid_vec[msg_id] >= vec_len (am->msg_data))
+	vlib_cli_output (vm, "warning: unknown msg id %d for msg number %d\n", msg_id, i);
 
       msg += size;
     }
@@ -506,12 +499,10 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       assert_size (file_size_left, clib_max (size, sizeof (u16)));
       msg_id = ntohs (*((u16 *) msg));
 
-      if (msg_id >= vec_len (msgid_vec) ||
-	  msgid_vec[msg_id] >= vec_len (am->msg_data))
+      if (msg_id >= vec_len (msgid_vec) || msgid_vec[msg_id] >= vec_len (am->msg_data))
 	{
-	  vlib_cli_output (
-	    vm, "warning: unknown msg id %d for msg number %d, skipping\n",
-	    msg_id, i);
+	  vlib_cli_output (vm, "warning: unknown msg id %d for msg number %d, skipping\n", msg_id,
+			   i);
 	  msg += size;
 	  continue;
 	}
@@ -528,8 +519,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
        * Endian swap if needed. All msg data is supposed to be in
        * network byte order.
        */
-      if (((which == DUMP || which == DUMP_JSON) &&
-	   clib_arch_is_little_endian))
+      if (((which == DUMP || which == DUMP_JSON) && clib_arch_is_little_endian))
 	{
 	  if (m && m->endian_handler == 0)
 	    {
@@ -555,13 +545,11 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       switch (which)
 	{
 	case DUMP_JSON:
-	  vlib_cli_output (vm, "%U", format_vl_api_msg_json, am, msg_id,
-			   tmpbuf + sizeof (uword));
+	  vlib_cli_output (vm, "%U", format_vl_api_msg_json, am, msg_id, tmpbuf + sizeof (uword));
 	  break;
 
 	case DUMP:
-	  vlib_cli_output (vm, "%U", format_vl_api_msg_text, am, msg_id,
-			   tmpbuf + sizeof (uword));
+	  vlib_cli_output (vm, "%U", format_vl_api_msg_text, am, msg_id, tmpbuf + sizeof (uword));
 	  break;
 
 	case INITIALIZERS:
@@ -570,13 +558,12 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	      u8 *s;
 	      int j;
 
-	      vlib_cli_output (vm, "/*%U*/", format_vl_api_msg_text, am,
-			       msg_id, tmpbuf + sizeof (uword));
+	      vlib_cli_output (vm, "/*%U*/", format_vl_api_msg_text, am, msg_id,
+			       tmpbuf + sizeof (uword));
 
 	      vlib_cli_output (vm, "*/\n");
 
-	      s = format (0, "static u8 * vl_api_%s_%d[%d] = {", m->name, i,
-			  m->trace_size);
+	      s = format (0, "static u8 * vl_api_%s_%d[%d] = {", m->name, i, m->trace_size);
 
 	      for (j = 0; j < m->trace_size; j++)
 		{
@@ -602,8 +589,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	  else
 	    {
 	      if (m && m->replay_allowed)
-		vlib_cli_output (vm, "Skipping msg id %d: no handler\n",
-				 msg_id);
+		vlib_cli_output (vm, "Skipping msg id %d: no handler\n", msg_id);
 	      break;
 	    }
 	  break;
@@ -664,9 +650,8 @@ vl_msg_print_trace (u8 *msg, void *ctx)
       m->endian_handler (tmpbuf, 0 /* from network */);
     }
 
-  vlib_cli_output (a->vm, "%U\n",
-		   is_json ? format_vl_api_msg_json : format_vl_api_msg_text,
-		   am, msg_id, msg);
+  vlib_cli_output (a->vm, "%U\n", is_json ? format_vl_api_msg_json : format_vl_api_msg_text, am,
+		   msg_id, msg);
 
   vec_free (tmpbuf);
   return 0;
@@ -922,197 +907,144 @@ vl_msg_dump_file_json (vlib_main_t *vm, u8 *filename)
     is deleted, the wheels fall off.
  */
 
-static clib_error_t *
-api_trace_command_fn (vlib_main_t * vm,
-		      unformat_input_t * input, vlib_cli_command_t * cmd)
+/* Save the trace to the file, which is in /tmp. */
+static void
+api_trace_save (vlib_main_t *vm, api_main_t *am, vl_api_trace_which_t which, u8 *file, int is_json)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  u32 nitems = 256 << 10;
-  api_main_t *am = vlibapi_get_main ();
-  vl_api_trace_which_t which = VL_API_TRACE_RX;
-  u8 *filename = 0;
-  u8 *chroot_filename = 0;
-  u32 first = 0;
-  u32 last = (u32) ~ 0;
   FILE *fp;
   int rv;
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+  if (file_exists (file))
     {
-      if (unformat (line_input, "on") || unformat (line_input, "enable"))
+      vlib_cli_output (vm, "file exists: %s\n", file);
+      return;
+    }
+
+  fp = fopen ((char *) file, "w");
+  if (fp == NULL)
+    {
+      vlib_cli_output (vm, "Couldn't create %s\n", file);
+      return;
+    }
+
+  vlib_worker_thread_barrier_sync (vm);
+  rv = vl_msg_api_trace_save (am, which, fp, is_json);
+
+  if (is_json)
+    {
+      if (rv == -1)
+	vlib_cli_output (vm, "API Trace data not present\n");
+      else if (rv < 0)
+	vlib_cli_output (vm, "failed to save api trace\n");
+      else
+	vlib_cli_output (vm, "API trace saved to %s\n", file);
+
+      vlib_worker_thread_barrier_release (vm);
+      fclose (fp);
+      return;
+    }
+
+  vlib_worker_thread_barrier_release (vm);
+  fclose (fp);
+
+  if (rv == -1)
+    vlib_cli_output (vm, "API Trace data not present\n");
+  else if (rv == -2)
+    vlib_cli_output (vm, "File for writing is closed\n");
+  else if (rv == -10)
+    vlib_cli_output (vm, "Error while writing header to file\n");
+  else if (rv == -11)
+    vlib_cli_output (vm, "Error while writing trace to file\n");
+  else if (rv == -12)
+    vlib_cli_output (vm, "Error while writing end of buffer trace to file\n");
+  else if (rv == -13)
+    vlib_cli_output (vm, "Error while writing start of buffer trace to file\n");
+  else if (rv < 0)
+    vlib_cli_output (vm, "Unknown error while saving: %d", rv);
+  else
+    vlib_cli_output (vm, "API trace saved to %s\n", file);
+}
+
+static clib_error_t *
+api_trace_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
+{
+  api_main_t *am = vlibapi_get_main ();
+  vl_api_trace_which_t which = cli_flag (ctx, "tx") ? VL_API_TRACE_TX : VL_API_TRACE_RX;
+  u32 nitems = cli_u64 (ctx, "nitems", 256 << 10);
+  u32 first = cli_u64 (ctx, "first", 0);
+  u32 last = cli_u64 (ctx, "last", ~0U);
+  cli_value_t *v;
+  u8 *filename = 0;
+
+  if (cli_flag (ctx, "on"))
+    {
+      vlib_worker_thread_barrier_sync (vm);
+      vl_msg_api_trace_configure (am, which, nitems);
+      vl_msg_api_trace_onoff (am, which, 1 /* on */);
+      vlib_worker_thread_barrier_release (vm);
+    }
+  else if (cli_flag (ctx, "off"))
+    {
+      vlib_worker_thread_barrier_sync (vm);
+      vl_msg_api_trace_onoff (am, which, 0);
+      vlib_worker_thread_barrier_release (vm);
+    }
+  else if (cli_flag (ctx, "free"))
+    {
+      vlib_worker_thread_barrier_sync (vm);
+      vl_msg_api_trace_onoff (am, which, 0);
+      vl_msg_api_trace_free (am, which);
+      vlib_worker_thread_barrier_release (vm);
+    }
+  else if (cli_flag (ctx, "status"))
+    vlib_cli_output (vm, "%U", format_vl_msg_api_trace_status, am, which);
+  else if (cli_flag (ctx, "post-mortem-on"))
+    vl_msg_api_post_mortem_dump_enable_disable (1 /* enable */);
+  else if (cli_flag (ctx, "post-mortem-off"))
+    vl_msg_api_post_mortem_dump_enable_disable (0 /* enable */);
+  else if (cli_flag (ctx, "dump-json"))
+    vl_msg_api_dump_trace (vm, which, 1);
+  else if (cli_flag (ctx, "dump"))
+    vl_msg_api_dump_trace (vm, which, 0);
+  else if ((v = cli_get (ctx, "save-json")))
+    api_trace_save (vm, am, which, v->str, 1);
+  else if ((v = cli_get (ctx, "save")))
+    api_trace_save (vm, am, which, v->str, 0);
+  else
+    {
+      /* the actions which read a file, it can be anywhere */
+      static const struct
+      {
+	const char *name;
+	vl_api_replay_t what;
+      } files[] = {
+	{ "tojson", DUMP_JSON },
+	{ "dump-file", DUMP },
+	{ "replay", REPLAY },
+	{ "initializers", INITIALIZERS },
+      };
+
+      if ((v = cli_get (ctx, "dump-file-json")))
 	{
-	  if (unformat (line_input, "nitems %d", &nitems))
-	    ;
-	  vlib_worker_thread_barrier_sync (vm);
-	  vl_msg_api_trace_configure (am, which, nitems);
-	  vl_msg_api_trace_onoff (am, which, 1 /* on */ );
-	  vlib_worker_thread_barrier_release (vm);
-	}
-      else if (unformat (line_input, "off"))
-	{
-	  vlib_worker_thread_barrier_sync (vm);
-	  vl_msg_api_trace_onoff (am, which, 0);
-	  vlib_worker_thread_barrier_release (vm);
-	}
-      else if (unformat (line_input, "save-json %s", &filename))
-	{
-	  if (strstr ((char *) filename, "..") ||
-	      index ((char *) filename, '/'))
-	    {
-	      vlib_cli_output (vm, "illegal characters in filename '%s'",
-			       filename);
-	      goto out;
-	    }
-
-	  chroot_filename = format (0, "/tmp/%s%c", filename, 0);
-
-	  vec_free (filename);
-
-	  if (file_exists (chroot_filename))
-	    {
-	      vlib_cli_output (vm, "file exists: %s\n", chroot_filename);
-	      goto out;
-	    }
-
-	  fp = fopen ((char *) chroot_filename, "w");
-	  if (fp == NULL)
-	    {
-	      vlib_cli_output (vm, "Couldn't create %s\n", chroot_filename);
-	      goto out;
-	    }
-	  vlib_worker_thread_barrier_sync (vm);
-	  rv = vl_msg_api_trace_save (am, which, fp, 1);
-	  if (rv == -1)
-	    vlib_cli_output (vm, "API Trace data not present\n");
-	  else if (rv < 0)
-	    vlib_cli_output (vm, "failed to save api trace\n");
-	  else
-	    vlib_cli_output (vm, "API trace saved to %s\n", chroot_filename);
-	  vlib_worker_thread_barrier_release (vm);
-	  fclose (fp);
-	}
-      else if (unformat (line_input, "save %s", &filename))
-	{
-	  if (strstr ((char *) filename, "..")
-	      || index ((char *) filename, '/'))
-	    {
-	      vlib_cli_output (vm, "illegal characters in filename '%s'",
-			       filename);
-	      goto out;
-	    }
-
-	  chroot_filename = format (0, "/tmp/%s%c", filename, 0);
-
-	  vec_free (filename);
-
-	  if (file_exists (chroot_filename))
-	    {
-	      vlib_cli_output (vm, "file exists: %s\n", chroot_filename);
-	      goto out;
-	    }
-
-	  fp = fopen ((char *) chroot_filename, "w");
-	  if (fp == NULL)
-	    {
-	      vlib_cli_output (vm, "Couldn't create %s\n", chroot_filename);
-	      goto out;
-	    }
-	  vlib_worker_thread_barrier_sync (vm);
-	  rv = vl_msg_api_trace_save (am, which, fp, 0);
-	  vlib_worker_thread_barrier_release (vm);
-	  fclose (fp);
-	  if (rv == -1)
-	    vlib_cli_output (vm, "API Trace data not present\n");
-	  else if (rv == -2)
-	    vlib_cli_output (vm, "File for writing is closed\n");
-	  else if (rv == -10)
-	    vlib_cli_output (vm, "Error while writing header to file\n");
-	  else if (rv == -11)
-	    vlib_cli_output (vm, "Error while writing trace to file\n");
-	  else if (rv == -12)
-	    vlib_cli_output (vm,
-			     "Error while writing end of buffer trace to file\n");
-	  else if (rv == -13)
-	    vlib_cli_output (vm,
-			     "Error while writing start of buffer trace to file\n");
-	  else if (rv < 0)
-	    vlib_cli_output (vm, "Unknown error while saving: %d", rv);
-	  else
-	    vlib_cli_output (vm, "API trace saved to %s\n", chroot_filename);
-	  goto out;
-	}
-      else if (unformat (line_input, "tojson %s", &filename))
-	{
-	  vl_msg_api_process_file (vm, filename, first, last, DUMP_JSON);
-	}
-      else if (unformat (line_input, "dump-file-json %s", &filename))
-	{
+	  filename = format (0, "%v%c", v->str, 0);
 	  vl_msg_dump_file_json (vm, filename);
 	}
-      else if (unformat (line_input, "dump-file %s", &filename))
+      else if ((v = cli_get (ctx, "replay-json")))
 	{
-	  vl_msg_api_process_file (vm, filename, first, last, DUMP);
-	}
-      else if (unformat (line_input, "dump-json"))
-	{
-	  vl_msg_api_dump_trace (vm, which, 1);
-	}
-      else if (unformat (line_input, "dump"))
-	{
-	  vl_msg_api_dump_trace (vm, which, 0);
-	}
-      else if (unformat (line_input, "replay-json %s", &filename))
-	{
+	  filename = format (0, "%v%c", v->str, 0);
 	  vl_msg_replay_json (vm, filename);
 	}
-      else if (unformat (line_input, "replay %s", &filename))
-	{
-	  vl_msg_api_process_file (vm, filename, first, last, REPLAY);
-	}
-      else if (unformat (line_input, "initializers %s", &filename))
-	{
-	  vl_msg_api_process_file (vm, filename, first, last, INITIALIZERS);
-	}
-      else if (unformat (line_input, "tx"))
-	{
-	  which = VL_API_TRACE_TX;
-	}
-      else if (unformat (line_input, "first %d", &first))
-	{
-	  ;
-	}
-      else if (unformat (line_input, "last %d", &last))
-	{
-	  ;
-	}
-      else if (unformat (line_input, "status"))
-	{
-	  vlib_cli_output (vm, "%U", format_vl_msg_api_trace_status,
-			   am, which);
-	}
-      else if (unformat (line_input, "free"))
-	{
-	  vlib_worker_thread_barrier_sync (vm);
-	  vl_msg_api_trace_onoff (am, which, 0);
-	  vl_msg_api_trace_free (am, which);
-	  vlib_worker_thread_barrier_release (vm);
-	}
-      else if (unformat (line_input, "post-mortem-on"))
-	vl_msg_api_post_mortem_dump_enable_disable (1 /* enable */ );
-      else if (unformat (line_input, "post-mortem-off"))
-	vl_msg_api_post_mortem_dump_enable_disable (0 /* enable */ );
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	for (u32 i = 0; i < ARRAY_LEN (files); i++)
+	  if ((v = cli_get (ctx, files[i].name)))
+	    {
+	      filename = format (0, "%v%c", v->str, 0);
+	      vl_msg_api_process_file (vm, filename, first, last, files[i].what);
+	    }
+
+      vec_free (filename);
     }
-out:
-  vec_free (filename);
-  vec_free (chroot_filename);
-  unformat_free (line_input);
+
   return 0;
 }
 
@@ -1122,16 +1054,35 @@ out:
 
 VLIB_CLI_COMMAND (api_trace_command, static) = {
   .path = "api trace",
-  .short_help = "api trace [tx][on|off][first <n>][last <n>][status][free]"
-		"[post-mortem-on][dump|dump-file|dump-json|save|tojson|save-"
-		"json|replay <file>|replay-json <file>][nitems <n>]"
-		"[initializers <file>]",
-  .function = api_trace_command_fn,
+  .short_help = "Control, show, save and replay the binary API trace",
+  .args = CLI_ARGS (
+    CLI_FLAG ("tx", .help = "the TX trace, not the RX trace"),
+    CLI_OPT_KEYWORD ("nitems", cli_type_u32, .def = "262144", .help = "number of messages to keep"),
+    CLI_OPT_KEYWORD ("first", cli_type_u32, .help = "first message of a file to process"),
+    CLI_OPT_KEYWORD ("last", cli_type_u32, .help = "last message of a file to process"),
+    CLI_ONEOF (
+      "action", CLI_F_OPTIONAL, CLI_FLAG ("on", .alias = "enable", .help = "start tracing"),
+      CLI_FLAG ("off", .help = "stop tracing"),
+      CLI_FLAG ("free", .help = "stop tracing and free the trace"),
+      CLI_FLAG ("status", .help = "show the state of the trace"),
+      CLI_FLAG ("post-mortem-on", .help = "dump the RX trace if VPP crashes"),
+      CLI_FLAG ("post-mortem-off", .help = "do not dump the trace"),
+      CLI_FLAG ("dump", .help = "show the messages"),
+      CLI_FLAG ("dump-json", .help = "show the messages as JSON"),
+      CLI_KEYWORD ("save", cli_type_tmpfile, .help = "save the trace to /tmp/<file>"),
+      CLI_KEYWORD ("save-json", cli_type_tmpfile, .help = "save the trace as JSON to /tmp/<file>"),
+      CLI_KEYWORD ("dump-file", cli_type_file, .help = "show the messages of a trace file"),
+      CLI_KEYWORD ("dump-file-json", cli_type_file, .help = "show a JSON trace file"),
+      CLI_KEYWORD ("tojson", cli_type_file, .help = "show the messages of a trace file as JSON"),
+      CLI_KEYWORD ("replay", cli_type_file, .help = "replay a trace file"),
+      CLI_KEYWORD ("replay-json", cli_type_file, .help = "replay a JSON trace file"),
+      CLI_KEYWORD ("initializers", cli_type_file, .help = "write C initializers of a trace file"))),
+  .handler = api_trace_command_fn,
   .is_mp_safe = 1,
 };
 
 static clib_error_t *
-api_trace_config_fn (vlib_main_t * vm, unformat_input_t * input)
+api_trace_config_fn (vlib_main_t *vm, unformat_input_t *input)
 {
   u32 nitems = 256 << 10;
   vl_api_trace_which_t which = VL_API_TRACE_RX;
@@ -1144,15 +1095,13 @@ api_trace_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	  if (unformat (input, "nitems %d", &nitems))
 	    ;
 	  vl_msg_api_trace_configure (am, which, nitems);
-	  vl_msg_api_trace_onoff (am, which, 1 /* on */ );
-	  vl_msg_api_post_mortem_dump_enable_disable (1 /* enable */ );
+	  vl_msg_api_trace_onoff (am, which, 1 /* on */);
+	  vl_msg_api_post_mortem_dump_enable_disable (1 /* enable */);
 	}
-      else if (unformat (input, "save-api-table %s",
-			 &am->save_msg_table_filename))
+      else if (unformat (input, "save-api-table %s", &am->save_msg_table_filename))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
     }
   return 0;
 }
@@ -1166,25 +1115,22 @@ api_trace_config_fn (vlib_main_t * vm, unformat_input_t * input)
 VLIB_CONFIG_FUNCTION (api_trace_config_fn, "api-trace");
 
 static clib_error_t *
-api_queue_config_fn (vlib_main_t * vm, unformat_input_t * input)
+api_queue_config_fn (vlib_main_t *vm, unformat_input_t *input)
 {
   api_main_t *am = vlibapi_get_main ();
   u32 nitems;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "length %d", &nitems) ||
-	  (unformat (input, "len %d", &nitems)))
+      if (unformat (input, "length %d", &nitems) || (unformat (input, "len %d", &nitems)))
 	{
 	  if (nitems >= 1024)
 	    am->vlib_input_queue_length = nitems;
 	  else
-	    clib_warning ("vlib input queue length %d too small, ignored",
-			  nitems);
+	    clib_warning ("vlib input queue length %d too small, ignored", nitems);
 	}
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
     }
   return 0;
 }
@@ -1192,7 +1138,7 @@ api_queue_config_fn (vlib_main_t * vm, unformat_input_t * input)
 VLIB_CONFIG_FUNCTION (api_queue_config_fn, "api-queue");
 
 static u8 *
-extract_name (u8 * s)
+extract_name (u8 *s)
 {
   u8 *rv;
 
@@ -1207,7 +1153,7 @@ extract_name (u8 * s)
 }
 
 static u8 *
-extract_crc (u8 * s)
+extract_crc (u8 *s)
 {
   int i;
   u8 *rv;
@@ -1253,50 +1199,30 @@ table_name_and_crc_cmp (void *a1, void *a2)
 }
 
 static clib_error_t *
-dump_api_table_file_command_fn (vlib_main_t * vm,
-				unformat_input_t * input,
-				vlib_cli_command_t * cmd)
+dump_api_table_file_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  u8 *filename = 0;
+  u8 *filename = format (0, "%v%c", cli_get (ctx, "file")->str, 0);
   api_main_t *am = vlibapi_get_main ();
   serialize_main_t _sm, *sm = &_sm;
   clib_error_t *error;
   u32 nmsgs;
   u32 msg_index;
   u8 *name_and_crc;
-  int compare_current = 0;
-  int numeric_sort = 0;
+  int compare_current = cli_flag (ctx, "compare-current");
+  int numeric_sort = cli_flag (ctx, "numeric");
   msg_table_unserialize_t *table = 0, *item;
   u32 i;
   u32 ndifferences = 0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "file %s", &filename))
-	;
-      else if (unformat (input, "compare-current")
-	       || unformat (input, "compare"))
-	compare_current = 1;
-      else if (unformat (input, "numeric"))
-	numeric_sort = 1;
-      else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
-    }
-
-  if (numeric_sort && compare_current)
-    return clib_error_return
-      (0, "Comparison and numeric sorting are incompatible");
-
-  if (filename == 0)
-    return clib_error_return (0, "File not specified");
 
   /* Load the serialized message table from the table dump */
 
   error = unserialize_open_clib_file (sm, (char *) filename);
 
   if (error)
-    return error;
+    {
+      vec_free (filename);
+      return error;
+    }
 
   unserialize_integer (sm, &nmsgs, sizeof (u32));
 
@@ -1309,7 +1235,7 @@ dump_api_table_file_command_fn (vlib_main_t * vm,
       item->name_and_crc = name_and_crc;
       item->name = extract_name (name_and_crc);
       item->crc = extract_crc (name_and_crc);
-      item->which = 0;		/* file */
+      item->which = 0; /* file */
     }
   unserialize_close (sm);
 
@@ -1332,7 +1258,7 @@ dump_api_table_file_command_fn (vlib_main_t * vm,
 	  item->name_and_crc = name_and_crc;
 	  item->name = extract_name (name_and_crc);
 	  item->crc = extract_crc (name_and_crc);
-	  item->which = 1;	/* current_image */
+	  item->which = 1; /* current_image */
 	}
       vec_free (tblv);
     }
@@ -1369,10 +1295,8 @@ dump_api_table_file_command_fn (vlib_main_t * vm,
 	    }
 
 	  /* Identical pair? */
-	  if (!strncmp
-	      ((char *) table[i].name_and_crc,
-	       (char *) table[i + 1].name_and_crc,
-	       vec_len (table[i].name_and_crc)))
+	  if (!strncmp ((char *) table[i].name_and_crc, (char *) table[i + 1].name_and_crc,
+			vec_len (table[i].name_and_crc)))
 	    {
 	      i += 2;
 	      continue;
@@ -1381,13 +1305,12 @@ dump_api_table_file_command_fn (vlib_main_t * vm,
 	  ndifferences++;
 
 	  /* Only in one of two tables? */
-	  if (i + 1 == vec_len (table)
-	      || strcmp ((char *) table[i].name, (char *) table[i + 1].name))
+	  if (i + 1 == vec_len (table) ||
+	      strcmp ((char *) table[i].name, (char *) table[i + 1].name))
 	    {
 	    last_unique:
-	      vlib_cli_output (vm, "%-60s | only in %s",
-			       table[i].name, table[i].which ?
-			       "image" : "file");
+	      vlib_cli_output (vm, "%-60s | only in %s", table[i].name,
+			       table[i].which ? "image" : "file");
 	      i++;
 	      continue;
 	    }
@@ -1398,8 +1321,7 @@ dump_api_table_file_command_fn (vlib_main_t * vm,
       if (ndifferences == 0)
 	vlib_cli_output (vm, "No api message signature differences found.");
       else
-	vlib_cli_output (vm, "\nFound %u api message signature differences",
-			 ndifferences);
+	vlib_cli_output (vm, "\nFound %u api message signature differences", ndifferences);
       goto cleanup;
     }
 
@@ -1409,8 +1331,7 @@ dump_api_table_file_command_fn (vlib_main_t * vm,
   for (i = 0; i < vec_len (table); i++)
     {
       item = table + i;
-      vlib_cli_output (vm, "%-60s %8u %10s", item->name,
-		       item->msg_index, item->crc);
+      vlib_cli_output (vm, "%-60s %8u %10s", item->name, item->msg_index, item->crc);
     }
 
 cleanup:
@@ -1460,6 +1381,11 @@ cleanup:
 ?*/
 VLIB_CLI_COMMAND (dump_api_table_file, static) = {
   .path = "show api dump",
-  .short_help = "show api dump file <filename> [numeric | compare-current]",
-  .function = dump_api_table_file_command_fn,
+  .short_help = "Display or compare a serialized API message table",
+  .args = CLI_ARGS (CLI_KEYWORD ("file", cli_type_file, .help = "the saved message table"),
+		    CLI_FLAG ("compare-current", .alias = "compare",
+			      .help = "compare it with the current message table",
+			      .excludes = "numeric"),
+		    CLI_FLAG ("numeric", .help = "sort by message id")),
+  .handler = dump_api_table_file_command_fn,
 };
