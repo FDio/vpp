@@ -142,6 +142,7 @@ vl_api_get_api_json_t_handler (vl_api_get_api_json_t *mp)
   vl_api_get_api_json_reply_t *rmp;
   api_main_t *am = vlibapi_get_main ();
   int rv = 0, n = 0;
+  const vl_api_desc_file_t **f;
   u8 *s = 0;
 
   vl_api_registration_t *rp =
@@ -150,10 +151,18 @@ vl_api_get_api_json_t_handler (vl_api_get_api_json_t *mp)
     return;
 
   s = format (s, "[\n");
-  u8 **ptr;
-  vec_foreach (ptr, am->json_api_repr)
+  vec_foreach (f, am->desc_files)
     {
-      s = format (s, "%s,", ptr[0]);
+      clib_json_text_t j;
+
+      /* clients have memclnt.api, it was never in the reply */
+      if (!strcmp (f[0]->module, "memclnt"))
+	continue;
+      if (vl_api_desc_schema_to_json (f[0], &j) < 0)
+	continue;
+      clib_json_set_indent (&j, 0);
+      s = format (s, "%U,", format_clib_json_text, &j);
+      clib_json_free (&j);
     }
   s[vec_len (s) - 1] = ']'; // Replace last comma with a bracket
   vec_terminate_c_string (s);
@@ -185,12 +194,6 @@ vlib_api_init (void)
   vl_msg_api_msg_config_t cfg;
   vl_msg_api_msg_config_t *c = &cfg;
 
-  cJSON_Hooks cjson_hooks = {
-    .malloc_fn = clib_mem_alloc,
-    .free_fn = clib_mem_free,
-    .realloc_fn = clib_mem_realloc,
-  };
-  cJSON_InitHooks (&cjson_hooks);
 
   clib_memset (c, 0, sizeof (*c));
 
