@@ -10,3 +10,4 @@ The binary API
     vpp_api_module
     vpp_api_language
     writing_api_handlers
+    api_descriptors

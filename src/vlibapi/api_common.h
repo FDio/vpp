@@ -242,6 +242,9 @@ typedef struct
 
 } vl_api_msg_data_t;
 
+struct vl_api_desc_file;
+struct vl_api_desc_type;
+
 /** API main structure, used by both vpp and binary API clients */
 typedef struct api_main_t
 {
@@ -376,6 +379,11 @@ typedef struct api_main_t
     (struct api_main_t *, u32 id, int before_or_after);
   void (**perf_counter_cbs_tmp)
     (struct api_main_t *, u32 id, int before_or_after);
+
+  /** registered API descriptors, see api_desc.h */
+  const struct vl_api_desc_file **desc_files;
+  /** message descriptors by message id */
+  const struct vl_api_desc_type **desc_by_msg_id;
 
 } api_main_t;
 

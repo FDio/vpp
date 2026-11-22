@@ -68,7 +68,13 @@ foreach(file ${VPP_API_FILES})
   )
 endforeach()
 
+set(VPP_API_DESC_SOURCES)
+foreach(file ${VPP_API_FILES})
+  list(APPEND VPP_API_DESC_SOURCES ${CMAKE_CURRENT_BINARY_DIR}/${file}_desc.c)
+endforeach()
+
 set(VPP_SOURCES
+  ${VPP_API_DESC_SOURCES}
   vnet/main.c
   app/vpe_cli.c
   app/version.c
