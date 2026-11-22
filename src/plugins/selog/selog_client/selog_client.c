@@ -79,11 +79,6 @@ selog_client_ctx_free (selog_client_ctx_t *ctx)
 #include <vlibmemory/memclnt.api.h>
 #undef vl_endianfun
 
-#define vl_calcsizefun
-#include <selog/selog.api.h>
-#include <vlibmemory/memclnt.api.h>
-#undef vl_calcsizefun
-
 /* instantiate all the print functions we know about */
 #define vl_printfun
 #include <selog/selog.api.h>
@@ -401,7 +396,6 @@ selog_client_bapi_hookup (void)
     .endian = vl_api_##n##_t_endian,                                          \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = (u32) 1,                                                        \
-    .calc_size = vl_api_##n##_t_calc_size,                                    \
   });
   foreach_selog_msg;
 #undef _
@@ -414,7 +408,6 @@ selog_client_bapi_hookup (void)
     .endian = vl_api_##n##_t_endian,                                          \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = (u32) 1,                                                        \
-    .calc_size = vl_api_##n##_t_calc_size,                                    \
   });
   foreach_memclnt_msg;
 #undef _

@@ -79,6 +79,12 @@ What uses them
   and which are lengths, the conversion reads them before it converts them. The
   steps of a message are worked out when it is first used, and kept.
 
+``vppapigen`` does not create the ``vl_api_<msg>_t_tojson``,
+``vl_api_<msg>_t_fromjson``, ``vl_api_<msg>_t_calc_size`` and
+``vl_api_<msg>_t_format`` functions of the messages, the
+``<file>.api_tojson.h`` and ``<file>.api_fromjson.h`` files any more. The
+``format_vl_api_<type>_t`` functions of the types are still created.
+
 Showing the descriptors
 -----------------------
 
