@@ -19,7 +19,6 @@
 */
 
 option version = "0.1.0";
-option manual_endian_include = "npol/npol_manual_endian.h";
 import "vnet/ip/ip_types.api";
 import "vnet/fib/fib_types.api";
 

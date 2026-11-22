@@ -98,15 +98,6 @@ static void vl_api_pnat_flow_lookup_t_handler(vl_api_pnat_flow_lookup_t *mp) {
                      ({ rmp->binding_index = binding_index; }));
 }
 
-/*
- * Workaround for a bug in vppapigen that doesn't register the endian handler
- * for _details messages. When that's fixed it should be possible to use
- * REPLY_MACRO_DETAILS4_END and not have to care about endian-ness in the
- * handler itself.
- */
-#define vl_endianfun
-#include <pnat/pnat.api.h>
-#undef vl_endianfun
 static void send_bindings_details(u32 index, vl_api_registration_t *rp,
                                   u32 context) {
     pnat_main_t *pm = &pnat_main;
@@ -115,17 +106,10 @@ static void send_bindings_details(u32 index, vl_api_registration_t *rp,
 
     /* Make sure every field is initiated (or don't skip the clib_memset()) */
 
-    REPLY_MACRO_DETAILS4(VL_API_PNAT_BINDINGS_DETAILS, rp, context, ({
-                             rmp->match = t->match;
-                             rmp->rewrite = t->rewrite;
-
-                             /* Endian hack until apigen registers _details
-                              * endian functions */
-                             vl_api_pnat_bindings_details_t_endian(
-                                 rmp, 1 /* to network */);
-                             rmp->_vl_msg_id = htons(rmp->_vl_msg_id);
-                             rmp->context = htonl(rmp->context);
-                         }));
+    REPLY_MACRO_DETAILS4_END(VL_API_PNAT_BINDINGS_DETAILS, rp, context, ({
+                                 rmp->match = t->match;
+                                 rmp->rewrite = t->rewrite;
+                             }));
 }
 
 static void vl_api_pnat_bindings_get_t_handler(vl_api_pnat_bindings_get_t *mp) {
@@ -135,16 +119,16 @@ static void vl_api_pnat_bindings_get_t_handler(vl_api_pnat_bindings_get_t *mp) {
     i32 rv = 0;
 
     if (pool_elts(pm->translations) == 0) {
-        REPLY_MACRO(VL_API_PNAT_BINDINGS_GET_REPLY);
+        REPLY_MACRO_END(VL_API_PNAT_BINDINGS_GET_REPLY);
         return;
     }
 
     /*
      * "cursor" comes from the get call, and allows client to continue a dump
      */
-    REPLY_AND_DETAILS_MACRO(VL_API_PNAT_BINDINGS_GET_REPLY, pm->translations, ({
-                                send_bindings_details(cursor, rp, mp->context);
-                            }));
+    REPLY_AND_DETAILS_MACRO_END(
+        VL_API_PNAT_BINDINGS_GET_REPLY, pm->translations,
+        ({ send_bindings_details(cursor, rp, mp->context); }));
 }
 
 static void send_interfaces_details(u32 index, vl_api_registration_t *rp,
@@ -155,18 +139,12 @@ static void send_interfaces_details(u32 index, vl_api_registration_t *rp,
 
     /* Make sure every field is initiated (or don't skip the clib_memset()) */
 
-    REPLY_MACRO_DETAILS4(
+    REPLY_MACRO_DETAILS4_END(
         VL_API_PNAT_INTERFACES_DETAILS, rp, context, ({
             rmp->sw_if_index = i->sw_if_index;
             clib_memcpy(rmp->enabled, i->enabled, sizeof(rmp->enabled));
             clib_memcpy(rmp->lookup_mask, i->lookup_mask,
                         sizeof(rmp->lookup_mask));
-
-            /* Endian hack until apigen registers _details
-             * endian functions */
-            vl_api_pnat_interfaces_details_t_endian(rmp, 1 /* to network */);
-            rmp->_vl_msg_id = htons(rmp->_vl_msg_id);
-            rmp->context = htonl(rmp->context);
         }));
 }
 
@@ -178,14 +156,14 @@ vl_api_pnat_interfaces_get_t_handler(vl_api_pnat_interfaces_get_t *mp) {
     i32 rv = 0;
 
     if (pool_elts(pm->interfaces) == 0) {
-        REPLY_MACRO(VL_API_PNAT_INTERFACES_GET_REPLY);
+        REPLY_MACRO_END(VL_API_PNAT_INTERFACES_GET_REPLY);
         return;
     }
 
     /*
      * "cursor" comes from the get call, and allows client to continue a dump
      */
-    REPLY_AND_DETAILS_MACRO(
+    REPLY_AND_DETAILS_MACRO_END(
         VL_API_PNAT_INTERFACES_GET_REPLY, pm->interfaces,
         ({ send_interfaces_details(cursor, rp, mp->context); }));
 }

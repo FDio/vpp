@@ -16,10 +16,6 @@
 #include <plugins/srmpls/sr_mpls.api_enum.h>
 #include <plugins/srmpls/sr_mpls.api_types.h>
 
-#define vl_endianfun /* define message structures */
-#include <plugins/srmpls/sr_mpls.api.h>
-#undef vl_endianfun
-
 typedef struct
 {
   /* API message ID base */

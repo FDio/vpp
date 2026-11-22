@@ -19,14 +19,6 @@
 #include <vnet/ip/ip.api_types.h>
 #include <vlibmemory/vlib.api_types.h>
 
-#define vl_endianfun /* define message structures */
-#include <vnet/ip/ip.api.h>
-#undef vl_endianfun
-
-#define vl_calcsizefun
-#include <vnet/ip/ip.api.h>
-#undef vl_calcsizefun
-
 typedef struct
 {
   /* API message ID base */

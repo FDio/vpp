@@ -22,20 +22,13 @@
 #include <svm/ssvm.h>
 #include <vlibmemory/socket_client.h>
 #include <vlibmemory/memory_client.h>
+#include <vlibapi/api_desc.h>
 
 #include <vlibmemory/vl_memory_msg_enum.h>
 
 #define vl_typedefs		/* define message structures */
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_typedefs
-
-#define vl_endianfun		/* define message structures */
-#include <vlibmemory/vl_memory_api_h.h>
-#undef vl_endianfun
-
-#define vl_calcsizefun
-#include <vlibmemory/vl_memory_api_h.h>
-#undef vl_calcsizefun
 
 /* instantiate all the print functions we know about */
 #define vl_printfun
@@ -455,20 +448,19 @@ _(SOCK_INIT_SHM_REPLY, sock_init_shm_reply)     		\
 void
 vl_sock_client_install_message_handlers (void)
 {
+  api_main_t *am = vlibapi_get_main ();
 
-#define _(N, n)                                                               \
-  vl_msg_api_config (&(vl_msg_api_msg_config_t){                              \
-    .id = VL_API_##N,                                                         \
-    .name = #n,                                                               \
-    .handler = vl_api_##n##_t_handler,                                        \
-    .endian = vl_api_##n##_t_endian,                                          \
-    .format_fn = vl_api_##n##_t_format,                                       \
-    .size = sizeof (vl_api_##n##_t),                                          \
-    .traced = 0,                                                              \
-    .tojson = vl_api_##n##_t_tojson,                                          \
-    .fromjson = vl_api_##n##_t_fromjson,                                      \
-    .calc_size = vl_api_##n##_t_calc_size,                                    \
-  });
+#define _(N, n)                                                                                    \
+  vl_msg_api_config (&(vl_msg_api_msg_config_t) {                                                  \
+    .id = VL_API_##N,                                                                              \
+    .name = #n,                                                                                    \
+    .handler = vl_api_##n##_t_handler,                                                             \
+    .size = sizeof (vl_api_##n##_t),                                                               \
+    .traced = 0,                                                                                   \
+    .tojson = vl_api_##n##_t_tojson,                                                               \
+    .fromjson = vl_api_##n##_t_fromjson,                                                           \
+  });                                                                                              \
+  vl_api_desc_register_msg (am, vl_memclnt_client_api_desc (), #n, VL_API_##N);
   foreach_sock_client_api_msg;
 #undef _
 }

@@ -21,10 +21,6 @@
 #include <vnet/session/session.api_enum.h>
 #include <vnet/session/session.api_types.h>
 
-#define vl_endianfun /* define message structures */
-#include <vnet/session/session.api.h>
-#undef vl_endianfun
-
 typedef struct
 {
   /* API message ID base */

@@ -108,14 +108,6 @@ vl_api_mactime_details_t_handler (vl_api_mactime_details_t * mp)
     }
 }
 
-#define vl_endianfun		/* define message structures */
-#include <mactime/mactime.api.h>
-#undef vl_endianfun
-
-#define vl_calcsizefun
-#include <mactime/mactime.api.h>
-#undef vl_calcsizefun
-
 /* instantiate all the print functions we know about */
 #define vl_printfun
 #include <mactime/mactime.api.h>
@@ -124,6 +116,10 @@ vl_api_mactime_details_t_handler (vl_api_mactime_details_t * mp)
 #define vl_api_version(n,v) static u32 api_version = v;
 #include <mactime/mactime.api.h>
 #undef vl_api_version
+
+/* the API descriptors of the file, to check the size of the messages */
+#include <vlibapi/api_desc.h>
+#include <mactime/mactime.api_desc.c>
 
 static int
 connect_to_vpp (char *name, char *socket_name)
@@ -156,16 +152,15 @@ connect_to_vpp (char *name, char *socket_name)
     .id = VL_API_##N + mm->msg_id_base,                                                            \
     .name = #n,                                                                                    \
     .handler = vl_api_##n##_t_handler,                                                             \
-    .endian = vl_api_##n##_t_endian,                                                               \
-    .format_fn = vl_api_##n##_t_format,                                                            \
     .size = sizeof (vl_api_##n##_t),                                                               \
     .traced = 1,                                                                                   \
     .tojson = vl_api_##n##_t_tojson,                                                               \
     .fromjson = vl_api_##n##_t_fromjson,                                                           \
-    .calc_size = vl_api_##n##_t_calc_size,                                                         \
   });
   foreach_mactime_api_msg;
 #undef _
+
+  vl_api_desc_register (vlibapi_get_main (), &mactime_api_desc, mm->msg_id_base);
 
   return 0;
 }

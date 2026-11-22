@@ -111,10 +111,8 @@ typedef struct
   void *handler;		/**< the message handler  */
   void *cleanup;		/**< non-default message cleanup handler */
   void *endian;			/**< message endian function  */
-  void *format_fn;		/**< message format function  */
   void *tojson;			/**< binary to JSON convert function */
   void *fromjson;		/**< JSON to binary convert function */
-  void *calc_size;		/**< message size calculation */
   int size;			/**< message size  */
   u32 traced : 1;		/**< is this message to be traced?  */
   u32 replay : 1;		/**< is this message to be replayed?  */
@@ -215,9 +213,6 @@ typedef struct
   /** Message name vector */
   const char *name;
 
-  /** Message format function */
-  format_function_t *format_fn;
-
   /** Message convert function vector */
   cJSON *(*tojson_handler) (void *);
 
@@ -226,9 +221,6 @@ typedef struct
 
   /** Message endian handler vector. */
   void (*endian_handler) (void *, bool to_net);
-
-  /** Message calc size function vector */
-  uword (*calc_size_func) (void *);
 
   /** trace size for sanity checking */
   int trace_size;
@@ -384,6 +376,8 @@ typedef struct api_main_t
   const struct vl_api_desc_file **desc_files;
   /** message descriptors by message id */
   struct vl_api_desc_msg *desc_by_msg_id;
+  /* what the byte order conversion of each message does, built when it is used */
+  void **desc_endian_plans;
 
 } api_main_t;
 

@@ -20,10 +20,6 @@
 #include <vlibmemory/vlib.api_types.h>
 #include <vlibmemory/memclnt.api_enum.h>
 
-#define vl_endianfun /* define message structures */
-#include <vnet/interface.api.h>
-#undef vl_endianfun
-
 typedef struct
 {
   /* API message ID base */

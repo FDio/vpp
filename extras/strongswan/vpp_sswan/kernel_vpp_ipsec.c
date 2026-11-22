@@ -25,7 +25,6 @@
 #include <vpp-api/client/stat_client.h>
 
 #define vl_typedefs
-#define vl_endianfun
 /* Include the (first) vlib-api API definition layer */
 #include <vlibmemory/vl_memory_api_h.h>
 /* Include the current layer (third) vpp API definition layer */
@@ -39,7 +38,6 @@
 #include <vnet/interface.api_enum.h>
 #include <vnet/interface.api_types.h>
 #undef vl_typedefs
-#undef vl_endianfun
 
 #include "kernel_vpp_ipsec.h"
 #include "kernel_vpp_shared.h"

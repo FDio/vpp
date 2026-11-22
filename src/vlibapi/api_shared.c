@@ -17,6 +17,7 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlibapi/api.h>
+#include <vlibapi/api_desc.h>
 #include <vppinfra/elog.h>
 #include <vppinfra/callback.h>
 
@@ -216,10 +217,8 @@ vl_msg_api_trace_write_one (api_main_t *am, u8 *msg, FILE *fp)
   u16 id = clib_net_to_host_u16 (*((u16 *) msg));
   vl_api_msg_data_t *m = vl_api_get_msg_data (am, id);
 
-  if (m && m->endian_handler)
-    {
-      m->endian_handler (tmpmem, 0 /* host endian */);
-    }
+  if (m)
+    vl_api_msg_endian (am, id, tmpmem, 0 /* host endian */);
 
   if (m && m->tojson_handler)
     {
@@ -517,24 +516,16 @@ msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
 	}
 
       uword calc_size = 0;
-      ASSERT (NULL != m->calc_size_func);
-      if (m->calc_size_func)
-	{
-	  calc_size = m->calc_size_func (the_msg);
-	  if (calc_size > msg_len)
-	    {
-	      clib_warning (
-		"Truncated message '%s' (id %u) received, calculated size "
-		"%lu is bigger than actual size %llu, message dropped.",
-		m->name, id, calc_size, msg_len);
-	    }
-	}
-      else
-	{
-	  clib_warning ("Message '%s' (id %u) has NULL calc_size_func, cannot "
-			"verify message size is correct",
-			m->name, id);
-	}
+      const vl_api_desc_msg_t *d = vl_api_desc_find_msg (am, id);
+
+      /* the messages which have no descriptor are not checked */
+      if (d)
+	calc_size = vl_api_desc_msg_calc_size (d, the_msg);
+
+      if (calc_size > msg_len)
+	clib_warning ("Truncated message '%s' (id %u) received, calculated size "
+		      "%lu is bigger than actual size %llu, message dropped.",
+		      m->name, id, calc_size, msg_len);
 
       /* don't process message if it's truncated, otherwise byte swaps
        * and stuff could corrupt memory even beyond message if it's malicious
@@ -549,7 +540,7 @@ msg_handler_internal (api_main_t *am, void *the_msg, uword msg_len,
 	    }
 
 	  if (m->is_autoendian)
-	    m->endian_handler (the_msg, 0);
+	    vl_api_msg_endian (am, id, the_msg, 0);
 
 	  if (PREDICT_FALSE (vec_len (am->perf_counter_cbs) != 0))
 	    clib_call_callbacks (am->perf_counter_cbs, am, id,
@@ -746,10 +737,8 @@ vl_msg_api_config (vl_msg_api_msg_config_t * c)
   m->handler = c->handler;
   m->cleanup_handler = c->cleanup;
   m->endian_handler = c->endian;
-  m->format_fn = c->format_fn;
   m->tojson_handler = c->tojson;
   m->fromjson_handler = c->fromjson;
-  m->calc_size_func = c->calc_size;
   m->bounce = c->message_bounce;
   m->is_mp_safe = c->is_mp_safe;
   m->is_autoendian = c->is_autoendian;

@@ -22,8 +22,12 @@ macro(add_vpp_library lib)
   # the API descriptors of the files
   set(api_sources)
   foreach(file ${ARG_API_FILES})
-    list(APPEND api_sources ${CMAKE_CURRENT_BINARY_DIR}/${file}_desc.c)
+    get_filename_component(desc ${CMAKE_CURRENT_BINARY_DIR}/${file}_desc.c ABSOLUTE)
+    list(APPEND api_sources ${desc})
   endforeach()
+  # a file of another directory is generated there, GENERATED is not visible
+  # in other directories
+  set_source_files_properties(${api_sources} PROPERTIES GENERATED TRUE)
 
   set (lo ${lib}_objs)
   add_library(${lo} OBJECT ${ARG_SOURCES} ${api_sources})
@@ -91,6 +95,15 @@ macro(add_vpp_library lib)
     vpp_add_api_files(${lib} core vpp ${ARG_API_FILES})
     foreach(file ${ARG_API_FILES})
       get_filename_component(dir ${file} DIRECTORY)
+      # the headers of a file which more than one library lists are
+      # installed with the first one
+      get_filename_component(abs_file ${file} ABSOLUTE)
+      set(api_installed "vpp_api_installed:${abs_file}")
+      get_property(api_installed_done GLOBAL PROPERTY "${api_installed}")
+      if(api_installed_done)
+	continue()
+      endif()
+      set_property(GLOBAL PROPERTY "${api_installed}" TRUE)
       install(
 	FILES ${file} ${CMAKE_CURRENT_BINARY_DIR}/${file}.h
 	${CMAKE_CURRENT_BINARY_DIR}/${file}_enum.h
