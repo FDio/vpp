@@ -150,7 +150,7 @@ void transport_get_listener_endpoint (transport_proto_t tp, u32 conn_index,
 				      transport_endpoint_t *tep_rmt,
 				      transport_endpoint_t *tep_lcl);
 __clib_export int transport_connection_attribute (transport_proto_t tp, u32 conn_index,
-						  u8 thread_index, u8 is_get,
+						  clib_thread_index_t thread_index, u8 is_get,
 						  transport_endpt_attr_t *attr);
 
 static inline transport_connection_t *
