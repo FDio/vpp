@@ -480,7 +480,7 @@ service {
     stream nat44_ed_output_interface_details;
 };
 
-define nat44_ed_output_interface_get
+autoendian define nat44_ed_output_interface_get
 {
   u32 client_index;
   u32 context;

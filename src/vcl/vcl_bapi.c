@@ -250,14 +250,6 @@ vl_api_app_del_cert_key_pair_reply_t_handler (
   _ (APP_DEL_CERT_KEY_PAIR_REPLY, app_del_cert_key_pair_reply)                \
   _ (APP_WORKER_ADD_DEL_REPLY, app_worker_add_del_reply)
 
-#define vl_endianfun	      /* define message structures */
-#include <vnet/session/session.api.h>
-#undef vl_endianfun
-
-#define vl_calcsizefun
-#include <vnet/session/session.api.h>
-#undef vl_calcsizefun
-
 /* instantiate all the print functions we know about */
 #define vl_printfun
 #include <vnet/session/session.api.h>
@@ -266,6 +258,10 @@ vl_api_app_del_cert_key_pair_reply_t_handler (
 #define vl_api_version(n, v) static u32 api_version = v;
 #include <vnet/session/session.api.h>
 #undef vl_api_version
+
+/* the API descriptors of the file, to check the size of the messages */
+#include <vlibapi/api_desc.h>
+#include <vnet/session/session.api_desc.c>
 
 static void
 vcl_bapi_hookup (void)
@@ -285,16 +281,15 @@ vcl_bapi_hookup (void)
     .id = REPLY_MSG_ID_BASE + VL_API_##N,                                     \
     .name = #n,                                                               \
     .handler = vl_api_##n##_t_handler,                                        \
-    .endian = vl_api_##n##_t_endian,                                          \
-    .format_fn = vl_api_##n##_t_format,                                       \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = (u32) 1,                                                        \
     .tojson = vl_api_##n##_t_tojson,                                          \
     .fromjson = vl_api_##n##_t_fromjson,                                      \
-    .calc_size = vl_api_##n##_t_calc_size,                                    \
   });
   foreach_sock_msg;
 #undef _
+
+  vl_api_desc_register (vlibapi_get_main (), &session_api_desc, REPLY_MSG_ID_BASE);
 }
 
 /*

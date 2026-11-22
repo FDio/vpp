@@ -42,6 +42,9 @@ add_vpp_library (vlibmemoryclient
   memory_client.c
   socket_client.c
 
+  API_FILES
+  memclnt.api
+
   LINK_LIBRARIES vppinfra svm vlibapi
 )
 add_dependencies(vlibmemoryclient vlibmemory_api_headers)

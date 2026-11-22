@@ -17,10 +17,6 @@
 #include <vnet/srv6/sr.api_enum.h>
 #include <vnet/srv6/sr.api_types.h>
 
-#define vl_endianfun /* define message structures */
-#include <vnet/srv6/sr.api.h>
-#undef vl_endianfun
-
 typedef struct
 {
   /* API message ID base */

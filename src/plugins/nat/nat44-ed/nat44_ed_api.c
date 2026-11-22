@@ -412,9 +412,6 @@ bad_sw_if_index:
   REPLY_MACRO_END (VL_API_NAT44_ED_ADD_DEL_OUTPUT_INTERFACE_REPLY);
 }
 
-#define vl_endianfun
-#include <nat/nat44-ed/nat44_ed.api.h>
-#undef vl_endianfun
 static void
 send_nat44_ed_output_interface_details (u32 index, vl_api_registration_t *rp,
 					u32 context)
@@ -425,17 +422,8 @@ send_nat44_ed_output_interface_details (u32 index, vl_api_registration_t *rp,
     pool_elt_at_index (sm->output_feature_interfaces, index);
 
   /* Make sure every field is initiated (or don't skip the clib_memset()) */
-  REPLY_MACRO_DETAILS4 (
-    VL_API_NAT44_ED_OUTPUT_INTERFACE_DETAILS, rp, context, ({
-      rmp->sw_if_index = i->sw_if_index;
-
-      /* Endian hack until apigen registers _details
-       * endian functions */
-      vl_api_nat44_ed_output_interface_details_t_endian (rmp,
-							 1 /* to network */);
-      rmp->_vl_msg_id = htons (rmp->_vl_msg_id);
-      rmp->context = htonl (rmp->context);
-    }));
+  REPLY_MACRO_DETAILS4_END (VL_API_NAT44_ED_OUTPUT_INTERFACE_DETAILS, rp, context,
+			    ({ rmp->sw_if_index = i->sw_if_index; }));
 }
 
 static void
@@ -448,11 +436,11 @@ vl_api_nat44_ed_output_interface_get_t_handler (
 
   if (pool_elts (sm->output_feature_interfaces) == 0)
     {
-      REPLY_MACRO (VL_API_NAT44_ED_OUTPUT_INTERFACE_GET_REPLY);
+      REPLY_MACRO_END (VL_API_NAT44_ED_OUTPUT_INTERFACE_GET_REPLY);
       return;
     }
 
-  REPLY_AND_DETAILS_MACRO (
+  REPLY_AND_DETAILS_MACRO_END (
     VL_API_NAT44_ED_OUTPUT_INTERFACE_GET_REPLY, sm->output_feature_interfaces,
     ({ send_nat44_ed_output_interface_details (cursor, rp, mp->context); }));
 }

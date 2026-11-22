@@ -23,11 +23,6 @@
 #include <nsh/nsh.api.h>
 #undef vl_typedefs
 
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <nsh/nsh.api.h>
-#undef vl_endianfun
-
 nsh_md2_ioam_main_t nsh_md2_ioam_main;
 
 static void

@@ -22,14 +22,6 @@ extern const vl_api_desc_file_t sr_mpls_api_desc __attribute__ ((visibility ("hi
 #include <plugins/srmpls/sr_mpls.api.h>
 #undef vl_api_version
 
-#define vl_endianfun
-#include <plugins/srmpls/sr_mpls.api.h>
-#undef vl_endianfun
-
-#define vl_calcsizefun
-#include <plugins/srmpls/sr_mpls.api.h>
-#undef vl_calcsizefun
-
 #define vl_printfun
 #include <plugins/srmpls/sr_mpls.api.h>
 #undef vl_printfun
@@ -187,13 +179,10 @@ sr_mpls_api_hookup (vlib_main_t * vm)
     .id = REPLY_MSG_ID_BASE + VL_API_##N,                                     \
     .name = #n,                                                               \
     .handler = vl_api_##n##_t_handler,                                        \
-    .endian = vl_api_##n##_t_endian,                                          \
-    .format_fn = vl_api_##n##_t_format,                                       \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = 1,                                                              \
     .tojson = vl_api_##n##_t_tojson,                                          \
     .fromjson = vl_api_##n##_t_fromjson,                                      \
-    .calc_size = vl_api_##n##_t_calc_size,                                    \
   });
   foreach_vpe_api_msg;
 #undef _
@@ -206,13 +195,10 @@ sr_mpls_api_hookup (vlib_main_t * vm)
     .id = REPLY_MSG_ID_BASE + VL_API_SR_MPLS_POLICY_ADD,
     .name = "sr_mpls_policy_add",
     .handler = vl_api_sr_mpls_policy_add_t_handler,
-    .endian = vl_api_sr_mpls_policy_add_t_endian,
-    .format_fn = vl_api_sr_mpls_policy_add_t_format,
     .size = 256,
     .traced = 1,
     .tojson = vl_api_sr_mpls_policy_add_t_tojson,
     .fromjson = vl_api_sr_mpls_policy_add_t_fromjson,
-    .calc_size = vl_api_sr_mpls_policy_add_t_calc_size,
   });
   /*
    * Manually register the sr policy mod msg, so we trace enough bytes
@@ -222,13 +208,10 @@ sr_mpls_api_hookup (vlib_main_t * vm)
     .id = REPLY_MSG_ID_BASE + VL_API_SR_MPLS_POLICY_MOD,
     .name = "sr_mpls_policy_mod",
     .handler = vl_api_sr_mpls_policy_mod_t_handler,
-    .endian = vl_api_sr_mpls_policy_mod_t_endian,
-    .format_fn = vl_api_sr_mpls_policy_mod_t_format,
     .size = 256,
     .traced = 1,
     .tojson = vl_api_sr_mpls_policy_mod_t_tojson,
     .fromjson = vl_api_sr_mpls_policy_mod_t_fromjson,
-    .calc_size = vl_api_sr_mpls_policy_mod_t_calc_size,
   });
 
   /*

@@ -37,6 +37,55 @@ vl_api_desc_register_msg (api_main_t *am, const vl_api_desc_file_t *f, const cha
   vec_add1 (am->desc_files, f);
 }
 
+/* ---- the messages and the types of a file by name */
+
+const vl_api_desc_msg_t *
+vl_api_desc_file_find (const vl_api_desc_file_t *f, const char *name, vl_api_desc_msg_t *m)
+{
+  for (u32 i = 0; i < f->n_msgs; i++)
+    if (!strcmp (f->msgs[i].name, name))
+      {
+	m->file = f;
+	m->type = &f->msgs[i];
+	return m;
+      }
+
+  for (u32 i = 0; i < f->n_types; i++)
+    if (!strcmp (f->types[i].name, name))
+      {
+	m->file = f;
+	m->type = &f->types[i];
+	return m;
+      }
+
+  return 0;
+}
+
+void
+vl_api_desc_file_endian (const vl_api_desc_file_t *f, const char *name, void *msg, int to_net)
+{
+  vl_api_desc_msg_t m;
+
+  if (vl_api_desc_file_find (f, name, &m))
+    vl_api_desc_msg_endian (&m, msg, to_net);
+}
+
+uword
+vl_api_desc_file_calc_size (const vl_api_desc_file_t *f, const char *name, const void *msg)
+{
+  vl_api_desc_msg_t m;
+
+  return vl_api_desc_file_find (f, name, &m) ? vl_api_desc_msg_calc_size (&m, msg) : 0;
+}
+
+u8 *
+vl_api_desc_file_format (u8 *s, const vl_api_desc_file_t *f, const char *name, const void *msg)
+{
+  vl_api_desc_msg_t m;
+
+  return vl_api_desc_file_find (f, name, &m) ? vl_api_desc_msg_format (s, &m, msg) : s;
+}
+
 /* ---- the type of a field */
 
 u8 *

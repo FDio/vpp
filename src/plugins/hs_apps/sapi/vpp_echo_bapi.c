@@ -564,14 +564,6 @@ _(APPLICATION_DETACH_REPLY, application_detach_reply)            \
 _(APP_ADD_CERT_KEY_PAIR_REPLY, app_add_cert_key_pair_reply)      \
 _(APP_DEL_CERT_KEY_PAIR_REPLY, app_del_cert_key_pair_reply)
 
-#define vl_endianfun
-#include <vnet/session/session.api.h>
-#undef vl_endianfun
-
-#define vl_calcsizefun
-#include <vnet/session/session.api.h>
-#undef vl_calcsizefun
-
 #define vl_printfun
 #include <vnet/session/session.api.h>
 #undef vl_printfun
@@ -579,6 +571,10 @@ _(APP_DEL_CERT_KEY_PAIR_REPLY, app_del_cert_key_pair_reply)
 #define vl_api_version(n, v) static u32 api_version = v;
 #include <vnet/session/session.api.h>
 #undef vl_api_version
+
+/* the API descriptors of the file, to check the size of the messages */
+#include <vlibapi/api_desc.h>
+#include <vnet/session/session.api_desc.c>
 
 void
 echo_api_hookup (echo_main_t * em)
@@ -597,14 +593,13 @@ echo_api_hookup (echo_main_t * em)
     .id = REPLY_MSG_ID_BASE + VL_API_##N,                                     \
     .name = #n,                                                               \
     .handler = vl_api_##n##_t_handler,                                        \
-    .endian = vl_api_##n##_t_endian,                                          \
-    .format_fn = vl_api_##n##_t_format,                                       \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = 1,                                                              \
     .tojson = vl_api_##n##_t_tojson,                                          \
     .fromjson = vl_api_##n##_t_fromjson,                                      \
-    .calc_size = vl_api_##n##_t_calc_size,                                    \
   });
   foreach_quic_echo_msg;
 #undef _
+
+  vl_api_desc_register (vlibapi_get_main (), &session_api_desc, REPLY_MSG_ID_BASE);
 }

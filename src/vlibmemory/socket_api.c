@@ -28,15 +28,6 @@
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_printfun
 
-/* instantiate all the endian swap functions we know about */
-#define vl_endianfun
-#include <vlibmemory/vl_memory_api_h.h>
-#undef vl_endianfun
-
-#define vl_calcsizefun
-#include <vlibmemory/vl_memory_api_h.h>
-#undef vl_calcsizefun
-
 socket_main_t socket_main;
 
 #define SOCK_API_REG_HANDLE_BIT (1<<31)
@@ -795,13 +786,10 @@ vl_sock_api_init (vlib_main_t * vm)
     .id = VL_API_##N,                                                         \
     .name = #n,                                                               \
     .handler = vl_api_##n##_t_handler,                                        \
-    .endian = vl_api_##n##_t_endian,                                          \
-    .format_fn = vl_api_##n##_t_format,                                       \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = t,                                                              \
     .tojson = vl_api_##n##_t_tojson,                                          \
     .fromjson = vl_api_##n##_t_fromjson,                                      \
-    .calc_size = vl_api_##n##_t_calc_size,                                    \
   });                                                                         \
   am->msg_data[VL_API_##N].replay_allowed = 0;
   foreach_vlib_api_msg;

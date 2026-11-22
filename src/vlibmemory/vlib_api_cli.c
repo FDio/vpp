@@ -533,7 +533,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       if (((which == DUMP || which == DUMP_JSON) &&
 	   clib_arch_is_little_endian))
 	{
-	  if (m && m->endian_handler == 0)
+	  if (m && !vl_api_msg_has_endian (am, msg_id))
 	    {
 	      vlib_cli_output (vm, "Ugh: msg id %d no endian swap\n", msg_id);
 	      munmap (hp, file_size);
@@ -543,7 +543,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	    }
 	  if (m)
 	    {
-	      m->endian_handler (tmpbuf + sizeof (uword), 1 /* to network */);
+	      vl_api_msg_endian (am, msg_id, tmpbuf + sizeof (uword), 1 /* to network */);
 	    }
 	}
 
@@ -656,14 +656,14 @@ vl_msg_print_trace (u8 *msg, void *ctx)
       return 0;
     }
 
-  if (clib_arch_is_little_endian && (m->endian_handler != NULL))
+  if (clib_arch_is_little_endian && vl_api_msg_has_endian (am, msg_id))
     {
       u32 msg_length = vec_len (msg);
       vec_validate (tmpbuf, msg_length - 1);
       clib_memcpy_fast (tmpbuf, msg, msg_length);
       msg = tmpbuf;
 
-      m->endian_handler (tmpbuf, 0 /* from network */);
+      vl_api_msg_endian (am, msg_id, tmpbuf, 0 /* from network */);
     }
 
   vlib_cli_output (a->vm, "%U\n",
@@ -812,8 +812,8 @@ vl_msg_exec_json_command (vlib_main_t *vm, cJSON *o)
 	  return rv;
 	}
 
-      if (clib_arch_is_little_endian)
-	m->endian_handler (msg, 1 /* to network */);
+      if (clib_arch_is_little_endian && vl_api_msg_has_endian (am, msg_id))
+	vl_api_msg_endian (am, msg_id, msg, 1 /* to network */);
 
       if (!m->handler)
 	{

@@ -3,6 +3,8 @@
  */
 
 #include <vlibmemory/api.h>
+#include <vlibmemory/memory_client.h>
+#include <vlibapi/api_desc.h>
 #include <vlibmemory/memclnt.api_enum.h>
 #include <vlibmemory/memclnt.api_types.h>
 #include <selog/selog_client/selog_client_internal.h>
@@ -74,15 +76,8 @@ selog_client_ctx_free (selog_client_ctx_t *ctx)
 
 #define foreach_memclnt_msg _ (CONTROL_PING_REPLY, control_ping_reply)
 
-#define vl_endianfun /* define message structures */
-#include <selog/selog.api.h>
-#include <vlibmemory/memclnt.api.h>
-#undef vl_endianfun
-
-#define vl_calcsizefun
-#include <selog/selog.api.h>
-#include <vlibmemory/memclnt.api.h>
-#undef vl_calcsizefun
+/* the API descriptors of selog.api, compiled into this library */
+extern const vl_api_desc_file_t selog_api_desc __attribute__ ((visibility ("hidden")));
 
 /* instantiate all the print functions we know about */
 #define vl_printfun
@@ -104,7 +99,6 @@ vl_api_selog_get_shm_reply_t_handler (vl_api_selog_get_shm_reply_t *mp)
   ssvm_private_t *ssvm;
   int fd;
 
-  vl_api_selog_get_shm_reply_t_endian (mp, 0 /* to host byte order */);
   ictx = pool_elt_at_index (selog_client_main.internal_ctx, mp->context);
   SELOG_LOG_DEBUG ("%s: vl_api_selog_get_shm_reply_t_handler",
 		   ictx->client_ctx.client_name);
@@ -160,8 +154,6 @@ vl_api_selog_get_string_table_reply_t_handler (
   selog_client_internal_ctx_t *ictx;
   u8 *string_tmp = 0;
   uword offset;
-  vl_api_selog_get_string_table_reply_t_endian (mp,
-						0 /* to host byte order */);
   ictx = pool_elt_at_index (selog_client_main.internal_ctx, mp->context);
   SELOG_LOG_DEBUG ("%s: vl_api_selog_get_string_table_reply_t_handler",
 		   ictx->client_ctx.client_name);
@@ -209,7 +201,6 @@ static void
 vl_api_selog_track_details_t_handler (vl_api_selog_track_details_t *mp)
 {
   selog_client_internal_ctx_t *ictx;
-  vl_api_selog_track_details_t_endian (mp, 0 /* to host byte order */);
   ictx = pool_elt_at_index (selog_client_main.internal_ctx, mp->context);
   SELOG_LOG_DEBUG ("%s index %d: vl_api_selog_track_details_t_handler",
 		   ictx->client_ctx.client_name, mp->index);
@@ -304,7 +295,6 @@ vl_api_selog_event_type_details_t_handler (
   vl_api_selog_event_type_details_t *mp)
 {
   selog_client_internal_ctx_t *ictx;
-  vl_api_selog_event_type_details_t_endian (mp, 0 /* to host byte order */);
   ictx = pool_elt_at_index (selog_client_main.internal_ctx, mp->context);
   SELOG_LOG_DEBUG ("%s index %d: vl_api_selog_event_type_details_t_handler",
 		   ictx->client_ctx.client_name, mp->index);
@@ -338,8 +328,6 @@ vl_api_selog_event_type_string_details_t_handler (
   selog_client_internal_ctx_t *ictx;
   elog_event_type_t *event_type;
   char *s;
-  vl_api_selog_event_type_string_details_t_endian (mp,
-						   0 /* to host byte order */);
   ictx = pool_elt_at_index (selog_client_main.internal_ctx, mp->context);
   event_type = vec_elt_at_index (ictx->private_em.event_types,
 				 ictx->current_event_type_index);
@@ -369,7 +357,6 @@ static void
 vl_api_control_ping_reply_t_handler (vl_api_control_ping_reply_t *mp)
 {
   selog_client_internal_ctx_t *ictx;
-  vl_api_control_ping_reply_t_endian (mp, 0 /* to host byte order */);
   ictx = pool_elt_at_index (selog_client_main.internal_ctx, mp->context);
   SELOG_LOG_DEBUG ("%s: vl_api_control_ping_reply_t_handler",
 		   ictx->client_ctx.client_name);
@@ -393,37 +380,40 @@ selog_client_bapi_hookup (void)
       abort ();
     }
 
-#define _(N, n)                                                               \
-  vl_msg_api_config (&(vl_msg_api_msg_config_t){                              \
-    .id = SELOG_REPLY_MSG_ID_BASE + VL_API_##N,                               \
-    .name = #n,                                                               \
-    .handler = vl_api_##n##_t_handler,                                        \
-    .endian = vl_api_##n##_t_endian,                                          \
-    .format_fn = vl_api_##n##_t_format,                                       \
-    .size = sizeof (vl_api_##n##_t),                                          \
-    .traced = (u32) 1,                                                        \
-    .tojson = vl_api_##n##_t_tojson,                                          \
-    .fromjson = vl_api_##n##_t_fromjson,                                      \
-    .calc_size = vl_api_##n##_t_calc_size,                                    \
+#define _(N, n)                                                                                    \
+  vl_msg_api_config (&(vl_msg_api_msg_config_t) {                                                  \
+    .id = SELOG_REPLY_MSG_ID_BASE + VL_API_##N,                                                    \
+    .name = #n,                                                                                    \
+    .handler = vl_api_##n##_t_handler,                                                             \
+    .is_autoendian = 1,                                                                            \
+    .size = sizeof (vl_api_##n##_t),                                                               \
+    .traced = (u32) 1,                                                                             \
+    .tojson = vl_api_##n##_t_tojson,                                                               \
+    .fromjson = vl_api_##n##_t_fromjson,                                                           \
   });
   foreach_selog_msg;
 #undef _
 
-#define _(N, n)                                                               \
-  vl_msg_api_config (&(vl_msg_api_msg_config_t){                              \
-    .id = VL_API_##N + 1,                                                     \
-    .name = #n,                                                               \
-    .handler = vl_api_##n##_t_handler,                                        \
-    .endian = vl_api_##n##_t_endian,                                          \
-    .format_fn = vl_api_##n##_t_format,                                       \
-    .size = sizeof (vl_api_##n##_t),                                          \
-    .traced = (u32) 1,                                                        \
-    .tojson = vl_api_##n##_t_tojson,                                          \
-    .fromjson = vl_api_##n##_t_fromjson,                                      \
-    .calc_size = vl_api_##n##_t_calc_size,                                    \
-  });
+  vl_api_desc_register (vlibapi_get_main (), &selog_api_desc, SELOG_REPLY_MSG_ID_BASE);
+
+#define _(N, n)                                                                                    \
+  vl_msg_api_config (&(vl_msg_api_msg_config_t) {                                                  \
+    .id = VL_API_##N + 1,                                                                          \
+    .name = #n,                                                                                    \
+    .handler = vl_api_##n##_t_handler,                                                             \
+    .is_autoendian = 1,                                                                            \
+    .size = sizeof (vl_api_##n##_t),                                                               \
+    .traced = (u32) 1,                                                                             \
+    .tojson = vl_api_##n##_t_tojson,                                                               \
+    .fromjson = vl_api_##n##_t_fromjson,                                                           \
+  });                                                                                              \
+  vl_api_desc_register_msg (vlibapi_get_main (), vl_memclnt_client_api_desc (), #n, VL_API_##N + 1);
   foreach_memclnt_msg;
 #undef _
+
+  /* control_ping is only sent */
+  vl_api_desc_register_msg (vlibapi_get_main (), vl_memclnt_client_api_desc (), "control_ping",
+			    VL_API_CONTROL_PING + 1);
 }
 
 static int
@@ -509,7 +499,7 @@ selog_client_ictx_want_multipart_done (selog_client_internal_ctx_t *ictx)
   mp->_vl_msg_id = VL_API_CONTROL_PING + 1;
   mp->client_index = ictx->api_client_handle;
   mp->context = ictx - selog_client_main.internal_ctx;
-  vl_api_control_ping_t_endian (mp, 1 /* to net byte order */);
+  vl_api_msg_endian (vlibapi_get_main (), mp->_vl_msg_id, mp, 1 /* to net */);
 
   ASSERT (ictx->multipart_done == 0);
   vl_msg_api_send_shmem (ictx->vl_input_queue, (u8 *) &mp);
@@ -532,7 +522,7 @@ selog_client_ictx_retrieve_shm (selog_client_internal_ctx_t *ictx)
   mp->_vl_msg_id = SELOG_REPLY_MSG_ID_BASE + VL_API_SELOG_GET_SHM;
   mp->client_index = ictx->api_client_handle;
   mp->context = ictx - selog_client_main.internal_ctx;
-  vl_api_selog_get_shm_t_endian (mp, 1 /* to net byte order */);
+  vl_api_msg_endian (vlibapi_get_main (), mp->_vl_msg_id, mp, 1 /* to net */);
   ictx->state = SELOG_CLIENT_INTERNAL_STATE_WAITING_FOR_SHM;
   vl_msg_api_send_shmem (ictx->vl_input_queue, (u8 *) &mp);
   rv = selog_client_ictx_wait_for_state_change (
@@ -558,7 +548,7 @@ selog_client_ictx_retrieve_string_table (selog_client_internal_ctx_t *ictx)
   mp->_vl_msg_id = SELOG_REPLY_MSG_ID_BASE + VL_API_SELOG_GET_STRING_TABLE;
   mp->client_index = ictx->api_client_handle;
   mp->context = ictx - selog_client_main.internal_ctx;
-  vl_api_selog_get_string_table_t_endian (mp, 1 /* to net byte order */);
+  vl_api_msg_endian (vlibapi_get_main (), mp->_vl_msg_id, mp, 1 /* to net */);
   ictx->state = SELOG_CLIENT_INTERNAL_STATE_WAITING_FOR_STRING_TABLE;
   vl_msg_api_send_shmem (ictx->vl_input_queue, (u8 *) &mp);
   rv = selog_client_ictx_wait_for_state_change (
@@ -583,7 +573,7 @@ selog_client_ictx_retrieve_all_tracks (selog_client_internal_ctx_t *ictx)
   mp->_vl_msg_id = SELOG_REPLY_MSG_ID_BASE + VL_API_SELOG_TRACK_DUMP;
   mp->client_index = ictx->api_client_handle;
   mp->context = ictx - selog_client_main.internal_ctx;
-  vl_api_selog_track_dump_t_endian (mp, 1 /* to net byte order */);
+  vl_api_msg_endian (vlibapi_get_main (), mp->_vl_msg_id, mp, 1 /* to net */);
   ictx->state = SELOG_CLIENT_INTERNAL_STATE_WAITING_FOR_ALL_TRACKS;
   vl_msg_api_send_shmem (ictx->vl_input_queue, (u8 *) &mp);
   selog_client_ictx_want_multipart_done (ictx);
@@ -609,7 +599,7 @@ selog_client_ictx_retrieve_all_event_types (selog_client_internal_ctx_t *ictx)
   mp->_vl_msg_id = SELOG_REPLY_MSG_ID_BASE + VL_API_SELOG_EVENT_TYPE_DUMP;
   mp->client_index = ictx->api_client_handle;
   mp->context = ictx - selog_client_main.internal_ctx;
-  vl_api_selog_event_type_dump_t_endian (mp, 1 /* to net byte order */);
+  vl_api_msg_endian (vlibapi_get_main (), mp->_vl_msg_id, mp, 1 /* to net */);
   ictx->state = SELOG_CLIENT_INTERNAL_STATE_WAITING_FOR_ALL_EVENT_TYPES;
   vl_msg_api_send_shmem (ictx->vl_input_queue, (u8 *) &mp);
   selog_client_ictx_want_multipart_done (ictx);
@@ -638,7 +628,7 @@ selog_client_ictx_retrieve_enum_strings_for_event_type (
   mp->client_index = ictx->api_client_handle;
   mp->context = ictx - selog_client_main.internal_ctx;
   mp->event_type_index = event_type_index;
-  vl_api_selog_event_type_string_dump_t_endian (mp, 1 /* to net byte order */);
+  vl_api_msg_endian (vlibapi_get_main (), mp->_vl_msg_id, mp, 1 /* to net */);
   ictx->current_event_type_index = event_type_index;
   ictx->state = SELOG_CLIENT_INTERNAL_STATE_WAITING_FOR_ENUM_STRINGS;
   vl_msg_api_send_shmem (ictx->vl_input_queue, (u8 *) &mp);

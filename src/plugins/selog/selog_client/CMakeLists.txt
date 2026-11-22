@@ -2,6 +2,10 @@ add_vpp_library(selog_client
   SOURCES
   selog_client.c
 
+  # generated for the plugin in the parent directory
+  API_FILES
+  ../selog.api
+
   LINK_LIBRARIES
   vppinfra svm vlibmemoryclient rt pthread
 

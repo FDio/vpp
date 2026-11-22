@@ -12,6 +12,8 @@
 #include <vppinfra/socket.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
+#include <vlibmemory/memory_client.h>
+#include <vlibapi/api_desc.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip-neighbor/ip_neighbor.h>
 #include <vnet/ip/ip_types_api.h>
@@ -45,14 +47,6 @@
 #include <vlibmemory/memclnt.api_types.h>
 #include <vlibmemory/memclnt.api_tojson.h>
 #include <vlibmemory/memclnt.api_fromjson.h>
-
-#define vl_endianfun		/* define message structures */
-#include <vlibmemory/memclnt.api.h>
-#undef vl_endianfun
-
-#define vl_calcsizefun
-#include <vlibmemory/memclnt.api.h>
-#undef vl_calcsizefun
 
 /* instantiate all the print functions we know about */
 #define vl_printfun
@@ -2720,22 +2714,28 @@ foreach_standalone_reply_msg;
 #endif
 #undef _
 
+/* the messages of memclnt.api have descriptors in vpp, vpp_api_test has its own */
+#if VPP_API_TEST_BUILTIN == 0
+#define VAT_DESC_REGISTER(n, id)                                                                   \
+  vl_api_desc_register_msg (vlibapi_get_main (), vl_memclnt_client_api_desc (), #n, id)
+#else
+#define VAT_DESC_REGISTER(n, id)
+#endif
+
 void
 vat_api_hookup (vat_main_t * vam)
 {
-#define _(N, n)                                                               \
-  vl_msg_api_config (&(vl_msg_api_msg_config_t){                              \
-    .id = VL_API_##N + 1,                                                     \
-    .name = #n,                                                               \
-    .handler = vl_api_##n##_t_handler_uni,                                    \
-    .endian = vl_api_##n##_t_endian,                                          \
-    .format_fn = vl_api_##n##_t_format,                                       \
-    .size = sizeof (vl_api_##n##_t),                                          \
-    .traced = 1,                                                              \
-    .tojson = vl_api_##n##_t_tojson,                                          \
-    .fromjson = vl_api_##n##_t_fromjson,                                      \
-    .calc_size = vl_api_##n##_t_calc_size,                                    \
-  });
+#define _(N, n)                                                                                    \
+  vl_msg_api_config (&(vl_msg_api_msg_config_t) {                                                  \
+    .id = VL_API_##N + 1,                                                                          \
+    .name = #n,                                                                                    \
+    .handler = vl_api_##n##_t_handler_uni,                                                         \
+    .size = sizeof (vl_api_##n##_t),                                                               \
+    .traced = 1,                                                                                   \
+    .tojson = vl_api_##n##_t_tojson,                                                               \
+    .fromjson = vl_api_##n##_t_fromjson,                                                           \
+  });                                                                                              \
+  VAT_DESC_REGISTER (n, VL_API_##N + 1);
   foreach_vpe_api_reply_msg;
 #if VPP_API_TEST_BUILTIN == 0
   foreach_standalone_reply_msg;

@@ -19,12 +19,6 @@
 #include <plugins/ikev2/ikev2.api_enum.h>
 #include <plugins/ikev2/ikev2.api_types.h>
 
-
-#define vl_endianfun		/* define message structures */
-#include <plugins/ikev2/ikev2.api.h>
-#include <plugins/ikev2/ikev2_types.api.h>
-#undef vl_endianfun
-
 extern ikev2_main_t ikev2_main;
 
 #define IKEV2_PLUGIN_VERSION_MAJOR 1
@@ -154,7 +148,7 @@ send_profile (ikev2_profile_t * profile, vl_api_registration_t * reg,
   rmp = vl_msg_api_alloc (sizeof (*rmp) + vec_len (profile->auth.data));
   clib_memset (rmp, 0, sizeof (*rmp) + vec_len (profile->auth.data));
   ikev2_main_t *im = &ikev2_main;
-  rmp->_vl_msg_id = ntohs (VL_API_IKEV2_PROFILE_DETAILS + im->msg_id_base);
+  rmp->_vl_msg_id = VL_API_IKEV2_PROFILE_DETAILS + im->msg_id_base;
   rmp->context = context;
 
   int size_data = sizeof (rmp->profile.name) - 1;
@@ -185,8 +179,7 @@ send_profile (ikev2_profile_t * profile, vl_api_registration_t * reg,
   rmp->profile.lifetime_jitter = profile->lifetime_jitter;
   rmp->profile.handover = profile->handover;
 
-  vl_api_ikev2_profile_t_endian (&rmp->profile, 1 /* to network */);
-
+  vl_api_msg_endian (vlibapi_get_main (), rmp->_vl_msg_id, rmp, 1 /* to network */);
   vl_api_send_msg (reg, (u8 *) rmp);
 }
 
@@ -331,7 +324,7 @@ send_sa (ikev2_sa_t *sa, vl_api_ikev2_sa_dump_t *mp, u32 api_sa_index)
   vl_api_ikev2_sa_details_t *rmp = 0;
   int rv = 0;
 
-  REPLY_MACRO2_ZERO (VL_API_IKEV2_SA_DETAILS, {
+  REPLY_MACRO2_ZERO_END (VL_API_IKEV2_SA_DETAILS, {
     vl_api_ikev2_sa_t *rsa = &rmp->sa;
     rsa->profile_index = rsa->profile_index;
     rsa->sa_index = api_sa_index;
@@ -342,8 +335,6 @@ send_sa (ikev2_sa_t *sa, vl_api_ikev2_sa_dump_t *mp, u32 api_sa_index)
 
     cp_sa_proposals_keys_stats (sa, &rsa->encryption, &rsa->prf, &rsa->integrity, &rsa->dh,
 				&rsa->keys, &rsa->stats);
-
-    vl_api_ikev2_sa_t_endian (rsa, 1 /* to network */);
   });
 }
 
@@ -369,7 +360,7 @@ send_sa_v2 (ikev2_sa_t *sa, vl_api_ikev2_sa_v2_dump_t *mp, u32 api_sa_index)
   ikev2_profile_t *p;
   p = pool_elt_at_index (km->profiles, sa->profile_index);
 
-  REPLY_MACRO2_ZERO (VL_API_IKEV2_SA_V2_DETAILS, {
+  REPLY_MACRO2_ZERO_END (VL_API_IKEV2_SA_V2_DETAILS, {
     vl_api_ikev2_sa_v2_t *rsa = &rmp->sa;
 
     cp_sa_profile_name (rsa->profile_name, sizeof (rsa->profile_name), p);
@@ -383,8 +374,6 @@ send_sa_v2 (ikev2_sa_t *sa, vl_api_ikev2_sa_v2_dump_t *mp, u32 api_sa_index)
 
     cp_sa_proposals_keys_stats (sa, &rsa->encryption, &rsa->prf, &rsa->integrity, &rsa->dh,
 				&rsa->keys, &rsa->stats);
-
-    vl_api_ikev2_sa_v2_t_endian (rsa, 1 /* to network */);
   });
 }
 
@@ -411,7 +400,7 @@ send_sa_v3 (ikev2_sa_t *sa, vl_api_ikev2_sa_v3_dump_t *mp, u32 api_sa_index)
   p = pool_elt_at_index (km->profiles, sa->profile_index);
   vlib_main_t *vm = vlib_get_main ();
 
-  REPLY_MACRO2_ZERO (VL_API_IKEV2_SA_V3_DETAILS, {
+  REPLY_MACRO2_ZERO_END (VL_API_IKEV2_SA_V3_DETAILS, {
     vl_api_ikev2_sa_v3_t *rsa = &rmp->sa;
 
     cp_sa_profile_name (rsa->profile_name, sizeof (rsa->profile_name), p);
@@ -427,8 +416,6 @@ send_sa_v3 (ikev2_sa_t *sa, vl_api_ikev2_sa_v3_dump_t *mp, u32 api_sa_index)
 
     cp_sa_proposals_keys_stats (sa, &rsa->encryption, &rsa->prf, &rsa->integrity, &rsa->dh,
 				&rsa->keys, &rsa->stats);
-
-    vl_api_ikev2_sa_v3_t_endian (rsa, 1 /* to network */);
   });
 }
 
@@ -453,8 +440,7 @@ send_child_sa (ikev2_child_sa_t * child,
   vl_api_ikev2_child_sa_details_t *rmp = 0;
   int rv = 0;
 
-  REPLY_MACRO2_ZERO (VL_API_IKEV2_CHILD_SA_DETAILS,
-  {
+  REPLY_MACRO2_ZERO_END (VL_API_IKEV2_CHILD_SA_DETAILS, {
     vl_api_ikev2_keys_t *k = &rmp->child_sa.keys;
     rmp->child_sa.child_sa_index = child_sa_index;
     rmp->child_sa.sa_index = sa_index;
@@ -467,8 +453,6 @@ send_child_sa (ikev2_child_sa_t * child,
 			    child);
 
     cp_child_sa_keys (k, child);
-
-    vl_api_ikev2_child_sa_t_endian (&rmp->child_sa, 1 /* to network */);
   });
 }
 
@@ -478,7 +462,7 @@ vl_api_ikev2_child_sa_dump_t_handler (vl_api_ikev2_child_sa_dump_t * mp)
   ikev2_main_t *im = &ikev2_main;
   ikev2_sa_t *sa;
   ikev2_child_sa_t *child;
-  u32 sai = clib_net_to_host_u32 (mp->sa_index);
+  u32 sai = mp->sa_index;
 
   if (pool_len (im->sas) <= sai || pool_is_free_index (im->sas, sai))
     return;
@@ -500,7 +484,7 @@ send_child_sa_v2 (ikev2_child_sa_t *child, vl_api_ikev2_child_sa_v2_dump_t *mp,
   int rv = 0;
   vlib_main_t *vm = vlib_get_main ();
 
-  REPLY_MACRO2_ZERO (VL_API_IKEV2_CHILD_SA_V2_DETAILS, {
+  REPLY_MACRO2_ZERO_END (VL_API_IKEV2_CHILD_SA_V2_DETAILS, {
     vl_api_ikev2_keys_t *k = &rmp->child_sa.keys;
     rmp->child_sa.child_sa_index = child_sa_index;
     rmp->child_sa.uptime = vlib_time_now (vm) - child->timestamp;
@@ -512,8 +496,6 @@ send_child_sa_v2 (ikev2_child_sa_t *child, vl_api_ikev2_child_sa_v2_dump_t *mp,
 			    child);
 
     cp_child_sa_keys (k, child);
-
-    vl_api_ikev2_child_sa_v2_t_endian (&rmp->child_sa, 1 /* to network */);
   });
 }
 
@@ -523,7 +505,7 @@ vl_api_ikev2_child_sa_v2_dump_t_handler (vl_api_ikev2_child_sa_v2_dump_t *mp)
   ikev2_main_t *im = &ikev2_main;
   ikev2_sa_t *sa;
   ikev2_child_sa_t *child;
-  u32 sai = clib_net_to_host_u32 (mp->sa_index);
+  u32 sai = mp->sa_index;
 
   if (pool_len (im->sas) <= sai || pool_is_free_index (im->sas, sai))
   return;
@@ -545,8 +527,8 @@ static void
   ikev2_sa_t *sa;
   ikev2_child_sa_t *child;
   ikev2_ts_t *ts;
-  u32 api_sa_index = clib_net_to_host_u32 (mp->sa_index);
-  u32 child_sa_index = clib_net_to_host_u32 (mp->child_sa_index);
+  u32 api_sa_index = mp->sa_index;
+  u32 child_sa_index = mp->child_sa_index;
   u32 sai = api_sa_index;
 
   if (pool_len (im->sas) <= sai || pool_is_free_index (im->sas, sai))
@@ -564,12 +546,10 @@ static void
     vl_api_ikev2_traffic_selector_details_t *rmp = 0;
     int rv = 0;
 
-    REPLY_MACRO2_ZERO (VL_API_IKEV2_TRAFFIC_SELECTOR_DETAILS,
-    {
+    REPLY_MACRO2_ZERO_END (VL_API_IKEV2_TRAFFIC_SELECTOR_DETAILS, {
       rmp->ts.sa_index = api_sa_index;
       rmp->ts.child_sa_index = child_sa_index;
       cp_ts (&rmp->ts, ts, mp->is_initiator);
-      vl_api_ikev2_ts_t_endian (&rmp->ts, 1 /* to network */);
     });
   }
 }

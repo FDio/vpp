@@ -14,6 +14,7 @@
 #include <vppinfra/hash.h>
 #include <vlibmemory/memory_client.h>
 #include <vlibapi/api_common.h>
+#include <vlibapi/api_desc.h>
 
 /* A hack. vl_client_get_first_plugin_msg_id depends on it */
 #include <vlibmemory/socket_client.h>
@@ -24,18 +25,19 @@
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun		/* define message structures */
-#include <vlibmemory/vl_memory_api_h.h>
-#undef vl_endianfun
-
-#define vl_calcsizefun
-#include <vlibmemory/vl_memory_api_h.h>
-#undef vl_calcsizefun
-
 /* instantiate all the print functions we know about */
 #define vl_printfun
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_printfun
+
+/* the API descriptors of memclnt.api, compiled into this library */
+extern const vl_api_desc_file_t memclnt_api_desc __attribute__ ((visibility ("hidden")));
+
+const vl_api_desc_file_t *
+vl_memclnt_client_api_desc (void)
+{
+  return &memclnt_api_desc;
+}
 
 memory_client_main_t memory_client_main;
 __thread memory_client_main_t *my_memory_client_main = &memory_client_main;
@@ -351,19 +353,17 @@ void
 vl_client_install_client_message_handlers (void)
 {
   api_main_t *am = vlibapi_get_main ();
-#define _(N, n)                                                               \
-  vl_msg_api_config (&(vl_msg_api_msg_config_t){                              \
-    .id = VL_API_##N,                                                         \
-    .name = #n,                                                               \
-    .handler = vl_api_##n##_t_handler,                                        \
-    .endian = vl_api_##n##_t_endian,                                          \
-    .format_fn = vl_api_##n##_t_format,                                       \
-    .size = sizeof (vl_api_##n##_t),                                          \
-    .traced = 0,                                                              \
-    .tojson = vl_api_##n##_t_tojson,                                          \
-    .fromjson = vl_api_##n##_t_fromjson,                                      \
-    .calc_size = vl_api_##n##_t_calc_size,                                    \
-  });                                                                         \
+#define _(N, n)                                                                                    \
+  vl_msg_api_config (&(vl_msg_api_msg_config_t) {                                                  \
+    .id = VL_API_##N,                                                                              \
+    .name = #n,                                                                                    \
+    .handler = vl_api_##n##_t_handler,                                                             \
+    .size = sizeof (vl_api_##n##_t),                                                               \
+    .traced = 0,                                                                                   \
+    .tojson = vl_api_##n##_t_tojson,                                                               \
+    .fromjson = vl_api_##n##_t_fromjson,                                                           \
+  });                                                                                              \
+  vl_api_desc_register_msg (am, &memclnt_api_desc, #n, VL_API_##N);                                \
   am->msg_data[VL_API_##N].replay_allowed = 0;
   foreach_api_msg;
 #undef _
@@ -546,11 +546,8 @@ vl_client_get_first_plugin_msg_id (const char *plugin_name)
   /* Push this plugin's first_msg_id_reply handler */
   old_handler = m->handler;
   m->handler = (void *) vl_api_get_first_msg_id_reply_t_handler;
-  if (!m->calc_size_func)
-    {
-      m->calc_size_func =
-	(uword (*) (void *)) vl_api_get_first_msg_id_reply_t_calc_size;
-    }
+  vl_api_desc_register_msg (am, vl_memclnt_client_api_desc (), "get_first_msg_id_reply",
+			    VL_API_GET_FIRST_MSG_ID_REPLY);
 
   /* Ask the data-plane for the message-ID base of the indicated plugin */
   mm->first_msg_id_reply_ready = 0;
