@@ -9,6 +9,8 @@
 #ifndef __api_helper_macros_h__
 #define __api_helper_macros_h__
 
+#include <vlibapi/api_desc.h>
+
 #define f64_endian(a)
 #define f64_print(a,b)
 
@@ -16,11 +18,9 @@
 #define REPLY_MSG_ID_BASE 0
 #endif
 
-#define _NATIVE_TO_NETWORK(t, rmp)                                            \
-  api_main_t *am = vlibapi_get_main ();                                       \
-  void (*endian_fp) (void *, bool);                                           \
-  endian_fp = am->msg_data[t + (REPLY_MSG_ID_BASE)].endian_handler;           \
-  (*endian_fp) (rmp, 1 /* to network */);
+#define _NATIVE_TO_NETWORK(t, rmp)                                                                 \
+  api_main_t *am = vlibapi_get_main ();                                                            \
+  vl_api_msg_endian (am, t + (REPLY_MSG_ID_BASE), rmp, 1 /* to network */);
 
 #define REPLY_MACRO(msg)                                                      \
   do                                                                          \

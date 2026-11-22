@@ -203,9 +203,6 @@ vlib_api_init (void)
       c->id = VL_API_##N;                                                     \
       c->name = #n;                                                           \
       c->handler = vl_api_##n##_t_handler;                                    \
-      c->endian = vl_api_##n##_t_endian;                                      \
-      c->format_fn = vl_api_##n##_t_format;                                   \
-      c->calc_size = vl_api_##n##_t_calc_size;                                \
       c->size = sizeof (vl_api_##n##_t);                                      \
       c->traced = 1;	     /* trace, so these msgs print */                 \
       c->replay = 0;	     /* don't replay client create/delete msgs */     \
@@ -705,10 +702,8 @@ rpc_api_hookup (vlib_main_t *vm)
     .id = VL_API_##N,                                                         \
     .name = #n,                                                               \
     .handler = vl_api_##n##_t_handler,                                        \
-    .format_fn = vl_api_##n##_t_format,                                       \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = 0,                                                              \
-    .calc_size = vl_api_##n##_t_calc_size,                                    \
   });
   foreach_rpc_api_msg;
 #undef _
@@ -718,11 +713,8 @@ rpc_api_hookup (vlib_main_t *vm)
     .id = VL_API_##N,                                                         \
     .name = #n,                                                               \
     .handler = vl_api_##n##_t_handler,                                        \
-    .endian = vl_api_##n##_t_endian,                                          \
-    .format_fn = vl_api_##n##_t_format,                                       \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = 1,                                                              \
-    .calc_size = vl_api_##n##_t_calc_size,                                    \
   });
   foreach_plugin_trace_msg
 #undef _
