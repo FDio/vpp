@@ -19,6 +19,7 @@ include_directories(${CMAKE_SOURCE_DIR}/vpp-api ${CMAKE_CURRENT_BINARY_DIR}/../.
 add_vpp_plugin(unittest
   SOURCES
   api_test.c
+  binary_api.c
   api_fuzz_test.c
   bier_test.c
   bihash_test.c

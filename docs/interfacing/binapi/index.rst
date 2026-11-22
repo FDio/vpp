@@ -11,3 +11,4 @@ The binary API
     vpp_api_language
     writing_api_handlers
     api_descriptors
+    binary_api_cli
