@@ -254,10 +254,6 @@ vl_api_app_del_cert_key_pair_reply_t_handler (
 #include <vnet/session/session.api.h>
 #undef vl_endianfun
 
-#define vl_calcsizefun
-#include <vnet/session/session.api.h>
-#undef vl_calcsizefun
-
 /* instantiate all the print functions we know about */
 #define vl_printfun
 #include <vnet/session/session.api.h>
@@ -288,7 +284,6 @@ vcl_bapi_hookup (void)
     .endian = vl_api_##n##_t_endian,                                          \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = (u32) 1,                                                        \
-    .calc_size = vl_api_##n##_t_calc_size,                                    \
   });
   foreach_sock_msg;
 #undef _

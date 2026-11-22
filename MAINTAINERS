@@ -959,11 +959,6 @@ I:	pvti
 M:	Andrew Yourtchenko <ayourtch@gmail.com>
 F:	src/plugins/pvti
 
-cJSON
-I:	cjson
-M:	Ole Troan <otroan@employees.org>
-F:	src/vppinfra/cJSON.[ch]
-
 Auto SDL
 I:	auto_sdl
 Y:	src/plugins/auto_sdl/FEATURE.yaml

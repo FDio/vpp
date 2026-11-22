@@ -46,10 +46,6 @@
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_endianfun
 
-#define vl_calcsizefun
-#include <vlibmemory/vl_memory_api_h.h>
-#undef vl_calcsizefun
-
 static void
 vl_api_get_first_msg_id_t_handler (vl_api_get_first_msg_id_t *mp)
 {
@@ -168,7 +164,6 @@ vl_api_get_api_json_t_handler (vl_api_get_api_json_t *mp)
   vec_terminate_c_string (s);
   n = vec_len (s);
 
-done:
   REPLY_MACRO3 (VL_API_GET_API_JSON_REPLY, n, ({
 		  if (rv == 0)
 		    {

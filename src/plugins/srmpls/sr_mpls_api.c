@@ -26,10 +26,6 @@ extern const vl_api_desc_file_t sr_mpls_api_desc __attribute__ ((visibility ("hi
 #include <plugins/srmpls/sr_mpls.api.h>
 #undef vl_endianfun
 
-#define vl_calcsizefun
-#include <plugins/srmpls/sr_mpls.api.h>
-#undef vl_calcsizefun
-
 #define vl_printfun
 #include <plugins/srmpls/sr_mpls.api.h>
 #undef vl_printfun
