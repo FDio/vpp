@@ -94,6 +94,7 @@ endif()
 install(
   FILES
   vat2_helpers.h
+  vat2_json.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vat2
   COMPONENT vpp-dev
 )

@@ -98,10 +98,12 @@ desc_length_of (const vl_api_desc_file_t *df, const vl_api_desc_type_t *t,
 }
 
 /* text of the types which are formatted by hand, *handled is 0 if t is none
- * of them */
-u8 *vl_api_desc_format_manual (u8 *s, const vl_api_desc_type_t *t, const u8 *p, int *handled);
+ * of them. The text of a message has a MAC address as aabb.ccdd.eeff, the
+ * JSON as aa:bb:cc:dd:ee:ff. */
+u8 *vl_api_desc_format_manual (u8 *s, const vl_api_desc_type_t *t, const u8 *p, int *handled,
+			       int for_text);
 
 /* text of an alias, as the generated format function of the alias does it */
-u8 *vl_api_desc_format_alias (u8 *s, const vl_api_desc_type_t *t, const u8 *p);
+u8 *vl_api_desc_format_alias (u8 *s, const vl_api_desc_type_t *t, const u8 *p, int for_text);
 
 #endif /* included_vlibapi_api_desc_internal_h */

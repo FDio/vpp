@@ -11,10 +11,12 @@
 #include <vlibapi/api_desc.h>
 #include <vlibapi/api_desc_internal.h>
 #include <vlibapi/api_types.h>
+#include <vlibapi/jsonformat.h>
 #include <vnet/ip/ip_format_fns.h>
 
 u8 *
-vl_api_desc_format_manual (u8 *s, const vl_api_desc_type_t *t, const u8 *p, int *handled)
+vl_api_desc_format_manual (u8 *s, const vl_api_desc_type_t *t, const u8 *p, int *handled,
+			   int for_text)
 {
   const char *n = t->name;
 
@@ -40,7 +42,10 @@ vl_api_desc_format_manual (u8 *s, const vl_api_desc_type_t *t, const u8 *p, int 
   if (!strcmp (n, "mac_address"))
     {
       /* the text of a message has the MAC address as aabb.ccdd.eeff */
-      return format (s, "%02x%02x.%02x%02x.%02x%02x", p[0], p[1], p[2], p[3], p[4], p[5]);
+      if (for_text)
+	return format (s, "%02x%02x.%02x%02x.%02x%02x", p[0], p[1], p[2], p[3], p[4], p[5]);
+
+      return format (s, "%U", format_vl_api_mac_address_t, p, 0);
     }
 
   *handled = 0;
@@ -56,7 +61,7 @@ static const char *desc_format_strings[] = {
 
 /* text of an alias, as the generated format function of the alias does it */
 u8 *
-vl_api_desc_format_alias (u8 *s, const vl_api_desc_type_t *t, const u8 *p)
+vl_api_desc_format_alias (u8 *s, const vl_api_desc_type_t *t, const u8 *p, int for_text)
 {
   static const struct
   {
@@ -70,7 +75,7 @@ vl_api_desc_format_alias (u8 *s, const vl_api_desc_type_t *t, const u8 *p)
   };
   int handled;
 
-  s = vl_api_desc_format_manual (s, t, p, &handled);
+  s = vl_api_desc_format_manual (s, t, p, &handled, for_text);
 
   if (handled)
     return s;
@@ -167,7 +172,7 @@ desc_format_value (u8 *s, const vl_api_desc_file_t *df, const vl_api_desc_field_
     case VL_API_DK_UNION:
       if (r->flags & VL_API_DTF_MANUAL_PRINT)
 	{
-	  s = vl_api_desc_format_manual (s, r, p, &handled);
+	  s = vl_api_desc_format_manual (s, r, p, &handled, 1);
 
 	  if (handled)
 	    return s;
@@ -175,7 +180,7 @@ desc_format_value (u8 *s, const vl_api_desc_file_t *df, const vl_api_desc_field_
 
       return desc_format_fields (s, df, r, p, indent + 2);
     case VL_API_DK_NAMED:
-      return vl_api_desc_format_alias (s, r, p);
+      return vl_api_desc_format_alias (s, r, p, 1);
     default:
       return s;
     }

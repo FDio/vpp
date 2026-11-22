@@ -111,8 +111,6 @@ typedef struct
   void *handler;		/**< the message handler  */
   void *cleanup;		/**< non-default message cleanup handler */
   void *endian;			/**< message endian function  */
-  void *tojson;			/**< binary to JSON convert function */
-  void *fromjson;		/**< JSON to binary convert function */
   int size;			/**< message size  */
   u32 traced : 1;		/**< is this message to be traced?  */
   u32 replay : 1;		/**< is this message to be replayed?  */
@@ -212,12 +210,6 @@ typedef struct
 
   /** Message name vector */
   const char *name;
-
-  /** Message convert function vector */
-  cJSON *(*tojson_handler) (void *);
-
-  /** Message convert function vector */
-  void *(*fromjson_handler) (cJSON *, int *);
 
   /** Message endian handler vector. */
   void (*endian_handler) (void *, bool to_net);

@@ -283,8 +283,6 @@ vcl_bapi_hookup (void)
     .handler = vl_api_##n##_t_handler,                                        \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = (u32) 1,                                                        \
-    .tojson = vl_api_##n##_t_tojson,                                          \
-    .fromjson = vl_api_##n##_t_fromjson,                                      \
   });
   foreach_sock_msg;
 #undef _

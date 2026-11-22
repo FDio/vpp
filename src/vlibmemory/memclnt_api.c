@@ -150,7 +150,6 @@ vl_api_get_api_json_t_handler (vl_api_get_api_json_t *mp)
   vec_terminate_c_string (s);
   n = vec_len (s);
 
-done:
   REPLY_MACRO3 (VL_API_GET_API_JSON_REPLY, n, ({
 		  if (rv == 0)
 		    {
@@ -191,8 +190,6 @@ vlib_api_init (void)
       c->id = VL_API_##N;                                                     \
       c->name = #n;                                                           \
       c->handler = vl_api_##n##_t_handler;                                    \
-      c->tojson = vl_api_##n##_t_tojson;                                      \
-      c->fromjson = vl_api_##n##_t_fromjson;                                  \
       c->size = sizeof (vl_api_##n##_t);                                      \
       c->traced = 1;	     /* trace, so these msgs print */                 \
       c->replay = 0;	     /* don't replay client create/delete msgs */     \
@@ -694,8 +691,6 @@ rpc_api_hookup (vlib_main_t *vm)
     .handler = vl_api_##n##_t_handler,                                        \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = 0,                                                              \
-    .tojson = vl_api_##n##_t_tojson,                                          \
-    .fromjson = vl_api_##n##_t_fromjson,                                      \
   });
   foreach_rpc_api_msg;
 #undef _
@@ -707,8 +702,6 @@ rpc_api_hookup (vlib_main_t *vm)
     .handler = vl_api_##n##_t_handler,                                        \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = 1,                                                              \
-    .tojson = vl_api_##n##_t_tojson,                                          \
-    .fromjson = vl_api_##n##_t_fromjson,                                      \
   });
   foreach_plugin_trace_msg
 #undef _
