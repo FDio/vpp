@@ -13,10 +13,8 @@ Depends: libvppinfra (= ${source:Version}),
          ${shlibs:Depends},
 	 ${misc:Depends}
 Description: Vector Packet Processing--executables
- This package provides VPP executables: vpp, vpp_api_test, vpp_json_test
+ This package provides VPP executables: vpp
  vpp - the vector packet engine
- vpp_api_test - vector packet engine API test tool
- vpp_json_test - vector packet engine JSON test tool
 
 Package: vpp-dbg
 Architecture: any

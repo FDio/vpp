@@ -28,7 +28,6 @@
 (load-file "./plugin-main-skel.el")
 (load-file "./plugin-node-skel.el")
 (load-file "./plugin-qsnode-skel.el")
-(load-file "./plugin-test-skel.el")
 (load-file "./plugin-periodic-skel.el")
 (load-file "./plugin-setup-skel.el")
 (load-file "./tunnel-c-skel.el")

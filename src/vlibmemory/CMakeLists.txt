@@ -46,6 +46,3 @@ add_vpp_library (vlibmemoryclient
 )
 add_dependencies(vlibmemoryclient vlibmemory_api_headers)
 
-add_vat_test_library(vlib
-  vlibapi_test.c
-)

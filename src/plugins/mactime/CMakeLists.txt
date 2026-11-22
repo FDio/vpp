@@ -19,9 +19,6 @@ add_vpp_plugin(mactime
 
   API_FILES
   mactime.api
-
-  API_TEST_SOURCES
-  mactime_test.c
 )
 
 option(VPP_BUILD_MACTIME_TOP "Build mactime plugin 'top' tool" OFF)

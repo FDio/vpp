@@ -34,7 +34,4 @@ add_vpp_plugin(pvti
 
   API_FILES
   pvti.api
-
-  # API_TEST_SOURCES
-  # pvti_test.c
 )

@@ -94,14 +94,5 @@ add_vpp_plugin(ioam
   udp-ping/udp_ping_packet.h
   udp-ping/udp_ping.h
   udp-ping/udp_ping_util.h
-
-  API_TEST_SOURCES
-  ioam_test.c
-  lib-pot/pot_test.c
-  export/ioam_export_test.c
-  export-vxlan-gpe/vxlan_gpe_ioam_export_test.c
-  lib-trace/trace_test.c
-  lib-vxlan-gpe/vxlan_gpe_test.c
-  udp-ping/udp_ping_test.c
 )
 
