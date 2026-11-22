@@ -15,7 +15,7 @@ macro(add_vpp_plugin name)
   cmake_parse_arguments(PLUGIN
     ""
     "LINK_FLAGS;COMPONENT;DEV_COMPONENT"
-    "SOURCES;API_FILES;MULTIARCH_SOURCES;MULTIARCH_FORCE_ON;LINK_LIBRARIES;INSTALL_HEADERS;API_TEST_SOURCES;VAT_AUTO_TEST;SUPPORTED_OS_LIST"
+    "SOURCES;API_FILES;MULTIARCH_SOURCES;MULTIARCH_FORCE_ON;LINK_LIBRARIES;INSTALL_HEADERS;API_TEST_SOURCES;SUPPORTED_OS_LIST"
     ${ARGN}
   )
   set(_vpp_exclude_plugin 0)
@@ -143,8 +143,9 @@ macro(add_vpp_plugin name)
       COMPONENT ${PLUGIN_COMPONENT}
     )
   endif()
-  if (PLUGIN_API_FILES AND NOT PLUGIN_VAT_AUTO_TEST STREQUAL OFF)
-    add_vpp_test_library(${name}_test_plugin ${PLUGIN_API_FILES})
+  if (PLUGIN_API_FILES)
+    # the generated API headers
+    include_directories(${CMAKE_CURRENT_BINARY_DIR})
   endif()
 
   set_property(GLOBAL APPEND PROPERTY VPP_PLUGINS_LIST ${name})

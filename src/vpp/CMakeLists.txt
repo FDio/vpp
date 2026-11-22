@@ -146,13 +146,6 @@ install(FILES conf/startup.conf DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/vpp COMP
 install(FILES conf/80-vpp.conf DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/sysctl.d COMPONENT vpp)
 
 
-##############################################################################
-# VAT2 plugins
-##############################################################################
-add_vpp_test_library(vpp
-  ${VPP_API_FILES}
-)
-
 add_vat_test_library(vpp
   api/api_test.c
 )
