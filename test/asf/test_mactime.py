@@ -40,37 +40,39 @@ class TestMactime(VppAsfTestCase):
             "mactime enable-disable loop0",
             "mactime enable-disable loop0 disable",
             "mactime enable-disable sw_if_index 9999",
-            "bin mactime_enable_disable loop0",
-            "bin mactime_enable_disable loop0 disable",
-            "bin mactime_enable_disable sw_if_index 1",
+            "bin mactime_enable_disable sw_if_index loop0 enable_disable on",
+            "bin mactime_enable_disable sw_if_index loop0 enable_disable off",
+            "bin mactime_enable_disable sw_if_index 1 enable_disable on",
             "set interface state loop0 up",
             "clear mactime",
             "set ip neighbor loop0 192.168.1.1 00:d0:2d:5e:86:85",
-            "bin mactime_add_del_range name sallow "
-            "mac 00:d0:2d:5e:86:85 allow-static del",
-            "bin mactime_add_del_range name sallow "
-            "mac 00:d0:2d:5e:86:85 allow-static",
-            "bin mactime_add_del_range name sallow "
-            "mac 00:d0:2d:5e:86:85 allow-static del",
-            "bin mactime_add_del_range name sallow "
-            "mac 00:d0:2d:5e:86:85 allow-static",
-            "bin mactime_add_del_range name sblock "
-            "mac 01:00:5e:7f:ff:fa drop-static",
-            "bin mactime_add_del_range name ddrop "
-            "mac c8:bc:c8:5a:ba:f3 drop-range Sun - Sat "
-            "00:00 - 23:59",
-            "bin mactime_add_del_range name dallow "
-            "mac c8:bc:c8:5a:ba:f4 allow-range Sun - Sat "
-            "00:00 - 23:59",
-            "bin mactime_add_del_range name multi "
-            "mac c8:bc:c8:f0:f0:f0 allow-range Sun - Mon "
-            "00:00 - 23:59 Tue - Sat 00:00 - 23:59",
+            "bin mactime_add_del_range is_add off device_name sallow "
+            "mac_address 00:d0:2d:5e:86:85 allow on",
+            "bin mactime_add_del_range is_add on device_name sallow "
+            "mac_address 00:d0:2d:5e:86:85 allow on",
+            "bin mactime_add_del_range is_add off device_name sallow "
+            "mac_address 00:d0:2d:5e:86:85 allow on",
+            "bin mactime_add_del_range is_add on device_name sallow "
+            "mac_address 00:d0:2d:5e:86:85 allow on",
+            "bin mactime_add_del_range is_add on device_name sblock "
+            "mac_address 01:00:5e:7f:ff:fa drop on",
+            "bin mactime_add_del_range is_add on device_name ddrop "
+            "mac_address c8:bc:c8:5a:ba:f3 drop on "
+            'json {"ranges": [{"start": 0, "end": 604740}]}',
+            "bin mactime_add_del_range is_add on device_name dallow "
+            "mac_address c8:bc:c8:5a:ba:f4 allow on "
+            'json {"ranges": [{"start": 0, "end": 604740}]}',
+            "bin mactime_add_del_range is_add on device_name multi "
+            "mac_address c8:bc:c8:f0:f0:f0 allow on "
+            'json {"ranges": [{"start": 0, "end": 172740}, '
+            '{"start": 172800, "end": 604740}]}',
             "bin mactime_add_del_range bogus",
-            "bin mactime_add_del_range mac 01:00:5e:7f:f0:f0 allow-static",
-            "bin mactime_add_del_range "
-            "name tooloooooooooooooooooooooooooooooooooooooooooooooooo"
-            "nnnnnnnnnnnnnnnnnnnnnnnnnnnng mac 00:00:de:ad:be:ef "
-            "allow-static",
+            "bin mactime_add_del_range is_add on "
+            "mac_address 01:00:5e:7f:f0:f0 allow on",
+            "bin mactime_add_del_range is_add on "
+            "device_name tooloooooooooooooooooooooooooooooooooooooooooooooooo"
+            "nnnnnnnnnnnnnnnnnnnnnnnnnnnng mac_address 00:00:de:ad:be:ef "
+            "allow on",
             "packet-generator new {\n"
             " name allow\n"
             " limit 15\n"
