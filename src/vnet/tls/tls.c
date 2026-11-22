@@ -282,11 +282,16 @@ tls_notify_app_connected (tls_ctx_t * ctx, session_error_t err)
   app_worker_t *app_wrk;
 
   app_wrk = app_worker_get_if_valid (ctx->parent_app_wrk_index);
-  if (!app_wrk)
+  /* App might have detached while the handshake was in progress */
+  if (!app_wrk || (ctx->flags & TLS_CONN_F_NO_APP_SESSION))
     {
       ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
       return -1;
     }
+
+  /* App half-open moved to this context on tcp connect */
+  if (ctx->tls_type == TRANSPORT_PROTO_TLS)
+    session_half_open_delete_notify (&ctx->connection);
 
   if (err)
     {
@@ -479,6 +484,7 @@ tls_session_connected_cb (u32 tls_app_index, u32 ho_ctx_index,
 			  session_t *tls_session, session_error_t err)
 {
   tls_ctx_t *ho_ctx, *ctx;
+  tls_conn_flags_t ho_flags;
   u32 ctx_handle;
 
   ctx_handle = tls_ctx_alloc (tls_ctx_engine_from_handle (ho_ctx_index));
@@ -486,8 +492,10 @@ tls_session_connected_cb (u32 tls_app_index, u32 ho_ctx_index,
   ctx = tls_ctx_get (ctx_handle);
   clib_memcpy_fast (ctx, ho_ctx, sizeof (*ctx));
 
-  /* Half-open freed on tcp half-open cleanup notification */
-  __atomic_fetch_or (&ho_ctx->flags, TLS_CONN_F_HO_DONE, __ATOMIC_RELEASE);
+  /* Tls half-open is freed on tcp half-open cleanup, but the app's half-open is handed to the
+   * new context. Mark it so the cleanup does not delete it */
+  ho_flags = __atomic_fetch_or (&ho_ctx->flags, TLS_CONN_F_HO_DONE | TLS_CONN_F_NO_APP_SESSION,
+				__ATOMIC_RELEASE);
 
   ctx->c_thread_index = vlib_get_thread_index ();
   ctx->tls_ctx_handle = ctx_handle;
@@ -500,7 +508,18 @@ tls_session_connected_cb (u32 tls_app_index, u32 ho_ctx_index,
   ctx->tls_session_handle = session_handle (tls_session);
   tls_session->opaque = ctx_handle;
 
-  if (tls_ctx_init_client (ctx))
+  /* Keep the app's half-open until the handshake completes or fails, so app detaches reach this
+   * context. Tls does not migrate, the calls only point the half-open here. If the app detached
+   * before this notification, tls_cleanup_ho marked the tls half-open and ctx copied the mark */
+  if (!(ho_flags & TLS_CONN_F_NO_APP_SESSION))
+    {
+      session_half_open_migrate_notify (&ctx->connection);
+      session_half_open_migrated_notify (&ctx->connection);
+    }
+
+  if (ctx->flags & TLS_CONN_F_NO_APP_SESSION)
+    tls_disconnect_transport (ctx);
+  else if (tls_ctx_init_client (ctx))
     {
       tls_notify_app_connected (ctx, SESSION_E_TLS_HANDSHAKE);
       tls_disconnect_transport (ctx);
@@ -543,7 +562,8 @@ tls_session_connected_callback (u32 tls_app_index, u32 ho_ctx_index,
       ho_ctx = tls_ctx_half_open_get (ho_ctx_index);
       ho_ctx->flags |= TLS_CONN_F_HO_DONE;
       app_wrk = app_worker_get_if_valid (ho_ctx->parent_app_wrk_index);
-      if (app_wrk)
+      /* App might have detached while tcp connected */
+      if (app_wrk && !(ho_ctx->flags & TLS_CONN_F_NO_APP_SESSION))
 	{
 	  api_context = ho_ctx->parent_app_api_context;
 	  app_worker_connect_notify (app_wrk, 0, err, api_context);
@@ -931,6 +951,20 @@ tls_half_open_get (u32 ho_index)
 }
 
 static void
+tls_cleanup_callback (u32 ctx_index, clib_thread_index_t thread_index)
+{
+  tls_ctx_t *ctx;
+
+  /* App detached with a migrated half-open, i.e., handshake in progress. If the handshake just
+   * completed, the app session will be cleaned up */
+  ctx = tls_ctx_get_w_thread (ctx_index, thread_index);
+  if (ctx->app_session_handle != SESSION_INVALID_HANDLE)
+    return;
+  ctx->flags |= TLS_CONN_F_NO_APP_SESSION;
+  tls_disconnect_transport (ctx);
+}
+
+static void
 tls_cleanup_ho (u32 ho_index)
 {
   tls_ctx_t *ctx;
@@ -946,9 +980,9 @@ tls_cleanup_ho (u32 ho_index)
     }
 
   s = session_get_from_handle (ctx->tls_session_handle);
-  /* If no pending cleanup notification, force cleanup now. Otherwise,
-   * wait for cleanup notification and set no app session on ctx */
-  if (s->session_state != SESSION_STATE_TRANSPORT_DELETED)
+  /* If tcp is still connecting, force cleanup now. Otherwise, tcp's connect and half-open
+   * cleanup notifications are pending, so set no app session on ctx and let them clean up */
+  if (s->session_state < SESSION_STATE_TRANSPORT_CLOSED)
     {
       session_cleanup_half_open (ctx->tls_session_handle);
       tls_ctx_half_open_free (ho_index);
@@ -1290,6 +1324,7 @@ static const transport_proto_vft_t tls_proto = {
   .get_connection = tls_connection_get,
   .get_listener = tls_listener_get,
   .get_half_open = tls_half_open_get,
+  .cleanup = tls_cleanup_callback,
   .cleanup_ho = tls_cleanup_ho,
   .custom_tx = tls_custom_tx_callback,
   .attribute = tls_session_attribute,

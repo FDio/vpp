@@ -71,6 +71,7 @@ mbedtls_ctx_alloc (void)
   clib_memset (*ctx, 0, sizeof (mbedtls_ctx_t));
   (*ctx)->ctx.c_thread_index = thread_index;
   (*ctx)->ctx.tls_ctx_engine = CRYPTO_ENGINE_MBEDTLS;
+  (*ctx)->ctx.app_session_handle = SESSION_INVALID_HANDLE;
   (*ctx)->mbedtls_ctx_index = ctx - tm->ctx_pool[thread_index];
   return ((*ctx)->mbedtls_ctx_index);
 }

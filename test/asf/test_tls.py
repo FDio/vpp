@@ -5,7 +5,7 @@ import os
 import re
 import subprocess
 
-from asfframework import VppAsfTestCase, VppTestRunner
+from asfframework import VppAsfTestCase, VppTestRunner, tag_fixme_vpp_workers
 from vpp_ip_route import VppIpTable, VppIpRoute, VppRoutePath
 from config import config
 
@@ -158,6 +158,35 @@ class TestTLS(VppAsfTestCase):
         # Delete inter-table routes
         ip_t01.remove_vpp_config()
         ip_t10.remove_vpp_config()
+
+
+@tag_fixme_vpp_workers
+class TestTLSUnitTests(VppAsfTestCase):
+    """TLS Unit Tests Case"""
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestTLSUnitTests, cls).setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super(TestTLSUnitTests, cls).tearDownClass()
+
+    def setUp(self):
+        super(TestTLSUnitTests, self).setUp()
+        self.vapi.session_enable_disable(is_enable=1)
+
+    def test_tls(self):
+        """TLS Unit Tests"""
+        error = self.vapi.cli("test tls unit all")
+
+        if error:
+            self.logger.critical(error)
+        self.assertNotIn("failed", error)
+
+    def tearDown(self):
+        super(TestTLSUnitTests, self).tearDown()
+        self.vapi.session_enable_disable(is_enable=0)
 
 
 if __name__ == "__main__":
