@@ -481,12 +481,11 @@ done:
 static void
 tcp_estimate_initial_rtt (tcp_connection_t * tc)
 {
-  u8 thread_index = vlib_num_workers ()? 1 : 0;
   int mrtt;
 
   if (tc->rtt_ts)
     {
-      tc->mrtt_us = tcp_time_now_us (thread_index) - tc->rtt_ts;
+      tc->mrtt_us = tcp_time_now_us (tc->c_thread_index) - tc->rtt_ts;
       tc->mrtt_us = clib_max (tc->mrtt_us, 0.0001);
       mrtt = clib_max ((u32) (tc->mrtt_us * THZ), 1);
       tc->rtt_ts = 0;

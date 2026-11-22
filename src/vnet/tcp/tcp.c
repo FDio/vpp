@@ -726,13 +726,22 @@ tcp_init_mss (tcp_connection_t * tc)
 void
 tcp_init_snd_vars (tcp_connection_t * tc)
 {
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
+  tcp_worker_ctx_t *wrk = tcp_get_worker (thread_index);
+
   /*
    * We use the time to randomize iss and for setting up the initial
    * timestamp. Make sure it's updated otherwise syn and ack in the
    * handshake may make it look as if time has flown in the opposite
    * direction for us.
    */
-  tcp_update_time_now (tcp_get_worker (vlib_get_thread_index ()));
+  tcp_update_time_now (wrk);
+
+  /* Connects may run on main, with the barrier, for a half-open of the first
+   * worker. That worker's cached clock is stale while it is idle, and the syn
+   * is timed and timestamped with it */
+  if (PREDICT_FALSE (tc->c_thread_index != thread_index))
+    tcp_set_time_now (tcp_get_worker (tc->c_thread_index), wrk->time_us);
 
   tcp_init_rcv_mss (tc);
   /*
