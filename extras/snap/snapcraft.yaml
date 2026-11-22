@@ -39,15 +39,10 @@ apps:
     command: vpp/bin/vpp -c $SNAP/vpp/etc/vpp/startup.conf
     daemon: simple
     environment:
-        "LD_LIBRARY_PATH": "$SNAP/vpp/lib:$SNAP/vpp/lib/vpp_plugins:$SNAP/vpp/lib/vpp_api_test_plugins"
+        "LD_LIBRARY_PATH": "$SNAP/vpp/lib:$SNAP/vpp/lib/vpp_plugins"
 
   vppctl:
     command: vpp/bin/vppctl
-    environment:
-        "LD_LIBRARY_PATH": "$SNAP/vpp/lib"
-
-  vpp-api-test:
-    command: vpp/bin/vpp_api_test
     environment:
         "LD_LIBRARY_PATH": "$SNAP/vpp/lib"
 

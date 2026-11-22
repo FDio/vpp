@@ -25,7 +25,4 @@ add_vpp_plugin(dns
 
   INSTALL_HEADERS
   dns_packet.h
-
-  API_TEST_SOURCES
-  dns_test.c
 )

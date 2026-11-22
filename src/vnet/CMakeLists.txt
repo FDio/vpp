@@ -987,7 +987,6 @@ list(APPEND VNET_HEADERS
   tls/tls_test.h
 )
 
-
 ##############################################################################
 # Driver feature graph arc support
 ##############################################################################
@@ -1447,24 +1446,7 @@ add_vpp_library(vnet
 )
 unset(_vnet_library_visibility)
 
-##############################################################################
-# vpp api test client library
-##############################################################################
-
-add_vpp_library (vatclient
-  SOURCES ip/ip_types_api.c
-  DEPENDS api_headers
-)
-
-add_vat_test_library(vnet
-  interface_test.c
-  ip/ip_test.c
-  arp/arp_test.c
-  ip6-nd/ip6_nd_test.c
-  session/session_test.c
-  l2/l2_test.c
-  ipsec/ipsec_test.c
-  tm/tm_test.c
-)
+# the generated API headers
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 ##############################################################################

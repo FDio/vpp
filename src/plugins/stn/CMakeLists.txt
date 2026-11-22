@@ -21,8 +21,5 @@ add_vpp_plugin(stn
 
   INSTALL_HEADERS
   stn.h
-
-  API_TEST_SOURCES
-  stn_test.c
 )
 

@@ -33,7 +33,7 @@ of files: rule/function definitions, and target lists.
     if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
       find_package(OpenSSL REQUIRED)
       set(SUBDIRS
-        vppinfra svm vlib vlibmemory vlibapi vnet vpp vat vcl plugins
+        vppinfra svm vlib vlibmemory vlibapi vnet vpp vcl plugins
         vpp-api tools/vppapigen tools/g2 tools/perftool)
     elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
       set(SUBDIRS vppinfra)
@@ -80,9 +80,6 @@ It's really quite simple. Follow the pattern:
       INSTALL_HEADERS
       mactime_all_api_h.h
       mactime_msg_enum.h
-
-      API_TEST_SOURCES
-      mactime_test.c
     )
 
 Adding a target elsewhere in the source tree
@@ -181,7 +178,6 @@ Here's approximately what you'll see:
      MUSDK_INCLUDE_DIR                MUSDK_INCLUDE_DIR-NOTFOUND
      MUSDK_LIB                        MUSDK_LIB-NOTFOUND
      PRE_DATA_SIZE                    128
-     VPP_API_TEST_BUILTIN             ON
      VPP_BUILD_G2                     OFF
      VPP_BUILD_PERFTOOL               OFF
      VPP_BUILD_VCL_TESTS              ON

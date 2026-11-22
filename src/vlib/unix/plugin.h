@@ -118,8 +118,6 @@ typedef struct
   u8 *plugin_path;
   u8 *plugin_path_add;
   u8 *plugin_name_filter;
-  u8 *vat_plugin_path;
-  u8 *vat_plugin_name_filter;
   u8 plugins_default_disable;
 
   /* plugin configs and hash by name */
@@ -140,7 +138,6 @@ int vlib_plugin_early_init (vlib_main_t * vm);
 int vlib_load_new_plugins (plugin_main_t * pm, int from_early_init);
 void *vlib_get_plugin_symbol (const char *plugin_name,
 			      const char *symbol_name);
-u8 *vlib_get_vat_plugin_path (void);
 
 #define VLIB_PLUGIN_REGISTER() \
   vlib_plugin_registration_t vlib_plugin_registration \

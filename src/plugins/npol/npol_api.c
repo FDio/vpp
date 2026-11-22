@@ -380,9 +380,6 @@ vl_api_npol_configure_policies_t_handler (vl_api_npol_configure_policies_t *mp)
 #include <vnet/format_fns.h>
 #include <npol/npol.api.c>
 
-#include <vat/vat.h>
-#include <vlibapi/vat_helper_macros.h>
-
 static clib_error_t *
 npol_init (vlib_main_t *vm)
 {
