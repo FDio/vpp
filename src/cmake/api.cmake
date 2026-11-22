@@ -36,8 +36,6 @@ function(vpp_generate_api_c_header file)
 
   set(OUTPUT_HEADERS
     "${CMAKE_CURRENT_BINARY_DIR}/${file}.h"
-    "${CMAKE_CURRENT_BINARY_DIR}/${file}_fromjson.h"
-    "${CMAKE_CURRENT_BINARY_DIR}/${file}_tojson.h"
     "${CMAKE_CURRENT_BINARY_DIR}/${file}_enum.h"
     "${CMAKE_CURRENT_BINARY_DIR}/${file}_types.h"
     "${CMAKE_CURRENT_BINARY_DIR}/${file}.c"
