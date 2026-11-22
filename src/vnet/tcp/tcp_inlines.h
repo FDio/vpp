@@ -234,9 +234,10 @@ tcp_available_cc_snd_space (const tcp_connection_t * tc)
 /**
  * Record the end of a flight that permits congestion window growth.
  *
- * The flight is the pipe, not snd_nxt - snd_una: sacked and lost bytes do not
- * use cwnd, so a sender that runs out of data with part of its flight sacked
- * is not cwnd-limited.
+ * Only a flight that used cwnd earns growth. The flight is the pipe, not
+ * snd_nxt - snd_una: sacked and lost bytes do not use cwnd. Queued data does
+ * not count, whether the pacer, the cpu or output scheduling holds it back,
+ * so a sender that cannot keep up with cwnd does not grow it.
  *
  * @param tc		TCP connection
  * @param max_dequeue	TX fifo bytes at burst start, including outstanding data
@@ -244,7 +245,7 @@ tcp_available_cc_snd_space (const tcp_connection_t * tc)
 always_inline void
 tcp_cc_update_cwnd_limited (tcp_connection_t *tc, u32 max_dequeue)
 {
-  u32 outstanding = tc->snd_nxt - tc->snd_una, pipe, unsent, rwnd_room;
+  u32 outstanding, pipe, unsent, rwnd_room;
 
   /* Keep an expired marker close to snd_una across sequence wrap. */
   if (seq_lt (tc->cwnd_limited_seq, tc->snd_una))
@@ -254,21 +255,22 @@ tcp_cc_update_cwnd_limited (tcp_connection_t *tc, u32 max_dequeue)
   if (tc->cwnd > tc->snd_wnd)
     return;
 
+  /* The flight used cwnd. RFC 7661 also allows standard slow-start growth
+   * once the sender has validated more than half of cwnd. */
   pipe = tcp_flight_size (tc);
-  /* A sent fin counts in snd_nxt but not in the fifo. Queued data counts only
-   * as far as the receive window lets it out and, as for sending, only if the
-   * window has room for a segment */
+  if (pipe >= tc->cwnd || (tcp_in_slowstart (tc) && pipe > tc->cwnd / 2))
+    {
+      tc->cwnd_limited_seq = tc->snd_nxt;
+      return;
+    }
+
+  /* Or cwnd has less than a segment left for queued data. Queued data counts
+   * only if, as for sending, the receive window has room for a segment. A
+   * sent fin counts in snd_nxt but not in the fifo */
+  outstanding = tc->snd_nxt - tc->snd_una;
   unsent = max_dequeue > outstanding ? max_dequeue - outstanding : 0;
   rwnd_room = tc->snd_wnd > outstanding ? tc->snd_wnd - outstanding : 0;
-  unsent = rwnd_room >= tc->snd_mss ? clib_min (unsent, rwnd_room) : 0;
-
-  /* Queued data could fill cwnd, so a short flight reflects pacing or output
-   * scheduling rather than application-limited input. RFC 7661 allows
-   * standard slow-start growth once the sender has validated more than half
-   * of cwnd. Unsent data with less than one MSS of headroom also exhausts
-   * cwnd. */
-  if (pipe + unsent >= tc->cwnd || (tcp_in_slowstart (tc) && pipe > tc->cwnd / 2) ||
-      (tc->cwnd - pipe < tc->snd_mss && unsent))
+  if (unsent && rwnd_room >= tc->snd_mss && tc->cwnd - pipe < tc->snd_mss)
     tc->cwnd_limited_seq = tc->snd_nxt;
 }
 
