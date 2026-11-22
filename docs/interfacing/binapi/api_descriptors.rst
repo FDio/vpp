@@ -39,6 +39,13 @@ message and ``am->desc_files`` has the descriptors of all the files.
 What uses them
 --------------
 
+* The text which ``get_api_json`` returns for each file, the same as the
+  ``<file>.api.json`` file which ``vppapigen`` writes, is rendered from the
+  descriptor when it is requested, by ``vl_api_desc_schema_to_json ()``. It has
+  the types, the messages, the services and the options, but not the comments,
+  the imports, the counters and the paths of the file, nor the events of the
+  services. Plugins do not embed a copy of it.
+
 * ``vl_api_desc_msg_to_json ()`` converts a message to JSON. It is used by
   ``api trace save-json``, ``api trace dump-json`` and by
   ``format_vl_api_msg_json ()``. The members are ``_msgname``, ``_crc`` and the
