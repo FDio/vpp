@@ -1,6 +1,9 @@
 package hst
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // Tracebacks as they appear in the mem-leak report, deepest frame first.
 var (
@@ -45,6 +48,35 @@ var (
 		"vlib_main_or_worker_loop + 0x3b3",
 		"vlib_main + 0x678",
 		"thread0 + 0x7c",
+	}
+	// The November 22 leak job hit the frame cap before unix_cli_process_input.
+	tbSaveMemoryTracePath = []string{
+		"_vec_realloc_internal + 0x100",
+		"_vec_resize_internal + 0xd3",
+		"_vec_add + 0x159",
+		"do_percent + 0xaf6",
+		"va_format + 0xb8",
+		"format + 0x91",
+		"save_memory_trace + 0xf1",
+		"cli_dispatch + 0x23e",
+		"vlib_cli_call_function + 0xc4",
+		"vlib_cli_dispatch_sub_commands + 0xeae",
+		"vlib_cli_dispatch_sub_commands + 0xbfe",
+		"vlib_cli_input + 0x91",
+	}
+	tbSaveMemoryTraceFilename = []string{
+		"_vec_alloc_internal + 0x11c",
+		"_vec_dup + 0x83",
+		"parse_string + 0x9a",
+		"parse_value + 0x285",
+		"parse_positional + 0x29",
+		"parse_seq + 0x5f8",
+		"cli_parse_line + 0x1da",
+		"cli_dispatch + 0xe9",
+		"vlib_cli_call_function + 0xc4",
+		"vlib_cli_dispatch_sub_commands + 0xeae",
+		"vlib_cli_dispatch_sub_commands + 0xbfe",
+		"vlib_cli_input + 0x91",
 	}
 	// deliberate leak of 'test mem-leak', must always be reported. Note it has
 	// _vec_validate right below leak_memory_fn, so a callee-only or unordered
@@ -110,6 +142,9 @@ func TestMemTraceIsReportNoise(t *testing.T) {
 		{name: "pool put with caller truncated", traceback: []string{"_vec_add1", "_pool_put_index + 0x1e3"}, noise: false},
 		{name: "pool get", traceback: []string{"_vec_realloc_internal", "_pool_get", "session_alloc"}, noise: false},
 		{name: "unix cli", traceback: tbUnixCli, noise: true},
+		{name: "formatted trace dump path", traceback: tbSaveMemoryTracePath, noise: true},
+		{name: "format under another caller", traceback: []string{"format + 0x91", "show_memory_usage"}, noise: false},
+		{name: "parsed filename", traceback: tbSaveMemoryTraceFilename, noise: false},
 		{name: "pair on last two frames", traceback: tbPairAtCap, noise: true},
 		{name: "deliberate leak", traceback: tbDeliberateLeak, noise: false},
 		{name: "tcp send ack", traceback: tbTcpSendAck, noise: false},
@@ -153,5 +188,28 @@ func TestMemTracesSuppressReportNoise(t *testing.T) {
 			t.Fatalf("memTracesSuppressReportNoise()[%d] = %q, expected %q",
 				i, filtered[i].Sample, expected[i])
 		}
+	}
+}
+
+func TestMemLeakReportSnapshotAllocations(t *testing.T) {
+	first := []VppMemTrace{
+		{Count: 1, Size: 32, Sample: "0x1000", Traceback: tbSaveMemoryTraceFilename},
+	}
+	second := []VppMemTrace{
+		{Count: 1, Size: 32, Sample: "0x2000", Traceback: tbSaveMemoryTraceFilename},
+		{Count: 1, Size: 32, Sample: "0x3000", Traceback: tbSaveMemoryTracePath},
+	}
+	report, bytes, count := memLeakReport(first, second)
+	if bytes != 0 || count != 0 || report != "" {
+		t.Fatalf("snapshot allocations reported as leaks: %d bytes in %d allocations\n%s", bytes, count, report)
+	}
+
+	second[0].Count = 2
+	second[0].Size = 64
+	second = append(second, VppMemTrace{Count: 1, Size: 112, Sample: "0x4000", Traceback: tbDeliberateLeak})
+	report, bytes, count = memLeakReport(first, second)
+	if bytes != 144 || count != 2 || !strings.Contains(report, "grow 32 byte(s)") ||
+		!strings.Contains(report, "leak of 112 byte(s)") {
+		t.Fatalf("expected parser growth and the deliberate leak, got %d bytes in %d allocations\n%s", bytes, count, report)
 	}
 }

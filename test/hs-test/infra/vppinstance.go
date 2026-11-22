@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -891,6 +892,8 @@ var defaultMemLeakReportNoiseFrames = []string{
 // specific caller. Frames must be adjacent, callee first. Traceback is capped at
 // 12 frames, so anchor pairs deep in the stack.
 var defaultMemLeakReportNoiseFramePairs = [][2]string{
+	// The trace dump captures its own output path before freeing it.
+	{"format", "save_memory_trace"},
 	// per worker scratch vectors, grow to a high-water mark and are never freed
 	{"_vec_validate", "session_tx_fifo_read_and_snd_i"},
 	// These pools retain their free bitmap and free-index vector for reuse.
@@ -938,41 +941,50 @@ func memTracesSuppressReportNoise(traces []VppMemTrace) []VppMemTrace {
 // MemLeakCheck compares memory traces at different point in time, analyzes if memory leaks happen and produces report
 // Returns total leaked bytes and allocations.
 func (vpp *VppInstance) MemLeakCheck(first, second []VppMemTrace) (int, int) {
+	report, totalBytes, totalCounts := memLeakReport(first, second)
+	summary := fmt.Sprintf("\nSUMMARY: %d byte(s) leaked in %d allocation(s)\n", totalBytes, totalCounts)
+	AddReportEntry(summary, report)
+	return totalBytes, totalCounts
+}
+
+func memLeakReport(first, second []VppMemTrace) (string, int, int) {
 	totalBytes := 0
 	totalCounts := 0
 	trace1 := memTracesSuppressReportNoise(first)
 	trace2 := memTracesSuppressReportNoise(second)
 	report := ""
-	for i := range trace2 {
-		match := false
-		for j := range trace1 {
-			if trace1[j].Sample == trace2[i].Sample {
-				if trace2[i].Size > trace1[j].Size {
-					deltaBytes := trace2[i].Size - trace1[j].Size
-					deltaCounts := trace2[i].Count - trace1[j].Count
-					report += fmt.Sprintf("grow %d byte(s) in %d allocation(s) from:\n", deltaBytes, deltaCounts)
-					for j := 0; j < len(trace2[i].Traceback); j++ {
-						report += fmt.Sprintf("\t#%d %s\n", j, trace2[i].Traceback[j])
-					}
-					totalBytes += deltaBytes
-					totalCounts += deltaCounts
-				}
-				match = true
-				break
+	for _, trace := range trace2 {
+		// The dump's filename is parsed before taking the snapshot, so its
+		// copy can have a new sample address each time. Match the stack to
+		// ignore that address change while still reporting parser growth.
+		compareTraceback := slices.ContainsFunc(trace.Traceback, func(frame string) bool {
+			symbol, _, _ := strings.Cut(frame, " + ")
+			return symbol == "parse_string"
+		})
+		baseline := slices.IndexFunc(trace1, func(previous VppMemTrace) bool {
+			if compareTraceback {
+				return slices.Equal(previous.Traceback, trace.Traceback)
 			}
-		}
-		if !match {
-			report += fmt.Sprintf("\nleak of %d byte(s) in %d allocation(s) from:\n", trace2[i].Size, trace2[i].Count)
-			for j := 0; j < len(trace2[i].Traceback); j++ {
-				report += fmt.Sprintf("\t#%d %s\n", j, trace2[i].Traceback[j])
+			return previous.Sample == trace.Sample
+		})
+		deltaBytes, deltaCounts := trace.Size, trace.Count
+		if baseline >= 0 {
+			deltaBytes -= trace1[baseline].Size
+			deltaCounts -= trace1[baseline].Count
+			if deltaBytes <= 0 {
+				continue
 			}
-			totalBytes += trace2[i].Size
-			totalCounts += trace2[i].Count
+			report += fmt.Sprintf("grow %d byte(s) in %d allocation(s) from:\n", deltaBytes, deltaCounts)
+		} else {
+			report += fmt.Sprintf("\nleak of %d byte(s) in %d allocation(s) from:\n", deltaBytes, deltaCounts)
 		}
+		for j, frame := range trace.Traceback {
+			report += fmt.Sprintf("\t#%d %s\n", j, frame)
+		}
+		totalBytes += deltaBytes
+		totalCounts += deltaCounts
 	}
-	summary := fmt.Sprintf("\nSUMMARY: %d byte(s) leaked in %d allocation(s)\n", totalBytes, totalCounts)
-	AddReportEntry(summary, report)
-	return totalBytes, totalCounts
+	return report, totalBytes, totalCounts
 }
 
 // CollectEventLogs saves event logs to the test execution directory
