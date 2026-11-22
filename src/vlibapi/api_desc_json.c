@@ -1,0 +1,441 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2026 Damjan Marion
+ */
+
+/* Conversion of API messages to JSON by interpreting API descriptors. The
+ * JSON is the same as the one of the generated vl_api_<msg>_t_tojson
+ * functions: _msgname and _crc, then the fields. */
+
+#include <vlibapi/api_common.h>
+#include <vlibapi/api_desc.h>
+#include <vlibapi/api_types.h>
+#include <vppinfra/pool.h>
+#include <vlibapi/jsonformat.h>
+#include <vnet/ip/ip_format_fns.h>
+
+static const char *desc_noprint[] = {
+  "_vl_msg_id",
+  "client_index",
+  "context",
+};
+
+static int
+desc_is_noprint (const char *name)
+{
+  for (u32 i = 0; i < ARRAY_LEN (desc_noprint); i++)
+    if (!strcmp (name, desc_noprint[i]))
+      return 1;
+
+  return 0;
+}
+
+static u32
+desc_kind_size (u32 kind)
+{
+  switch (kind)
+    {
+    case VL_API_DK_U8:
+    case VL_API_DK_I8:
+    case VL_API_DK_BOOL:
+      return 1;
+    case VL_API_DK_U16:
+    case VL_API_DK_I16:
+      return 2;
+    case VL_API_DK_U32:
+    case VL_API_DK_I32:
+      return 4;
+    default:
+      return 8;
+    }
+}
+
+/* unsigned value of an integer, host endian */
+static u64
+desc_read_uint (const u8 *p, u32 kind)
+{
+  u64 v = 0;
+
+  memcpy (&v, p, desc_kind_size (kind));
+  return v;
+}
+
+static f64
+desc_read_number (const u8 *p, u32 kind)
+{
+  switch (kind)
+    {
+    case VL_API_DK_U8:
+      return *p;
+    case VL_API_DK_I8:
+      return (i8) *p;
+    case VL_API_DK_U16:
+      return desc_read_uint (p, kind);
+    case VL_API_DK_I16:
+      return (i16) desc_read_uint (p, kind);
+    case VL_API_DK_U32:
+      return desc_read_uint (p, kind);
+    case VL_API_DK_I32:
+      return (i32) desc_read_uint (p, kind);
+    case VL_API_DK_U64:
+      return desc_read_uint (p, kind);
+    case VL_API_DK_I64:
+      return (i64) desc_read_uint (p, kind);
+    case VL_API_DK_F64:
+      {
+	f64 d;
+
+	memcpy (&d, p, sizeof (d));
+	return d;
+      }
+    }
+  return 0;
+}
+
+/* ---- builders, the name is 0 for array elements */
+
+static void
+put_number (clib_json_text_t *j, const char *name, f64 v)
+{
+  if (name)
+    clib_json_add_number (j, "%s", v, name);
+  else
+    clib_json_add_number (j, 0, v);
+}
+
+static void
+put_bool (clib_json_text_t *j, const char *name, int v)
+{
+  if (v)
+    {
+      if (name)
+	clib_json_add_true (j, "%s", name);
+      else
+	clib_json_add_true (j, 0);
+    }
+  else
+    {
+      if (name)
+	clib_json_add_false (j, "%s", name);
+      else
+	clib_json_add_false (j, 0);
+    }
+}
+
+/* s is a vector, not nul terminated */
+static void
+put_string (clib_json_text_t *j, const char *name, u8 *s)
+{
+  if (name)
+    clib_json_add_string (j, "%s", "%v", name, s);
+  else
+    clib_json_add_string (j, 0, "%v", s);
+}
+
+static void
+put_cstring (clib_json_text_t *j, const char *name, const char *s)
+{
+  if (name)
+    clib_json_add_string (j, "%s", "%s", name, s);
+  else
+    clib_json_add_string (j, 0, "%s", s);
+}
+
+static void
+begin_object (clib_json_text_t *j, const char *name)
+{
+  if (name)
+    clib_json_add_object (j, "%s", name);
+  else
+    clib_json_add_object (j, 0);
+}
+
+static void
+begin_array (clib_json_text_t *j, const char *name)
+{
+  if (name)
+    clib_json_add_array (j, "%s", name);
+  else
+    clib_json_add_array (j, 0);
+}
+
+static void desc_tojson_fields (clib_json_text_t *j, const vl_api_desc_type_t *t, const u8 *base);
+
+/* ---- types which are formatted by hand */
+
+static u8 *
+desc_format_manual (u8 *s, const vl_api_desc_type_t *t, const u8 *p, int *handled, int for_text)
+{
+  const char *n = t->name;
+
+  *handled = 1;
+  if (!strcmp (n, "ip4_address"))
+    return format (s, "%U", format_vl_api_ip4_address_t, p, 0);
+
+  if (!strcmp (n, "ip6_address"))
+    return format (s, "%U", format_vl_api_ip6_address_t, p, 0);
+
+  if (!strcmp (n, "ip4_prefix") || !strcmp (n, "ip4_address_with_prefix"))
+    return format (s, "%U", format_vl_api_ip4_prefix_t, p, 0);
+
+  if (!strcmp (n, "ip6_prefix") || !strcmp (n, "ip6_address_with_prefix"))
+    return format (s, "%U", format_vl_api_ip6_prefix_t, p, 0);
+
+  if (!strcmp (n, "address"))
+    return format (s, "%U", format_vl_api_address_t, p, 0);
+
+  if (!strcmp (n, "prefix") || !strcmp (n, "address_with_prefix"))
+    return format (s, "%U", format_vl_api_prefix_t, p, 0);
+
+  if (!strcmp (n, "mac_address"))
+    {
+      /* the text of a message has the MAC address as aabb.ccdd.eeff */
+      if (for_text)
+	return format (s, "%02x%02x.%02x%02x.%02x%02x", p[0], p[1], p[2], p[3], p[4], p[5]);
+
+      return format (s, "%U", format_vl_api_mac_address_t, p, 0);
+    }
+
+  *handled = 0;
+  return s;
+}
+
+static const char *desc_format_strings[] = {
+  [VL_API_DK_U8] = "%u",    [VL_API_DK_BOOL] = "%u",  [VL_API_DK_I8] = "%d",
+  [VL_API_DK_U16] = "%u",   [VL_API_DK_I16] = "%d",   [VL_API_DK_U32] = "%u",
+  [VL_API_DK_I32] = "%ld",  [VL_API_DK_U64] = "%llu", [VL_API_DK_I64] = "%lld",
+  [VL_API_DK_F64] = "%.2f",
+};
+
+/* text of an alias, as the generated format function of the alias does it */
+static u8 *
+desc_format_alias (u8 *s, const vl_api_desc_type_t *t, const u8 *p, int for_text)
+{
+  static const struct
+  {
+    const char *name;
+    u8 kind;
+  } base[] = {
+    { "u8", VL_API_DK_U8 },	{ "i8", VL_API_DK_I8 },	  { "u16", VL_API_DK_U16 },
+    { "i16", VL_API_DK_I16 },	{ "u32", VL_API_DK_U32 }, { "i32", VL_API_DK_I32 },
+    { "u64", VL_API_DK_U64 },	{ "i64", VL_API_DK_I64 }, { "f64", VL_API_DK_F64 },
+    { "bool", VL_API_DK_BOOL },
+  };
+  int handled;
+
+  s = desc_format_manual (s, t, p, &handled, for_text);
+
+  if (handled)
+    return s;
+
+  if (t->alias_length && !strcmp (t->alias_type, "u8"))
+    return format (s, "%U", format_hex_bytes, p, t->alias_length);
+
+  for (u32 i = 0; i < ARRAY_LEN (base); i++)
+    if (!strcmp (t->alias_type, base[i].name))
+      {
+	u32 k = base[i].kind;
+
+	switch (k)
+	  {
+	  case VL_API_DK_U8:
+	  case VL_API_DK_BOOL:
+	    return format (s, desc_format_strings[k], (u32) *p);
+	  case VL_API_DK_I8:
+	    return format (s, desc_format_strings[k], (i32) (i8) *p);
+	  case VL_API_DK_U16:
+	    return format (s, desc_format_strings[k], (u32) desc_read_uint (p, k));
+	  case VL_API_DK_I16:
+	    return format (s, desc_format_strings[k], (i32) (i16) desc_read_uint (p, k));
+	  case VL_API_DK_U32:
+	    return format (s, desc_format_strings[k], (u32) desc_read_uint (p, k));
+	  case VL_API_DK_I32:
+	    return format (s, desc_format_strings[k], (long) (i32) desc_read_uint (p, k));
+	  case VL_API_DK_U64:
+	    return format (s, desc_format_strings[k], desc_read_uint (p, k));
+	  case VL_API_DK_I64:
+	    return format (s, desc_format_strings[k], (i64) desc_read_uint (p, k));
+	  default:
+	    return format (s, desc_format_strings[k], desc_read_number (p, k));
+	  }
+      }
+
+  return format (s, "%s (print not implemented)", t->name);
+}
+
+/* ---- values */
+
+static void
+desc_tojson_enum (clib_json_text_t *j, const char *name, const vl_api_desc_type_t *t, const u8 *p)
+{
+  u64 v = desc_read_uint (p, t->base);
+
+  if (t->kind == VL_API_DT_ENUMFLAG)
+    {
+      begin_array (j, name);
+
+      for (u32 i = 0; i < t->n_fields; i++)
+	if (t->values[i].value != 0 && (v & t->values[i].value))
+	  put_cstring (j, 0, t->values[i].name);
+
+      clib_json_parent (j);
+      return;
+    }
+
+  for (u32 i = 0; i < t->n_fields; i++)
+    if ((i64) (t->base == VL_API_DK_U32 ? (u32) v : v) == t->values[i].value)
+      {
+	put_cstring (j, name, t->values[i].name);
+	return;
+      }
+
+  put_cstring (j, name, "Invalid ENUM");
+}
+
+/* a value of a field, or an element of an array field */
+static void
+desc_tojson_value (clib_json_text_t *j, const char *name, const vl_api_desc_field_t *f, const u8 *p,
+		   int in_array)
+{
+  const vl_api_desc_type_t *r = f->ref;
+  u8 *s;
+  int handled;
+
+  switch (f->kind)
+    {
+    case VL_API_DK_U8 ... VL_API_DK_BOOL:
+      /* an alias of a base type is a number, except in an array or when
+       * it is a bool, there it is the text of the alias */
+      if (r && r->kind == VL_API_DT_ALIAS && (in_array || f->kind == VL_API_DK_BOOL))
+	{
+	  s = desc_format_alias (0, r, p, 0);
+	  put_string (j, name, s);
+	  vec_free (s);
+	}
+      else if (f->kind == VL_API_DK_BOOL)
+	put_bool (j, name, *p != 0);
+      else
+	put_number (j, name, desc_read_number (p, f->kind));
+
+      break;
+    case VL_API_DK_ENUM:
+    case VL_API_DK_ENUMFLAG:
+      desc_tojson_enum (j, name, r, p);
+      break;
+    case VL_API_DK_STRUCT:
+    case VL_API_DK_UNION:
+      if (r->flags & VL_API_DTF_MANUAL_PRINT)
+	{
+	  s = desc_format_manual (0, r, p, &handled, 0);
+
+	  if (handled)
+	    {
+	      put_string (j, name, s);
+	      vec_free (s);
+	      break;
+	    }
+
+	  vec_free (s);
+	}
+
+      begin_object (j, name);
+      desc_tojson_fields (j, r, p);
+      clib_json_parent (j);
+      break;
+    case VL_API_DK_NAMED:
+      s = desc_format_alias (0, r, p, 0);
+      put_string (j, name, s);
+      vec_free (s);
+      break;
+    default:
+      break;
+    }
+}
+
+/* value of a length field of the type */
+static u32
+desc_length_of (const vl_api_desc_type_t *t, const vl_api_desc_field_t *f, const u8 *base)
+{
+  const vl_api_desc_field_t *lf = &t->fields[f->related];
+
+  return desc_read_uint (base + lf->offset, lf->kind);
+}
+
+static void
+desc_tojson_array (clib_json_text_t *j, const vl_api_desc_type_t *t, const vl_api_desc_field_t *f,
+		   const u8 *base)
+{
+  const u8 *p = base + f->offset;
+  u32 n = (f->flags & VL_API_DF_VLA) ? desc_length_of (t, f, base) : f->length;
+
+  if (f->flags & VL_API_DF_MODERN_VLA)
+    {
+      u32 len = clib_net_to_host_u32 (*(u32 *) p);
+      u8 *s = 0;
+
+      vec_add (s, p + sizeof (u32), len);
+      put_string (j, f->name, s);
+      vec_free (s);
+      return;
+    }
+
+  if (f->kind == VL_API_DK_FSTRING)
+    {
+      u8 *s = 0;
+
+      vec_add (s, p, strnlen ((char *) p, f->length));
+      put_string (j, f->name, s);
+      vec_free (s);
+      return;
+    }
+
+  if (vl_api_desc_field_is_u8 (f))
+    {
+      u8 *s = format (0, "0x%U", format_hex_bytes_no_wrap, p, n);
+
+      put_string (j, f->name, s);
+      vec_free (s);
+      return;
+    }
+
+  begin_array (j, f->name);
+
+  for (u32 i = 0; i < n; i++)
+    desc_tojson_value (j, 0, f, p + (u64) i * f->size, 1);
+
+  clib_json_parent (j);
+}
+
+static void
+desc_tojson_fields (clib_json_text_t *j, const vl_api_desc_type_t *t, const u8 *base)
+{
+  for (u32 i = 0; i < t->n_fields; i++)
+    {
+      const vl_api_desc_field_t *f = &t->fields[i];
+
+      if (desc_is_noprint (f->name))
+	continue;
+
+      if (f->flags & VL_API_DF_ARRAY)
+	desc_tojson_array (j, t, f, base);
+      else
+	desc_tojson_value (j, f->name, f, base + f->offset, 0);
+    }
+}
+
+int
+vl_api_desc_msg_to_json (const vl_api_desc_type_t *t, const void *msg, clib_json_text_t *j)
+{
+  if (t->kind != VL_API_DT_MESSAGE)
+    return -1;
+
+  clib_json_init (j);
+
+  if (clib_json_add_object (j, 0) < 0)
+    return -1;
+
+  clib_json_add_string (j, "_msgname", "%s", t->name);
+  clib_json_add_string (j, "_crc", "%08x", t->crc);
+  desc_tojson_fields (j, t, msg);
+  clib_json_parent (j);
+  return 0;
+}

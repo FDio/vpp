@@ -191,7 +191,6 @@ sr_mpls_api_hookup (vlib_main_t * vm)
     .format_fn = vl_api_##n##_t_format,                                       \
     .size = sizeof (vl_api_##n##_t),                                          \
     .traced = 1,                                                              \
-    .tojson = vl_api_##n##_t_tojson,                                          \
     .fromjson = vl_api_##n##_t_fromjson,                                      \
     .calc_size = vl_api_##n##_t_calc_size,                                    \
   });
@@ -210,7 +209,6 @@ sr_mpls_api_hookup (vlib_main_t * vm)
     .format_fn = vl_api_sr_mpls_policy_add_t_format,
     .size = 256,
     .traced = 1,
-    .tojson = vl_api_sr_mpls_policy_add_t_tojson,
     .fromjson = vl_api_sr_mpls_policy_add_t_fromjson,
     .calc_size = vl_api_sr_mpls_policy_add_t_calc_size,
   });
@@ -226,7 +224,6 @@ sr_mpls_api_hookup (vlib_main_t * vm)
     .format_fn = vl_api_sr_mpls_policy_mod_t_format,
     .size = 256,
     .traced = 1,
-    .tojson = vl_api_sr_mpls_policy_mod_t_tojson,
     .fromjson = vl_api_sr_mpls_policy_mod_t_fromjson,
     .calc_size = vl_api_sr_mpls_policy_mod_t_calc_size,
   });

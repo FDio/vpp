@@ -317,7 +317,6 @@ manual_setup_message_id_table (vat_main_t * vam)
     .format_fn = vl_api_trace_details_t_format,
     .size = sizeof (vl_api_trace_details_t),
     .traced = 1,
-    .tojson = vl_api_trace_details_t_tojson,
     .fromjson = vl_api_trace_details_t_fromjson,
     .calc_size = vl_api_trace_details_t_calc_size,
   });

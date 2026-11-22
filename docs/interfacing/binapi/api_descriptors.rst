@@ -36,6 +36,16 @@ The descriptors are declared in ``src/vlibapi/api_desc.h``.
 ``vl_api_desc_find_msg (am, msg_id)`` returns the descriptor of a registered
 message and ``am->desc_files`` has the descriptors of all the files.
 
+What uses them
+--------------
+
+* ``vl_api_desc_msg_to_json ()`` converts a message to JSON. It is used by
+  ``api trace save-json``, ``api trace dump-json`` and by
+  ``format_vl_api_msg_json ()``. The members are ``_msgname``, ``_crc`` and the
+  fields, except ``_vl_msg_id``, ``client_index`` and ``context``. The text is
+  written by clib_json. VPP does not register the generated
+  ``vl_api_<msg>_t_tojson`` functions any more.
+
 Showing the descriptors
 -----------------------
 
