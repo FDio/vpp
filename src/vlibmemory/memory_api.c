@@ -514,7 +514,13 @@ vl_mem_api_init (const char *region_name)
 #include <vlibmemory/memclnt.api.h>
 #undef vl_msg_name_crc_list
 
-#define _(id, n, crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id, n, crc)                                                                              \
+  do                                                                                               \
+    {                                                                                              \
+      vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);                                           \
+      vl_api_desc_register_msg (am, vl_memclnt_api_desc (), #n, id);                               \
+    }                                                                                              \
+  while (0);
   foreach_vl_msg_name_crc_memclnt;
 #undef _
 
