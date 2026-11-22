@@ -379,6 +379,8 @@ typedef struct api_main_t
   const struct vl_api_desc_file **desc_files;
   /** message descriptors by message id */
   struct vl_api_desc_msg *desc_by_msg_id;
+  /* what the byte order conversion of each message does, built when it is used */
+  void **desc_endian_plans;
 
 } api_main_t;
 

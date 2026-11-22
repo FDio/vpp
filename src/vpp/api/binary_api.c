@@ -404,8 +404,8 @@ bapi_reply_handler (void *mp)
 
   vec_add (copy, mp, vl_msg_api_get_msg_length (mp));
 
-  if (!m->is_autoendian && m->endian_handler)
-    m->endian_handler (copy, 0 /* to host */);
+  if (!m->is_autoendian)
+    vl_api_msg_endian (am, id, copy, 0 /* to host */);
 
   cf = bapi_field (d->file, d->type, "context");
   if (cf)
@@ -487,8 +487,8 @@ bapi_send (api_main_t *am, bapi_test_main_t *bm, u16 id, u8 *msg, const vl_api_d
   mp = vl_msg_api_alloc_as_if_client (vec_len (msg));
   clib_memcpy (mp, msg, vec_len (msg));
 
-  if (m && m->endian_handler)
-    m->endian_handler (mp, 1 /* to network */);
+  if (m)
+    vl_api_msg_endian (am, id, mp, 1 /* to network */);
 
   vl_msg_api_send_shmem (am->shmem_hdr->vl_input_queue, (u8 *) &mp);
 }

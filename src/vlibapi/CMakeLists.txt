@@ -20,6 +20,7 @@ add_vpp_library (vlibapi
   jsonformat.c
   api_desc.c
   api_desc_json.c
+  api_desc_endian.c
 
   INSTALL_HEADERS
   api.h

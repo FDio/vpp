@@ -314,7 +314,6 @@ manual_setup_message_id_table (vat_main_t * vam)
     .name = "trace_details",
     .handler = vl_api_trace_details_t_handler,
     .endian = vl_api_trace_details_t_endian,
-    .format_fn = vl_api_trace_details_t_format,
     .size = sizeof (vl_api_trace_details_t),
     .traced = 1,
     .calc_size = vl_api_trace_details_t_calc_size,
