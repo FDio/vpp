@@ -10,10 +10,14 @@
 #include <svm/queue.h>
 #include <vlib/vlib.h>
 #include <vlibapi/api.h>
+#include <vlibapi/api_desc.h>
 #include <vlibapi/memory_shared.h>
 
 svm_queue_t *vl_api_client_index_to_input_queue (u32 index);
 int vl_mem_api_init (const char *region_name);
+
+/* the API descriptors of memclnt.api */
+const vl_api_desc_file_t *vl_memclnt_api_desc (void);
 void vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm,
 				  f64 now);
 int vl_mem_api_handle_msg_main (vlib_main_t * vm, vlib_node_runtime_t * node);
