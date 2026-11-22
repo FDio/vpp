@@ -122,3 +122,15 @@ Showing the descriptors
   prefix       vl_api_prefix_t struct     15   18       The prefix (or host) for route lookup.
 
 The output can be shown as JSON with ``| json``.
+
+Descriptors from JSON
+---------------------
+
+A program which does not have the descriptors compiled in, like ``vat2``, can
+get them from a running VPP. ``vl_api_desc_file_from_json ()`` creates the
+descriptors of a file from the text ``get_api_json`` returns for it, and
+``vl_api_desc_file_free ()`` frees them. The layout is calculated the same way
+``vppapigen`` does it. What the JSON does not have is not set: which types
+are converted by hand are known by their names, and which types were
+imported and which messages use ``autoendian`` are not used when the
+descriptors are interpreted.

@@ -25,8 +25,6 @@ set(TEST_SOURCES
   )
 
 add_vpp_plugin(sasc
-  VAT_AUTO_TEST OFF
-
   SOURCES
   plugin.c
   api.c
