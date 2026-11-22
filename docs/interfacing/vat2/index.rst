@@ -22,6 +22,21 @@ Installation
 When distributed in binary packages it is installed from the ``vpp`` package.
 It is available since VPP `release v21.01 <https://docs.fd.io/vpp/24.10/aboutvpp/releasenotes/v21.01.html>`_.
 
+Where the API comes from
+------------------------
+
+``vat2`` does not have the messages built in. A message is sent with the API
+of the VPP which it is connected to: ``vat2`` asks it for the description of
+its API (``get_api_json``), creates the :ref:`API descriptors
+<vpp_api_descriptors>` from it and converts the JSON to the message and the
+reply to JSON with them. So ``vat2`` knows every message of every plugin
+which VPP has loaded, in the version VPP has it.
+
+``--template`` and ``--dump-apis`` do not need a running VPP: they read the
+``.api.json`` files which are installed in ``<prefix>/share/vpp/api``, or in
+the directory given with ``--api-dir``, and ask a running VPP only if there
+are no files. The ``--plugin-path`` option is not used any more.
+
 Usage examples
 --------------
 
@@ -47,9 +62,6 @@ The simplest call to print VPP's version.
   debug = 1, filename = (null), template = (null), api socket: (null)
   Non-option argument show_version
   Non-option argument {}
-  Plugin Path /usr/lib/x86_64-linux-gnu/vat2_plugins
-  Opening path: /usr/lib/x86_64-linux-gnu/vat2_plugins
-  Loaded 138 plugins
   {
           "_msgname":     "show_version_reply",
           "_crc": "c919bde1",
@@ -60,7 +72,7 @@ The simplest call to print VPP's version.
           "build_directory":      "/w/workspace/vpp-merge-2406-ubuntu2204-x86_64"
   }
 
-Make ``vat2`` print the API messages it knows:
+Make ``vat2`` print the API messages it knows (from the ``.api.json`` files):
 
 .. code-block:: console
 

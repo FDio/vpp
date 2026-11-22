@@ -299,3 +299,15 @@ void vl_api_desc_msg_endian (const vl_api_desc_msg_t *m, void *msg, int to_net);
 /* Whether vl_api_msg_endian converts the message of the id. */
 int vl_api_msg_has_endian (struct api_main_t *am, u32 msg_id);
 void vl_api_msg_endian (struct api_main_t *am, u32 msg_id, void *msg, int to_net);
+
+/* Creates the descriptors of a file from its .api.json text, the JSON object
+ * with the "messages", "types"... which get_api_json returns for each file.
+ * It is for the programs which do not have the descriptors compiled in. The
+ * descriptors are the same as the ones vppapigen creates, except for what the
+ * JSON does not have: the flags of the types which tell how they are
+ * converted by hand (they are set for the types which are known), which
+ * types were imported and which messages use autoendian. Free the result with
+ * vl_api_desc_file_free (). */
+clib_error_t *vl_api_desc_file_from_json (clib_json_text_t *j, int value_index,
+					  const vl_api_desc_file_t **file);
+void vl_api_desc_file_free (const vl_api_desc_file_t *f);
