@@ -347,14 +347,6 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--vpp-test-plugin-dir",
-    action="append",
-    type=directory,
-    help="directory containing vpp api test plugins"
-    "(default: derive from VPP_WS_DIR and VPP_TAG)",
-)
-
-parser.add_argument(
     "--extern-plugin-dir",
     action="append",
     type=directory,
@@ -511,11 +503,6 @@ libs = ["lib", "lib64"]
 if config.vpp_plugin_dir is None:
     config.vpp_plugin_dir = [
         f"{config.vpp_install_dir}/vpp/{lib}/vpp_plugins" for lib in libs
-    ]
-
-if config.vpp_test_plugin_dir is None:
-    config.vpp_test_plugin_dir = [
-        f"{config.vpp_install_dir}/vpp/{lib}/vpp_api_test_plugins" for lib in libs
     ]
 
 test_dirs = [f"{ws}/test"]

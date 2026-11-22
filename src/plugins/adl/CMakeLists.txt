@@ -25,7 +25,4 @@ add_vpp_plugin(adl
 
   API_FILES
   adl.api
-
-  API_TEST_SOURCES
-  adl_test.c
 )
