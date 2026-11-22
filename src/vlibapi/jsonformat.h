@@ -7,100 +7,21 @@
 #define included_json_convert_h
 
 #include <stdbool.h>
-#include <vppinfra/cJSON.h>
 /* vppapigen generated types */
 #include <vnet/ip/ip_types.api_types.h>
 #include <vnet/ethernet/ethernet_types.api_types.h>
 
-#define foreach_type_fromjson                                                 \
-  _ (i8)                                                                      \
-  _ (u8)                                                                      \
-  _ (i16)                                                                     \
-  _ (u16)                                                                     \
-  _ (i32)                                                                     \
-  _ (u32)                                                                     \
-  _ (u64)                                                                     \
-  _ (f64)
-
-#define _(T) CJSON_PUBLIC (int) vl_api_##T##_fromjson (cJSON *o, T *d);
-foreach_type_fromjson
-#undef _
-
-/* Prototypes */
-CJSON_PUBLIC (int) vl_api_bool_fromjson (cJSON *o, bool *d);
-CJSON_PUBLIC (int)
-vl_api_ip4_address_t_fromjson (void **mp, int *len, cJSON *o,
-			       vl_api_ip4_address_t *a);
-CJSON_PUBLIC (int)
-vl_api_ip4_prefix_t_fromjson (void **mp, int *len, cJSON *o,
-			      vl_api_ip4_prefix_t *a);
-CJSON_PUBLIC (int)
-vl_api_ip4_address_with_prefix_t_fromjson (void **mp, int *len, cJSON *o,
-					   vl_api_ip4_prefix_t *a);
-CJSON_PUBLIC (int)
-vl_api_ip6_address_t_fromjson (void **mp, int *len, cJSON *o,
-			       vl_api_ip6_address_t *a);
-CJSON_PUBLIC (int)
-vl_api_ip6_prefix_t_fromjson (void **mp, int *len, cJSON *o,
-			      vl_api_ip6_prefix_t *a);
-CJSON_PUBLIC (int)
-vl_api_ip6_address_with_prefix_t_fromjson (void **mp, int *len, cJSON *o,
-					   vl_api_ip6_prefix_t *a);
-CJSON_PUBLIC (int)
-vl_api_address_t_fromjson (void **mp, int *len, cJSON *o, vl_api_address_t *a);
-CJSON_PUBLIC (int)
-vl_api_prefix_t_fromjson (void **mp, int *len, cJSON *o, vl_api_prefix_t *a);
-CJSON_PUBLIC (int)
-vl_api_address_with_prefix_t_fromjson (void **mp, int *len, cJSON *o,
-				       vl_api_prefix_t *a);
-CJSON_PUBLIC (int)
-vl_api_mac_address_t_fromjson (void **mp, int *len, cJSON *o,
-			       vl_api_mac_address_t *a);
-
-CJSON_PUBLIC (uword)
-unformat_ip4_address (unformat_input_t *input, va_list *args);
-CJSON_PUBLIC (uword)
-unformat_ip6_address (unformat_input_t *input, va_list *args);
-CJSON_PUBLIC (u8 *) format_ip6_address (u8 *s, va_list *args);
-CJSON_PUBLIC (uword)
-unformat_mac_address (unformat_input_t *input, va_list *args);
-CJSON_PUBLIC (u8 *) format_ip4_address (u8 *s, va_list *args);
-CJSON_PUBLIC (uword)
-unformat_vl_api_timedelta_t (unformat_input_t *input, va_list *args);
-CJSON_PUBLIC (uword)
-unformat_vl_api_timestamp_t (unformat_input_t *input, va_list *args);
-CJSON_PUBLIC (uword)
-unformat_vl_api_gbp_scope_t (unformat_input_t *input, va_list *args);
-
-CJSON_PUBLIC (void)
-vl_api_string_cJSON_AddToObject (cJSON *const object, const char *const name,
-				 vl_api_string_t *astr);
-
-CJSON_PUBLIC (u8 *) u8string_fromjson (cJSON *o, char *fieldname);
-CJSON_PUBLIC (int) u8string_fromjson2 (cJSON *o, char *fieldname, u8 *data);
-CJSON_PUBLIC (int) vl_api_u8_string_fromjson (cJSON *o, u8 *s, int len);
+/* Formatting and parsing of the API types which are written as text */
+uword unformat_ip4_address (unformat_input_t *input, va_list *args);
+uword unformat_ip6_address (unformat_input_t *input, va_list *args);
+u8 *format_ip6_address (u8 *s, va_list *args);
+uword unformat_mac_address (unformat_input_t *input, va_list *args);
+u8 *format_ip4_address (u8 *s, va_list *args);
+uword unformat_vl_api_timedelta_t (unformat_input_t *input, va_list *args);
+uword unformat_vl_api_timestamp_t (unformat_input_t *input, va_list *args);
+uword unformat_vl_api_gbp_scope_t (unformat_input_t *input, va_list *args);
 
 /* The text of a MAC address, aa:bb:cc:dd:ee:ff */
 format_function_t format_vl_api_mac_address_t;
-
-#define foreach_type_tojson                                                   \
-  _ (ip4_address)                                                             \
-  _ (ip4_prefix)                                                              \
-  _ (ip6_address)                                                             \
-  _ (ip6_prefix)                                                              \
-  _ (address)                                                                 \
-  _ (prefix)                                                                  \
-  _ (mac_address)
-
-#define _(T) CJSON_PUBLIC (cJSON *) vl_api_##T##_t_tojson (vl_api_##T##_t *);
-foreach_type_tojson
-#undef _
-
-CJSON_PUBLIC (cJSON *)
-  vl_api_ip4_address_with_prefix_t_tojson (vl_api_ip4_prefix_t *a);
-CJSON_PUBLIC (cJSON *)
-vl_api_ip6_address_with_prefix_t_tojson (vl_api_ip6_prefix_t *a);
-CJSON_PUBLIC (cJSON *)
-vl_api_address_with_prefix_t_tojson (vl_api_prefix_t *a);
 
 #endif
