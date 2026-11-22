@@ -35,3 +35,47 @@ the generated code asserts the ``sizeof`` and the ``offsetof`` of every type.
 The descriptors are declared in ``src/vlibapi/api_desc.h``.
 ``vl_api_desc_find_msg (am, msg_id)`` returns the descriptor of a registered
 message and ``am->desc_files`` has the descriptors of all the files.
+
+Showing the descriptors
+-----------------------
+
+``show api descriptor`` shows what is registered:
+
+.. code-block:: console
+
+  vpp# show api descriptor module vpe
+  module vpe, crc 0xbbfa7484, 6 messages, 0 types
+  Name                       Kind      ID      CRC Size Reply
+  show_version               message 1594 51077d14   10 show_version_reply
+  show_version_reply         message 1595 c919bde1  362
+  show_vpe_system_time       message 1596 51077d14   10 show_vpe_system_time_reply
+  show_vpe_system_time_reply message 1597 7ffd8193   18
+  log_dump                   message 1598 6ab31753   18 log_details
+  log_details                message 1599 03d61cc0  306
+
+* ``show api descriptor`` lists the files with their CRC and the number of
+  messages and types.
+* ``show api descriptor module <name>`` lists the messages and the types of a
+  file, with the id, the CRC, the size and the reply of a message.
+* ``show api descriptor message <name>`` and ``show api descriptor type
+  <name>`` show the layout of one of them, the names are completed. The
+  description of a message, from the ``\brief`` of its comment in the ``.api``
+  file, and the description of each of its fields, from the ``@param`` lines,
+  are shown too:
+
+.. code-block:: console
+
+  vpp# show api descriptor message ip_route_lookup
+  message ip_route_lookup
+    Lookup IP route from a table
+    id 1144, crc 710d6471
+    size 33
+  Field        Type            Kind   Offset Size Array Description
+  _vl_msg_id   u16             u16         0    2
+  client_index u32             u32         2    4       opaque cookie to identify the sender
+  context      u32             u32         6    4
+  table_id     u32             u32        10    4       The IP table to look the route up in
+  exact        u8              u8         14    1       0 for normal route lookup, 1 for exact match only
+  prefix       vl_api_prefix_t struct     15   18       The prefix (or host) for route lookup.
+
+The output can be shown as JSON with ``| json``.

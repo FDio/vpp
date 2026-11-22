@@ -9,6 +9,8 @@
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
+#include <vlibapi/api_desc.h>
+#include <vppinfra/format_table.h>
 
 static clib_error_t *
 vl_api_show_histogram_command (vlib_main_t * vm,
@@ -1462,4 +1464,525 @@ VLIB_CLI_COMMAND (dump_api_table_file, static) = {
   .path = "show api dump",
   .short_help = "show api dump file <filename> [numeric | compare-current]",
   .function = dump_api_table_file_command_fn,
+};
+
+/* ---- show api descriptor */
+
+static const char *desc_field_kinds[] = {
+  [VL_API_DK_U8] = "u8",       [VL_API_DK_I8] = "i8",	       [VL_API_DK_U16] = "u16",
+  [VL_API_DK_I16] = "i16",     [VL_API_DK_U32] = "u32",	       [VL_API_DK_I32] = "i32",
+  [VL_API_DK_U64] = "u64",     [VL_API_DK_I64] = "i64",	       [VL_API_DK_F64] = "f64",
+  [VL_API_DK_BOOL] = "bool",   [VL_API_DK_STRING] = "string",  [VL_API_DK_FSTRING] = "fixed string",
+  [VL_API_DK_ENUM] = "enum",   [VL_API_DK_ENUMFLAG] = "flags", [VL_API_DK_STRUCT] = "struct",
+  [VL_API_DK_UNION] = "union", [VL_API_DK_NAMED] = "alias",
+};
+
+static const char *desc_type_kinds[] = {
+  [VL_API_DT_MESSAGE] = "message", [VL_API_DT_TYPEDEF] = "type",   [VL_API_DT_UNION] = "union",
+  [VL_API_DT_ENUM] = "enum",	   [VL_API_DT_ENUMFLAG] = "flags", [VL_API_DT_ALIAS] = "alias",
+};
+
+/* The messages, or the types, of all the files, once for each name. The lists
+ * are made again when there are more files. */
+static const vl_api_desc_type_t *
+desc_nth_name (api_main_t *am, int messages, u32 n)
+{
+  static const vl_api_desc_type_t **names[2];
+  static u32 n_files;
+
+  if (n_files != vec_len (am->desc_files))
+    {
+      uword *seen[2] = { hash_create_string (0, sizeof (uword)),
+			 hash_create_string (0, sizeof (uword)) };
+
+      vec_reset_length (names[0]);
+      vec_reset_length (names[1]);
+
+      for (u32 i = 0; i < vec_len (am->desc_files); i++)
+	{
+	  const vl_api_desc_file_t *f = am->desc_files[i];
+
+	  for (u32 k = 0; k < f->n_msgs + f->n_types; k++)
+	    {
+	      const vl_api_desc_type_t *t = k < f->n_msgs ? f->msgs[k] : f->types[k - f->n_msgs];
+	      int w = k < f->n_msgs;
+
+	      if (hash_get_mem (seen[w], t->name))
+		continue;
+
+	      hash_set_mem (seen[w], t->name, 1);
+	      vec_add1 (names[w], t);
+	    }
+	}
+
+      hash_free (seen[0]);
+      hash_free (seen[1]);
+      n_files = vec_len (am->desc_files);
+    }
+
+  return n < vec_len (names[!!messages]) ? names[!!messages][n] : 0;
+}
+
+static const char *
+desc_next_message (const cli_arg_t *a __clib_unused, u32 *iter, u32 *value, const char **help)
+{
+  const vl_api_desc_type_t *t = desc_nth_name (vlibapi_get_main (), 1, *iter);
+
+  if (!t)
+    return 0;
+
+  *value = (*iter)++;
+  if (help)
+    *help = "message";
+  return t->name;
+}
+
+static const char *
+desc_next_type (const cli_arg_t *a __clib_unused, u32 *iter, u32 *value, const char **help)
+{
+  const vl_api_desc_type_t *t = desc_nth_name (vlibapi_get_main (), 0, *iter);
+
+  if (!t)
+    return 0;
+
+  *value = (*iter)++;
+  if (help)
+    *help = desc_type_kinds[t->kind];
+  return t->name;
+}
+
+CLIB_CLI_TYPE (cli_type_api_message) = {
+  .name = "message",
+  .help = "the name of an API message",
+  .next_name = desc_next_message,
+  .parse = cli_names_parse,
+  .complete = cli_names_complete,
+};
+
+CLIB_CLI_TYPE (cli_type_api_type) = {
+  .name = "type",
+  .help = "the name of an API type, enum, flags or alias",
+  .next_name = desc_next_type,
+  .parse = cli_names_parse,
+  .complete = cli_names_complete,
+};
+
+static const char *
+desc_next_module (const cli_arg_t *a __clib_unused, u32 *iter, u32 *value, const char **help)
+{
+  api_main_t *am = vlibapi_get_main ();
+
+  if (*iter >= vec_len (am->desc_files))
+    return 0;
+
+  *value = *iter;
+  if (help)
+    *help = "API file";
+  return am->desc_files[(*iter)++]->module;
+}
+
+CLIB_CLI_TYPE (cli_type_api_module) = {
+  .name = "module",
+  .help = "the name of an API file",
+  .next_name = desc_next_module,
+  .parse = cli_names_parse,
+  .complete = cli_names_complete,
+};
+
+static u8 *
+format_desc_flags (u8 *s, va_list *args)
+{
+  u32 flags = va_arg (*args, u32);
+  u32 n = 0;
+
+  if (flags & VL_API_DTF_MANUAL_PRINT)
+    s = format (s, "%smanual_print", n++ ? "," : "");
+
+  if (flags & VL_API_DTF_MANUAL_ENDIAN)
+    s = format (s, "%smanual_endian", n++ ? "," : "");
+
+  if (flags & VL_API_DTF_VLA)
+    s = format (s, "%svla", n++ ? "," : "");
+
+  if (flags & VL_API_DTF_DONT_TRACE)
+    s = format (s, "%sdont_trace", n++ ? "," : "");
+
+  if (flags & VL_API_DTF_AUTOENDIAN)
+    s = format (s, "%sautoendian", n++ ? "," : "");
+
+  return s;
+}
+
+static u8 *
+format_desc_field_flags (u8 *s, va_list *args)
+{
+  const vl_api_desc_type_t *t = va_arg (*args, const vl_api_desc_type_t *);
+  const vl_api_desc_field_t *f = va_arg (*args, const vl_api_desc_field_t *);
+
+  if (f->flags & VL_API_DF_VLA)
+    return format (s, "vla[%s]", vl_api_desc_len_field_name (t, f));
+
+  if (f->flags & VL_API_DF_MODERN_VLA)
+    return format (s, "vla");
+
+  if (f->flags & VL_API_DF_ARRAY)
+    return format (s, "[%u]", f->length);
+
+  if (f->flags & VL_API_DF_LENGTH)
+    return format (s, "length");
+
+  return s;
+}
+
+/* the id the message is registered with, ~0 if it is not */
+static u32
+desc_msg_id (api_main_t *am, const vl_api_desc_type_t *t)
+{
+  for (u32 i = 0; i < vec_len (am->desc_by_msg_id); i++)
+    if (am->desc_by_msg_id[i] == t)
+      return i;
+
+  return ~0;
+}
+
+static clib_error_t *
+show_api_descriptor_files (vlib_main_t *vm, cli_ctx_t *ctx, api_main_t *am)
+{
+  static const cli_column_t cols[] = {
+    { "module", "Module" }, { "crc", "CRC" }, { "messages", "Messages" }, { "types", "Types" }, {},
+  };
+  clib_json_text_t j;
+
+  if (!cli_is_structured (ctx))
+    {
+      table_t table = {};
+
+      table_add_hdr_col (&table, 0);
+      table_add_hdr_row (&table, 4, "Module", "CRC", "Messages", "Types");
+      table_set_cell_align (&table, -1, -1, TTAA_LEFT);
+      table_set_cell_align (&table, -1, 0, TTAA_LEFT);
+      table_set_cell_align (&table, -1, 1, TTAA_RIGHT);
+      table_set_cell_align (&table, -1, 2, TTAA_RIGHT);
+
+      for (u32 i = 0; i < vec_len (am->desc_files); i++)
+	{
+	  const vl_api_desc_file_t *f = am->desc_files[i];
+
+	  table_format_cell (&table, i, -1, "%s", f->module);
+	  table_format_cell (&table, i, 0, "0x%x", f->file_crc);
+	  table_format_cell (&table, i, 1, "%u", f->n_msgs);
+	  table_format_cell (&table, i, 2, "%u", f->n_types);
+	  table_set_cell_align (&table, i, 0, TTAA_LEFT);
+	}
+
+      vlib_cli_output (vm, "%U", format_table, &table);
+      table_free (&table);
+      return 0;
+    }
+
+  clib_json_init (&j);
+  clib_json_add_array (&j, 0);
+
+  for (u32 i = 0; i < vec_len (am->desc_files); i++)
+    {
+      const vl_api_desc_file_t *f = am->desc_files[i];
+
+      clib_json_add_object (&j, 0);
+      clib_json_add_string (&j, "module", "%s", f->module);
+      clib_json_add_string (&j, "crc", "0x%x", f->file_crc);
+      clib_json_add_number (&j, "messages", f->n_msgs);
+      clib_json_add_number (&j, "types", f->n_types);
+      clib_json_parent (&j);
+    }
+
+  return cli_emit_table (ctx, &j, cols);
+}
+
+static clib_error_t *
+show_api_descriptor_type (vlib_main_t *vm, cli_ctx_t *ctx, api_main_t *am,
+			  const vl_api_desc_type_t *t)
+{
+  u32 id = t->kind == VL_API_DT_MESSAGE ? desc_msg_id (am, t) : ~0;
+  u8 *flags = format (0, "%U", format_desc_flags, t->flags);
+  clib_error_t *err = 0;
+
+  if (cli_is_json (ctx))
+    {
+      static const cli_column_t cols[] = {
+	{ "name", "Name" },
+	{ "kind", "Kind" },
+	{ "id", "ID" },
+	{ "crc", "CRC" },
+	{ "size", "Size" },
+	{ "flags", "Flags" },
+	{},
+      };
+      clib_json_text_t j;
+
+      clib_json_init (&j);
+      clib_json_add_object (&j, 0);
+      clib_json_add_string (&j, "name", "%s", t->name);
+      clib_json_add_string (&j, "kind", "%s", desc_type_kinds[t->kind]);
+
+      if (id != ~0)
+	clib_json_add_number (&j, "id", id);
+
+      if (t->kind == VL_API_DT_MESSAGE)
+	clib_json_add_string (&j, "crc", "%08x", t->crc);
+
+      clib_json_add_number (&j, "size", t->size);
+      clib_json_add_string (&j, "flags", "%v", flags);
+
+      if (t->kind == VL_API_DT_ENUM || t->kind == VL_API_DT_ENUMFLAG)
+	{
+	  clib_json_add_array (&j, "values");
+
+	  for (u32 i = 0; i < t->n_fields; i++)
+	    {
+	      clib_json_add_object (&j, 0);
+	      clib_json_add_string (&j, "name", "%s", t->values[i].name);
+	      clib_json_add_number (&j, "value", t->values[i].value);
+	      clib_json_parent (&j);
+	    }
+
+	  clib_json_parent (&j);
+	}
+      else if (t->kind == VL_API_DT_ALIAS)
+	{
+	  clib_json_add_string (&j, "alias", "%s", t->alias_type);
+	  clib_json_add_number (&j, "length", t->alias_length);
+	}
+      else
+	{
+	  clib_json_add_array (&j, "fields");
+
+	  for (u32 i = 0; i < t->n_fields; i++)
+	    {
+	      const vl_api_desc_field_t *f = &t->fields[i];
+
+	      clib_json_add_object (&j, 0);
+	      clib_json_add_string (&j, "name", "%s", f->name);
+	      clib_json_add_string (&j, "type", "%U", format_vl_api_desc_field_type, f);
+	      clib_json_add_string (&j, "kind", "%s", desc_field_kinds[f->kind]);
+	      clib_json_add_number (&j, "offset", f->offset);
+	      clib_json_add_number (&j, "size", f->size);
+	      clib_json_add_string (&j, "array", "%U", format_desc_field_flags, t, f);
+
+	      if (f->description)
+		clib_json_add_string (&j, "description", "%s", f->description);
+
+	      clib_json_parent (&j);
+	    }
+
+	  clib_json_parent (&j);
+	}
+
+      err = cli_emit_object (ctx, &j, cols);
+      vec_free (flags);
+      return err;
+    }
+
+  vlib_cli_output (vm, "%s %s", desc_type_kinds[t->kind], t->name);
+
+  if (t->brief)
+    vlib_cli_output (vm, "  %s", t->brief);
+
+  if (id != ~0)
+    vlib_cli_output (vm, "  id %u, crc %08x", id, t->crc);
+
+  vlib_cli_output (vm, "  size %u%s%v", t->size, vec_len (flags) ? ", " : "", flags);
+
+  if (t->kind == VL_API_DT_ALIAS)
+    vlib_cli_output (vm, "  alias of %s", t->alias_type);
+  else if (t->kind == VL_API_DT_ENUM || t->kind == VL_API_DT_ENUMFLAG)
+    {
+      table_t table = {};
+
+      table_add_hdr_col (&table, 0);
+      table_add_hdr_row (&table, 2, "Name", "Value");
+      table_set_cell_align (&table, -1, -1, TTAA_LEFT);
+      table_set_cell_align (&table, -1, 0, TTAA_RIGHT);
+
+      for (u32 i = 0; i < t->n_fields; i++)
+	{
+	  table_format_cell (&table, i, -1, "%s", t->values[i].name);
+	  table_format_cell (&table, i, 0, "%lld", t->values[i].value);
+	}
+
+      vlib_cli_output (vm, "%U", format_table, &table);
+      table_free (&table);
+    }
+  else
+    {
+      table_t table = {};
+
+      table_add_hdr_col (&table, 0);
+      table_add_hdr_row (&table, 7, "Field", "Type", "Kind", "Offset", "Size", "Array",
+			 "Description");
+
+      /* the headers are aligned as the columns are */
+      table_set_cell_align (&table, -1, -1, TTAA_LEFT);
+      table_set_cell_align (&table, -1, 0, TTAA_LEFT);
+      table_set_cell_align (&table, -1, 1, TTAA_LEFT);
+      table_set_cell_align (&table, -1, 2, TTAA_RIGHT);
+      table_set_cell_align (&table, -1, 3, TTAA_RIGHT);
+      table_set_cell_align (&table, -1, 4, TTAA_LEFT);
+      table_set_cell_align (&table, -1, 5, TTAA_LEFT);
+
+      for (u32 i = 0; i < t->n_fields; i++)
+	{
+	  const vl_api_desc_field_t *f = &t->fields[i];
+
+	  table_format_cell (&table, i, -1, "%s", f->name);
+	  table_format_cell (&table, i, 0, "%U", format_vl_api_desc_field_type, f);
+	  table_format_cell (&table, i, 1, "%s", desc_field_kinds[f->kind]);
+	  table_format_cell (&table, i, 2, "%u", f->offset);
+	  table_format_cell (&table, i, 3, "%u", f->size);
+	  table_format_cell (&table, i, 4, "%U", format_desc_field_flags, t, f);
+
+	  if (f->description)
+	    table_format_cell (&table, i, 5, "%s", f->description);
+
+	  table_set_cell_align (&table, i, 0, TTAA_LEFT);
+	  table_set_cell_align (&table, i, 1, TTAA_LEFT);
+	  table_set_cell_align (&table, i, 4, TTAA_LEFT);
+	  table_set_cell_align (&table, i, 5, TTAA_LEFT);
+	}
+
+      vlib_cli_output (vm, "%U", format_table, &table);
+      table_free (&table);
+    }
+
+  vec_free (flags);
+  return 0;
+}
+
+static clib_error_t *
+show_api_descriptor_module (vlib_main_t *vm, cli_ctx_t *ctx, api_main_t *am,
+			    const vl_api_desc_file_t *f)
+{
+  clib_json_text_t j;
+  table_t table = {};
+  u32 row = 0, n_types = 0;
+  int json = cli_is_json (ctx);
+
+  if (json)
+    {
+      clib_json_init (&j);
+      clib_json_add_object (&j, 0);
+      clib_json_add_string (&j, "module", "%s", f->module);
+      clib_json_add_string (&j, "crc", "0x%x", f->file_crc);
+      clib_json_add_array (&j, "entries");
+    }
+
+  table_add_hdr_col (&table, 0);
+  table_add_hdr_row (&table, 6, "Name", "Kind", "ID", "CRC", "Size", "Reply");
+  table_set_cell_align (&table, -1, -1, TTAA_LEFT);
+  table_set_cell_align (&table, -1, 0, TTAA_LEFT);
+  table_set_cell_align (&table, -1, 1, TTAA_RIGHT);
+  table_set_cell_align (&table, -1, 2, TTAA_RIGHT);
+  table_set_cell_align (&table, -1, 3, TTAA_RIGHT);
+  table_set_cell_align (&table, -1, 4, TTAA_LEFT);
+
+  /* the messages, then the types of the file, not the ones which it imports */
+  for (u32 i = 0; i < f->n_msgs + f->n_types; i++)
+    {
+      const vl_api_desc_type_t *t = i < f->n_msgs ? f->msgs[i] : f->types[i - f->n_msgs];
+      int is_msg = t->kind == VL_API_DT_MESSAGE;
+      u32 id = is_msg ? desc_msg_id (am, t) : ~0;
+      const char *reply =
+	is_msg && (t->flags & VL_API_DTF_SERVICE) ? (t->reply ? t->reply->name : "null") : 0;
+
+      if (t->imported)
+	continue;
+
+      if (!is_msg)
+	n_types++;
+
+      if (json)
+	{
+	  clib_json_add_object (&j, 0);
+	  clib_json_add_string (&j, "name", "%s", t->name);
+	  clib_json_add_string (&j, "kind", "%s", desc_type_kinds[t->kind]);
+	  if (id != ~0)
+	    clib_json_add_number (&j, "id", id);
+	  if (is_msg)
+	    clib_json_add_string (&j, "crc", "%08x", t->crc);
+	  clib_json_add_number (&j, "size", t->size);
+	  if (reply)
+	    clib_json_add_string (&j, "reply", "%s", reply);
+	  clib_json_parent (&j);
+	  continue;
+	}
+
+      table_format_cell (&table, row, -1, "%s", t->name);
+      table_format_cell (&table, row, 0, "%s", desc_type_kinds[t->kind]);
+      if (id != ~0)
+	table_format_cell (&table, row, 1, "%u", id);
+      if (is_msg)
+	table_format_cell (&table, row, 2, "%08x", t->crc);
+      table_format_cell (&table, row, 3, "%u", t->size);
+      if (reply)
+	table_format_cell (&table, row, 4, "%s", reply);
+      table_set_cell_align (&table, row, 0, TTAA_LEFT);
+      table_set_cell_align (&table, row, 4, TTAA_LEFT);
+      row++;
+    }
+
+  if (json)
+    {
+      static const cli_column_t cols[] = {
+	{ "module", "Module" },
+	{ "crc", "CRC" },
+	{},
+      };
+
+      clib_json_parent (&j);
+      table_free (&table);
+      return cli_emit_object (ctx, &j, cols);
+    }
+
+  vlib_cli_output (vm, "module %s, crc 0x%x, %u messages, %u types\n", f->module, f->file_crc,
+		   f->n_msgs, n_types);
+  vlib_cli_output (vm, "%U", format_table, &table);
+  table_free (&table);
+  return 0;
+}
+
+static clib_error_t *
+show_api_descriptor_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
+{
+  api_main_t *am = vlibapi_get_main ();
+  cli_value_t *v;
+  const vl_api_desc_type_t *t;
+
+  if ((v = cli_get (ctx, "module")))
+    return show_api_descriptor_module (vm, ctx, am, am->desc_files[v->index]);
+
+  if ((v = cli_get (ctx, "message")))
+    t = desc_nth_name (am, 1, v->index);
+  else if ((v = cli_get (ctx, "type")))
+    t = desc_nth_name (am, 0, v->index);
+  else
+    return show_api_descriptor_files (vm, ctx, am);
+
+  if (!t)
+    return clib_error_return (0, "unknown name");
+
+  return show_api_descriptor_type (vm, ctx, am, t);
+}
+
+/*?
+ * Display the API descriptors: the files, or the description of a message
+ * or a type, with the layout of its fields.
+?*/
+VLIB_CLI_COMMAND (show_api_descriptor_command, static) = {
+  .path = "show api descriptor",
+  .short_help = "Display the API descriptors of the files, of a file, a message or a type",
+  .args = CLI_ARGS (CLI_ONEOF (
+    "what", CLI_F_OPTIONAL, CLI_KEYWORD ("module", cli_type_api_module, .help = "an API file"),
+    CLI_KEYWORD ("message", cli_type_api_message, .help = "an API message"),
+    CLI_KEYWORD ("type", cli_type_api_type, .help = "an API type, enum, flags or alias"))),
+  .handler = show_api_descriptor_command_fn,
+  .is_mp_safe = 1,
 };
