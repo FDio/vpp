@@ -305,6 +305,9 @@ typedef struct session_main_
   u16 msg_id_base;
 
   session_stats_segs_indicies_t stats_seg_idx;
+
+  /** Maximum events dispatched in one application worker flush. */
+  u32 max_app_events;
 } session_main_t;
 
 __clib_export extern session_main_t session_main;
