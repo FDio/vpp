@@ -21,15 +21,14 @@ endif
 
 vpp_cmake_prefix_path  = /opt/vpp/external/$(shell uname -m) /opt/vpp/optional/$(shell uname -m)
 vpp_cmake_prefix_path += $(PACKAGE_INSTALL_DIR)external
+vpp_cmake_prefix_path += $(PACKAGE_INSTALL_DIR)optional
 vpp_cmake_prefix_path := $(subst $() $(),;,$(vpp_cmake_prefix_path))
 
 vpp_cmake_args ?=
 vpp_cmake_args += -DCMAKE_INSTALL_PREFIX:PATH=$(PACKAGE_INSTALL_DIR)
 vpp_cmake_args += -DCMAKE_BUILD_TYPE="$($(TAG)_TAG_BUILD_TYPE)"
 vpp_cmake_args += -DCMAKE_PREFIX_PATH:PATH="$(vpp_cmake_prefix_path)"
-ifeq ("$(V)","1")
 vpp_cmake_args += -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
-endif
 ifneq ($(VPP_PLATFORM),)
 vpp_cmake_args += -DVPP_PLATFORM="$(VPP_PLATFORM)"
 endif
