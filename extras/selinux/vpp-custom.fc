@@ -6,7 +6,6 @@
 /usr/bin/vppapigen			-- 	gen_context(system_u:object_r:vpp_exec_t,s0)
 /usr/bin/vpp_api_test			-- 	gen_context(system_u:object_r:vpp_exec_t,s0)
 /usr/bin/vppctl				--	gen_context(system_u:object_r:vpp_exec_t,s0)
-/usr/bin/vpp_get_metrics		--	gen_context(system_u:object_r:vpp_exec_t,s0)
 /usr/bin/vpp_json_test			--	gen_context(system_u:object_r:vpp_exec_t,s0)
 /usr/bin/vpp_restart			--	gen_context(system_u:object_r:vpp_exec_t,s0)
 

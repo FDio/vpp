@@ -103,15 +103,6 @@ add_vpp_tool(vppctl
 )
 
 ##############################################################################
-# vpp_get_metrics binary
-##############################################################################
-add_vpp_tool(vpp_get_metrics
-  SOURCES api/vpp_get_metrics.c
-  LINK_LIBRARIES vppinfra svm svmdb
-  DEPENDS api_headers
-)
-
-##############################################################################
 # stats binaries
 ##############################################################################
 add_vpp_tool(vpp_get_stats
