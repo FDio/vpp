@@ -56,6 +56,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "1850c426_099789fa",
+        "filename": ".github/workflows/vpp-verify-maketest.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-23T07:28:43Z",
+      "side": 1,
+      "message": "Updated the `make test` coverage as follows:\n\n`Per patch verify` **(4 test jobs, 3 build only)**:\n\n- release_ubuntu2604_aarch64 **(test)**\n- debug_ubuntu2604_x86_64 **(test)**\n- debug_ubuntu2404_x86_64 **(test)**\n- release_debian12_x86_64 **(test)**\n- debug_ubuntu2604_aarch64 **(build only)**\n- release_ubuntu2604_x86_64 **(build only)**\n- release_ubuntu2404_x86_64 **(build only)**\n\n`Per patch merge` **(3 test jobs, 1 build only)**:\n\n- release_ubuntu2604_aarch64 **(test)**\n- release_ubuntu2604_x86_64 **(test)**\n- release_debian12_x86_64 **(test)**\n- release_ubuntu2404_x86_64 **(build only)**\n\n`Periodic verify` **(once per day - all run tests)**:\n\n- debug_ubuntu2204_x86_64\n- release_ubuntu2204_x86_64\n- debug_ubuntu2204_aarch64\n- release_ubuntu2204_aarch64\n- release_ubuntu2404_x86_64\n- release_ubuntu2404_aarch64\n- debug_ubuntu2604_aarch64\n\nCurrently, no `make test` jobs run tests in multi-worker mode. I think we should probably add multi-worker coverage to a periodic job first and observe it for a while to identify flaky or failing tests before enabling it per-patch to keep CI stable.",
+      "parentUuid": "0eaeb5b9_ff8b4be2",
+      "revId": "d856576185b02cdcba84488ef684812da0dc1623",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "9a4ce9af_5ded9276",
         "filename": "/PATCHSET_LEVEL",
         "patchSetId": 1
