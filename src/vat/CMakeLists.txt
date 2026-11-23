@@ -66,5 +66,5 @@ install(
 ##############################################################################
 add_vpp_tool(vpp_restart
   SOURCES restart.c
-  LINK_LIBRARIES svm svmdb vppinfra Threads::Threads rt
+  LINK_LIBRARIES vppinfra Threads::Threads rt
 )

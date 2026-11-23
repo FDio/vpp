@@ -3,38 +3,66 @@
  * Copyright (c) 2015 Cisco and/or its affiliates.
  */
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <time.h>
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <signal.h>
-#include <sys/stat.h>
 #include <unistd.h>
 
 #include <vppinfra/clib.h>
 #include <vppinfra/vec.h>
-#include <vppinfra/hash.h>
-#include <svm/svmdb.h>
 #include <vppinfra/format.h>
 #include <vppinfra/error.h>
 #include <vppinfra/time.h>
-#include <vppinfra/macros.h>
+
+#define RESTART_API_SOCKET "/run/vpp/api.sock"
+
+/* Returns the pid of the process listening on the api socket, or -1 */
+static pid_t
+vpp_pid (const char *socket_name)
+{
+  struct sockaddr_un sun = { .sun_family = AF_UNIX };
+  struct ucred cred;
+  socklen_t len = sizeof (cred);
+  int fd;
+
+  fd = socket (AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+  if (fd < 0)
+    return -1;
+
+  strncpy (sun.sun_path, socket_name, sizeof (sun.sun_path) - 1);
+  if (connect (fd, (struct sockaddr *) &sun, sizeof (sun)) < 0 ||
+      getsockopt (fd, SOL_SOCKET, SO_PEERCRED, &cred, &len) < 0)
+    {
+      close (fd);
+      return -1;
+    }
+
+  close (fd);
+  return cred.pid;
+}
+
+static void
+sleep_ms (long ms)
+{
+  struct timespec req = { .tv_sec = 0, .tv_nsec = ms * 1000 * 1000 };
+  struct timespec rem;
+
+  while (nanosleep (&req, &rem) < 0)
+    req = rem;
+}
 
 int
-restart_main_fn (unformat_input_t * i)
+restart_main_fn (unformat_input_t *i)
 {
+  const char *socket_name = RESTART_API_SOCKET;
+  u8 *socket_arg = 0;
   int verbose = 0;
-  int old_pid;
+  pid_t old_pid = -1, new_pid = -1;
   int wait;
-  u8 *chroot_path = 0;
-  svmdb_client_t *svmdb_client;
-  volatile pid_t *pidp;
-  struct stat statb;
-  ino_t old_inode;
-  int sleeps;
-  svmdb_map_args_t _ma, *ma = &_ma;
-
-  struct timespec _req, *req = &_req;
-  struct timespec _rem, *rem = &_rem;
 
   if (geteuid ())
     clib_error ("vpp_restart: must be root...");
@@ -43,8 +71,8 @@ restart_main_fn (unformat_input_t * i)
     {
       if (unformat (i, "verbose") || unformat (i, "v"))
 	verbose = 1;
-      else if (unformat (i, "chroot %s", &chroot_path))
-	;
+      else if (unformat (i, "socket %s", &socket_arg))
+	socket_name = (char *) socket_arg;
       else
 	{
 	  clib_error ("unknown input `%U'", format_unformat_error, i);
@@ -53,39 +81,22 @@ restart_main_fn (unformat_input_t * i)
     }
 
   /*
-   * Step 1: look up the current VPP pid in the shared-memory database
+   * Step 1: look up the current vpp pid, the owner of the api socket.
+   * Spin for up to 10 seconds for vpp to start.
    */
-  clib_memset (ma, 0, sizeof (*ma));
-  ma->root_path = (char *) chroot_path;
-
-  svmdb_client = svmdb_map (ma);
-
-  pidp = svmdb_local_get_variable_reference (svmdb_client,
-					     SVMDB_NAMESPACE_VEC, "vpp_pid");
-  if (pidp == 0)
-    {
-      clib_error ("'vpp_pid' svm variable not found, vpp has never run?");
-      return 2;
-    }
-
-  /* Spin for up to 10 seconds for vpp to start */
   for (wait = 0; wait < 1000; wait++)
     {
-      req->tv_sec = 0;
-      req->tv_nsec = 10000 * 1000;	/* 10 ms */
-      while (nanosleep (req, rem) < 0)
-	*req = *rem;
-
-      if (*pidp)
-	goto found2;
+      old_pid = vpp_pid (socket_name);
+      if (old_pid > 0)
+	break;
+      sleep_ms (10);
     }
 
-  clib_error ("VPP not runnning...");
-  return 3;
-
-found2:
-
-  old_pid = *pidp;
+  if (old_pid <= 0)
+    {
+      clib_error ("VPP not runnning...");
+      return 3;
+    }
 
   /*
    * Step 2: sanity check the pid we discovered
@@ -95,7 +106,6 @@ found2:
 
   if (kill (old_pid, 0) < 0)
     {
-      svmdb_unmap (svmdb_client);
       clib_error ("vpp current pid %d not running...", old_pid);
       return 2;
     }
@@ -104,112 +114,36 @@ found2:
     fformat (stdout, "Sanity check vpp pid %d OK\n", old_pid);
 
   /*
-   * Step 3: figure out the current vpp <--> client shared-VM file
-   * inode number
+   * Step 3: send SIGTERM to vpp.
+   * systemd et al. will restart vpp
    */
-  if (stat ("/dev/shm/vpe-api", &statb) < 0)
-    {
-      clib_unix_error ("stat fail");
-      return 4;
-    }
-
-  old_inode = statb.st_ino;
-
-  if (verbose)
-    fformat (stdout, "Old inode %u\n", old_inode);
-
-  /* Note: restart wipes out the shared VM database */
-  svmdb_unmap (svmdb_client);
-
-  /*
-   * Step 4: send SIGTERM to vpp.
-   * systemd et al. will restart vpp after wiping out the shared-VM
-   * database and (crucially) the shared API messaging segment
-   */
-
   if (kill (old_pid, SIGTERM) < 0)
     {
       clib_unix_error ("SIGTERM fail");
       return 3;
     }
 
-  sleeps = 0;
-
   /*
-   * Step 5: wait up to 15 seconds for a new incarnation of
-   * the shared-VM API segment to appear.
+   * Step 4: wait up to 15 seconds for a new incarnation of vpp to
+   * listen on the api socket.
    */
   for (wait = 0; wait < 150; wait++)
     {
-      if ((stat ("/dev/shm/vpe-api", &statb) < 0)
-	  || statb.st_ino == old_inode)
-	{
-	  req->tv_sec = 0;
-	  req->tv_nsec = 100000 * 1000;	/* 100 ms */
-	  while (nanosleep (req, rem) < 0)
-	    *req = *rem;
-	  sleeps++;
-	}
-      else
-	goto new_inode;
+      new_pid = vpp_pid (socket_name);
+      if (new_pid > 0 && new_pid != old_pid)
+	break;
+      sleep_ms (100);
     }
 
-  clib_error ("Timeout waiting for new inode to appear...");
-  return 5;
-
-new_inode:
-  if (verbose && sleeps > 0)
-    fformat (stdout, "Inode sleeps %d\n", sleeps);
+  if (new_pid <= 0 || new_pid == old_pid)
+    {
+      clib_error ("Timeout waiting for vpp to restart...");
+      return 4;
+    }
 
   if (verbose)
-    fformat (stdout, "New inode %u\n", statb.st_ino);
+    fformat (stdout, "New PID %d... Restarted...\n", new_pid);
 
-  /*
-   * Step 6: remap the SVM database
-   */
-  svmdb_client = svmdb_map (ma);
-
-  pidp = svmdb_local_get_variable_reference (svmdb_client,
-					     SVMDB_NAMESPACE_VEC, "vpp_pid");
-  if (pidp == 0)
-    {
-      clib_error ("post_restart: 'vpp_pid' svm variable not found,"
-		  "vpp did not restart?");
-      return 2;
-    }
-
-  sleeps = 0;
-
-  /*
-   * Step 7: wait for vpp to publish its new PID
-   */
-
-  /* Spin for up to 15 seconds */
-  for (wait = 0; wait < 150; wait++)
-    {
-      if (*pidp && (*pidp != old_pid))
-	goto restarted;
-      req->tv_sec = 0;
-      req->tv_nsec = 100000 * 1000;	/* 100 ms */
-      while (nanosleep (req, rem) < 0)
-	*req = *rem;
-      sleeps++;
-    }
-
-  clib_error ("Timeout waiting for vpp to publish pid after restart...");
-  return 4;
-
-restarted:
-
-  /* Done... */
-
-  if (verbose && sleeps)
-    fformat (stdout, "pid sleeps %d\n", sleeps);
-
-  if (verbose)
-    fformat (stdout, "New PID %d... Restarted...\n", *pidp);
-
-  svmdb_unmap (svmdb_client);
   return 0;
 }
 
