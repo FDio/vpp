@@ -286,7 +286,7 @@ define sw_interface_slave_dump
 /** \brief Reply for slave dump request
     @param sw_if_index - software index of slave interface
     @param interface_name - name of interface
-    @param is_passve - interface does not initiate the lacp protocol, remote must be active speaker
+    @param is_passive - interface does not initiate the lacp protocol, remote must be active speaker
     @param is_long_timeout - 90 seconds vs default 3 seconds neighbor timeout
     @param is_local_numa - the slave interface is local numa
     @param weight - the weight for the slave interface (active-backup mode only)
@@ -317,7 +317,7 @@ define sw_member_interface_dump
 /** \brief Reply for member dump request
     @param sw_if_index - software index of member interface
     @param interface_name - name of interface
-    @param is_passve - interface does not initiate the lacp protocol, remote must be active speaker
+    @param is_passive - interface does not initiate the lacp protocol, remote must be active speaker
     @param is_long_timeout - 90 seconds vs default 3 seconds neighbor timeout
     @param is_local_numa - the member interface is local numa
     @param weight - the weight for the member interface (active-backup mode only)

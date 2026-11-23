@@ -29,7 +29,7 @@ import "vnet/mfib/mfib_types.api";
 import "vnet/interface_types.api";
 
 /** \brief An IP table
-    @param is_ipv6 - V4 or V6 table
+    @param is_ip6 - V4 or V6 table
     @param table_id - table ID associated with the route
                      This table ID will apply to both the unicast
 		      and multicast FIBs
@@ -181,8 +181,6 @@ define ip_table_details
   @param stats_index The index of the route in the stats segment
   @param prefix the prefix for the route
   @param n_paths The number of paths the route has
-  @param src The entity adding the route. either 0 for default
-             or a value returned from fib_source_sdd.
   @param paths The paths of the route
 */
 typedef ip_route
@@ -245,8 +243,6 @@ define ip_route_add_del_v2_reply
 
 /** \brief Dump IP routes from a table
     @param client_index - opaque cookie to identify the sender
-    @param src The entity adding the route. either 0 for default
-               or a value returned from fib_source_sdd.
     @param table - The table from which to dump routes (ony ID an AF are needed)
 */
 define ip_route_dump
@@ -482,18 +478,8 @@ define ip_mtable_details
     Routes can be entered repeatedly to add multiple paths.  Deletions are
     per-path.
 
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
     @param table_id - fib table /vrf associated with the route
-    @param is_add - true if adding a route; false if deleting one
-    @param is_ipv6 - true iff all the addresses are v6
     @param entry_flags - see fib_entry_flag_t
-    @param itf_flags - see mfib_entry_flags_t
-    @param next_hop_afi - see dpo_proto_t; the type of destination description
-    @param src_address - the source of the packet
-    @param grp_address - the group the packet is destined to
-    @param nh_address - the nexthop to forward the packet to
-    @param next_hop_sw_if_index - interface to emit packet on
 
     BIER AFIs use the BIER imposition ID.  v4 and v6 AFIs use either the
     interface or the nexthop address.
@@ -619,7 +605,6 @@ define mfib_signal_details
     @param tx_sw_if_index - the TX interface to which traffic should be
                             redirected.
     @param nh - the next-hop to redirect the traffic to.
-    @param is_ipv6 - 1 for IPv6 neighbor, 0 for IPv4
 */
 typedef punt_redirect
 {
@@ -729,12 +714,10 @@ define ip_container_proxy_details
 /** \brief Configure IP source and L4 port-range check
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_ip6 - 1 if source address type is IPv6
     @param is_add - 1 if add, 0 if delete
-    @param ip - prefix to match
     @param number_of_ranges - length of low_port and high_port arrays (must match)
-    @param low_ports[32] - up to 32 low end of port range entries (must have corresponding high_ports entry)
-    @param high_ports[32] - up to 32 high end of port range entries (must have corresponding low_ports entry)
+    @param low_ports - up to 32 low end of port range entries (must have corresponding high_ports entry)
+    @param high_ports - up to 32 high end of port range entries (must have corresponding low_ports entry)
     @param vrf_id - fib table/vrf id to associate the source and port-range check with
     @note To specify a single port set low_port and high_port entry the same
 */
@@ -753,9 +736,8 @@ autoreply define ip_source_and_port_range_check_add_del
 /** \brief Set interface source and L4 port-range request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param interface_id - interface index
-    @param tcp_vrf_id - VRF associated with source and TCP port-range check
-    @param udp_vrf_id - VRF associated with source and TCP port-range check
+    @param tcp_in_vrf_id - VRF associated with source and TCP port-range check
+    @param udp_in_vrf_id - VRF associated with source and TCP port-range check
 */
 autoreply define ip_source_and_port_range_check_interface_add_del
 {
@@ -810,7 +792,7 @@ define sw_interface_ip6_get_link_local_address_reply
     @param id - profile id
     @param seqno - To enable Seqno Processing
     @param analyse - Enabling analysis of iOAM at decap node
-    @param pow_enable - Proof of Work enabled or not flag
+    @param pot_enable - Proof of Work enabled or not flag
     @param trace_enable - iOAM Trace enabled or not flag
 */
 autoreply define ioam_enable
@@ -828,7 +810,7 @@ autoreply define ioam_enable
 /** \brief iOAM disable
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param index - MAP Domain index
+    @param id - MAP Domain index
 */
 autoreply define ioam_disable
 {

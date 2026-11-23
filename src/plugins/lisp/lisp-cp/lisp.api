@@ -119,7 +119,7 @@ autoreply define lisp_add_del_map_resolver
 /** \brief enable or disable LISP feature
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_en - enable protocol if non-zero, else disable
+    @param is_enable - enable protocol if non-zero, else disable
 */
 autoreply define lisp_enable_disable
 {
@@ -168,8 +168,8 @@ define show_lisp_use_petr
 
 /** \brief LISP PETR status, enable or disable
     @param context - sender context, to match reply w/ request
-    @param status - LISP PETR enable if non-zero, else disable
-    @param address - PETR IP address
+    @param is_petr_enable - LISP PETR enable if non-zero, else disable
+    @param ip_address - PETR IP address
 */
 define show_lisp_use_petr_reply
 {
@@ -351,7 +351,6 @@ autoreply define lisp_add_del_map_request_itr_rlocs
     @param context - sender context, to match reply w/ request
     @param is_add - add or delete mapping
     @param dp_table - virtual network id/bridge domain index
-    @param vrf - vrf
 */
 autoreply define lisp_eid_table_add_del_map
 {
@@ -366,7 +365,7 @@ autoreply define lisp_eid_table_add_del_map
 /** \brief Request for map lisp locator status
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param locator_set_index - index of locator_set
+    @param ls_index - index of locator_set
     @param ls_name - locator set name
     @param is_index_set - flag indicating whether ls_name or ls_index is set
  */
@@ -381,7 +380,6 @@ define lisp_locator_dump
 
 /** \brief LISP locator_set status
     @param local - if is set, then locator is local
-    @param locator_set_name - name of the locator_set
     @param sw_if_index - sw_if_index of the locator
     @param ip_address - ip address
     @param priority - locator priority
@@ -614,8 +612,6 @@ define show_lisp_status
 
 /** \brief Status of lisp, enable or disable
     @param context - sender context, to match reply w/ request
-    @param feature_status - lisp enable if non-zero, else disable
-    @param gpe_status - lisp enable if non-zero, else disable
 */
 define show_lisp_status_reply
 {
@@ -627,7 +623,6 @@ define show_lisp_status_reply
 
 /** \brief Get LISP map request itr rlocs status
     @param context - sender context, to match reply w/ request
-    @param locator_set_name - name of the locator_set
  */
 define lisp_get_map_request_itr_rlocs
 {
@@ -656,7 +651,7 @@ define show_lisp_pitr
 
 /** \brief Status of lisp pitr, enable or disable
     @param context - sender context, to match reply w/ request
-    @param status - lisp pitr enable if non-zero, else disable
+    @param is_enabled - lisp pitr enable if non-zero, else disable
     @param locator_set_name -  name of the locator_set
 */
 define show_lisp_pitr_reply

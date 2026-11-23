@@ -170,7 +170,7 @@ autoreply define qos_egress_map_update
 
 /**
  * @brief Delete a Qos Map
- * @param map_id - ID of the map to delete
+ * @param id - ID of the map to delete
  */
 autoreply define qos_egress_map_delete
 {

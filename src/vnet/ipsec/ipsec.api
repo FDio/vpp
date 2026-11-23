@@ -125,7 +125,6 @@ define ipsec_spds_dump {
 };
 
 /** \brief Dump IPsec all SPD IDs response
-    @param client_index - opaque cookie to identify the sender
     @param spd_id - SPD instance id (control plane allocated)
     @param npolicies - number of policies in SPD
 */
@@ -151,8 +150,6 @@ define ipsec_spd_dump {
 /** \brief IPsec policy database response
     @param context - sender context which was passed in the request
     €param entry - The SPD entry.
-    @param bytes - byte count of packets matching this policy
-    @param packets - count of packets matching this policy
 */
 define ipsec_spd_details {
     u32 context;
@@ -241,7 +238,7 @@ autoreply define ipsec_sad_unbind
     Used in the NAT-T case when the NAT data changes
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param sa_id - the id of the SA to update
+    @param sad_id - the id of the SA to update
     @param is_tun - update the tunnel if non-zero, else update only the ports
     @param tunnel - sender context, to match reply w/ request
     @param udp_src_port - new src port for NAT-T. Used if different from 0xffff
@@ -329,9 +326,7 @@ define ipsec_sad_entry_add_v2_reply
     endpoints in the SA.
     The mode for the inbound and outbound SA must be the same.
 
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param sw_id_index - Tunnel interface to protect
+    @param sw_if_index - Tunnel interface to protect
     @param nh - The peer/next-hop on the tunnel to which the traffic
                 should be protected. For a P2P interface set this to the
                 all 0s address.
@@ -497,10 +492,6 @@ define ipsec_sa_v5_dump
     @param entry - The SA details
     @param sw_if_index - sw_if_index of tunnel interface, policy-based SAs = ~0
     @param salt - 4 byte salt
-    @param seq - current sequence number for outbound
-    @param seq_hi - high 32 bits of ESN for outbound
-    @param last_seq - highest sequence number received inbound
-    @param last_seq_hi - high 32 bits of highest ESN received inbound
     @param replay_window - bit map of seq nums received relative to last_seq if using anti-replay
     @param stat_index - index for the SA in the stats segment @ /net/ipsec/sa
 */

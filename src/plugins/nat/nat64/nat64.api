@@ -118,7 +118,7 @@ define nat64_pool_addr_dump {
 /** \brief NAT64 pool address details response
     @param context - sender context, to match reply w/ request
     @param address - IPv4 address
-    @param vfr_id - VRF id of tenant, ~0 means independent of VRF
+    @param vrf_id - VRF id of tenant, ~0 means independent of VRF
 */
 define nat64_pool_addr_details {
   u32 context;

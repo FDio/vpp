@@ -129,7 +129,7 @@ autoreply define want_interface_events
     @param type - interface type
     @param link_duplex - 1 if half duplex, 2 if full duplex
     @param link_speed - value in kbps
-    @param link_MTU - max. transmission unit
+    @param link_mtu - max. transmission unit
     @param sub_id - A number 0-N to uniquely identify this subif on super if
     @param sub_number_of_tags - Number of tags (0 - 2)
     @param sub_outer_vlan_id
@@ -139,11 +139,11 @@ autoreply define want_interface_events
     @param vtr_push_dot1q
     @param vtr_tag1
     @param vtr_tag2
-    @param pbb_outer_tag - translate pbb s-tag
-    @param pbb_b_dmac[6] - B-tag remote mac address
-    @param pbb_b_smac[6] - B-tag local mac address
-    @param pbb_b_vlanid - B-tag vlanid
-    @param pbb_i_sid - I-tag service id
+    @param outer_tag - translate pbb s-tag
+    @param b_dmac - B-tag remote mac address
+    @param b_smac - B-tag local mac address
+    @param b_vlanid - B-tag vlanid
+    @param i_sid - I-tag service id
     @param interface_name - name of the interface
     @param interface_dev_type - device type of the interface
     @param tag - an ascii tag
@@ -351,7 +351,7 @@ autoreply define sw_interface_clear_stats
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sw_if_index - the interface
-    @param add_del - 1 = add, 0 = delete
+    @param is_add - 1 = add, 0 = delete
     @param tag - an ascii tag
 */
 autoreply define sw_interface_tag_add_del
@@ -367,7 +367,7 @@ autoreply define sw_interface_tag_add_del
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sw_if_index - the interface whose MAC will be set
-    @param mac_addr - the new MAC address
+    @param addr - the new MAC address
     @param is_add - 0 to delete, != 0 to add
 */
 autoreply define sw_interface_add_del_mac_address
@@ -383,7 +383,7 @@ autoreply define sw_interface_add_del_mac_address
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sw_if_index - the interface whose MAC will be set
-    @param mac_addr - the new MAC address
+    @param mac_address - the new MAC address
 */
 autoreply define sw_interface_set_mac_address
 {
@@ -408,7 +408,7 @@ define sw_interface_get_mac_address
 /** \brief Reply for get interface's MAC address request
     @param context - returned sender context, to match reply w/ request
     @param retval - return code
-    @param mac_addr - returned interface's MAC address
+    @param mac_address - returned interface's MAC address
 */
 define sw_interface_get_mac_address_reply
 {

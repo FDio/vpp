@@ -53,9 +53,7 @@ autoreply define sr_mobile_localsid_add_del
 /** \brief IPv6 SR for Mobile policy add
   @param client_index - opaque cookie to identify the sender
   @param context - sender context, to match reply w/ request
-  @param bsid - the bindingSID of the SR Policy
   @param sr_prefix - v6 dst ip encoding prefix. optional
-  @param v6src_position - v6 src prefix. optional
   @param behavior - the behavior of the SR policy.
   @param fib_table - the VRF where to install the FIB entry for the BSID
   @param encap_src is a encaps IPv6 source addr. optional

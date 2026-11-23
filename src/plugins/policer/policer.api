@@ -276,7 +276,7 @@ define policer_details
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add - 1 to add neighbor, 0 to delete
-    @param is_ipv6 - 1 for IPv6 neighbor, 0 for IPv4
+    @param is_ip6 - 1 for IPv6 neighbor, 0 for IPv4
     @param policer_index - Index of policer to use
 */
 autoreply define ip_punt_police

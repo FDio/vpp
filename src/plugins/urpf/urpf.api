@@ -58,7 +58,7 @@ autoreply define urpf_update
  * @param af - Address Family
  * @param sw_if_index - Interface
  * @param is_input - Direction.
- * @param table-id - Table ID
+ * @param table_id - Table ID
  */
 autoreply define urpf_update_v2
 {

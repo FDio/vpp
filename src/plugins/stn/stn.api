@@ -49,7 +49,6 @@ define stn_rules_dump {
 
 /** \brief STN response to rules request
     @param context - sender context, to match reply w/ request
-    @param is_ip4 - 1 if address type is IPv4
     @param ip_address - IP address
     @param sw_if_index - Interface index
 */

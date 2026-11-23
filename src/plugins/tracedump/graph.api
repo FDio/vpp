@@ -75,7 +75,7 @@ define graph_node_get_reply
     @param name - name of the node
     @param flags - NODE_FLAG_* values
     @param n_arcs - If requested, the number of out-arcs to other nodes
-    @param arcs - If requested, the set of out-arc next-node-indices
+    @param arcs_out - If requested, the set of out-arc next-node-indices
 */
 define graph_node_details
 {

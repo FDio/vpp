@@ -34,7 +34,7 @@ autoreply define nsim_cross_connect_enable_disable
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param enable_disable - enable or disable the feature
-    @param sw_if_index0 - interface 
+    @param sw_if_index - interface
 */
 autoreply define nsim_output_feature_enable_disable 
 {

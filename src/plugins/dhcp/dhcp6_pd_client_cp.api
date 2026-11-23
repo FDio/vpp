@@ -41,9 +41,6 @@ autoreply define dhcp6_pd_client_enable_disable
                          to add/delete address to/from
     @param prefix_group - name of prefix group,
                           prefix_group[0] == '\0' means no prefix should be used
-    @param address - address or suffix to be used with a prefix
-                     from selected group
-    @param prefix_length - subnet prefix for the address
     @param is_add - 1 for add, 0 for remove
 */
 autoreply define ip6_add_del_address_using_prefix

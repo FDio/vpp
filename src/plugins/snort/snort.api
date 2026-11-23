@@ -100,7 +100,6 @@ service {
 
 /** \brief Details of a snort instance.
     @param context - sender context
-    @param instance - snort instance info.
 */
 autoreply define snort_instance_v2_details {
 	u32 context;
@@ -191,7 +190,6 @@ service {
 
 /** \brief Details of a snort client.
     @param context - sender context
-    @param client index
     @param snort_client_index - index of the client.
     @param n_instances - number of DAQ threads launched
     @param mode - mode of operation: passive, inline, read-file
@@ -316,7 +314,6 @@ define snort_instance_get_reply
 
 /** \brief Details of a snort instance.
     @param context - sender context
-    @param instance - snort instance info.
 */
 define snort_instance_details {
 	option deprecated;
@@ -409,7 +406,6 @@ define snort_client_get_reply
 
 /** \brief Details of a snort client.
     @param context - sender context
-    @param client index
     @param instance_index - snort instance of the client.
 */
 define snort_client_details {

@@ -119,7 +119,7 @@ autoreply define pg_delete_interface
 /** \brief PacketGenerator interface enable/disable packet coalesce
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param interface_id - interface index
+    @param sw_if_index - interface index
     @param coalesce_enabled - enable/disable packet coalesce on this interface
 */
 autoreply define pg_interface_enable_disable_coalesce

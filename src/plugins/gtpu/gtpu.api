@@ -319,10 +319,7 @@ define gtpu_get_transfer_counts
 };
 
 /** \brief reply for set or delete GTPU forwarding
-    @param context - sender context, to match reply w/ request
-    @param retval - return code
-    @param count - number of tunnel counters returned, sequential starting at sw_if_index_start.
-    @param tunnels - Number of packets/bytes that is sent/received via this tunnel. Inaccurate (with in flight packets), sum for the entire set of per-thread counters.
+    @param counters - number of tunnel counters returned, sequential starting at sw_if_index_start.
 */
 typedef tunnel_metrics
 {

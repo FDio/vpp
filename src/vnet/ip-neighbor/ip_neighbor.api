@@ -67,7 +67,6 @@ define ip_neighbor_add_del
   vl_api_ip_neighbor_t neighbor;
 };
 /** \brief IP neighbor add / del reply
-    @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param retval - return value
     @param stats_index - the index to use for this neighbor in the stats segment
@@ -96,7 +95,7 @@ define ip_neighbor_dump
 /** \brief IP neighbors dump response
     @param context - sender context which was passed in the request
     @param age - time between last update and sending this message, in seconds
-    @param neighbour - the neighbor
+    @param neighbor - the neighbor
 */
 define ip_neighbor_details {
   u32 context;

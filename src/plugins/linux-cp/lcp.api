@@ -45,7 +45,6 @@ define lcp_default_ns_get
 };
 
 /** \brief get the default Linux Control Plane netns
-    @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param netns - the default netns; netns[0] == 0 if none
 */
@@ -128,7 +127,6 @@ define lcp_itf_pair_add_del_v3_reply
 /** \brief Dump Linux Control Plane interface pair data
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param sw_if_index - interface to use as filter (~0 == "all")
 */
 autoendian define lcp_itf_pair_get
 {

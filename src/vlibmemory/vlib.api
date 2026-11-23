@@ -54,7 +54,7 @@ define cli_inband_reply
 /** \brief Get node index using name request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param node_name[] - name of the node
+    @param node_name - name of the node
 */
 define get_node_index
 {
@@ -78,8 +78,8 @@ define get_node_index_reply
 /** \brief Set the next node for a given node request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param node_name[] - node to add the next node to
-    @param next_name[] - node to add as the next node
+    @param node_name - node to add the next node to
+    @param next_name - node to add as the next node
 */
 define add_node_next
 {
@@ -232,7 +232,6 @@ define get_f64_increment_by_one
 };
 
 /** \brief get_f64_increment_by_one reply
-    @param client_index - opaque cookie to identify the sender.
     @param context - sender context, to match reply w/ request.
     @param f64_value - The input f64_value incremented by 1.0.
 */

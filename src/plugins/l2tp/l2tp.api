@@ -24,7 +24,6 @@ import "vnet/ip/ip_types.api";
     @param context - sender context, to match reply w/ request
     @param client_address - remote client tunnel ip address
     @param client_address - local tunnel ip address
-    @param is_ipv6 - ipv6 if non-zero, else ipv4
     @param local_session_id - local tunnel session id
     @param remote_session_id - remote tunnel session id
     @param local_cookie - local tunnel cookie

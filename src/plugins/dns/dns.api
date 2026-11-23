@@ -19,7 +19,7 @@ option version = "1.0.0";
 
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_enable - 1 = enable, 0 = disable
+    @param enable - 1 = enable, 0 = disable
 */
 autoreply define dns_enable_disable {
     u32 client_index;
@@ -60,7 +60,6 @@ define dns_resolve_name {
 
 /** \brief DNS name resolution reply
 
-    @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param retval - return value, 0 => success
     @param ip4_set - indicates that the ip4 address is valid
@@ -94,7 +93,6 @@ define dns_resolve_ip {
 
 /** \brief DNS ip->name resolution reply
 
-    @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param retval - return value, 0 => success
     @param name - canonical name for the indicated IP address

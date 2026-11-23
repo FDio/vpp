@@ -40,7 +40,7 @@ typedef srv6_sid_list_with_sl_index
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_del Boolean of whether its a delete instruction
-    @param localsid_addr IPv6 address of the localsid
+    @param localsid IPv6 address of the localsid
     @param end_psp Boolean of whether decapsulation is allowed in this function
     @param behavior Type of behavior (function) for this localsid
     @param sw_if_index Only for L2/L3 xconnect. OIF. In VRF variant the
@@ -67,7 +67,7 @@ autoreply define sr_localsid_add_del
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_del Boolean of whether its a delete instruction
-    @param localsid_addr IPv6 address of the localsid
+    @param localsid IPv6 address of the localsid
     @param end_psp Boolean of whether decapsulation is allowed in this function
     @param behavior Type of behavior (function) for this localsid
     @param sw_if_index Only for L2/L3 xconnect. OIF. In VRF variant the
@@ -101,7 +101,7 @@ autoreply define sr_localsid_add_del_v2
 /** \brief IPv6 SR policy add
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param bsid is the bindingSID of the SR Policy
+    @param bsid_addr is the bindingSID of the SR Policy
     @param weight is the weight of the sid list. optional.
     @param is_encap is the behavior of the SR policy. (0.SRH insert // 1.Encapsulation)
     @param is_spray is the type of the SR policy. (0.Default // 1.Spray)
@@ -123,7 +123,7 @@ autoreply define sr_policy_add
 /** \brief IPv6 SR policy modification
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param bsid is the bindingSID of the SR Policy
+    @param bsid_addr is the bindingSID of the SR Policy
     @param sr_policy_index is the index of the SR policy
     @param fib_table is the VRF where to install the FIB entry for the BSID
     @param operation is the operation to perform (among the top ones)
@@ -154,7 +154,7 @@ enum sr_policy_type : u8
 /** \brief IPv6 SR policy add
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param bsid is the bindingSID of the SR Policy
+    @param bsid_addr is the bindingSID of the SR Policy
     @param weight is the weight of the sid list. optional.
     @param is_encap is the behavior of the SR policy. (0.SRH insert // 1.Encapsulation)
     @param type is the SR policy param. (0.Default // 1.Spray // 2.Tef)
@@ -179,7 +179,7 @@ autoreply define sr_policy_add_v2
 /** \brief IPv6 SR policy modification
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param bsid is the bindingSID of the SR Policy
+    @param bsid_addr is the bindingSID of the SR Policy
     @param sr_policy_index is the index of the SR policy
     @param fib_table is the VRF where to install the FIB entry for the BSID
     @param operation is the operation to perform (among the top ones)
@@ -206,8 +206,6 @@ autoreply define sr_policy_mod_v2
 /** \brief IPv6 SR policy deletion
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param bsid is the bindingSID of the SR Policy
-    @param index is the index of the SR policy
 */
 autoreply define sr_policy_del
 {
@@ -220,8 +218,6 @@ autoreply define sr_policy_del
 /** \brief IPv6 SR Set SRv6 encapsulation source
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param bsid is the bindingSID of the SR Policy
-    @param index is the index of the SR policy
 */
 autoreply define sr_set_encap_source
 {
@@ -246,11 +242,9 @@ autoreply define sr_set_encap_hop_limit
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_del
-    @param bsid is the bindingSID of the SR Policy (alt to sr_policy_index)
-    @param sr_policy is the index of the SR Policy (alt to bsid)
+    @param sr_policy_index is the index of the SR Policy (alt to bsid)
     @param table_id is the VRF where to install the FIB entry for the BSID
     @param prefix is the IPv4/v6 address for L3 traffic type
-    @param mask_width is the mask for L3 traffic type
     @param sw_if_index is the incoming interface for L2 traffic
     @param traffic_type describes the type of traffic
 */
