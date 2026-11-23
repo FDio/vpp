@@ -5072,20 +5072,12 @@ cleanup:
  * processed later in the same dispatch, it moves the connection to CLOSED
  * while the disconnect remains queued. The queued notification must then be
  * delivered as a transport-closed notification. */
+/* Runs on the connection's thread, see tcp_e2e_call_on_thread */
 static int
-tcp_test_fin_rst_burst (vlib_main_t *vm, unformat_input_t *input)
+tcp_test_fin_rst_burst_steps (void *arg)
 {
-  tcp_e2e_params_t params = {
-    .name = "fin_rst_burst",
-    .client_addr = 0x18181801,
-    .server_addr = 0x19191901,
-    .client_vrf = 0,
-    .server_vrf = 2,
-    .server_port = 2253,
-    .client_port = 0,
-    .secret = 2252,
-  };
-  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_e2e_ctx_t *ctx = arg;
+  vlib_main_t *vm = vlib_get_main ();
   tcp_connection_t *tc;
   app_worker_t *app_wrk;
   session_event_t *events;
@@ -5097,18 +5089,6 @@ tcp_test_fin_rst_burst (vlib_main_t *vm, unformat_input_t *input)
   u32 n_buffers;
   u8 buffers_enqueued = 0;
   int rv = 0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      vlib_cli_output (vm, "parse error: '%U'", format_unformat_error, input);
-      return -1;
-    }
-
-  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "fin_rst_burst: e2e setup"))
-    {
-      rv = 1;
-      goto cleanup;
-    }
 
   tc = ctx->client_tc;
   thread_index = tc->c_thread_index;
@@ -5205,6 +5185,37 @@ tcp_test_fin_rst_burst (vlib_main_t *vm, unformat_input_t *input)
 cleanup:
   if (!buffers_enqueued && buffer_indices[0] != VLIB_BUFFER_INVALID_INDEX)
     vlib_buffer_free (vm, buffer_indices, 2);
+  return rv;
+}
+
+static int
+tcp_test_fin_rst_burst (vlib_main_t *vm, unformat_input_t *input)
+{
+  tcp_e2e_params_t params = {
+    .name = "fin_rst_burst",
+    .client_addr = 0x18181801,
+    .server_addr = 0x19191901,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2253,
+    .client_port = 0,
+    .secret = 2252,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  int rv = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      vlib_cli_output (vm, "parse error: '%U'", format_unformat_error, input);
+      return -1;
+    }
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "fin_rst_burst: e2e setup"))
+    rv = 1;
+  else
+    rv = tcp_e2e_call_on_thread (vm, ctx->client_tc->c_thread_index, tcp_test_fin_rst_burst_steps,
+				 ctx);
+
   if (!tcp_e2e_teardown (vm, ctx))
     rv = 1;
   return rv;
@@ -5214,20 +5225,12 @@ cleanup:
  * listen node processes either one. The first SYN replaces the lookup entry
  * and postpones transport cleanup. The second must not free that transport
  * before its queued cleanup callback runs. */
+/* Runs on the server connection's thread, see tcp_e2e_call_on_thread */
 static int
-tcp_test_timewait_syn_burst (vlib_main_t *vm, unformat_input_t *input)
+tcp_test_timewait_syn_burst_steps (void *arg)
 {
-  tcp_e2e_params_t params = {
-    .name = "timewait_syn_burst",
-    .client_addr = 0x16161601,
-    .server_addr = 0x17171701,
-    .client_vrf = 0,
-    .server_vrf = 2,
-    .server_port = 2251,
-    .client_port = 3251,
-    .secret = 2250,
-  };
-  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_e2e_ctx_t *ctx = arg;
+  vlib_main_t *vm = vlib_get_main ();
   u32 buffer_indices[2] = { VLIB_BUFFER_INVALID_INDEX, VLIB_BUFFER_INVALID_INDEX };
   tcp_connection_t *old_tc = 0, *child = 0;
   transport_connection_t *tconn;
@@ -5243,18 +5246,6 @@ tcp_test_timewait_syn_burst (vlib_main_t *vm, unformat_input_t *input)
   u8 buffers_consumed = 0, result = 0, old_alive;
   u32 n_buffers;
   int rv = 0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      vlib_cli_output (vm, "parse error: '%U'", format_unformat_error, input);
-      return -1;
-    }
-
-  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "timewait_syn_burst: e2e setup"))
-    {
-      rv = 1;
-      goto cleanup;
-    }
 
   server_s = session_get_if_valid (accepted_session_index, accepted_session_thread);
   if (!TCP_TEST_I ((server_s != 0), "timewait_syn_burst: server session exists"))
@@ -5410,6 +5401,37 @@ tcp_test_timewait_syn_burst (vlib_main_t *vm, unformat_input_t *input)
 cleanup:
   if (!buffers_consumed && buffer_indices[0] != VLIB_BUFFER_INVALID_INDEX)
     vlib_buffer_free (vm, buffer_indices, 2);
+  return rv;
+}
+
+static int
+tcp_test_timewait_syn_burst (vlib_main_t *vm, unformat_input_t *input)
+{
+  tcp_e2e_params_t params = {
+    .name = "timewait_syn_burst",
+    .client_addr = 0x16161601,
+    .server_addr = 0x17171701,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2251,
+    .client_port = 3251,
+    .secret = 2250,
+  };
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  int rv = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      vlib_cli_output (vm, "parse error: '%U'", format_unformat_error, input);
+      return -1;
+    }
+
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "timewait_syn_burst: e2e setup"))
+    rv = 1;
+  else
+    rv =
+      tcp_e2e_call_on_thread (vm, accepted_session_thread, tcp_test_timewait_syn_burst_steps, ctx);
+
   if (!tcp_e2e_teardown (vm, ctx))
     rv = 1;
   return rv;
