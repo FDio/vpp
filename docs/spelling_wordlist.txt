@@ -218,6 +218,7 @@ cryptographic
 ctrl
 ctwo
 ctx
+cwnd
 daddr
 daemonizing
 daemontools
@@ -585,6 +586,7 @@ jsmith
 jsmithuser
 json
 jsonfiles
+Jumpstart
 kb
 kbps
 keepalives

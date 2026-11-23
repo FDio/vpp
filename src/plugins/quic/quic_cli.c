@@ -7,6 +7,8 @@
 #include <quic/quic_timer.h>
 #include <vnet/session/application.h>
 
+#define QUIC_MAX_CWND_PACKETS (((1U << 15) / 4) * (4 + 16) / QUIC_MAX_PACKET_SIZE)
+
 static u8 *
 format_quic_ctx_state (u8 *s, va_list *args)
 {
@@ -344,6 +346,49 @@ done:
 }
 
 static clib_error_t *
+quic_validate_cwnd_packets (u32 packets)
+{
+  if (packets > QUIC_MAX_CWND_PACKETS)
+    return clib_error_return (0, "congestion window must not exceed %u packets",
+			      QUIC_MAX_CWND_PACKETS);
+
+  return 0;
+}
+
+static clib_error_t *
+quic_set_initial_cwnd_packets_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+{
+  quic_main_t *qm = &quic_main;
+  unformat_input_t line_input;
+  clib_error_t *error;
+  u32 packets;
+
+  if (!unformat_user (input, unformat_line_input, &line_input))
+    return clib_error_return (0, "expected an initial congestion window in packets");
+
+  uword parsed = unformat (&line_input, "%u %U", &packets, unformat_eof);
+  unformat_free (&line_input);
+  if (!parsed)
+    return clib_error_return (0, "expected a packet count from 0 to %u", QUIC_MAX_CWND_PACKETS);
+  if ((error = quic_validate_cwnd_packets (packets)))
+    return error;
+
+  if (qm->engine_is_initialized[qm->engine_type])
+    {
+      quic_engine_vft_t *vft = &quic_engine_vfts[qm->engine_type];
+      if (!vft->set_initial_cwnd_packets)
+	return clib_error_return (0, "QUIC engine %s does not support setting the initial window",
+				  quic_engine_type_str (qm->engine_type));
+      vft->set_initial_cwnd_packets (packets);
+    }
+
+  qm->initial_cwnd_packets = packets;
+  vlib_cli_output (vm, "QUIC initial cwnd packets for new connections: %u (0 = engine default)",
+		   packets);
+  return 0;
+}
+
+static clib_error_t *
 quic_plugin_crypto_command_fn (vlib_main_t *vm, unformat_input_t *input,
 			       vlib_cli_command_t *cmd)
 {
@@ -636,6 +681,8 @@ quic_show_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command
   vlib_cli_output (vm, "default connection timeout: %u", qm->connection_timeout);
   vlib_cli_output (vm, "default cc algo: %s",
 		   qm->default_quic_cc == QUIC_CC_CUBIC ? "cubic" : "reno");
+  vlib_cli_output (vm, "initial cwnd packets: %u (0 = engine default)", qm->initial_cwnd_packets);
+  vlib_cli_output (vm, "jumpstart cwnd packets: %u (0 = disabled)", qm->jumpstart_cwnd_packets);
   vlib_cli_output (vm, "udp fifo size: %U", format_memory_size, qm->udp_fifo_size);
   vlib_cli_output (vm, "first segment size: %U", format_memory_size, qm->first_seg_size);
   vlib_cli_output (vm, "add segment size: %U", format_memory_size, qm->add_seg_size);
@@ -693,6 +740,11 @@ VLIB_CLI_COMMAND (quic_set_cc, static) = {
   .short_help = "set quic cc [reno|cubic]",
   .function = quic_set_cc_fn,
 };
+VLIB_CLI_COMMAND (quic_set_initial_cwnd_packets, static) = {
+  .path = "set quic initial-cwnd-packets",
+  .short_help = "set quic initial-cwnd-packets <packets> (0 = engine default)",
+  .function = quic_set_initial_cwnd_packets_fn,
+};
 
 static clib_error_t *
 quic_config_fn (vlib_main_t *vm, unformat_input_t *input)
@@ -740,6 +792,18 @@ quic_config_fn (vlib_main_t *vm, unformat_input_t *input)
 	qm->enable_tx_pacing = 0;
       else if (unformat (line_input, "respect-app-limited"))
 	qm->respect_app_limited = 1;
+      else if (unformat (line_input, "initial-cwnd-packets %u", &i))
+	{
+	  if ((error = quic_validate_cwnd_packets (i)))
+	    goto done;
+	  qm->initial_cwnd_packets = i;
+	}
+      else if (unformat (line_input, "jumpstart-cwnd-packets %u", &i))
+	{
+	  if ((error = quic_validate_cwnd_packets (i)))
+	    goto done;
+	  qm->jumpstart_cwnd_packets = i;
+	}
       else if (unformat (line_input, "enable-vnet-crypto"))
 	qm->enable_vnet_crypto = 1;
       /* TODO: add cli selection of quic_eng_<types> */

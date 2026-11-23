@@ -330,6 +330,8 @@ typedef struct quic_main_
   u8 default_quic_cc;
   u8 enable_tx_pacing; /**< enable tx pacing for connections */
   u8 respect_app_limited; /**< if CC should take app-limited into consideration */
+  u32 initial_cwnd_packets;   /**< zero uses the engine default */
+  u32 jumpstart_cwnd_packets; /**< zero disables Jumpstart */
 
   u64 first_seg_size;
   u64 add_seg_size;
@@ -484,6 +486,7 @@ typedef struct quic_engine_vft_
   int (*ctx_attribute) (quic_ctx_t *ctx, u8 is_get, transport_endpt_attr_t *attr);
   void (*conn_tx_timer_expired) (u32 conn_index, clib_thread_index_t thread_index);
   void (*engine_show_stats) (vlib_main_t *vm);
+  void (*set_initial_cwnd_packets) (u32 packets);
 } quic_engine_vft_t;
 
 __clib_export extern quic_engine_vft_t *quic_engine_vfts;

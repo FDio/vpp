@@ -133,6 +133,17 @@ format_quic_quicly_crypto_context (u8 *s, va_list *args)
 }
 
 void
+quic_quicly_set_initial_cwnd_packets (u32 packets)
+{
+  quic_quicly_crypto_ctx_t **crctx;
+  u32 initial_cwnd_packets = packets ? packets : quicly_spec_context.initcwnd_packets;
+
+  /* The CLI holds the worker barrier. Listeners reuse these contexts on accept. */
+  pool_foreach (crctx, quic_quicly_crypto_main.crypto_ctx_pool)
+    (*crctx)->quicly_ctx.initcwnd_packets = initial_cwnd_packets;
+}
+
+void
 quic_quicly_crypto_context_list (vlib_main_t *vm)
 {
   quic_quicly_crypto_main_t *qqcm = &quic_quicly_crypto_main;
@@ -722,6 +733,9 @@ quic_quicly_crypto_context_init_data (quic_quicly_crypto_ctx_t *crctx, quic_ctx_
   quicly_ctx->tls = ptls_ctx;
   quicly_ctx->enable_ratio.pacing = qm->enable_tx_pacing ? 255 : 0;
   quicly_ctx->enable_ratio.respect_app_limited = qm->respect_app_limited ? 255 : 0;
+  if (qm->initial_cwnd_packets)
+    quicly_ctx->initcwnd_packets = qm->initial_cwnd_packets;
+  quicly_ctx->default_jumpstart_cwnd_packets = qm->jumpstart_cwnd_packets;
 
   quicly_amend_ptls_context (quicly_ctx->tls);
 

@@ -111,6 +111,7 @@ quic_quicly_crypto_context_reserve_data (quic_quicly_crypto_ctx_t *crctx)
 extern quicly_crypto_engine_t quic_quicly_crypto_engine;
 extern ptls_cipher_suite_t *quic_quicly_crypto_cipher_suites[];
 void quic_quicly_crypto_init (quic_quicly_main_t *qqm);
+void quic_quicly_set_initial_cwnd_packets (u32 packets);
 void quic_quicly_crypto_context_list (vlib_main_t *vm);
 quic_quicly_crypto_ctx_t *quic_quicly_crypto_context_get_or_alloc (quic_ctx_t *ctx);
 void quic_quicly_crypto_context_free (u32 crypto_context_index);

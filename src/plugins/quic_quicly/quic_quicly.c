@@ -1718,9 +1718,10 @@ quic_quicly_format_connection_stats (u8 *s, va_list *args)
   s = format (s, " cc-algo %s cwnd %u ssthresh: %u recovery_end %lu\n",
 	      quicly_stats.cc.type->name, quicly_stats.cc.cwnd,
 	      quicly_stats.cc.ssthresh, quicly_stats.cc.recovery_end);
-  s = format (s, " cwnd-init %u cwnd-min %u cwnd-max %u\n",
-	      quicly_stats.cc.cwnd_initial, quicly_stats.cc.cwnd_minimum,
-	      quicly_stats.cc.cwnd_maximum);
+  u32 cwnd_max = clib_max (quicly_stats.cc.cwnd_maximum, quicly_stats.jumpstart.cwnd);
+  s = format (s, " cwnd-init %u cwnd-min %u cwnd-max %u jumpstart-cwnd %u\n",
+	      quicly_stats.cc.cwnd_initial, quicly_stats.cc.cwnd_minimum, cwnd_max,
+	      quicly_stats.jumpstart.cwnd);
   s = format (s, " delivery-rate: latest %lu smoothed %lu stdev %lu\n",
 	      quicly_stats.delivery_rate.latest, quicly_stats.delivery_rate.smoothed,
 	      quicly_stats.delivery_rate.stdev);
@@ -2140,6 +2141,7 @@ quic_quicly_engine_show_stats (vlib_main_t *vm)
 
 const static quic_engine_vft_t quic_quicly_engine_vft = {
   .engine_init = quic_quicly_engine_init,
+  .set_initial_cwnd_packets = quic_quicly_set_initial_cwnd_packets,
   .crypto_context_acquire_listen = quic_quicly_crypto_context_acquire_listen,
   .crypto_context_acquire_accept = quic_quicly_crypto_context_acquire_accept,
   .crypto_context_acquire_connect = quic_quicly_crypto_context_acquire_connect,
