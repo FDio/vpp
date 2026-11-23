@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d5834906_a715e50d",
+        "filename": "src/plugins/dpdk/device/flow.c",
+        "patchSetId": 25
+      },
+      "lineNbr": 1236,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-11-23T21:31:14Z",
+      "side": 1,
+      "message": "Thanks for the catch!",
+      "parentUuid": "8c85c43a_5ee4ecd1",
+      "revId": "cb480071cc737350191cf7d1d6ded5ca0766d261",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "9405b20e_0bfbe765",
@@ -50,6 +68,24 @@
       "side": 1,
       "message": "Could we cast the left operand to uword before shifting, as max_pow2() does? The literal 1 is a 32-bit int, so this new uword helper has undefined behavior for inputs \u003e\u003d 2^31 and cannot round 64-bit values correctly. A probe calling the actual header\u0027s min_pow2((uword)1 \u003c\u003c 32) returns 1 instead of 4294967296 and triggers UBSAN\u0027s shift-exponent error. Use `(uword) 1 \u003c\u003c min_log2(x)`.",
       "tag": "prview:5b3d88a03f5f9a181dd5f726a37a69e9:cb480071cc737350191cf7d1d6ded5ca0766d261",
+      "revId": "cb480071cc737350191cf7d1d6ded5ca0766d261",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a8035a47_d0a97a84",
+        "filename": "src/vppinfra/clib.h",
+        "patchSetId": 25
+      },
+      "lineNbr": 262,
+      "author": {
+        "id": 2450
+      },
+      "writtenOn": "2026-11-23T21:31:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9405b20e_0bfbe765",
       "revId": "cb480071cc737350191cf7d1d6ded5ca0766d261",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
