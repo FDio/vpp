@@ -128,7 +128,7 @@ jobs:
     name: Merge Maketest
     needs:
       - start-merge
-    uses: fdio/vpp/.github/workflows/vpp-merge-maketest.yml@40fcc8ebe8cdd13fff4a7d0ba9c3d98b4d3fbe87
+    uses: fdio/vpp/.github/workflows/vpp-merge-maketest.yml@b74cf07a8f229f68254e6387da45f5119d2424e2
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -213,7 +213,7 @@ jobs:
       - start-merge
       - detect-docs-changes
     if: ${{ needs.detect-docs-changes.outputs.docs_changed == 'true' }}
-    uses: fdio/vpp/.github/workflows/vpp-merge-docs.yml@40fcc8ebe8cdd13fff4a7d0ba9c3d98b4d3fbe87
+    uses: fdio/vpp/.github/workflows/vpp-merge-docs.yml@b74cf07a8f229f68254e6387da45f5119d2424e2
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
