@@ -67,8 +67,29 @@ The QUIC plugin can be configured through VPP's configuration system. Key config
 - Default crypto engine selection
 - Maximum packets per key
 - Default congestion control algorithm
+- Initial congestion window and Jumpstart for the quicly engine
 - UDP FIFO size and preallocation
 - Connection timeout settings
+
+Set ``initial-cwnd-packets`` inside the ``quic`` startup block to configure
+the initial congestion window for clients and servers. A value of zero uses
+quicly's default of 10 packets. Use ``set quic initial-cwnd-packets <packets>``
+to change the setting at runtime for new connections, including connections
+accepted by existing listeners.
+
+Set ``jumpstart-cwnd-packets`` in the same block to configure the Jumpstart
+target for connections without prior delivery-rate information. Jumpstart is
+disabled by default (zero). Jumpstart requires transmit pacing and quicly only
+uses it when the target would let the connection send more in one RTT.
+
+Both settings accept up to 128 packets. This leaves room in quicly's two-byte
+packet-number encoding for smaller packets, acknowledgments, and skipped
+packet numbers. Quicly uses a minimum of two packets for a nonzero setting.
+
+``show quic`` displays the configured packet counts. ``show session verbose 2``
+displays ``cwnd-init``, ``cwnd-max``, and ``jumpstart-cwnd`` in bytes for each
+connection. ``cwnd-max`` includes the adopted Jumpstart window. A
+``jumpstart-cwnd`` of zero means the connection has not used Jumpstart.
 
 Usage
 ^^^^^
