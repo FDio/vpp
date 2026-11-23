@@ -38,7 +38,7 @@ show_threads_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_main_t *thread_vm;
   vlib_worker_thread_t *w;
-  table_t table = {};
+  table_t table = { .no_ansi = ctx->plain_text_only };
   int col;
   int i;
 

@@ -3325,6 +3325,12 @@ vlib_unix_cli_ansi_capable (void)
   return cf && cf->ansi_capable;
 }
 
+u8
+vlib_unix_cli_plain_text_only (void)
+{
+  return (unix_main.flags & UNIX_FLAG_NOCOLOR) || !vlib_unix_cli_ansi_capable ();
+}
+
 /** CLI command to quit the terminal session.
  * @note If this is a stdin session then this will
  *       shutdown VPP also.
@@ -3671,7 +3677,7 @@ unix_cli_show_cli_sessions (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   unix_cli_main_t *cm = &unix_cli_main;
   clib_file_main_t *fm = &file_main;
-  table_t table = {}, *t = &table;
+  table_t table = { .no_ansi = ctx->plain_text_only }, *t = &table;
   unix_cli_file_t *cf;
   clib_file_t *uf;
 

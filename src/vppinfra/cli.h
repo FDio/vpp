@@ -350,7 +350,8 @@ struct cli_ctx_t
   u8 json;
   u8 has_where;
   u8 emitted;
-  u8 help; /* the line ended with '?' */
+  u8 help;	      /* the line ended with '?' */
+  u8 plain_text_only; /* the handler must not use ANSI sequences, such as colors */
 };
 
 /* Parses a command line, the arguments followed by optional "| filter ...",
