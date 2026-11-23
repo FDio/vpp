@@ -1355,6 +1355,9 @@ vnet_connect (vnet_connect_args_t *a)
   app_worker_t *client_wrk;
   application_t *client;
 
+  if (CLIB_DEBUG > 0 && !session_vlib_thread_is_cl_thread ())
+    clib_warning ("connect on thread %u, connects run on thread %u: use vnet_connect2",
+		  vlib_get_thread_index (), transport_cl_thread ());
   ASSERT (session_vlib_thread_is_cl_thread ());
 
   if (session_endpoint_is_zero (&a->sep))

@@ -921,11 +921,12 @@ transport_cl_thread (void)
   return session_main.transport_cl_thread;
 }
 
+/* Connects run on the first worker, or on main if there are no workers.
+ * Other threads use vnet_connect2 */
 always_inline u32
 session_vlib_thread_is_cl_thread (void)
 {
-  return (vlib_get_thread_index () == transport_cl_thread () ||
-	  vlib_thread_is_main_w_barrier ());
+  return vlib_get_thread_index () == transport_cl_thread ();
 }
 
 /*
