@@ -428,6 +428,110 @@ format_vlib_node_stats (u8 * s, va_list * va)
   return s;
 }
 
+static const cli_column_t runtime_columns_clocks[] = {
+  { "thread", "Thread" },
+  { "name", "Name" },
+  { "state", "State" },
+  { "calls", "Calls" },
+  { "vectors", "Vectors" },
+  { "suspends", "Suspends" },
+  { "packet_cost", "Packet-Clocks" },
+  { "vectors_per_call", "Vectors/Call" },
+  {},
+};
+
+static const cli_column_t runtime_columns_time[] = {
+  { "thread", "Thread" },
+  { "name", "Name" },
+  { "state", "State" },
+  { "calls", "Calls" },
+  { "vectors", "Vectors" },
+  { "suspends", "Suspends" },
+  { "packet_cost", "Packet-Time" },
+  { "vectors_per_call", "Vectors/Call" },
+  {},
+};
+
+static const cli_column_t runtime_columns_max_clocks[] = {
+  { "thread", "Thread" },
+  { "name", "Name" },
+  { "max_node_clocks", "Max Node Clocks" },
+  { "vectors_at_max", "Vectors at Max" },
+  { "max_clocks", "Max Clocks" },
+  { "packet_cost", "Avg Clocks" },
+  { "vectors_per_call", "Avg Vectors/Call" },
+  {},
+};
+
+static const cli_column_t runtime_columns_max_time[] = {
+  { "thread", "Thread" },
+  { "name", "Name" },
+  { "max_node_clocks", "Max Node Clocks" },
+  { "vectors_at_max", "Vectors at Max" },
+  { "max_clocks", "Max Clocks" },
+  { "packet_cost", "Avg Time (ns)" },
+  { "vectors_per_call", "Avg Vectors/Call" },
+  {},
+};
+
+static const cli_column_t runtime_summary_columns[] = {
+  { "thread", "Thread" },
+  { "time", "Time" },
+  { "internal_vector_rate", "Internal Vector Rate" },
+  { "loops_per_second", "Loops/sec" },
+  { "vector_rate_in", "Rate In" },
+  { "vector_rate_out", "Rate Out" },
+  { "vector_rate_drop", "Rate Drop" },
+  { "vector_rate_punt", "Rate Punt" },
+  {},
+};
+
+static const cli_column_t *
+runtime_columns (int max, int use_time)
+{
+  if (max)
+    return use_time ? runtime_columns_max_time : runtime_columns_max_clocks;
+  return use_time ? runtime_columns_time : runtime_columns_clocks;
+}
+
+static void
+json_add_node_runtime (clib_json_text_t *j, vlib_main_t *vm, u32 thread, vlib_node_t *n,
+		       int use_time)
+{
+  u64 l = n->stats_total.clocks - n->stats_last_clear.clocks;
+  u64 c = n->stats_total.calls - n->stats_last_clear.calls;
+  u64 p = n->stats_total.vectors - n->stats_last_clear.vectors;
+  u64 d = n->stats_total.suspends - n->stats_last_clear.suspends;
+  f64 cost = 0, max_per_vector = 0;
+
+  if (use_time)
+    l *= 1e9 * vm->clib_time.seconds_per_clock;
+
+  if (p > 0)
+    cost = (f64) l / (f64) p;
+  else if (c > 0)
+    cost = (f64) l / (f64) c;
+  else if (d > 0)
+    cost = (f64) l / (f64) d;
+
+  if (n->stats_total.max_clock_n)
+    max_per_vector = (f64) n->stats_total.max_clock / (f64) n->stats_total.max_clock_n;
+
+  clib_json_add_object (j, 0);
+  clib_json_add_number (j, "thread", thread);
+  clib_json_add_string (j, "name", "%v", n->name);
+  clib_json_add_string (j, "state", "%U", format_vlib_node_state, vm, n);
+  clib_json_add_number (j, "calls", c);
+  clib_json_add_number (j, "vectors", p);
+  clib_json_add_number (j, "suspends", d);
+  clib_json_add_number (j, "packet_cost", cost);
+  clib_json_add_number (j, "vectors_per_call", c ? (f64) p / (f64) c : 0);
+  clib_json_add_number (j, "max_node_clocks", n->stats_total.max_clock);
+  clib_json_add_number (j, "vectors_at_max", n->stats_total.max_clock_n);
+  clib_json_add_number (j, "max_clocks", max_per_vector);
+  clib_json_parent (j);
+}
+
 static clib_error_t *
 show_node_runtime (vlib_main_t *vm, cli_ctx_t *ctx)
 {
@@ -444,6 +548,19 @@ show_node_runtime (vlib_main_t *vm, cli_ctx_t *ctx)
     {
       n = vlib_get_node (vm, node_index);
       vlib_node_sync_stats (vm, n);
+
+      if (cli_is_structured (ctx))
+	{
+	  clib_json_text_t j;
+
+	  clib_json_init (&j);
+	  clib_json_add_array (&j, 0);
+	  json_add_node_runtime (&j, vm, vm->thread_index, n, cli_flag (ctx, "time"));
+	  clib_json_parent (&j);
+	  return cli_emit_table (ctx, &j,
+				 runtime_columns (cli_flag (ctx, "max"), cli_flag (ctx, "time")));
+	}
+
       vlib_cli_output (vm, "%U\n", format_vlib_node_stats, vm, 0, 0, 0);
       vlib_cli_output (vm, "%U\n", format_vlib_node_stats, vm, n, 0, 0);
     }
@@ -492,6 +609,72 @@ show_node_runtime (vlib_main_t *vm, cli_ctx_t *ctx)
 	}
       vlib_worker_thread_barrier_release (vm);
 
+      if (cli_is_structured (ctx))
+	{
+	  clib_json_text_t jt;
+
+	  clib_json_init (&jt);
+	  clib_json_add_array (&jt, 0);
+
+	  for (j = 0; j < vec_len (stat_vms); j++)
+	    {
+	      stat_vm = stat_vms[j];
+	      nm = &stat_vm->node_main;
+	      nodes = node_dups[j];
+	      vec_sort_with_function (nodes, node_cmp);
+
+	      if (summary)
+		{
+		  n_input = n_output = n_drop = n_punt = 0;
+		  for (i = 0; i < vec_len (nodes); i++)
+		    {
+		      n = nodes[i];
+		      v = n->stats_total.vectors - n->stats_last_clear.vectors;
+
+		      if (n->type == VLIB_NODE_TYPE_INPUT)
+			n_input += v;
+		      else if (n->type == VLIB_NODE_TYPE_INTERNAL)
+			{
+			  n_output += (n->flags & VLIB_NODE_FLAG_IS_OUTPUT) ? v : 0;
+			  n_drop += (n->flags & VLIB_NODE_FLAG_IS_DROP) ? v : 0;
+			  n_punt += (n->flags & VLIB_NODE_FLAG_IS_PUNT) ? v : 0;
+			  n_input += (n->flags & VLIB_NODE_FLAG_IS_HANDOFF) ? v : 0;
+			}
+		    }
+
+		  dt = time_now - nm->time_last_runtime_stats_clear;
+		  clib_json_add_object (&jt, 0);
+		  clib_json_add_number (&jt, "thread", j);
+		  clib_json_add_number (&jt, "time", dt);
+		  clib_json_add_number (&jt, "internal_vector_rate", internal_node_vector_rates[j]);
+		  clib_json_add_number (&jt, "loops_per_second", stat_vm->loops_per_second);
+		  clib_json_add_number (&jt, "vector_rate_in", (f64) n_input / dt);
+		  clib_json_add_number (&jt, "vector_rate_out", (f64) n_output / dt);
+		  clib_json_add_number (&jt, "vector_rate_drop", (f64) n_drop / dt);
+		  clib_json_add_number (&jt, "vector_rate_punt", (f64) n_punt / dt);
+		  clib_json_parent (&jt);
+		  continue;
+		}
+
+	      for (i = 0; i < vec_len (nodes); i++)
+		{
+		  c = nodes[i]->stats_total.calls - nodes[i]->stats_last_clear.calls;
+		  d = nodes[i]->stats_total.suspends - nodes[i]->stats_last_clear.suspends;
+		  if (c || d || !brief)
+		    json_add_node_runtime (&jt, stat_vm, j, nodes[i], use_time);
+		}
+	    }
+	  clib_json_parent (&jt);
+
+	  for (j = 0; j < vec_len (stat_vms); j++)
+	    vec_free (node_dups[j]);
+	  vec_free (stat_vms);
+	  vec_free (node_dups);
+	  vec_free (internal_node_vector_rates);
+
+	  return cli_emit_table (
+	    ctx, &jt, summary ? runtime_summary_columns : runtime_columns (max, use_time));
+	}
 
       for (j = 0; j < vec_len (stat_vms); j++)
 	{
