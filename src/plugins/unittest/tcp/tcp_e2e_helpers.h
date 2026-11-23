@@ -31,7 +31,7 @@ typedef struct
   u64 secret;
   u32 rx_fifo_size; /**< 0 -> 4 KB */
   u32 tx_fifo_size; /**< 0 -> 4 KB */
-  u8 client_only;   /**< Return after creating the client half-open. */
+  u8 client_only;   /**< Return after creating the client half-open, no routes */
 } tcp_e2e_params_t;
 
 typedef struct
@@ -95,6 +95,48 @@ tcp_e2e_call_on_thread (vlib_main_t *vm, clib_thread_index_t thread_index, int (
   while (!c.done)
     tcp_e2e_pump (vm, 1e-3);
   return c.rv;
+}
+
+/* Workers grow their session and connection pools by having main reallocate
+ * them, which moves the elements */
+static inline int
+tcp_e2e_pools_realloc_pending (void)
+{
+  session_main_t *smm = &session_main;
+  tcp_main_t *tm = &tcp_main;
+  u32 i;
+
+  for (i = 0; i < vec_len (tm->wrk); i++)
+    if (tm->wrk[i].connections && pool_realloc_flag (tm->wrk[i].connections))
+      return 1;
+  for (i = 0; i < vec_len (smm->wrk); i++)
+    if (smm->wrk[i].sessions && pool_realloc_flag (smm->wrk[i].sessions))
+      return 1;
+  return 0;
+}
+
+/* Let pending pool reallocations finish, so pointers into the pools stay valid
+ * until the next allocation */
+static inline void
+tcp_e2e_wait_pools (vlib_main_t *vm)
+{
+  u32 tries = 0;
+
+  while (tcp_e2e_pools_realloc_pending () && ++tries < 100)
+    tcp_e2e_pump (vm, 1e-3);
+}
+
+static inline int
+tcp_e2e_connect_rpc (void *arg)
+{
+  return vnet_connect (arg);
+}
+
+/* Connect on the first worker, where connects run, and wait for the result */
+static inline int
+tcp_e2e_connect (vlib_main_t *vm, vnet_connect_args_t *a)
+{
+  return tcp_e2e_call_on_thread (vm, transport_cl_thread (), tcp_e2e_connect_rpc, a);
 }
 
 typedef struct
@@ -266,11 +308,16 @@ tcp_e2e_setup (vlib_main_t *vm, tcp_e2e_ctx_t *ctx, tcp_e2e_params_t *p)
   if (session_create_lookpback (p->server_vrf, &ctx->sw_if_index[1], &ctx->intf_addr[1]))
     return -1;
 
-  session_add_del_route_via_lookup_in_table (p->client_vrf, p->server_vrf, &ctx->intf_addr[1], 32,
-					     1 /* is_add */);
-  session_add_del_route_via_lookup_in_table (p->server_vrf, p->client_vrf, &ctx->intf_addr[0], 32,
-					     1 /* is_add */);
-  ctx->routes_added = 1;
+  /* Without routes, a client-only half-open's syn goes nowhere, so it stays in
+   * SYN_SENT while the connecting worker runs */
+  if (!p->client_only)
+    {
+      session_add_del_route_via_lookup_in_table (p->client_vrf, p->server_vrf, &ctx->intf_addr[1],
+						 32, 1 /* is_add */);
+      session_add_del_route_via_lookup_in_table (p->server_vrf, p->client_vrf, &ctx->intf_addr[0],
+						 32, 1 /* is_add */);
+      ctx->routes_added = 1;
+    }
 
   ctx->appns_id = format (0, "appns_%s_server", p->name);
   vnet_app_namespace_add_del_args_t ns_args = {
@@ -353,7 +400,7 @@ tcp_e2e_setup (vlib_main_t *vm, tcp_e2e_ctx_t *ctx, tcp_e2e_params_t *p)
     .sep_ext = client_sep,
     .app_index = ctx->client_index,
   };
-  error = vnet_connect (&connect_args);
+  error = tcp_e2e_connect (vm, &connect_args);
   if (error)
     {
       clib_warning ("connect failed: %d", error);
@@ -362,7 +409,10 @@ tcp_e2e_setup (vlib_main_t *vm, tcp_e2e_ctx_t *ctx, tcp_e2e_params_t *p)
 
   if (p->client_only)
     {
-      session_t *ho = session_get_from_handle (connect_args.sh);
+      session_t *ho;
+
+      tcp_e2e_wait_pools (vm);
+      ho = session_get_from_handle (connect_args.sh);
       ctx->client_s = ho;
       ctx->client_tc =
 	(tcp_connection_t *) transport_get_half_open (TRANSPORT_PROTO_TCP, ho->connection_index);
@@ -381,6 +431,7 @@ tcp_e2e_setup (vlib_main_t *vm, tcp_e2e_ctx_t *ctx, tcp_e2e_params_t *p)
       return -1;
     }
 
+  tcp_e2e_wait_pools (vm);
   ctx->client_s = session_get (connected_session_index, connected_session_thread);
   tc = session_get_transport (ctx->client_s);
   if (!tc)

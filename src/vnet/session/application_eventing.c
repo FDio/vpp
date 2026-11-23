@@ -425,7 +425,8 @@ app_evt_collector_connect (app_evt_collector_t *c)
 
   for (i = 0; i < num_threads; i++)
     {
-      rv = vnet_connect (&cargs);
+      /* Connects run on the first worker */
+      rv = vnet_connect2 (&cargs);
       if (rv)
 	{
 	  clib_warning ("could not connect %U", format_session_error, rv);

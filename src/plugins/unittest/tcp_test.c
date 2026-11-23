@@ -3635,7 +3635,7 @@ tcp_test_persist_e2e (vlib_main_t *vm, unformat_input_t *input)
     .sep_ext = client_sep,
     .app_index = client_index,
   };
-  error = vnet_connect (&connect_args);
+  error = tcp_e2e_connect (vm, &connect_args);
   if (!TCP_TEST_I ((error == 0), "connect should work"))
     {
       rv = 1;
@@ -3655,6 +3655,7 @@ tcp_test_persist_e2e (vlib_main_t *vm, unformat_input_t *input)
       vlib_process_suspend (vm, 10e-3);
       vlib_worker_thread_barrier_sync (vm);
     }
+  tcp_e2e_wait_pools (vm);
 
   if (!TCP_TEST_I ((connected_session_index != ~0), "client session should exist"))
     {
@@ -4388,7 +4389,7 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
     .sep_ext = client_sep,
     .app_index = client_index,
   };
-  error = vnet_connect (&connect_args);
+  error = tcp_e2e_connect (vm, &connect_args);
   if (!TCP_TEST_I ((error == 0), "connect should work"))
     {
       rv = 1;
@@ -4408,6 +4409,7 @@ tcp_test_rto_reduce_once_e2e (vlib_main_t *vm, unformat_input_t *input)
       vlib_process_suspend (vm, 10e-3);
       vlib_worker_thread_barrier_sync (vm);
     }
+  tcp_e2e_wait_pools (vm);
 
   if (!TCP_TEST_I ((connected_session_index != ~0), "client session should exist"))
     {
@@ -4987,14 +4989,9 @@ tcp_test_rst_burst (vlib_main_t *vm, unformat_input_t *input)
   app->cb_fns.session_connected_callback = tcp_test_rst_connected_callback;
   app->cb_fns.half_open_cleanup_callback = tcp_test_rst_cleanup_callback;
 
-  /* Block the real handshake before releasing the worker barrier to inject
-   * the RSTs. Cleanup notifications may arrive on the control thread. */
-  session_add_del_route_via_lookup_in_table (ctx->client_vrf, ctx->server_vrf, &ctx->intf_addr[1],
-					     32, 0 /* is_add */);
-  session_add_del_route_via_lookup_in_table (ctx->server_vrf, ctx->client_vrf, &ctx->intf_addr[0],
-					     32, 0 /* is_add */);
-  ctx->routes_added = 0;
-
+  /* The client-only setup adds no routes, so the real handshake cannot
+   * complete before the RSTs. Cleanup notifications may arrive on the control
+   * thread. */
   if (!TCP_TEST_I ((tc->state == TCP_STATE_SYN_SENT), "rst_burst: connection starts in SYN_SENT"))
     {
       rv = 1;
