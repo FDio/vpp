@@ -23,7 +23,7 @@ static clib_error_t *
 show_handoff_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_handoff_queue_main_t *hqm;
-  table_t table = {};
+  table_t table = { .no_ansi = ctx->plain_text_only };
   u32 index = cli_u64 (ctx, "index", ~0);
   u32 row = 0;
 

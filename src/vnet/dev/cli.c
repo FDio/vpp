@@ -335,8 +335,7 @@ show_devices_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
   vnet_dev_t **devs = 0;
   u32 v;
 
-  if ((unix_main.flags & UNIX_FLAG_NOCOLOR) || !vlib_unix_cli_ansi_capable ())
-    fa.plain_text = 1;
+  fa.plain_text = ctx->plain_text_only;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
