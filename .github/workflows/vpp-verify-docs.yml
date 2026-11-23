@@ -179,7 +179,7 @@ jobs:
         uses: fdio/.github/.github/actions/show-nomad-dockerfile@b728d1589228e2891a4241a1bba362d76895c225
 
       - name: Checkout VPP Gerrit Change
-        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@46f6412a326f82e8ce4c1aa2ac29ba78b2a952d2
+        uses: fdio/vpp/.github/actions/vpp-checkout-gerrit-change@e0c4efc79e09010545fd979dcca41ef09eb4c969
         with:
           WORKSPACE: ${{ env.WORKSPACE }}
           GERRIT_BRANCH: ${{ env.GERRIT_BRANCH }}
