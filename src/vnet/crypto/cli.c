@@ -104,32 +104,31 @@ crypto_cli_alg_name_cmp (const crypto_cli_alg_entry_t *a0, const crypto_cli_alg_
   return strcmp (n0, n1);
 }
 
-static int
-crypto_cli_lookup_algorithm (u8 *name, vnet_crypto_alg_t *alg, vnet_crypto_hash_alg_t *hash_alg)
+static crypto_cli_alg_entry_t *
+crypto_cli_sorted_algs (void)
 {
-  vnet_crypto_main_t *cm = &crypto_main;
-  uword *p;
+  crypto_cli_alg_entry_t *algs = 0;
 
-  p = hash_get_mem (cm->alg_index_by_name, name);
-  if (p)
-    {
-      *alg = p[0];
-      return 1;
-    }
+  for (vnet_crypto_alg_t alg = 1; alg < VNET_CRYPTO_N_ALGS; alg++)
+    vec_add1 (algs, ((crypto_cli_alg_entry_t) {
+		      .index = alg,
+		    }));
+  for (vnet_crypto_hash_alg_t hash_alg = 1; hash_alg < VNET_CRYPTO_N_HASH_ALGS; hash_alg++)
+    vec_add1 (algs, ((crypto_cli_alg_entry_t) {
+		      .index = hash_alg,
+		      .is_hash = 1,
+		    }));
+  vec_sort_with_function (algs, crypto_cli_alg_name_cmp);
 
-  for (*hash_alg = 1; *hash_alg < VNET_CRYPTO_N_HASH_ALGS; (*hash_alg)++)
-    if (strcmp ((char *) name, cm->hash_algs[*hash_alg].name) == 0)
-      return 1;
-
-  return 0;
+  return algs;
 }
 
 static void
-show_crypto_algorithms_table (vlib_main_t *vm)
+show_crypto_algorithms_table (vlib_main_t *vm, int plain_text_only)
 {
   vnet_crypto_main_t *cm = &crypto_main;
-  table_t table = {};
-  crypto_cli_alg_entry_t *algs = 0;
+  table_t table = { .no_ansi = plain_text_only };
+  crypto_cli_alg_entry_t *algs = crypto_cli_sorted_algs ();
   crypto_cli_alg_entry_t *alg;
   u8 *s = 0;
   int row = 0;
@@ -138,17 +137,6 @@ show_crypto_algorithms_table (vlib_main_t *vm)
   table_add_hdr_row (&table, 8, "Name", "Type", "Cipher", "Auth", "Key", "Auth", "AAD", "Block");
   for (int i = 0; i < 8; i++)
     table_set_cell_align (&table, -1, i, TTAA_LEFT);
-
-  for (vnet_crypto_alg_t alg = 1; alg < VNET_CRYPTO_N_ALGS; alg++)
-    vec_add1 (algs, ((crypto_cli_alg_entry_t){
-		      .index = alg,
-		    }));
-  for (vnet_crypto_hash_alg_t hash_alg = 1; hash_alg < VNET_CRYPTO_N_HASH_ALGS; hash_alg++)
-    vec_add1 (algs, ((crypto_cli_alg_entry_t){
-		      .index = hash_alg,
-		      .is_hash = 1,
-		    }));
-  vec_sort_with_function (algs, crypto_cli_alg_name_cmp);
 
   vec_foreach (alg, algs)
     {
@@ -330,34 +318,363 @@ show_crypto_hash_algorithm_detail (vlib_main_t *vm, vnet_crypto_hash_alg_t alg)
     }
 }
 
-static clib_error_t *
-show_crypto_algorithm_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
-{
-  unformat_input_t _line_input, *line_input = &_line_input;
-  vnet_crypto_alg_t alg = VNET_CRYPTO_ALG_NONE;
-  vnet_crypto_hash_alg_t hash_alg = VNET_CRYPTO_HASH_ALG_NONE;
-  u8 *name = 0;
+static const cli_column_t crypto_algorithms_columns[] = {
+  { "name", "Name" },	{ "type", "Type" },	   { "cipher", "Cipher" },
+  { "auth", "Auth" },	{ "key_size", "Key" },	   { "icv_len", "ICV" },
+  { "aad_len", "AAD" }, { "block_size", "Block" }, {},
+};
 
-  if (unformat_user (input, unformat_line_input, line_input))
+static const cli_column_t crypto_algorithm_columns[] = {
+  { "name", "Name" },
+  { "type", "Type" },
+  { "cipher_family", "Cipher" },
+  { "cipher_key_size", "Cipher key size" },
+  { "auth_family", "Auth" },
+  { "icv_len", "ICV length" },
+  { "key_data_total", "Key data size" },
+  {},
+};
+
+static const cli_column_t crypto_engines_columns[] = {
+  { "name", "Name" },
+  { "priority", "Prio" },
+  { "description", "Description" },
+  {},
+};
+
+static const cli_column_t crypto_handlers_columns[] = {
+  { "algorithm", "Algorithm" }, { "op", "Op" },	      { "simple", "Simple" },
+  { "chained", "Chained" },	{ "async", "Async" }, {},
+};
+
+static const cli_column_t crypto_async_status_columns[] = {
+  { "engine", "Engine" },
+  { "thread", "Thread" },
+  { "state", "State" },
+  {},
+};
+
+/* name of the engine, 0 if there is none */
+static const char *
+crypto_cli_engine_name (vnet_crypto_engine_id_t id)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+
+  if (id == VNET_CRYPTO_ENGINE_ID_INVALID || id >= vec_len (cm->engines))
+    return 0;
+
+  return cm->engines[id].name;
+}
+
+static void
+crypto_cli_json_add_engine (clib_json_text_t *j, char *key, vnet_crypto_engine_id_t id)
+{
+  const char *name = crypto_cli_engine_name (id);
+
+  if (name)
+    clib_json_add_string (j, key, "%s", name);
+}
+
+static clib_error_t *
+show_crypto_algorithms_json (cli_ctx_t *ctx)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  crypto_cli_alg_entry_t *algs = crypto_cli_sorted_algs ();
+  crypto_cli_alg_entry_t *alg;
+  clib_json_text_t j;
+
+  clib_json_init (&j);
+  clib_json_add_array (&j, 0);
+  vec_foreach (alg, algs)
     {
-      if (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT &&
-	  (!unformat (line_input, "%s", &name) ||
-	   !crypto_cli_lookup_algorithm (name, &alg, &hash_alg)))
+      clib_json_add_object (&j, 0);
+      if (alg->is_hash)
 	{
-	  vec_free (name);
-	  unformat_free (line_input);
-	  return clib_error_return (0, "unknown algorithm");
+	  vnet_crypto_hash_alg_data_t *ad = cm->hash_algs + alg->index;
+
+	  clib_json_add_string (&j, "name", "%s", ad->name);
+	  clib_json_add_string (&j, "type", "hash");
+	  clib_json_add_string (&j, "auth", "%s", crypto_alg_family_name (ad->family));
+	  clib_json_add_number (&j, "icv_len", ad->digest_len);
+	  clib_json_add_number (&j, "block_size", ad->block_len);
 	}
-      vec_free (name);
-      unformat_free (line_input);
+      else
+	{
+	  vnet_crypto_alg_data_t *ad = cm->algs + alg->index;
+
+	  clib_json_add_string (&j, "name", "%s", ad->name);
+	  clib_json_add_string (&j, "type", "%s", crypto_alg_type_name (ad->alg_type));
+	  if (ad->cipher_family != VNET_CRYPTO_ALG_FAMILY_NONE)
+	    clib_json_add_string (&j, "cipher", "%s", crypto_alg_family_name (ad->cipher_family));
+	  if (ad->auth_family != VNET_CRYPTO_ALG_FAMILY_NONE)
+	    clib_json_add_string (&j, "auth", "%s", crypto_alg_family_name (ad->auth_family));
+	  clib_json_add_number (&j, "key_size", ad->cipher_key_len);
+	  if (ad->auth_len)
+	    clib_json_add_number (&j, "icv_len", ad->auth_len);
+	  else
+	    clib_json_add_true (&j, "variable_icv_len");
+	  if (ad->alg_type == VNET_CRYPTO_ALG_T_AEAD)
+	    {
+	      if (ad->variable_aad_len)
+		clib_json_add_true (&j, "variable_aad_len");
+	      else
+		clib_json_add_number (&j, "aad_len", ad->aad_len);
+	    }
+	  clib_json_add_number (&j, "block_size", ad->block_len);
+	}
+      clib_json_parent (&j);
+    }
+  clib_json_parent (&j);
+  vec_free (algs);
+
+  return cli_emit_table (ctx, &j, crypto_algorithms_columns);
+}
+
+static clib_error_t *
+show_crypto_algorithm_json (cli_ctx_t *ctx, vnet_crypto_alg_t alg)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_alg_data_t *ad = cm->algs + alg;
+  vnet_crypto_ctx_layout_t *kl = cm->ctx_layout + alg;
+  u32 n_threads = vlib_get_n_threads ();
+  vnet_crypto_engine_t *e;
+  clib_json_text_t j;
+
+  clib_json_init (&j);
+  clib_json_add_object (&j, 0);
+  clib_json_add_string (&j, "name", "%U", format_vnet_crypto_alg, alg);
+  clib_json_add_string (&j, "type", "%s", crypto_alg_type_name (ad->alg_type));
+  if (ad->cipher_family != VNET_CRYPTO_ALG_FAMILY_NONE)
+    {
+      clib_json_add_string (&j, "cipher_family", "%s", crypto_alg_family_name (ad->cipher_family));
+      clib_json_add_number (&j, "cipher_block_size", ad->block_len);
+      clib_json_add_number (&j, "cipher_key_size", ad->cipher_key_len);
+      clib_json_add_number (&j, "iv_len", crypto_alg_iv_len (ad));
+      if (ad->alg_type == VNET_CRYPTO_ALG_T_AEAD)
+	{
+	  if (ad->variable_aad_len)
+	    clib_json_add_true (&j, "variable_aad_len");
+	  else
+	    clib_json_add_number (&j, "aad_len", ad->aad_len);
+	}
+    }
+  if (ad->auth_family != VNET_CRYPTO_ALG_FAMILY_NONE)
+    {
+      clib_json_add_string (&j, "auth_family", "%s", crypto_alg_family_name (ad->auth_family));
+      if (ad->variable_auth_key_len)
+	clib_json_add_true (&j, "variable_auth_key_size");
+      else
+	clib_json_add_number (&j, "auth_key_size", ad->auth_key_len);
+      clib_json_add_number (&j, "icv_len", ad->auth_len);
+    }
+  clib_json_add_number (&j, "key_data_total", kl->total_key_data_size);
+
+  clib_json_add_array (&j, "key_data");
+  for (vnet_crypto_handler_type_t t = 0; t < VNET_CRYPTO_HANDLER_N_TYPES; t++)
+    {
+      clib_json_add_object (&j, 0);
+      clib_json_add_string (&j, "handler", "%s", crypto_handler_type_name (t));
+      clib_json_add_number (&j, "size", kl->key_data_size[t]);
+      clib_json_add_number (&j, "offset", kl->key_data_offset[t]);
+      clib_json_parent (&j);
+    }
+  clib_json_parent (&j);
+
+  clib_json_add_array (&j, "ops");
+  for (vnet_crypto_op_type_t op_type = 0; op_type < VNET_CRYPTO_OP_N_TYPES; op_type++)
+    {
+      if (!vnet_crypto_alg_has_op_type (alg, op_type))
+	continue;
+
+      clib_json_add_object (&j, 0);
+      clib_json_add_string (&j, "type", "%U", format_vnet_crypto_op_type, op_type);
+      crypto_cli_json_add_engine (&j, "simple",
+				  cm->active_engine_index[alg][VNET_CRYPTO_HANDLER_TYPE_SIMPLE]);
+      crypto_cli_json_add_engine (&j, "chained",
+				  cm->active_engine_index[alg][VNET_CRYPTO_HANDLER_TYPE_CHAINED]);
+      crypto_cli_json_add_engine (&j, "async",
+				  cm->active_engine_index[alg][VNET_CRYPTO_HANDLER_TYPE_ASYNC]);
+      clib_json_parent (&j);
+    }
+  clib_json_parent (&j);
+
+  clib_json_add_array (&j, "engines");
+  vec_foreach (e, cm->engines)
+    {
+      if (e == cm->engines || e->name == 0)
+	continue;
+
+      clib_json_add_object (&j, 0);
+      clib_json_add_string (&j, "name", "%s", e->name);
+      clib_json_add_array (&j, "key_data");
+      for (vnet_crypto_handler_type_t t = 0; t < VNET_CRYPTO_HANDLER_N_TYPES; t++)
+	{
+	  u8 *support_vec = cm->engine_supports_alg[alg][t];
+	  u32 key_data_size = e->key_data_sz[t][alg];
+
+	  if (!support_vec || (e - cm->engines) >= vec_len (support_vec) ||
+	      support_vec[e - cm->engines] == 0)
+	    continue;
+
+	  clib_json_add_object (&j, 0);
+	  clib_json_add_string (&j, "handler", "%s", crypto_handler_type_name (t));
+	  clib_json_add_number (&j, "size", key_data_size);
+	  if (e->key_data_per_thread[t][alg])
+	    {
+	      clib_json_add_true (&j, "per_thread");
+	      clib_json_add_number (&j, "total_size", key_data_size * n_threads);
+	    }
+	  clib_json_parent (&j);
+	}
+      clib_json_parent (&j);
+      clib_json_parent (&j);
+    }
+  clib_json_parent (&j);
+  clib_json_parent (&j);
+
+  return cli_emit_object (ctx, &j, crypto_algorithm_columns);
+}
+
+static clib_error_t *
+show_crypto_hash_algorithm_json (cli_ctx_t *ctx, vnet_crypto_hash_alg_t alg)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_hash_alg_data_t *ad = cm->hash_algs + alg;
+  vnet_crypto_engine_t *e;
+  clib_json_text_t j;
+
+  clib_json_init (&j);
+  clib_json_add_object (&j, 0);
+  clib_json_add_string (&j, "name", "%U", format_vnet_crypto_hash_alg, alg);
+  clib_json_add_string (&j, "type", "hash");
+  clib_json_add_string (&j, "auth_family", "%s", crypto_alg_family_name (ad->family));
+  clib_json_add_number (&j, "auth_block_size", ad->block_len);
+  clib_json_add_number (&j, "icv_len", ad->digest_len);
+  clib_json_add_array (&j, "ops");
+  clib_json_add_object (&j, 0);
+  clib_json_add_string (&j, "type", "hash");
+  crypto_cli_json_add_engine (&j, "simple",
+			      cm->active_hash_engine_index[alg][VNET_CRYPTO_HANDLER_TYPE_SIMPLE]);
+  crypto_cli_json_add_engine (&j, "chained",
+			      cm->active_hash_engine_index[alg][VNET_CRYPTO_HANDLER_TYPE_CHAINED]);
+  clib_json_parent (&j);
+  clib_json_parent (&j);
+  clib_json_add_array (&j, "engines");
+  vec_foreach (e, cm->engines)
+    {
+      if (e == cm->engines || e->name == 0)
+	continue;
+
+      clib_json_add_object (&j, 0);
+      clib_json_add_string (&j, "name", "%s", e->name);
+      clib_json_add_array (&j, "handlers");
+      for (vnet_crypto_handler_type_t t = 0; t < 2; t++)
+	if (e->hash_ops[alg].handlers[t])
+	  clib_json_add_string (&j, 0, "%s", crypto_handler_type_name (t));
+      clib_json_parent (&j);
+      clib_json_parent (&j);
+    }
+  clib_json_parent (&j);
+  clib_json_parent (&j);
+
+  return cli_emit_object (ctx, &j, crypto_algorithm_columns);
+}
+
+/* an algorithm or a hash algorithm, the value is the index, hash algorithms
+ * have CRYPTO_CLI_HASH_ALG set */
+#define CRYPTO_CLI_HASH_ALG (1u << 31)
+
+static const char *
+next_algorithm_name (const cli_arg_t *a, u32 *iter, u32 *value, const char **help)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  u32 i = *iter;
+
+  if (i + 1 < VNET_CRYPTO_N_ALGS)
+    {
+      *value = i + 1;
+      if (help)
+	*help = crypto_alg_type_name (cm->algs[i + 1].alg_type);
+      (*iter)++;
+      return cm->algs[i + 1].name;
     }
 
-  if (alg == VNET_CRYPTO_ALG_NONE && hash_alg == VNET_CRYPTO_HASH_ALG_NONE)
-    show_crypto_algorithms_table (vm);
-  else if (hash_alg != VNET_CRYPTO_HASH_ALG_NONE)
-    show_crypto_hash_algorithm_detail (vm, hash_alg);
+  i -= VNET_CRYPTO_N_ALGS - 1;
+  if (i + 1 < VNET_CRYPTO_N_HASH_ALGS)
+    {
+      *value = (i + 1) | CRYPTO_CLI_HASH_ALG;
+      if (help)
+	*help = "hash";
+      (*iter)++;
+      return cm->hash_algs[i + 1].name;
+    }
+
+  return 0;
+}
+
+CLIB_CLI_TYPE (cli_type_crypto_algorithm, static) = {
+  .name = "algorithm",
+  .help = "crypto or hash algorithm",
+  .next_name = next_algorithm_name,
+  .parse = cli_names_parse,
+  .complete = cli_names_complete,
+};
+
+/* a name of an algorithm or of an engine, not checked, the handler tells
+ * if the engine can not be set */
+static u8 *
+parse_crypto_name (const cli_arg_t *a, u8 *tok, cli_value_t *v)
+{
+  v->str = vec_dup (tok);
+  return 0;
+}
+
+static void
+complete_crypto_name (const cli_arg_t *a, u8 *prefix, cli_candidate_t **out)
+{
+  vnet_crypto_main_t *cm = &crypto_main;
+  vnet_crypto_engine_t *e;
+  char *key;
+  u8 *value;
+
+  hash_foreach_mem (key, value, cm->alg_index_by_name, ({
+		      (void) value;
+		      if (cli_prefix_match (key, prefix))
+			cli_candidate_add (out, key, "algorithm");
+		    }));
+  vec_foreach (e, cm->engines)
+    if (e->name && cli_prefix_match (e->name, prefix))
+      cli_candidate_add (out, e->name, "engine");
+}
+
+CLIB_CLI_TYPE (cli_type_crypto_name, static) = {
+  .name = "name",
+  .help = "algorithm name, the last name is the engine",
+  .owns_str = 1,
+  .parse = parse_crypto_name,
+  .complete = complete_crypto_name,
+};
+
+static clib_error_t *
+show_crypto_algorithm_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
+{
+  cli_value_t *v = cli_get (ctx, "algorithm");
+
+  if (cli_is_structured (ctx))
+    {
+      if (!v)
+	return show_crypto_algorithms_json (ctx);
+      if (v->index & CRYPTO_CLI_HASH_ALG)
+	return show_crypto_hash_algorithm_json (ctx, v->index & ~CRYPTO_CLI_HASH_ALG);
+      return show_crypto_algorithm_json (ctx, v->index);
+    }
+
+  if (!v)
+    show_crypto_algorithms_table (vm, ctx->plain_text_only);
+  else if (v->index & CRYPTO_CLI_HASH_ALG)
+    show_crypto_hash_algorithm_detail (vm, v->index & ~CRYPTO_CLI_HASH_ALG);
   else
-    show_crypto_algorithm_detail (vm, alg);
+    show_crypto_algorithm_detail (vm, v->index);
 
   return 0;
 }
@@ -365,20 +682,38 @@ show_crypto_algorithm_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib
 VLIB_CLI_COMMAND (show_crypto_algorithm_command, static) = {
   .path = "show crypto algorithm",
   .short_help = "show crypto algorithm [algorithm]",
-  .function = show_crypto_algorithm_command_fn,
+  .args = CLI_ARGS (CLI_VALUE ("algorithm", cli_type_crypto_algorithm, .flags = CLI_F_OPTIONAL,
+			       .help = "show the details of this algorithm")),
+  .handler = show_crypto_algorithm_command_fn,
+  .is_structured = 1,
 };
 
 static clib_error_t *
-show_crypto_engines_command_fn (vlib_main_t * vm,
-				unformat_input_t * input,
-				vlib_cli_command_t * cmd)
+show_crypto_engines_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *p;
 
-  if (unformat_user (input, unformat_line_input, line_input))
-    unformat_free (line_input);
+  if (cli_is_structured (ctx))
+    {
+      clib_json_text_t j;
+
+      clib_json_init (&j);
+      clib_json_add_array (&j, 0);
+      vec_foreach (p, cm->engines)
+	{
+	  if (!p->name)
+	    continue;
+
+	  clib_json_add_object (&j, 0);
+	  clib_json_add_string (&j, "name", "%s", p->name);
+	  clib_json_add_number (&j, "priority", p->priority);
+	  clib_json_add_string (&j, "description", "%s", p->desc);
+	  clib_json_parent (&j);
+	}
+      clib_json_parent (&j);
+      return cli_emit_table (ctx, &j, crypto_engines_columns);
+    }
 
   if (vec_len (cm->engines) == 0)
     {
@@ -395,26 +730,71 @@ show_crypto_engines_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-VLIB_CLI_COMMAND (show_crypto_engines_command, static) =
-{
+VLIB_CLI_COMMAND (show_crypto_engines_command, static) = {
   .path = "show crypto engines",
   .short_help = "show crypto engines",
-  .function = show_crypto_engines_command_fn,
+  .handler = show_crypto_engines_command_fn,
+  .is_structured = 1,
 };
 
 static clib_error_t *
-show_crypto_handlers_command_fn (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+show_crypto_handlers_json (cli_ctx_t *ctx)
+{
+  static char *keys[] = { "simple", "chained", "async" };
+  static char *active_keys[] = { "simple_active", "chained_active", "async_active" };
+  vnet_crypto_main_t *cm = &crypto_main;
+  clib_json_text_t j;
+
+  clib_json_init (&j);
+  clib_json_add_array (&j, 0);
+  FOREACH_ARRAY_ELT (a, cm->algs)
+    {
+      u32 alg = a - cm->algs;
+
+      if (a == cm->algs)
+	continue;
+
+      for (u32 i = 0; i < VNET_CRYPTO_OP_N_TYPES; i++)
+	{
+	  if (!vnet_crypto_alg_has_op_type (alg, i))
+	    continue;
+
+	  clib_json_add_object (&j, 0);
+	  clib_json_add_string (&j, "algorithm", "%s", a->name);
+	  clib_json_add_string (&j, "op", "%U", format_crypto_op_type_short, i);
+	  for (vnet_crypto_handler_type_t ht = 0; ht < VNET_CRYPTO_HANDLER_N_TYPES; ht++)
+	    {
+	      vnet_crypto_engine_t *e;
+
+	      clib_json_add_array (&j, keys[ht]);
+	      vec_foreach (e, cm->engines)
+		if (e->ops[alg][i].handlers[ht])
+		  clib_json_add_string (&j, 0, "%s", e->name);
+	      clib_json_parent (&j);
+
+	      crypto_cli_json_add_engine (&j, active_keys[ht],
+					  cm->active_op_engine_index[alg][i][ht]);
+	    }
+	  crypto_cli_json_add_engine (&j, "async_selected", cm->async_selected_engine_index[alg]);
+	  clib_json_parent (&j);
+	}
+    }
+  clib_json_parent (&j);
+
+  return cli_emit_table (ctx, &j, crypto_handlers_columns);
+}
+
+static clib_error_t *
+show_crypto_handlers_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vnet_crypto_main_t *cm = &crypto_main;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  table_t table = {}, *t = &table;
+  table_t table = { .no_ansi = ctx->plain_text_only }, *t = &table;
   u8 *cell = 0;
   u8 *s = 0;
   int row = 0;
 
-  if (unformat_user (input, unformat_line_input, line_input))
-    unformat_free (line_input);
+  if (cli_is_structured (ctx))
+    return show_crypto_handlers_json (ctx);
 
   table_add_hdr_col (t, 0);
   table_add_hdr_row (t, 5, "Algorithm", "Op", "Simple", "Chained", "Async");
@@ -448,7 +828,12 @@ show_crypto_handlers_command_fn (vlib_main_t * vm,
 			if (vec_len (cell))
 			  cell = format (cell, " ");
 			if ((e - cm->engines) == cm->active_op_engine_index[a - cm->algs][i][ht])
-			  cell = format (cell, ANSI_FG_CYAN "%s*" ANSI_RESET, e->name);
+			  {
+			    if (ctx->plain_text_only)
+			      cell = format (cell, "%s*", e->name);
+			    else
+			      cell = format (cell, ANSI_FG_CYAN "%s*" ANSI_RESET, e->name);
+			  }
 			else
 			  cell = format (cell, "%s", e->name);
 			if (ht == VNET_CRYPTO_HANDLER_TYPE_ASYNC &&
@@ -481,49 +866,28 @@ show_crypto_handlers_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-VLIB_CLI_COMMAND (show_crypto_handlers_command, static) =
-{
+VLIB_CLI_COMMAND (show_crypto_handlers_command, static) = {
   .path = "show crypto handlers",
   .short_help = "show crypto handlers",
-  .function = show_crypto_handlers_command_fn,
+  .handler = show_crypto_handlers_command_fn,
+  .is_structured = 1,
 };
 
 static clib_error_t *
-set_crypto_handler_command_fn (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+set_crypto_handler_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
   vnet_crypto_main_t *cm = &crypto_main;
-  int rc = 0;
-  char **args = 0, *s, **arg;
-  int all = 0;
+  int rc = 0, all = cli_flag (ctx, "all");
+  char **args = 0, **arg;
   clib_error_t *error = 0;
-  vnet_crypto_set_handlers_args_t ha = {};
+  vnet_crypto_set_handlers_args_t ha = {
+    .set_simple = cli_flag (ctx, "simple") || cli_flag (ctx, "both"),
+    .set_chained = cli_flag (ctx, "chained") || cli_flag (ctx, "both"),
+    .set_async = cli_flag (ctx, "async"),
+  };
+  cli_value_t *v;
 
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "all"))
-	all = 1;
-      else if (unformat (line_input, "simple"))
-	ha.set_simple = 1;
-      else if (unformat (line_input, "chained"))
-	ha.set_chained = 1;
-      else if (unformat (line_input, "both"))
-	ha.set_simple = ha.set_chained = 1;
-      else if (unformat (line_input, "async"))
-	ha.set_async = 1;
-      else if (unformat (line_input, "%s", &s))
-	vec_add1 (args, s);
-      else
-	{
-	  error = clib_error_return (0, "invalid params");
-	  goto done;
-	}
-    }
+  cli_foreach (v, ctx, "name") vec_add1 (args, (char *) format (0, "%v%c", v->str, 0));
 
   if ((vec_len (args) < 2 && !all) || (vec_len (args) == 0 && all))
     {
@@ -539,12 +903,11 @@ set_crypto_handler_command_fn (vlib_main_t * vm,
       char *key;
       u8 *value;
 
-      hash_foreach_mem (key, value, cm->alg_index_by_name,
-      ({
-        (void) value;
-	ha.handler_name = key;
-	rc += vnet_crypto_set_handlers (&ha);
-      }));
+      hash_foreach_mem (key, value, cm->alg_index_by_name, ({
+			  (void) value;
+			  ha.handler_name = key;
+			  rc += vnet_crypto_set_handlers (&ha);
+			}));
 
       if (rc)
 	vlib_cli_output (vm, "failed to set crypto engine!");
@@ -552,20 +915,18 @@ set_crypto_handler_command_fn (vlib_main_t * vm,
   else
     {
       vec_foreach (arg, args)
-      {
+	{
 	  ha.handler_name = arg[0];
 	  rc = vnet_crypto_set_handlers (&ha);
 	  if (rc)
-	    vlib_cli_output (vm, "failed to set engine %s for %s!", ha.engine,
-			     arg[0]);
-      }
+	    vlib_cli_output (vm, "failed to set engine %s for %s!", ha.engine, arg[0]);
+	}
     }
 
 done:
   vec_free (ha.engine);
   vec_foreach (arg, args) vec_free (arg[0]);
   vec_free (args);
-  unformat_free (line_input);
   return error;
 }
 
@@ -573,33 +934,70 @@ VLIB_CLI_COMMAND (set_crypto_handler_command, static) = {
   .path = "set crypto handler",
   .short_help = "set crypto handler cipher [cipher2 cipher3 ...] engine"
 		" [simple|chained|async]",
-  .function = set_crypto_handler_command_fn,
+  .args = CLI_ARGS (
+    CLI_FLAG ("all", .help = "all the algorithms, only the engine is given"),
+    CLI_FLAG ("simple", .excludes = "chained,both,async", .help = "simple handlers"),
+    CLI_FLAG ("chained", .excludes = "simple,both,async", .help = "chained handlers"),
+    CLI_FLAG ("both", .excludes = "simple,chained,async", .help = "simple and chained handlers"),
+    CLI_FLAG ("async", .excludes = "simple,chained,both", .help = "async handlers"),
+    CLI_VALUE ("name", cli_type_crypto_name, .flags = CLI_F_OPTIONAL | CLI_F_REPEAT,
+	       .help = "algorithms, the last name is the engine")),
+  .handler = set_crypto_handler_command_fn,
 };
 
 static clib_error_t *
-show_crypto_async_status_command_fn (vlib_main_t *vm, unformat_input_t *input,
-				     vlib_cli_command_t *cmd)
+show_crypto_async_status_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   static const char *state_names[] = {
     [VLIB_NODE_STATE_POLLING] = "POLLING",
     [VLIB_NODE_STATE_INTERRUPT] = "INTERRUPT",
     [VLIB_NODE_STATE_DISABLED] = "DISABLED",
   };
+  static const char *json_state_names[] = {
+    [VLIB_NODE_STATE_POLLING] = "polling",
+    [VLIB_NODE_STATE_INTERRUPT] = "interrupt",
+    [VLIB_NODE_STATE_DISABLED] = "disabled",
+  };
   vnet_crypto_main_t *cm = &crypto_main;
   vnet_crypto_engine_t *e;
+  clib_json_text_t j;
+  int structured = cli_is_structured (ctx);
+
+  if (structured)
+    {
+      clib_json_init (&j);
+      clib_json_add_array (&j, 0);
+    }
 
   vec_foreach (e, cm->engines)
     {
       if (e->deq_node_index == ~0)
 	continue;
 
-      vlib_cli_output (vm, "%s:", e->name);
+      if (!structured)
+	vlib_cli_output (vm, "%s:", e->name);
       for (u32 i = 0; i < vlib_get_n_threads (); i++)
 	{
 	  vlib_node_state_t state =
 	    vlib_node_get_state (vlib_get_main_by_index (i), e->deq_node_index);
-	  vlib_cli_output (vm, "  threadId: %-6d %s", i, state_names[state]);
+
+	  if (structured)
+	    {
+	      clib_json_add_object (&j, 0);
+	      clib_json_add_string (&j, "engine", "%s", e->name);
+	      clib_json_add_number (&j, "thread", i);
+	      clib_json_add_string (&j, "state", "%s", json_state_names[state]);
+	      clib_json_parent (&j);
+	    }
+	  else
+	    vlib_cli_output (vm, "  threadId: %-6d %s", i, state_names[state]);
 	}
+    }
+
+  if (structured)
+    {
+      clib_json_parent (&j);
+      return cli_emit_table (ctx, &j, crypto_async_status_columns);
     }
 
   return 0;
@@ -608,5 +1006,6 @@ show_crypto_async_status_command_fn (vlib_main_t *vm, unformat_input_t *input,
 VLIB_CLI_COMMAND (show_crypto_async_status_command, static) = {
   .path = "show crypto async status",
   .short_help = "show crypto async status",
-  .function = show_crypto_async_status_command_fn,
+  .handler = show_crypto_async_status_command_fn,
+  .is_structured = 1,
 };
