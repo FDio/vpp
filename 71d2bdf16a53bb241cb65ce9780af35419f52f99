@@ -34,6 +34,24 @@
       "parentUuid": "6187f164_c362841b",
       "revId": "71d2bdf16a53bb241cb65ce9780af35419f52f99",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "5ee28537_e51a106b",
+        "filename": ".github/workflows/periodic-vpp-verify-asan-maketest.yml",
+        "patchSetId": 1
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-23T06:48:37Z",
+      "side": 1,
+      "message": "Done. Set `VPPAPIGEN_TEST_OS` to `ubuntu-26.04` so the currently pinned action runs those tests. Will update the SHA separately after the changes are merged.",
+      "parentUuid": "042d9a01_0c25a804",
+      "revId": "71d2bdf16a53bb241cb65ce9780af35419f52f99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
