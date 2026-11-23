@@ -3557,6 +3557,125 @@ tcp_test_cubic_rto_epoch (void)
   return 0;
 }
 
+/* In the Reno-friendly region cubic grows by alpha_cubic per round until cwnd
+ * reaches cwnd_prior, the window before the reduction, then by a segment per
+ * round (RFC 9438 Sec. 4.3). A short rtt keeps cubic in that region */
+static int
+tcp_test_cubic_reno_alpha (void)
+{
+  const clib_thread_index_t thread_index = 0;
+  const u32 snd_mss = 1000;
+  tcp_connection_t _tc, *tc = &_tc;
+  tcp_ack_ctx_t ac = { .bytes_acked = snd_mss, .acked_and_sacked = snd_mss };
+  u32 before, i, round, n_acks, below_prior;
+
+  for (below_prior = 0; below_prior < 2; below_prior++)
+    {
+      tcp_test_set_time (thread_index, 1);
+      tcp_test_cubic_init_epoch (tc, thread_index, snd_mss, 100);
+      tc->mrtt_us = 0.001;
+      tc->srtt = 0.001 / TCP_TICK;
+      /* The window before the cut, as loss recovery saves it, or one at or
+       * below cwnd, e.g., after a lossless slow start exit */
+      tc->prev_cwnd = below_prior ? 100 * snd_mss : tc->cwnd;
+      before = tc->cwnd;
+      for (round = 1; round <= 10; round++)
+	{
+	  tcp_test_set_time (thread_index, 1 + round * 0.001);
+	  n_acks = tc->cwnd / snd_mss;
+	  for (i = 0; i < n_acks; i++)
+	    {
+	      tc->snd_una += snd_mss;
+	      tc->snd_nxt = tc->snd_una + tc->cwnd;
+	      tc->cwnd_limited_seq = tc->snd_una;
+	      tc->cc_algo->rcv_ack (tc, &ac);
+	    }
+	}
+      if (below_prior)
+	{
+	  TCP_TEST ((tc->cwnd >= before + 4 * snd_mss && tc->cwnd <= before + 7 * snd_mss),
+		    "cubic grows by alpha_cubic per round below cwnd_prior (cwnd %u -> %u)", before,
+		    tc->cwnd);
+	}
+      else
+	{
+	  TCP_TEST ((tc->cwnd >= before + 9 * snd_mss && tc->cwnd <= before + 11 * snd_mss),
+		    "cubic grows by a segment per round above cwnd_prior (cwnd %u -> %u)", before,
+		    tc->cwnd);
+	}
+    }
+  tcp_test_set_time (thread_index, 1);
+
+  return 0;
+}
+
+/* A spurious congestion undo keeps cwnd_prior, approximated by the restored
+ * w_max (RFC 9438 Sec. 4.9.2), init sets it to cwnd and a lossless HyStart++
+ * exit to the window reached (Sec. 4.10) */
+static int
+tcp_test_cubic_cwnd_prior (void)
+{
+  const clib_thread_index_t thread_index = 0;
+  const u32 snd_mss = 1000;
+  tcp_connection_t _tc, *tc = &_tc;
+  tcp_ack_ctx_t ac = { .bytes_acked = snd_mss, .acked_and_sacked = snd_mss };
+  u32 before, i, round, n_acks;
+
+  /* cwnd regrows from 70 segments after a loss at 100 */
+  tcp_test_set_time (thread_index, 1);
+  tcp_test_cubic_init_epoch (tc, thread_index, snd_mss, 100);
+  tc->mrtt_us = 0.001;
+  tc->srtt = 0.001 / TCP_TICK;
+  tc->prev_cwnd = 100 * snd_mss;
+
+  /* A spurious congestion event, saved and undone as loss recovery does */
+  tc->prev_ssthresh = tc->ssthresh;
+  tc->prev_cwnd = tc->cwnd;
+  tc->cc_algo->congestion (tc);
+  tcp_cc_congestion_undo (tc);
+  TCP_TEST ((tc->cwnd == 70 * snd_mss && tc->prev_cwnd == 100 * snd_mss),
+	    "cubic undo restores cwnd %u and cwnd_prior %u", tc->cwnd, tc->prev_cwnd);
+
+  before = tc->cwnd;
+  for (round = 1; round <= 10; round++)
+    {
+      tcp_test_set_time (thread_index, 1 + round * 0.001);
+      n_acks = tc->cwnd / snd_mss;
+      for (i = 0; i < n_acks; i++)
+	{
+	  tc->snd_una += snd_mss;
+	  tc->snd_nxt = tc->snd_una + tc->cwnd;
+	  tc->cwnd_limited_seq = tc->snd_una;
+	  tc->cc_algo->rcv_ack (tc, &ac);
+	}
+    }
+  TCP_TEST ((tc->cwnd >= before + 4 * snd_mss && tc->cwnd <= before + 7 * snd_mss),
+	    "cubic grows by alpha_cubic below cwnd_prior after undo (cwnd %u -> %u)", before,
+	    tc->cwnd);
+
+  /* Init, e.g., a switch from another cc, starts without a reduction */
+  tc->prev_cwnd = 80 * snd_mss;
+  tc->cc_algo->init (tc);
+  TCP_TEST ((tc->prev_cwnd == tc->cwnd), "cubic init sets cwnd_prior to cwnd (%u, cwnd %u)",
+	    tc->prev_cwnd, tc->cwnd);
+
+  /* Lossless exit below a cwnd_prior left by another cc */
+  tcp_test_set_time (thread_index, 1);
+  tcp_test_cubic_hystart_init (tc, thread_index, snd_mss);
+  tc->prev_cwnd = 1000 * snd_mss;
+  tc->ssthresh = tc->cwnd;
+  tc->snd_una += snd_mss;
+  tc->snd_nxt = tc->snd_una + tc->cwnd;
+  tc->cwnd_limited_seq = tc->snd_una;
+  tc->cc_algo->rcv_ack (tc, &ac);
+  TCP_TEST ((tc->prev_cwnd == tc->ssthresh),
+	    "lossless HyStart++ exit sets cwnd_prior to the window reached (%u, ssthresh %u)",
+	    tc->prev_cwnd, tc->ssthresh);
+  tcp_test_set_time (thread_index, 1);
+
+  return 0;
+}
+
 static int
 tcp_test_cubic (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -3587,6 +3706,12 @@ tcp_test_cubic (vlib_main_t *vm, unformat_input_t *input)
     return rv;
 
   if ((rv = tcp_test_cubic_rto_epoch ()))
+    return rv;
+
+  if ((rv = tcp_test_cubic_reno_alpha ()))
+    return rv;
+
+  if ((rv = tcp_test_cubic_cwnd_prior ()))
     return rv;
 
   if ((rv = tcp_test_cubic_reno_friendly ()))
