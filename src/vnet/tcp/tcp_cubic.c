@@ -393,7 +393,7 @@ static void
 cubic_rcv_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 {
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
-  u64 w_cubic, w_aimd;
+  u64 w_cubic, w_aimd, target;
   f64 now, t, rtt_sec;
   u32 thresh;
 
@@ -438,15 +438,16 @@ cubic_rcv_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 	   * particular, for NewReno we increment the cwnd by 1 snd_mss
 	   * only after we accumulate 1 cwnd of acked bytes (RFC 3465).
 	   *
-	   * For Cubic, as per RFC 8312 we should increment cwnd by
-	   * (w_cubic - cwnd)/cwnd for each ack. Instead of using that,
+	   * For Cubic, as per RFC 9438 Sec. 4.4 and 4.5 we should increment
+	   * cwnd by (target - cwnd)/cwnd for each ack. Instead of using that,
 	   * we compute the number of packets that need to be acked
-	   * before adding snd_mss to cwnd and compute the threshold
+	   * before adding snd_mss to cwnd and compute the threshold. The
+	   * target is at most 1.5 * cwnd (RFC 9438 Sec. 4.2), so growth stays
+	   * below slow start's and cwnd grows at most every other segment. In
+	   * 64 bits, as snd_mss * cwnd exceeds 32 bits for multi-MB windows
 	   */
-	  thresh = (tc->snd_mss * tc->cwnd) / (w_cubic - tc->cwnd);
-
-	  /* Make sure we don't increase cwnd more often than every segment */
-	  thresh = clib_max (thresh, tc->snd_mss);
+	  target = clib_min (w_cubic, (u64) tc->cwnd * 3 / 2);
+	  thresh = clib_min ((u64) tc->snd_mss * tc->cwnd / (target - tc->cwnd), 50ULL * tc->cwnd);
 	}
       else
 	{
