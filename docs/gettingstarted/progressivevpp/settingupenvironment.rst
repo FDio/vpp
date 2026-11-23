@@ -57,8 +57,8 @@ For purposes of this tutorial, it is going to be extremely useful to run multipl
 instances of vpp, and connect them to each other to form a topology.  Fortunately,
 VPP supports this.
 
-When running multiple VPP instances, each instance needs to have specified a 'name'
-or 'prefix'.  In the example below, the 'name' or 'prefix' is "vpp1". Note that only
+When running multiple VPP instances, each instance needs its own CLI and API
+sockets.  In the example below the instance is called "vpp1". Note that only
 one instance can use the dpdk plugin, since this plugin is trying to acquire a lock
 on a file.
 
@@ -126,14 +126,14 @@ modify the startup.conf file found in /etc/vpp/startup.conf. For more informatio
 on this file refer to :ref:`configuration_reference`.
 
 When running multiple VPP instances, each instance needs to have
-specified a 'name' or 'prefix'. In the example below, the 'name' or 'prefix'
-is "vpp1". Note that only one instance can use the dpdk plugin, since this
+its own CLI and API sockets. In the example below the instance is called
+"vpp1". Note that only one instance can use the dpdk plugin, since this
 plugin is trying to acquire a lock on a file. These startup files we create will
 disable the dpdk plugin.
 
-Also in our startup files notice **api-segment**. **api-segment {prefix vpp1}**
-tells FD.io VPP how to name the files in /dev/shm/ for your VPP instance
-differently from the default. **unix {cli-listen /run/vpp/cli-vpp1.sock}**
+Also in our startup files notice **socksvr**. **socksvr {socket-name /run/vpp/api-vpp1.sock}**
+tells FD.io VPP which socket to use for the binary API of your VPP instance
+instead of the default. **unix {cli-listen /run/vpp/cli-vpp1.sock}**
 tells vpp to use a non-default socket file when being addressed by vppctl.
 
 Now create 2 files named startup1.conf and startup2.conf with the following
@@ -145,7 +145,7 @@ startup1.conf:
 .. code-block:: console
 
    unix {cli-listen /run/vpp/cli-vpp1.sock}
-   api-segment { prefix vpp1 }
+   socksvr { socket-name /run/vpp/api-vpp1.sock }
    plugins { plugin dpdk_plugin.so { disable } }
 
 startup2.conf:
@@ -153,5 +153,5 @@ startup2.conf:
 .. code-block:: console
 
    unix {cli-listen /run/vpp/cli-vpp2.sock}
-   api-segment { prefix vpp2 }
+   socksvr { socket-name /run/vpp/api-vpp2.sock }
    plugins { plugin dpdk_plugin.so { disable } }

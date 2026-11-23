@@ -41,7 +41,6 @@ file.
     After=syslog.target network.target auditd.service
 
     [Service]
-    ExecStartPre=-/bin/rm -f /dev/shm/db /dev/shm/global_vm /dev/shm/vpe-api
     ExecStartPre=-/sbin/modprobe uio_pci_generic
     ExecStart=/usr/bin/vpp -c /etc/vpp/startup.conf
     Type=simple

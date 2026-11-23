@@ -239,7 +239,7 @@ vl_socket_client_disconnect2 (socket_client_main_t * scm)
 {
   if (vl_mem_client_is_connected ())
     {
-      vl_client_disconnect_from_vlib_no_unmap ();
+      vl_client_disconnect_from_vlib ();
       ssvm_delete_memfd (&scm->memfd_segment);
     }
   if (scm->socket_fd && (close (scm->socket_fd) < 0))

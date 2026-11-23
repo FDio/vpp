@@ -488,7 +488,7 @@ vl_mem_api_init (const char *region_name)
 
   clib_memset (c, 0, sizeof (*c));
 
-  if ((rv = vl_map_shmem (region_name, 1 /* is_vlib */ )) < 0)
+  if ((rv = vl_map_shmem (region_name)) < 0)
     return rv;
 
 #define _(N, n, t)                                                            \
@@ -1138,7 +1138,7 @@ vlibmemory_init (vlib_main_t * vm)
   a->baseva = (am->global_baseva != 0) ?
     am->global_baseva : +svm_get_global_region_base_va ();
   a->size = (am->global_size != 0) ? am->global_size : SVM_GLOBAL_REGION_SIZE;
-  a->flags = SVM_FLAGS_NODATA | SVM_FLAGS_MEMFD;
+  a->flags = SVM_FLAGS_NODATA;
   a->uid = am->api_uid;
   a->gid = am->api_gid;
   a->pvt_heap_size =

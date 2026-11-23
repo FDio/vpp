@@ -37,10 +37,9 @@
 
 typedef enum ssvm_segment_type_
 {
-  SSVM_SEGMENT_SHM = 0,
-  SSVM_SEGMENT_MEMFD,
+  SSVM_SEGMENT_MEMFD = 0,
   SSVM_SEGMENT_PRIVATE,
-  SSVM_N_SEGMENT_TYPES		/**< Private segments */
+  SSVM_N_SEGMENT_TYPES /**< Private segments */
 } ssvm_segment_type_t;
 
 typedef struct
@@ -177,9 +176,6 @@ int ssvm_server_init (ssvm_private_t * ssvm, ssvm_segment_type_t type);
 int ssvm_client_init (ssvm_private_t * ssvm, ssvm_segment_type_t type);
 void ssvm_delete (ssvm_private_t * ssvm);
 
-int ssvm_server_init_shm (ssvm_private_t * ssvm);
-int ssvm_client_init_shm (ssvm_private_t * ssvm);
-void ssvm_delete_shm (ssvm_private_t * ssvm);
 
 int ssvm_server_init_memfd (ssvm_private_t * memfd);
 int ssvm_client_init_memfd (ssvm_private_t * memfd);

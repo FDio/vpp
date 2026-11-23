@@ -532,18 +532,8 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
     }
   else
     {
-      segment_name = vl_api_from_api_to_new_c_string (&mp->segment_name);
-      rv = echo_segment_attach (segment_handle, segment_name, SSVM_SEGMENT_SHM,
-				-1);
-      if (rv != 0)
-	{
-	  ECHO_FAIL (ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH,
-		     "svm_fifo_segment_attach ('%s') "
-		     "failed on SSVM_SEGMENT_SHM", segment_name);
-	  vec_free (segment_name);
-	  goto failed;
-	}
-      vec_free (segment_name);
+      ECHO_FAIL (ECHO_FAIL_VL_API_SVM_FIFO_SEG_ATTACH, "vpp did not pass the segment as a memfd");
+      goto failed;
     }
   ECHO_LOG (2, "Mapped segment 0x%lx", segment_handle);
 

@@ -304,31 +304,6 @@ vl_msg_api_free (void *a)
   vl_msg_api_free_w_region (am->vlib_rp, a);
 }
 
-static void
-vl_msg_api_free_nolock (void *a)
-{
-  msgbuf_t *rv;
-  void *oldheap;
-  api_main_t *am = vlibapi_get_main ();
-
-  rv = (msgbuf_t *) (((u8 *) a) - offsetof (msgbuf_t, data));
-  /*
-   * Here's the beauty of the scheme.  Only one proc/thread has
-   * control of a given message buffer. To free a buffer, we just clear the
-   * queue field, and leave. No locks, no hits, no errors...
-   */
-  if (rv->q)
-    {
-      rv->q = 0;
-      VL_MSG_API_POISON (rv->data);
-      return;
-    }
-
-  oldheap = svm_push_data_heap (am->vlib_rp);
-  clib_mem_free (rv);
-  svm_pop_heap (oldheap);
-}
-
 void
 vl_set_memory_root_path (const char *name)
 {
@@ -521,174 +496,26 @@ vl_init_shmem (svm_region_t * vlib_rp, vl_api_shm_elem_config_t * config,
 }
 
 int
-vl_map_shmem (const char *region_name, int is_vlib)
+vl_map_shmem (const char *region_name)
 {
   svm_map_region_args_t _a, *a = &_a;
-  svm_region_t *vlib_rp, *root_rp;
   api_main_t *am = vlibapi_get_main ();
-  int i;
-  struct timespec ts, tsrem;
-  char *vpe_api_region_suffix = "-vpe-api";
+  svm_region_t *vlib_rp;
 
   clib_memset (a, 0, sizeof (*a));
-
-  if (strstr (region_name, vpe_api_region_suffix))
-    {
-      u8 *root_path = format (0, "%s", region_name);
-      vec_set_len (root_path,
-		   vec_len (root_path) - strlen (vpe_api_region_suffix));
-      vec_terminate_c_string (root_path);
-      a->root_path = (const char *) root_path;
-      am->root_path = (const char *) root_path;
-    }
-
-  if (is_vlib == 0)
-    {
-      int tfd;
-      u8 *api_name;
-      /*
-       * Clients wait for vpp to set up the root / API regioins
-       */
-      if (am->root_path)
-	api_name = format (0, "/dev/shm/%s-%s%c", am->root_path,
-			   region_name + 1, 0);
-      else
-	api_name = format (0, "/dev/shm%s%c", region_name, 0);
-
-      /* Wait up to 100 seconds... */
-      for (i = 0; i < 10000; i++)
-	{
-	  ts.tv_sec = 0;
-	  ts.tv_nsec = 10000 * 1000;	/* 10 ms */
-	  while (nanosleep (&ts, &tsrem) < 0)
-	    ts = tsrem;
-	  tfd = open ((char *) api_name, O_RDWR);
-	  if (tfd >= 0)
-	    break;
-	}
-      vec_free (api_name);
-      if (tfd < 0)
-	{
-	  clib_warning ("region init fail");
-	  return -2;
-	}
-      close (tfd);
-      svm_region_init_chroot_uid_gid (am->root_path, getuid (), getgid ());
-    }
-
-  if (a->root_path != NULL)
-    {
-      a->name = "/vpe-api";
-    }
-  else
-    a->name = region_name;
+  a->name = region_name;
   a->size = am->api_size ? am->api_size : (16 << 20);
   a->flags = SVM_FLAGS_MHEAP;
-  if (is_vlib)
-    a->flags |= SVM_FLAGS_MEMFD;
   a->uid = am->api_uid;
   a->gid = am->api_gid;
   a->pvt_heap_size = am->api_pvt_heap_size;
 
   vlib_rp = svm_region_find_or_create (a);
-
   if (vlib_rp == 0)
     return (-2);
 
   pthread_mutex_lock (&vlib_rp->mutex);
-  /* Has someone else set up the shared-memory variable table? */
-  if (vlib_rp->user_ctx)
-    {
-      am->shmem_hdr = (void *) vlib_rp->user_ctx;
-      am->our_pid = getpid ();
-      if (is_vlib)
-	{
-	  svm_queue_t *q;
-	  uword old_msg;
-	  /*
-	   * application restart. Reset cached pids, API message
-	   * rings, list of clients; otherwise, various things
-	   * fail. (e.g. queue non-empty notification)
-	   */
-
-	  /* ghosts keep the region from disappearing properly */
-	  svm_client_scan_this_region_nolock (vlib_rp);
-	  am->shmem_hdr->application_restarts++;
-	  q = am->shmem_hdr->vl_input_queue;
-	  am->shmem_hdr->vl_pid = getpid ();
-	  q->consumer_pid = am->shmem_hdr->vl_pid;
-	  /* Drain the input queue, freeing msgs */
-	  for (i = 0; i < 10; i++)
-	    {
-	      if (pthread_mutex_trylock (&q->mutex) == 0)
-		{
-		  pthread_mutex_unlock (&q->mutex);
-		  goto mutex_ok;
-		}
-	      ts.tv_sec = 0;
-	      ts.tv_nsec = 10000 * 1000;	/* 10 ms */
-	      while (nanosleep (&ts, &tsrem) < 0)
-		ts = tsrem;
-	    }
-	  /* Mutex buggered, "fix" it */
-	  clib_memset (&q->mutex, 0, sizeof (q->mutex));
-	  clib_warning ("forcibly release main input queue mutex");
-
-	mutex_ok:
-	  am->vlib_rp = vlib_rp;
-	  while (svm_queue_sub (q, (u8 *) & old_msg, SVM_Q_NOWAIT, 0)
-		 != -2 /* queue underflow */ )
-	    {
-	      vl_msg_api_free_nolock ((void *) old_msg);
-	      am->shmem_hdr->restart_reclaims++;
-	    }
-	  pthread_mutex_unlock (&vlib_rp->mutex);
-	  root_rp = svm_get_root_rp ();
-	  ASSERT (root_rp);
-	  /* Clean up the root region client list */
-	  pthread_mutex_lock (&root_rp->mutex);
-	  svm_client_scan_this_region_nolock (root_rp);
-	  pthread_mutex_unlock (&root_rp->mutex);
-	}
-      else
-	{
-	  pthread_mutex_unlock (&vlib_rp->mutex);
-	}
-      am->vlib_rp = vlib_rp;
-      vec_add1 (am->mapped_shmem_regions, vlib_rp);
-      return 0;
-    }
-  /* Clients simply have to wait... */
-  if (!is_vlib)
-    {
-      pthread_mutex_unlock (&vlib_rp->mutex);
-
-      /* Wait up to 100 seconds... */
-      for (i = 0; i < 10000; i++)
-	{
-	  ts.tv_sec = 0;
-	  ts.tv_nsec = 10000 * 1000;	/* 10 ms */
-	  while (nanosleep (&ts, &tsrem) < 0)
-	    ts = tsrem;
-	  if (vlib_rp->user_ctx)
-	    goto ready;
-	}
-      /* Clean up and leave... */
-      svm_region_unmap (vlib_rp);
-      clib_warning ("region init fail");
-      return (-2);
-
-    ready:
-      am->shmem_hdr = (void *) vlib_rp->user_ctx;
-      am->our_pid = getpid ();
-      am->vlib_rp = vlib_rp;
-      vec_add1 (am->mapped_shmem_regions, vlib_rp);
-      return 0;
-    }
-
-  /* Nope, it's our problem... */
-  vl_init_shmem (vlib_rp, 0 /* default config */ , 1 /* is vlib */ ,
-		 0 /* is_private_region */ );
+  vl_init_shmem (vlib_rp, 0 /* default config */, 1 /* is vlib */, 0 /* is_private_region */);
 
   vec_add1 (am->mapped_shmem_regions, vlib_rp);
   return 0;
@@ -702,8 +529,8 @@ vl_register_mapped_shmem_region (svm_region_t * rp)
   vec_add1 (am->mapped_shmem_regions, rp);
 }
 
-static void
-vl_unmap_shmem_internal (u8 is_client)
+void
+vl_unmap_shmem (void)
 {
   svm_region_t *rp;
   int i;
@@ -715,27 +542,15 @@ vl_unmap_shmem_internal (u8 is_client)
   for (i = 0; i < vec_len (am->mapped_shmem_regions); i++)
     {
       rp = am->mapped_shmem_regions[i];
-      is_client ? svm_region_unmap_client (rp) : svm_region_unmap (rp);
+      svm_region_unmap (rp);
     }
 
   vec_free (am->mapped_shmem_regions);
   am->shmem_hdr = 0;
 
-  is_client ? svm_region_exit_client () : svm_region_exit ();
+  svm_region_exit ();
 
   vec_free (am->msg_data);
-}
-
-void
-vl_unmap_shmem (void)
-{
-  vl_unmap_shmem_internal (0);
-}
-
-void
-vl_unmap_shmem_client (void)
-{
-  vl_unmap_shmem_internal (1);
 }
 
 void

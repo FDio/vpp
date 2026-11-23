@@ -998,7 +998,6 @@ print_usage_and_exit (void)
     "  local-scope         local-scope option\n"
     "  global-scope        global-scope option\n"
     "  secret SECRET       set namespace secret\n"
-    "  chroot prefix PATH  Use PATH as memory root path\n"
     "  sclose=[Y|N|W]      When stream is done, send[Y]|nop[N]|wait[W] for "
     "close\n"
     "  nuris N             Cycle through N consecutive (src&dst) ips when "
@@ -1074,7 +1073,6 @@ echo_process_opts (int argc, char **argv)
 {
   echo_main_t *em = &echo_main;
   unformat_input_t _argv, *a = &_argv;
-  u8 *chroot_prefix;
   u8 *uri = 0;
   u8 default_f_active;
   uword tmp;
@@ -1084,8 +1082,6 @@ echo_process_opts (int argc, char **argv)
     {
       if (echo_process_each_proto_opts (a))
 	;
-      else if (unformat (a, "chroot prefix %s", &chroot_prefix))
-	vl_set_memory_root_path ((char *) chroot_prefix);
       else if (unformat (a, "uri %s", &uri))
 	em->uri = format (0, "%s%c", uri, 0);
       else if (unformat (a, "lcl %U", unformat_ip46_address, &em->lcl_ip))

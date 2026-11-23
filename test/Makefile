@@ -403,7 +403,6 @@ shell: test-dep
 
 .PHONY: reset
 reset:
-	@rm -f /dev/shm/vpp-unittest-*
 	@if [ $(FORCE_NO_WIPE) -eq "0" ] ; then rm -rf /tmp/vpp-unittest-*;  fi
 	@rm -f /tmp/api_post_mortem.*
 	@rm -rf $(FAILED_DIR)

@@ -369,24 +369,6 @@ vl_client_install_client_message_handlers (void)
 #undef _
 }
 
-int
-vl_client_api_map (const char *region_name)
-{
-  int rv;
-
-  if ((rv = vl_map_shmem (region_name, 0 /* is_vlib */ )) < 0)
-    return rv;
-
-  vl_client_install_client_message_handlers ();
-  return 0;
-}
-
-void
-vl_client_api_unmap (void)
-{
-  vl_unmap_shmem_client ();
-}
-
 u8
 vl_mem_client_is_connected (void)
 {
@@ -422,10 +404,8 @@ vl_rx_thread_init_attr (pthread_attr_t *attr)
 }
 
 static int
-connect_to_vlib_internal (const char *svm_name,
-			  const char *client_name,
-			  int rx_queue_size, void *(*thread_fn) (void *),
-			  void *thread_fn_arg, int do_map)
+connect_to_vlib_internal (const char *svm_name, const char *client_name, int rx_queue_size,
+			  void *(*thread_fn) (void *), void *thread_fn_arg)
 {
   int rv = 0;
   memory_client_main_t *mm = vlibapi_get_memory_client_main ();
@@ -433,18 +413,9 @@ connect_to_vlib_internal (const char *svm_name,
   pthread_attr_t attr;
   int arg_allocated = 0;
 
-  if (do_map && (rv = vl_client_api_map (svm_name)))
-    {
-      clib_warning ("vl_client_api map rv %d", rv);
-      return rv;
-    }
-
   if (vl_client_connect (client_name, 0 /* punt quota */ ,
 			 rx_queue_size /* input queue */ ) < 0)
-    {
-      vl_client_api_unmap ();
-      return -1;
-    }
+    return -1;
 
   /* Start the rx queue thread */
 
@@ -501,32 +472,11 @@ connect_to_vlib_internal (const char *svm_name,
 }
 
 int
-vl_client_connect_to_vlib (const char *svm_name,
-			   const char *client_name, int rx_queue_size)
-{
-  return connect_to_vlib_internal (svm_name, client_name, rx_queue_size,
-				   rx_thread_fn, 0 /* thread fn arg */ ,
-				   1 /* do map */ );
-}
-
-int
-vl_client_connect_to_vlib_no_rx_pthread (const char *svm_name,
-					 const char *client_name,
-					 int rx_queue_size)
-{
-  return connect_to_vlib_internal (svm_name, client_name, rx_queue_size,
-				   0 /* no rx_thread_fn */ ,
-				   0 /* no thread fn arg */ ,
-				   1 /* do map */ );
-}
-
-int
 vl_client_connect_to_vlib_no_map (const char *svm_name,
 				  const char *client_name, int rx_queue_size)
 {
-  return connect_to_vlib_internal (svm_name, client_name, rx_queue_size,
-				   rx_thread_fn, 0 /* no thread fn arg */ ,
-				   0 /* dont map */ );
+  return connect_to_vlib_internal (svm_name, client_name, rx_queue_size, rx_thread_fn,
+				   0 /* no thread fn arg */);
 }
 
 int
@@ -534,20 +484,8 @@ vl_client_connect_to_vlib_no_rx_pthread_no_map (const char *svm_name,
 						const char *client_name,
 						int rx_queue_size)
 {
-  return connect_to_vlib_internal (svm_name, client_name, rx_queue_size,
-				   0 /* no thread_fn */ ,
-				   0 /* no thread fn arg */ ,
-				   0 /* dont map */ );
-}
-
-int
-vl_client_connect_to_vlib_thread_fn (const char *svm_name,
-				     const char *client_name,
-				     int rx_queue_size,
-				     void *(*thread_fn) (void *), void *arg)
-{
-  return connect_to_vlib_internal (svm_name, client_name, rx_queue_size,
-				   thread_fn, arg, 1 /* do map */ );
+  return connect_to_vlib_internal (svm_name, client_name, rx_queue_size, 0 /* no thread_fn */,
+				   0 /* no thread fn arg */);
 }
 
 void
@@ -559,8 +497,8 @@ vl_client_stop_rx_thread (svm_queue_t *vl_input_queue)
   vl_msg_api_send_shmem (vl_input_queue, (u8 *) &ep);
 }
 
-static void
-disconnect_from_vlib_internal (u8 do_unmap)
+void
+vl_client_disconnect_from_vlib (void)
 {
   memory_client_main_t *mm = vlibapi_get_memory_client_main ();
   api_main_t *am = vlibapi_get_main ();
@@ -572,24 +510,8 @@ disconnect_from_vlib_internal (u8 do_unmap)
       pthread_join (mm->rx_thread_handle, (void **) &junk);
     }
   if (mm->connected_to_vlib)
-    {
-      vl_client_disconnect ();
-      if (do_unmap)
-	vl_client_api_unmap ();
-    }
+    vl_client_disconnect ();
   clib_memset (mm, 0, sizeof (*mm));
-}
-
-void
-vl_client_disconnect_from_vlib (void)
-{
-  disconnect_from_vlib_internal (1);
-}
-
-void
-vl_client_disconnect_from_vlib_no_unmap (void)
-{
-  disconnect_from_vlib_internal (0);
 }
 
 static void vl_api_get_first_msg_id_reply_t_handler

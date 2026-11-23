@@ -28,19 +28,7 @@ extern __thread memory_client_main_t *my_memory_client_main;
 int vl_client_connect (const char *name, int ctx_quota, int input_queue_size);
 void vl_client_send_disconnect (u8 do_cleanup);
 int vl_client_disconnect (void);
-int vl_client_api_map (const char *region_name);
-void vl_client_api_unmap (void);
 void vl_client_disconnect_from_vlib (void);
-void vl_client_disconnect_from_vlib_no_unmap (void);
-int vl_client_connect_to_vlib (const char *svm_name, const char *client_name,
-			       int rx_queue_size);
-int vl_client_connect_to_vlib_thread_fn (const char *svm_name,
-					 const char *client_name,
-					 int rx_queue_size,
-					 void *(*)(void *), void *);
-int vl_client_connect_to_vlib_no_rx_pthread (const char *svm_name,
-					     const char *client_name,
-					     int rx_queue_size);
 int vl_client_connect_to_vlib_no_map (const char *svm_name,
 				      const char *client_name,
 				      int rx_queue_size);

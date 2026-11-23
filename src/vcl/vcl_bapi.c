@@ -112,13 +112,8 @@ vl_api_app_attach_reply_t_handler (vl_api_app_attach_reply_t * mp)
     }
   else
     {
-      segment_name = vl_api_from_api_to_new_c_string (&mp->segment_name);
-      rv =
-	vcl_segment_attach (segment_handle, segment_name, SSVM_SEGMENT_SHM,
-			    -1);
-      vec_free (segment_name);
-      if (rv != 0)
-	goto failed;
+      clib_warning ("vpp did not pass the segment as a memfd");
+      goto failed;
     }
 
   vcm->app_index = clib_net_to_host_u32 (mp->app_index);
@@ -206,13 +201,8 @@ vl_api_app_worker_add_del_reply_t_handler (vl_api_app_worker_add_del_reply_t *
     }
   else
     {
-      segment_name = vl_api_from_api_to_new_c_string (&mp->segment_name);
-      rv =
-	vcl_segment_attach (segment_handle, segment_name, SSVM_SEGMENT_SHM,
-			    -1);
-      vec_free (segment_name);
-      if (rv != 0)
-	goto failed;
+      clib_warning ("vpp did not pass the segment as a memfd");
+      goto failed;
     }
   wrk->bapi_app_state = STATE_APP_READY;
   VDBG (0, "worker %u vpp-worker %u added", wrk_index, wrk->vpp_wrk_index);
@@ -490,8 +480,6 @@ vcl_bapi_cleanup (void)
   am->vl_input_queue = 0;
   am->msg_index_by_name_and_crc = 0;
   scm->socket_fd = 0;
-
-  vl_client_api_unmap ();
 }
 
 static int

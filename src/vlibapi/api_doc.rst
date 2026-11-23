@@ -165,7 +165,8 @@ Client connection details
 -------------------------
 
 Establishing a binary API connection to VPP from a C-language client is
-easy:
+easy. Connect to the API socket, then ask VPP for a private shared
+memory region, which is passed to the client as a memfd:
 
 .. code:: c
 
@@ -175,8 +176,12 @@ easy:
              vat_main_t *vam = &vat_main;
              api_main_t *am = &api_main;
 
-             if (vl_client_connect_to_vlib ("/vpe-api", client_name,
-                                           client_message_queue_length) < 0)
+             if (vl_socket_client_connect ("/run/vpp/api.sock", client_name,
+                                           0 /* default socket buffers */))
+               return -1;
+
+             if (vl_socket_client_init_shm (0 /* default config */,
+                                            1 /* start the rx pthread */))
                return -1;
 
              /* Memorize vpp's binary API message input queue address */
@@ -186,7 +191,7 @@ easy:
              return 0;
            }
 
-32 is a typical value for client_message_queue_length. VPP cannot block
+VPP cannot block
 when it needs to send an API message to a binary API client, and the
 VPP-side binary API message handlers are very fast. When sending
 asynchronous messages, make sure to scrape the binary API rx ring with
@@ -195,8 +200,8 @@ some enthusiasm.
 binary API message RX pthread
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Calling @ref vl_client_connect_to_vlib spins up a binary API message RX
-pthread:
+Calling @ref vl_socket_client_init_shm with want_pthread set spins up a
+binary API message RX pthread:
 
 .. code:: c
 
@@ -221,8 +226,7 @@ pthread:
              pthread_exit (0);
            }
 
-To handle the binary API message queue yourself, use @ref
-vl_client_connect_to_vlib_no_rx_pthread.
+To handle the binary API message queue yourself, clear want_pthread.
 
 In turn, vl_msg_api_queue_handler(…) uses mutex/condvar signalling to
 wake up, process VPP -> client traffic, then sleep. VPP supplies a
@@ -237,7 +241,7 @@ packet processing requirements.
 Client disconnection details
 ----------------------------
 
-To disconnect from VPP, call @ref vl_client_disconnect_from_vlib. Please
+To disconnect from VPP, call @ref vl_socket_client_disconnect. Please
 arrange to call this function if the client application terminates
 abnormally. VPP makes every effort to hold a decent funeral for dead
 clients, but VPP can’t guarantee to free leaked memory in the shared
@@ -280,8 +284,7 @@ Key points:
 Receiving binary API messages from VPP
 --------------------------------------
 
-Unless you’ve made other arrangements (see @ref
-vl_client_connect_to_vlib_no_rx_pthread), *messages are received on a
+Unless you’ve made other arrangements (want_pthread = 0), *messages are received on a
 separate rx pthread*. Synchronization with the client application main
 thread is the responsibility of the application!
 

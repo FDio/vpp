@@ -1046,7 +1046,7 @@ vcl_session_worker_update_reply_handler (vcl_worker_t * wrk, void *data)
 static void
 vcl_session_app_add_segment_handler (vcl_worker_t * wrk, void *data)
 {
-  ssvm_segment_type_t seg_type = SSVM_SEGMENT_SHM;
+  ssvm_segment_type_t seg_type = SSVM_SEGMENT_MEMFD;
   session_app_add_segment_msg_t *msg;
   u64 segment_handle;
   int fd = -1;
@@ -1054,10 +1054,7 @@ vcl_session_app_add_segment_handler (vcl_worker_t * wrk, void *data)
   msg = (session_app_add_segment_msg_t *) data;
 
   if (msg->fd_flags)
-    {
-      vcl_api_recv_fd (wrk, &fd, 1);
-      seg_type = SSVM_SEGMENT_MEMFD;
-    }
+    vcl_api_recv_fd (wrk, &fd, 1);
 
   segment_handle = msg->segment_handle;
   if (segment_handle == VCL_INVALID_SEGMENT_HANDLE)

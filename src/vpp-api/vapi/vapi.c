@@ -1052,7 +1052,6 @@ vapi_connect_ex (vapi_ctx_t ctx, const char *name, const char *path, int max_out
   return VAPI_OK;
 fail:
   vapi_client_disconnect (ctx);
-  vl_client_api_unmap ();
   return rv;
 }
 
@@ -1274,7 +1273,6 @@ vapi_shm_disconnect (vapi_ctx_t ctx)
 fail:
   vapi_api_name_and_crc_free (ctx);
 
-  vl_client_api_unmap ();
 #if VAPI_DEBUG_ALLOC
   vapi_to_be_freed_validate ();
 #endif

@@ -1539,8 +1539,6 @@ format_fifo_segment_type (u8 * s, va_list * args)
     s = format (s, "%s", "private");
   else if (st == SSVM_SEGMENT_MEMFD)
     s = format (s, "%s", "memfd");
-  else if (st == SSVM_SEGMENT_SHM)
-    s = format (s, "%s", "shm");
   else
     s = format (s, "%s", "unknown");
   return s;
