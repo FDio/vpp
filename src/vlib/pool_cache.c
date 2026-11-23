@@ -374,7 +374,7 @@ show_pool_cache_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
   uword verbose = cli_flag (ctx, "verbose");
   u8 found = 0;
   int row = 0;
-  table_t table = {}, *t = &table;
+  table_t table = { .no_ansi = ctx->plain_text_only }, *t = &table;
 
   if (pcm->instances == 0)
     {

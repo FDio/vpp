@@ -10,7 +10,6 @@
 #include <vnet/dev/dev.h>
 #include <vnet/dev/counters.h>
 #include <vnet/dev/api.h>
-#include <vlib/unix/unix.h>
 #include <vppinfra/format_table.h>
 
 static u8 *
@@ -436,8 +435,7 @@ show_devices_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
   vnet_dev_t **devs = dev_vector_from_ctx (ctx);
   cli_value_t *v;
 
-  if ((unix_main.flags & UNIX_FLAG_NOCOLOR) || !vlib_unix_cli_ansi_capable ())
-    fa.plain_text = 1;
+  fa.plain_text = ctx->plain_text_only;
 
   if ((v = cli_get (ctx, "debug-level")))
     fa.debug = v->u64;

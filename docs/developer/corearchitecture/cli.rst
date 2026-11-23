@@ -451,6 +451,20 @@ it. An indentation of 0 gives text without white space.
 ``| where``, and ``cli_is_json (ctx)`` if the output has to be JSON. A handler
 builds the table only then, and prints text otherwise.
 
+Plain text
+----------
+
+``ctx->plain_text_only`` is set when the handler must not print ANSI
+sequences such as colors: ``unix { nocolor }`` is set in the startup
+configuration, or the session is not ANSI capable (``set terminal ansi off``,
+or a session which is not interactive, like the API or ``exec``). Handlers
+which color their text or use ``table_t`` check it, ``table.no_ansi`` takes the
+same value:
+
+.. code-block:: c
+
+   table_t table = { .no_ansi = ctx->plain_text_only };
+
 Conventions for the keys and values
 -----------------------------------
 
