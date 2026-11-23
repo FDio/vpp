@@ -14619,6 +14619,7 @@ typedef enum
   TCP_TEST_UNDO_RTO_HEAD,
   TCP_TEST_UNDO_ISLAND_DUP,
   TCP_TEST_UNDO_THIRD_EPISODE,
+  TCP_TEST_UNDO_LATE_PERSIST,
   TCP_TEST_UNDO_N_CASES,
 } tcp_test_undo_case_t;
 
@@ -15022,8 +15023,8 @@ tcp_test_dsack_undo_case (u32 backend, tcp_test_undo_case_t kind, u32 wrap)
     }
 
   if (kind == TCP_TEST_UNDO_TLP || kind == TCP_TEST_UNDO_AGE || kind == TCP_TEST_UNDO_BT_TOGGLE ||
-      kind == TCP_TEST_UNDO_LATE || kind == TCP_TEST_UNDO_REPEAT_COPY ||
-      kind == TCP_TEST_UNDO_DUP_ACK)
+      kind == TCP_TEST_UNDO_LATE || kind == TCP_TEST_UNDO_LATE_PERSIST ||
+      kind == TCP_TEST_UNDO_REPEAT_COPY || kind == TCP_TEST_UNDO_DUP_ACK)
     {
       tcp_test_dsack_ack (tc, tc->snd_nxt, &ac);
       tcp_loss_exit_recovery (tc, &ac);
@@ -15089,12 +15090,23 @@ tcp_test_dsack_undo_case (u32 backend, tcp_test_undo_case_t kind, u32 wrap)
 		"aggregate counting accepts duplicated-ACK ambiguity within its lifetime bound");
 
 undo:
+  /* After the recovery, the peer closed its window and the persist timer
+   * backed off probing it */
+  if (kind == TCP_TEST_UNDO_LATE_PERSIST)
+    {
+      tc->snd_wnd = 0;
+      tc->rto_boff = 1;
+      tc->rto = 2 * TCP_RTO_MIN;
+    }
   if (tcp_in_cong_recovery (tc))
     tcp_loss_exit_recovery (tc, &ac);
   else
     tcp_loss_dsack_undo (tc);
   UNDO_CHECK (tc->cwnd == 2000 && !tcp_dsack_has_undo (tc),
 	      "congestion state is restored and the saved snapshot is consumed");
+  if (kind == TCP_TEST_UNDO_LATE_PERSIST)
+    UNDO_CHECK (tc->rto_boff == 1 && tc->rto == 2 * TCP_RTO_MIN,
+		"late undo leaves the persist backoff to the window probes");
 
 cleanup:
   if (backend == 2)

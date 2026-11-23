@@ -54,7 +54,6 @@ tcp_cc_congestion_undo (tcp_connection_t *tc)
   tc->cwnd = clib_max (tc->cwnd, tc->prev_cwnd);
   tc->ssthresh = clib_max (tc->ssthresh, tc->prev_ssthresh);
   tcp_cc_undo_recovery (tc);
-  ASSERT (tc->rto_boff == 0);
   TCP_EVT (TCP_EVT_CC_EVT, tc, 5);
 }
 
