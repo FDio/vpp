@@ -62,6 +62,8 @@ vnet_dev_api_attach (vlib_main_t *vm, vnet_dev_api_attach_args_t *args)
       if (args->driver_name[0] &&
 	  strcmp (args->driver_name, driver->registration->name))
 	continue;
+      if (driver->bus_index != bus->index)
+	continue;
       if (driver->ops.probe)
 	{
 	  vnet_dev_probe_args_t pa = {
