@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "e43ffa9e_8fd055ba",
+        "filename": "src/vnet/sfdp/api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-11-23T14:53:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ff2dd82d_2eb5e391",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4990692d_0b6d0bb2",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-11-20T15:54:18Z",
       "side": 1,
       "message": "nit: `filter_name` rather than `name` for clarity ?",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "982e88ae_ecfb6d97",
+        "filename": "src/vnet/sfdp/cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-11-23T14:53:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4990692d_0b6d0bb2",
       "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2251a9c7_47db5255",
+        "filename": "src/vnet/sfdp/cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 261,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-11-23T14:53:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b8cf7186_0d83f7fa",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "6d77fcae_abde71aa",
@@ -65,6 +119,24 @@
       "writtenOn": "2026-11-20T15:54:18Z",
       "side": 1,
       "message": "nit: for iterating over pre-filters, would it make sense to have a dedicated macro (similar to `sfdp_foreach_session` and `sfdp_foreach_timeout`) ?",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6034006e_9082917a",
+        "filename": "src/vnet/sfdp/cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 309,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-11-23T14:53:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6d77fcae_abde71aa",
       "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -86,6 +158,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "10acf938_94c38e05",
+        "filename": "src/vnet/sfdp/format.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 305,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-11-23T14:53:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e3002fa4_4991b9d9",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b876fe72_d425a646",
@@ -99,6 +189,24 @@
       "writtenOn": "2026-11-20T15:54:18Z",
       "side": 1,
       "message": "Would it be more accurate to have \"pre-filter refused session creation\" ?",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1cbd5c67_5c241f6b",
+        "filename": "src/vnet/sfdp/lookup/lookup.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-11-23T14:53:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "b876fe72_d425a646",
       "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -120,6 +228,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ce701ba2_28eb247d",
+        "filename": "src/vnet/sfdp/lookup/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 432,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-11-23T14:53:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7063d139_b235c455",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "fc3e2300_c928b271",
@@ -133,6 +259,24 @@
       "writtenOn": "2026-11-20T15:54:18Z",
       "side": 1,
       "message": "Could you remove `option status\u003d\"in_progress\";` here ?\n\nSame comment for the other introduced APIs.",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "54ecc0cb_3675e9b5",
+        "filename": "src/vnet/sfdp/sfdp.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 178,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-11-23T14:53:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fc3e2300_c928b271",
       "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -154,6 +298,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "3c6c895a_fd14fa6a",
+        "filename": "src/vnet/sfdp/sfdp.api",
+        "patchSetId": 4
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-11-23T14:53:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5ee5f77b_f431bbcb",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "1e7b5acf_faf7a114",
@@ -167,6 +329,24 @@
       "writtenOn": "2026-11-20T15:54:18Z",
       "side": 1,
       "message": "nit: vector `sfdp-\u003etenant_pre_filters` will grow/re-allocate at runtime as we add more tenants. We could pre-allocate this vector with the max number of tenants (32k by default) in sfdp_init_main_if_needed() to avoid runtime re-allocation.\n\nI don\u0027t see this as a blocker however due to the relatively small number of max tenants by default.",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0a990320_530ad816",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 303,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-11-23T14:53:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1e7b5acf_faf7a114",
       "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -188,6 +368,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "12a8eb37_772f553f",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 332,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-11-23T14:53:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e7d4f61d_3b0478c9",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "87058679_9cf2626c",
@@ -205,6 +403,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "2f1dbef1_3cef1f47",
+        "filename": "test/test_sfdp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1250,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-11-23T14:53:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "87058679_9cf2626c",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "f3f213a8_4152c342",
@@ -218,6 +434,24 @@
       "writtenOn": "2026-11-20T15:54:18Z",
       "side": 1,
       "message": "Could we clarify what we are iterating on here with comments ? i.e. my understanding is that we are iterating on two counter entries associated with pre-filter-calls, first is associated with \u0027sample-discard\u0027 and second is \u0027sample-echo\u0027",
+      "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0e145b0f_fc7552b6",
+        "filename": "test/test_sfdp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1269,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-11-23T14:53:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "f3f213a8_4152c342",
       "revId": "f607db9065ee838dd4cbb92d56c88cbf3efafc37",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
