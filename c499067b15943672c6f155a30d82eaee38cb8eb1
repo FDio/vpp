@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e3346805_fda49785",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3380
+      },
+      "writtenOn": "2026-11-23T03:17:39Z",
+      "side": 1,
+      "message": "Thanks, Florin. Done: patch set 2 now sits directly on master, and the rest of the chain is rebased on top of it with no other changes.",
+      "revId": "c499067b15943672c6f155a30d82eaee38cb8eb1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
