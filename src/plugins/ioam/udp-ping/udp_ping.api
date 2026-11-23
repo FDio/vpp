@@ -25,7 +25,6 @@ import "vnet/ip/ip_types.api";
     @param start_dst_port - Starting destination port of port range for udp-ping
     @param end_dst_port - End destination port of port range for udp-ping
     @param interval - Time interval in seconds at which udp-probe need to be sent
-    @param is_ipv4 - To determine whether IPv4 or IPv6 address is used
     @param dis - TRUE is delete, FALSE if Add
 */
 autoreply define udp_ping_add_del {
@@ -45,7 +44,6 @@ autoreply define udp_ping_add_del {
 
 /** \brief Udp-probe export add/del request
     @param context - sender context, to match reply w/ request
-    @param retval - return value for request
     @param enable - If TRUE then enable export else disable
 */
 autoreply define udp_ping_export {

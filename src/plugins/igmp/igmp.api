@@ -55,11 +55,9 @@ enum filter_mode {
  *    present, a new entry is created, using the parameters specified in
  *    the request.
  *
- *   @param client_index - opaque cookie to identify the sender
- *   @param context - sender context, to match reply w/ request
  *   @param sw_if_index - interface sw index
  *   @param filter - filter mode
- *   @param saddr - source address
+ *   @param saddrs - source address
  *   @param gaddr - group address
  */
 typedef igmp_group
@@ -207,8 +205,6 @@ service {
 
 /**
  * @brief igmp event details
- * @param client_index - opaque cookie to identify the sender
- * @param context - sender context, to match reply w/ request
  * @param sw_if_index - interface sw index
  * @param saddr - source address
  * @param gaddr - group address
@@ -242,8 +238,6 @@ typedef group_prefix
 
 /**
  * @brief Configure a prefix for SSM or ASM semantics
- * @param address - Prefix address
- * @param address_length - Prefix length
  */
 autoreply define igmp_group_prefix_set
 {

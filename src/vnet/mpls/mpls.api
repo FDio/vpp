@@ -26,7 +26,6 @@ import "vnet/interface_types.api";
     @param mb_label - The MPLS label value to bind
     @param mb_ip_table_id - The IP table-id of the IP prefix to bind to.
     @param mb_is_bind - Bind or unbind
-    @param mb_is_ip4 - The prefix to bind to is IPv4
     @param mb_prefix - IP prefix
 */
 autoreply define mpls_ip_bind_unbind
@@ -113,10 +112,7 @@ define mpls_interface_details
 };
 
 /** \brief MPLS Route Add / del route
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
     @param mt_table_id - The MPLS table-id the route is added in
-    @param mt_is_add - Is this a route add or delete
     @param mt_name - A client provided name/tag for the table. If this
                      is not set by the client, then VPP will generate
 		     something meaningful.
@@ -173,7 +169,6 @@ typedef mpls_route
 /** \brief MPLS Route Add / del route
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param mr_table_id - The MPLS table-id the route is added in
     @param mr_is_add - Is this a route add or delete
     @param mr_is_multipath - Is this route update a multipath - i.e. is this
                              a path addition to an existing route
@@ -206,11 +201,6 @@ define mpls_route_dump
 };
 
 /** \brief mpls FIB table response
-    @param table_id - MPLS fib table id
-    @param s_bit - End-of-stack bit
-    @param label - MPLS label value
-    @param count - the number of fib_path in path
-    @param path  - array of of fib_path structures
 */
 define mpls_route_details
 {

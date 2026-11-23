@@ -146,7 +146,7 @@ typedef vrrp_vr_runtime
 
 /** \brief VRRP: VR dump response
     @param context - sender context which was passed in the request
-    @param conf - configuration parameters for the VR
+    @param config - configuration parameters for the VR
     @param runtime - runtime state for the VR
 */
 define vrrp_vr_details {

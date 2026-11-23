@@ -56,7 +56,7 @@ define ipfix_exporter_dump
     @param collector_address - address of IPFIX collector
     @param collector_port - port of IPFIX collector
     @param src_address - address of IPFIX exporter
-    @param fib_index - fib table index
+    @param vrf_id - fib table index
     @param path_mtu - Path MTU between exporter and collector
     @param template_interval - number of seconds after which to resend template
     @param udp_checksum - UDP checksum calculation enable flag
@@ -133,7 +133,6 @@ define ipfix_all_exporter_get_reply
 
 /** \brief Ipfix meter details in response to the get_meters command
     @param context - sender context, to match reply w/ request
-    @param name The name of the ipfix meter
 */
 define ipfix_all_exporter_details
 {

@@ -31,10 +31,6 @@ import "vnet/ip/ip_types.api";
 
 /** \brief A composite type uniquely defining a PVTI tunnel.
     @param sw_if_index - ignored on create/delete, present in details.
-    @param src_ip - Source IP address
-    @param src_port - Source UDP port
-    @param dst_ip - Destination IP address
-    @param dst_port - Destination UDP port
     @param underlay_mtu - Underlay MTU for packet splitting/coalescing
     @param underlay_fib_index - Underlay FIB index to be used after encap
 */

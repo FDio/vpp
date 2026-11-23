@@ -103,9 +103,8 @@ define dhcp_plugin_control_ping_reply
     @param rx_vrf_id - Rx/interface vrf id
     @param server_vrf_id - server vrf id
     @param is_add - add the config if non-zero, else delete
-    @param insert_circuit_id - option82 suboption 1 fib number
-    @param dhcp_server[] - server address
-    @param dhcp_src_address[] - sc address for packets sent to the server
+    @param dhcp_server - server address
+    @param dhcp_src_address - sc address for packets sent to the server
 */
 autoreply define dhcp_proxy_config
 {
@@ -246,7 +245,7 @@ define dhcp_client_details
 
 /** \brief Dump DHCP proxy table
     @param client_index - opaque cookie to identify the sender
-    @param True for IPv6 proxy table
+    @param is_ip6 - True for IPv6 proxy table
 */
 define dhcp_proxy_dump
 {
@@ -262,7 +261,6 @@ typedef dhcp_server
 };
 
 /** \brief Tell client about a DHCP completion event
-    @param client_index - opaque cookie to identify the sender
 */
 define dhcp_proxy_details
 {

@@ -112,7 +112,6 @@ define show_one_map_register_ttl
 };
 
 /** \brief Contains current TTL for map register messages
-    @param client_index - opaque cookie to identify the sender
     @param retval - return code
     @param ttl - time to live
 */
@@ -127,7 +126,6 @@ define show_one_map_register_ttl_reply
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add - add address if non-zero; delete otherwise
-    @param is_ipv6 - if non-zero the address is ipv6, else ipv4
     @param ip_address - map server IP address
 */
 autoreply define one_add_del_map_server
@@ -142,7 +140,6 @@ autoreply define one_add_del_map_server
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add - add address if non-zero, else delete
-    @param is_ipv6 - if non-zero the address is ipv6, else ipv4
     @param ip_address - array of address bytes
 */
 autoreply define one_add_del_map_resolver
@@ -196,8 +193,7 @@ autoreply define one_pitr_set_locator_set
 /** \brief configure or disable use of PETR
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_ip4 - Address is IPv4 if set and IPv6 otherwise
-    @param address - PETR IP address
+    @param ip_address - PETR IP address
     @param is_add - add locator set if non-zero, else disable PETR
 */
 autoreply define one_use_petr
@@ -220,9 +216,7 @@ define show_one_use_petr
 
 /** \brief ONE PETR status, enable or disable
     @param context - sender context, to match reply w/ request
-    @param enable - ONE PETR enable if non-zero, else disable
-    @param is_ip4 - Address is IPv4 if non-zero, else IPv6
-    @param address - PETR IP address
+    @param ip_address - PETR IP address
 */
 define show_one_use_petr_reply
 {
@@ -408,7 +402,7 @@ define one_l2_arp_entries_get
     @param context - sender context, to match reply w/ request
     @param retval - error code
     @param count - number of elements in the list
-    @param vl_api_one_arp_entry_t - list of entries
+    @param entries - list of entries
 */
 define one_l2_arp_entries_get_reply
 {
@@ -559,7 +553,6 @@ autoreply define one_add_del_map_request_itr_rlocs
     @param context - sender context, to match reply w/ request
     @param is_add - add or delete mapping
     @param dp_table - virtual network id/bridge domain index
-    @param vrf - vrf
     @param is_l2 - is l2
 */
 autoreply define one_eid_table_add_del_map
@@ -575,7 +568,7 @@ autoreply define one_eid_table_add_del_map
 /** \brief Request for map one locator status
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param locator_set_index - index of locator_set
+    @param ls_index - index of locator_set
     @param ls_name - locator set name
     @param is_index_set - flag indicating whether ls_name or ls_index is set
  */
@@ -590,7 +583,6 @@ define one_locator_dump
 
 /** \brief ONE locator_set status
     @param local - if is set, then locator is local
-    @param locator_set_name - name of the locator_set
     @param sw_if_index - sw_if_index of the locator
     @param priority - locator priority
     @param weight - locator weight
@@ -772,7 +764,6 @@ define one_eid_table_vni_details
 };
 
 /** \brief ONE map resolver status
-    @param is_ipv6 - if non-zero the address is ipv6, else ipv4
     @param ip_address - array of address bytes
  */
 define one_map_resolver_details
@@ -792,7 +783,6 @@ define one_map_resolver_dump
 };
 
 /** \brief ONE map server details
-    @param is_ipv6 - if non-zero the address is ipv6, else ipv4
     @param ip_address - array of address bytes
  */
 define one_map_server_details
@@ -836,7 +826,6 @@ define show_one_status_reply
 
 /** \brief Get ONE map request itr rlocs status
     @param context - sender context, to match reply w/ request
-    @param locator_set_name - name of the locator_set
  */
 define one_get_map_request_itr_rlocs
 {

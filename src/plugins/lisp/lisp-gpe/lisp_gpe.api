@@ -19,7 +19,6 @@ import "vnet/interface_types.api";
 import "plugins/lisp/lisp-cp/lisp_types.api";
 
 /** \brief GPE locator structure
-    @param is_ip4 - whether addr is IPv4 or v6
     @param weight - locator weight
     @param addr - IPv4/6 address
 */
@@ -145,7 +144,7 @@ define gpe_fwd_entry_path_details
 /** \brief Set GPE encapsulation mode
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param mode - LISP (value 0) or VXLAN (value 1)
+    @param is_vxlan - LISP (value 0) or VXLAN (value 1)
 */
 autoreply define gpe_set_encap_mode
 {
@@ -157,7 +156,6 @@ autoreply define gpe_set_encap_mode
 /** \brief get GPE encapsulation mode
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param mode - LISP (value 0) or VXLAN (value 1)
 */
 define gpe_get_encap_mode
 {
@@ -180,11 +178,9 @@ define gpe_get_encap_mode_reply
 
 /** \brief Add native fwd rpath
     @param context - returned sender context, to match reply w/ request
-    @param retval - return code
     @param is_add - flag to indicate add or del
     @param table_id - table id for route path
     @param nh_sw_if_index - next-hop sw_if_index (~0 if not set)
-    @param is_ip4 - flag to indicate if nh is ip4
     @param nh_addr - next hop ip address
 */
 autoreply define gpe_add_del_native_fwd_rpath
@@ -209,9 +205,6 @@ define gpe_native_fwd_rpaths_get
 };
 
 /** \brief Reply for get native fwd rpath
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-    @param table_id - table id for route path
     @param nh_sw_if_index - next-hop sw_if_index (~0 if not set)
     @param nh_addr - next hop address
 */

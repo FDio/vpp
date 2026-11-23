@@ -87,7 +87,6 @@ define bfd_udp_get_echo_source_reply
     @param required_min_rx - required min receive interval (microseconds)
     @param local_addr - local address
     @param peer_addr - peer address
-    @param is_ipv6 - local_addr, peer_addr are IPv6 if non-zero, otherwise IPv4
     @param detect_mult - detect multiplier (# of packets missed before connection goes down)
     @param is_authenticated - non-zero if authentication is required
     @param bfd_key_id - key id sent out in BFD packets (if is_authenticated)
@@ -136,7 +135,6 @@ define bfd_udp_upd_reply
     @param required_min_rx - required min receive interval (microseconds)
     @param local_addr - local address
     @param peer_addr - peer address
-    @param is_ipv6 - local_addr, peer_addr are IPv6 if non-zero, otherwise IPv4
     @param detect_mult - detect multiplier (# of packets missed before connection goes down)
 */
 autoreply define bfd_udp_mod
@@ -157,7 +155,6 @@ autoreply define bfd_udp_mod
     @param sw_if_index - sw index of the interface
     @param local_addr - local address
     @param peer_addr - peer address
-    @param is_ipv6 - local_addr, peer_addr are IPv6 if non-zero, otherwise IPv4
 */
 autoreply define bfd_udp_del
 {
@@ -183,7 +180,6 @@ define bfd_udp_session_dump
     @param sw_if_index - sw index of the interface
     @param local_addr - local address
     @param peer_addr - peer address
-    @param is_ipv6 - local_addr, peer_addr are IPv6 if non-zero, otherwise IPv4
     @param state - session state
     @param is_authenticated - non-zero if authentication in-use, zero otherwise
     @param bfd_key_id - ID of key currently in-use if auth is on
@@ -213,7 +209,6 @@ define bfd_udp_session_details
     @param sw_if_index - sw index of the interface
     @param local_addr - local address
     @param peer_addr - peer address
-    @param is_ipv6 - local_addr, peer_addr are IPv6 if non-zero, otherwise IPv4
     @param flags - set the admin state, 1 = up, 0 = down
 */
 autoreply define bfd_udp_session_set_flags
@@ -283,8 +278,6 @@ autoreply define bfd_auth_set_key
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param conf_key_id - key ID to add/replace/delete
-    @param key_len - length of key (must be non-zero)
-    @param key - key data
 */
 autoreply define bfd_auth_del_key
 {
@@ -323,7 +316,6 @@ define bfd_auth_keys_details
     @param sw_if_index - sw index of the interface
     @param local_addr - local address
     @param peer_addr - peer address
-    @param is_ipv6 - local_addr, peer_addr are IPv6 if non-zero, otherwise IPv4
     @param is_delayed - change is applied once peer applies the change (on first received packet with this auth)
     @param bfd_key_id - key id sent out in BFD packets
     @param conf_key_id - id of already configured key
@@ -346,7 +338,6 @@ autoreply define bfd_udp_auth_activate
     @param sw_if_index - sw index of the interface
     @param local_addr - local address
     @param peer_addr - peer address
-    @param is_ipv6 - local_addr, peer_addr are IPv6 if non-zero, otherwise IPv4
     @param is_delayed - change is applied once peer applies the change (on first received non-authenticated packet)
 */
 autoreply define bfd_udp_auth_deactivate

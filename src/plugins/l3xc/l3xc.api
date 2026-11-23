@@ -47,7 +47,6 @@ define l3xc_plugin_get_version_reply
 };
 
 /** \brief A description of an L3XC policy
-    @param input interface of the x-connect
     @param n_paths Number of paths
     @param paths The set of forwarding paths.
  */

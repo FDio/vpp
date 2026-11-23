@@ -223,7 +223,7 @@ autoreply define map_param_set_fragmentation
 /** \brief Set MAP ICMP parameters
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param icmp4_err_relay_src - IPv4 ICMP err relay src address
+    @param ip4_err_relay_src - IPv4 ICMP err relay src address
 */
 autoreply define map_param_set_icmp
 {
@@ -319,8 +319,7 @@ define map_param_get
 /** \brief Reply for map_param_get request
     @param context - sender context, to match reply w/ request
     @param retval - return code for request
-    @param inner - 1=frag inner packet, 0=frag tunnel packets, ~0=untouched
-    @param ignore_df - 1=IP4 fragm despite DF bit, 0=honor DF, ~0=untouched
+    @param frag_ignore_df - 1=IP4 fragm despite DF bit, 0=honor DF, ~0=untouched
     @param icmp_ip4_err_relay_src - IPv4 ICMP err relay src address
     @param icmp6_enable_unreachable - 1 = send ICMP unreachable err msgs
     @param ip4_nh_address - direct IP4 next-hop address

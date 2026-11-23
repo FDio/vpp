@@ -69,7 +69,7 @@ enum rt_backend_engine : u8
     @param app_mq - app message queue
     @param vpp_ctrl_mq - vpp message queue for control events that should
     					 be handled in main thread, i.e., bind/connect
-    @param vpp_ctrl_mq_thread_index - thread index of the ctrl mq
+    @param vpp_ctrl_mq_thread - thread index of the ctrl mq
     @param app_index - index of the newly created app
     @param n_fds - number of fds exchanged
     @param fd_flags - set of flags that indicate which fds are to be expected
@@ -104,7 +104,6 @@ autoreply define application_detach {
 /** \brief Add certificate and key
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param engine - crypto engine
     @param cert_len - cert length (comes first)
     @param certkey_len - cert and key length
     @param certkey - cert & key data (due to API limitation)
@@ -375,11 +374,6 @@ enum session_rule_scope {
                           client to vpp direction only
     @param context - sender context, to match reply w/ request
     @param transport_proto - transport protocol
-    @param is_ip4 - flag to indicate if ip addresses are ip4 or 6
-    @param lcl_ip - local ip
-    @param lcl_plen - local prefix length
-    @param rmt_ip - remote ip
-    @param rmt_ple - remote prefix length
     @param lcl_port - local port
     @param rmt_port - remote port
     @param action_index - the only action defined now is forward to
@@ -419,11 +413,6 @@ define session_rules_dump
 /** \brief Session rules details
     @param context - sender context, to match reply w/ request
     @param transport_proto - transport protocol
-    @param is_ip4 - flag to indicate if ip addresses are ip4 or 6
-    @param lcl_ip - local ip
-    @param lcl_plen - local prefix length
-    @param rmt_ip - remote ip
-    @param rmt_ple - remote prefix length
     @param lcl_port - local port
     @param rmt_port - remote port
     @param action_index - the only action defined now is forward to
@@ -461,11 +450,6 @@ define session_rules_v2_dump
 /** \brief Session rules details
     @param context - sender context, to match reply w/ request
     @param transport_proto - transport protocol
-    @param is_ip4 - flag to indicate if ip addresses are ip4 or 6
-    @param lcl_ip - local ip
-    @param lcl_plen - local prefix length
-    @param rmt_ip - remote ip
-    @param rmt_ple - remote prefix length
     @param lcl_port - local port
     @param rmt_port - remote port
     @param action_index - the only action defined now is forward to

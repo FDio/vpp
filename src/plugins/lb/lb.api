@@ -247,7 +247,6 @@ define lb_as_dump{
 
 /** \brief lb_as_details
     @param context - sender context, to match reply w/ request
-    @param as - AS detail record
 */
 define lb_as_details {
   u32 context;

@@ -39,8 +39,8 @@ autoreply define lldp_config
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sw_if_index - interface for which to enable/disable LLDP
-    @param mgmt_ip4_addr - management ip4 address of the interface
-    @param mgmt_ip6_addr - management ip6 address of the interface
+    @param mgmt_ip4 - management ip4 address of the interface
+    @param mgmt_ip6 - management ip6 address of the interface
     @param mgmt_oid - OID(Object Identifier) of the interface
     @param enable - if non-zero enable, else disable
     @param port_desc - local port description
@@ -113,15 +113,15 @@ enum chassis_id_subtype
     @param port_id_len - length for port id
     @param ttl - time to length for the neighbour
     @param port_id_subtype - subtype for port_id
-    @param chassis_id_sybtype - sybtype for chassis_id
+    @param chassis_id_subtype - sybtype for chassis_id
 
     @param system_name - VPP system name
     @param tx_hold - multiplier for tx_interval when setting time-to-live (TTL)
                      value in the LLDP packets
     @param tx_interval - time interval, in seconds, between each LLDP frames
 
-    @param mgmt_ip4_addr - management ip4 address of the interface
-    @param mgmt_ip6_addr - management ip6 address of the interface
+    @param mgmt_ip4 - management ip4 address of the interface
+    @param mgmt_ip6 - management ip6 address of the interface
     @param mgmt_oid - OID(Object Identifier) of the interface
     @param port_desc - local port description
 */

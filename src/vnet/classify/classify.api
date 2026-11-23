@@ -226,7 +226,6 @@ define classify_table_by_interface
 
 /** \brief Reply for classify table id by interface index request
     @param context - sender context which was passed in the request
-    @param count - number of ids returned in response
     @param sw_if_index - index of the interface
     @param l2_table_id - l2 classify table index
     @param ip4_table_id - ip4 classify table index
@@ -256,7 +255,6 @@ define classify_table_info
 
 /** \brief Reply for classify table info request
     @param context - sender context which was passed in the request
-    @param count - number of ids returned in response
     @param table_id - classify table index
     @param nbuckets - number of buckets when adding a table
     @param match_n_vectors - number of match vectors
@@ -264,7 +262,7 @@ define classify_table_info
     @param active_sessions - number of sessions (active entries)
     @param next_table_index - index of next table
     @param miss_next_index - index of miss table
-    @param mask[] - match mask
+    @param mask - match mask
 */
 define classify_table_info_reply
 {
@@ -295,12 +293,11 @@ define classify_session_dump
 
 /** \brief Reply for classify table session dump request
     @param context - sender context which was passed in the request
-    @param count - number of ids returned in response
     @param table_id - classify table index
     @param hit_next_index - hit_next_index of session
     @param opaque_index - for add, opaque_index of session
     @param advance - advance value of session
-    @param match[] - match value for session
+    @param match - match value for session
 */
 define classify_session_details
 {
@@ -320,7 +317,6 @@ define classify_session_details
     @param sw_if_index - interface to set/unset flow classify
     @param ip4_table_index - ip4 classify table index (~0 for skip)
     @param ip6_table_index - ip6 classify table index (~0 for skip)
-    @param l2_table_index  -  l2 classify table index (~0 for skip)
     @param is_add - Set if non-zero, else unset
     Note: User is recommended to use just one valid table_index per call.
           (ip4_table_index, ip6_table_index, or l2_table_index)

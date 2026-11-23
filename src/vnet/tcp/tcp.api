@@ -30,7 +30,6 @@ import "vnet/ip/ip_types.api";
 
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_ipv6 - 1 for ipv6, 0 for ipv4
     @param vrf_id - fib table / vrf id for local adjacencies
     @param first_address - first address that TCP will use
     @param last_address - last address that TCP will use

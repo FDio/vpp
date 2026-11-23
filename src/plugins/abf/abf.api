@@ -96,7 +96,7 @@ define abf_policy_dump
 };
 
 /** \brief A description of a policy attachment to an interface
-    @param The policy ID to attach
+    @param policy_id - policy ID to attach
     @param sw_if_index The interface to attach to
     @param priority The priority of the attachment, w.r.t. to other attachments
               on this interface. lower value is 'better'

@@ -20,8 +20,6 @@ import "vnet/interface_types.api";
 import "vnet/ip/ip_types.api";
 
 /** \brief Create wireguard interface
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
     @param private_key - private key in binary format of this device
     @param public_key - public key in binary format of this device
     @param port - port of this device
@@ -153,7 +151,6 @@ autoreply define want_wireguard_peer_events
     @param client_index - opaque cookie to identify the sender
     @param pid - client pid registered to receive notification
     @param peer_index - index of the peer for this event
-    @param deleted - interface was deleted
 */
 define wireguard_peer_event
 {

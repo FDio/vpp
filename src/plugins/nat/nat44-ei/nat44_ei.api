@@ -602,7 +602,7 @@ define nat44_ei_output_interface_details
     @param external_sw_if_index - external interface (if set
                                   external_ip_address is ignored, ~0 means not
                                   used)
-    @param vfr_id - VRF ID
+    @param vrf_id - VRF ID
     @param tag - opaque string tag
 */
 autoreply define nat44_ei_add_del_static_mapping {
@@ -640,7 +640,7 @@ define nat44_ei_static_mapping_dump {
     @param local_port - local port number, valid only if no NAT_ADDR_ONLY flag
     @param external_port - external port number, valid only if no NAT_ADDR_ONLY flag
     @param external_sw_if_index - external interface
-    @param vfr_id - VRF ID
+    @param vrf_id - VRF ID
     @param tag - opaque string tag
 */
 define nat44_ei_static_mapping_details {
@@ -667,7 +667,7 @@ define nat44_ei_static_mapping_details {
     @param port - port number
     @param sw_if_index - interface (if set ip_address is ignored, ~0 means not
                                     used)
-    @param vfr_id - VRF ID (if ~0 use default VRF)
+    @param vrf_id - VRF ID (if ~0 use default VRF)
     @param tag - opaque string tag
 */
 autoreply define nat44_ei_add_del_identity_mapping {
@@ -701,7 +701,7 @@ define nat44_ei_identity_mapping_dump {
     @param protocol - IP protocol
     @param port - port number
     @param sw_if_index - interface
-    @param vfr_id - VRF ID
+    @param vrf_id - VRF ID
     @param tag - opaque string tag
 */
 define nat44_ei_identity_mapping_details {
@@ -872,10 +872,10 @@ define nat44_ei_user_session_v2_details {
 /** \brief Delete NAT44 session
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param ip_address - IPv4 address
+    @param address - IPv4 address
     @param protocol - IP protocol
     @param port - port number
-    @param vfr_id - VRF ID
+    @param vrf_id - VRF ID
     @param flags - flag NAT_IS_INSIDE if interface is inside or
                    interface is outside,
                    flag NAT_IS_EXT_HOST_VALID if external host address and

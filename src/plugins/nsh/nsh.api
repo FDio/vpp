@@ -16,7 +16,7 @@ import "vnet/interface_types.api";
     @param c2 - 32bit Metadata type1 field (context2)
     @param c3 - 32bit Metadata type1 field (context3)
     @param c4 - 32bit Metadata type1 field (context4)
-    @param tlvs - Metadata Type 2 only, Type Length Value metadata.
+    @param tlv - Metadata Type 2 only, Type Length Value metadata.
 */
 define nsh_add_del_entry {
     u32 client_index;
@@ -74,7 +74,7 @@ define nsh_entry_details {
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add - add address if non-zero, else delete
-    @param nsh_nsi - Key for nsh_header_t entry to map to. : 24bit NSP 8bit NSI
+    @param nsp_nsi - Key for nsh_header_t entry to map to. : 24bit NSP 8bit NSI
     @param mapped_nsp_nsi - Key for nsh_header_t entry to map to. : 24bit NSP 8bit NSI this may be ~0
        if next action is to decap to NSH next protocol
        Note the following heuristic:

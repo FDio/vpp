@@ -80,11 +80,8 @@ define pot_profile_show_config_dump {
     @param secret_key - Verification key
     @param secret_share - Share of the 1st polynomial
     @param prime - Prime number used for modulo operation
-    @param max_bits - Max bits to be used for Random number generation
     @param lpc - Lagrange basis polynomial
     @param polynomial_public - pre-evaluated public polynomial
-    @param list_name_len - length of the name of this profile list
-    @param list_name - name of this profile list
 */
 define pot_profile_show_config_details {
   u32 context;
