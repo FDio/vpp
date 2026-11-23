@@ -261,8 +261,8 @@ func (s *MasqueSuite) TeardownTest() {
 	}
 }
 
-// TAP flow steering can move an established TCP flow to another worker after
-// its Linux flow-cache entry expires. Skip affected cleanup/connect checks only.
+// TAP flow steering can move a TCP or UDP flow to another worker after its
+// Linux flow-cache entry expires. Skip affected cleanup/connect checks only.
 func (s *MasqueSuite) SkipIfWrongWorkerThread(reason string) {
 	for _, container := range []*Container{s.Containers.VppClient, s.Containers.VppServer} {
 		vpp := container.VppInstance
@@ -271,8 +271,12 @@ func (s *MasqueSuite) SkipIfWrongWorkerThread(reason string) {
 		}
 		for _, line := range strings.Split(vpp.Vppctl("show error"), "\n") {
 			fields := strings.Fields(line)
-			if len(fields) < 5 || (fields[1] != "tcp4-input" && fields[1] != "tcp6-input") ||
-				strings.Join(fields[2:5], " ") != "Wrong worker thread" {
+			if len(fields) < 5 || strings.Join(fields[2:5], " ") != "Wrong worker thread" {
+				continue
+			}
+			switch fields[1] {
+			case "tcp4-input", "tcp6-input", "udp4-input", "udp6-input":
+			default:
 				continue
 			}
 			count, err := strconv.ParseUint(fields[0], 10, 64)
