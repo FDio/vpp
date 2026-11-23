@@ -417,6 +417,16 @@ cubic_rcv_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
   if (tcp_in_slowstart (tc))
     {
       tc->cwnd += ac->acked_and_sacked;
+
+      /* Slow start ended, after an rto or without HyStart++. The congestion
+       * avoidance stage starts now, from the window reached and with K 0
+       * (RFC 9438 Sec. 4.8) */
+      if (!tcp_in_slowstart (tc))
+	{
+	  cd->t_start = now;
+	  cd->K_ticks = 0;
+	  cd->w_max = tc->cwnd / tc->snd_mss;
+	}
       return;
     }
 

@@ -3510,6 +3510,53 @@ tcp_test_cubic_target_clamp (void)
   return 0;
 }
 
+/* After an rto, the cubic epoch starts when slow start ends, not at the rto,
+ * so time spent in slow start does not inflate the first avoidance stage
+ * (RFC 9438 Sec. 4.8) */
+static int
+tcp_test_cubic_rto_epoch (void)
+{
+  const clib_thread_index_t thread_index = 0;
+  const u32 snd_mss = 1000;
+  tcp_connection_t _tc, *tc = &_tc;
+  tcp_ack_ctx_t ac = { .bytes_acked = snd_mss, .acked_and_sacked = snd_mss };
+  u32 before, i, n_acks;
+
+  tcp_test_set_time (thread_index, 1);
+  tcp_test_cubic_init_epoch (tc, thread_index, snd_mss, 100);
+  tc->cc_algo->congestion (tc);
+  tc->cc_algo->loss (tc);
+
+  /* Slow start back to ssthresh takes long, e.g., on a long rtt path */
+  tcp_test_set_time (thread_index, 11);
+  for (i = 0; i < 100 && tcp_in_slowstart (tc); i++)
+    {
+      tc->snd_una += snd_mss;
+      tc->snd_nxt = tc->snd_una + tc->cwnd;
+      tc->cwnd_limited_seq = tc->snd_una;
+      tc->cc_algo->rcv_ack (tc, &ac);
+    }
+  TCP_TEST ((!tcp_in_slowstart (tc)), "cubic slow start after an rto reaches ssthresh");
+
+  /* The first avoidance round starts at the inflection point */
+  tcp_test_set_time (thread_index, 11.1);
+  before = tc->cwnd;
+  n_acks = tc->cwnd / snd_mss;
+  for (i = 0; i < n_acks; i++)
+    {
+      tc->snd_una += snd_mss;
+      tc->snd_nxt = tc->snd_una + tc->cwnd;
+      tc->cwnd_limited_seq = tc->snd_una;
+      tc->cc_algo->rcv_ack (tc, &ac);
+    }
+  TCP_TEST ((tc->cwnd <= before + 2 * snd_mss),
+	    "cubic starts the epoch when avoidance starts after an rto (cwnd %u -> %u)", before,
+	    tc->cwnd);
+  tcp_test_set_time (thread_index, 1);
+
+  return 0;
+}
+
 static int
 tcp_test_cubic (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -3537,6 +3584,9 @@ tcp_test_cubic (vlib_main_t *vm, unformat_input_t *input)
     return rv;
 
   if ((rv = tcp_test_cubic_target_clamp ()))
+    return rv;
+
+  if ((rv = tcp_test_cubic_rto_epoch ()))
     return rv;
 
   if ((rv = tcp_test_cubic_reno_friendly ()))
