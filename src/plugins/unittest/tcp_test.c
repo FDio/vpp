@@ -3468,6 +3468,48 @@ tcp_test_cubic_reno_friendly (void)
   return 0;
 }
 
+/* Far into the convex region the curve's target exceeds 1.5 * cwnd, so one
+ * round of acks grows cwnd by at most half (RFC 9438 Sec. 4.2), also for
+ * windows where snd_mss * cwnd exceeds 32 bits */
+static int
+tcp_test_cubic_target_clamp (void)
+{
+  const clib_thread_index_t thread_index = 0;
+  const struct
+  {
+    u32 snd_mss;
+    u32 w_max;
+  } cases[] = { { 1000, 100 }, { 1460, 4000 } };
+  tcp_connection_t _tc, *tc = &_tc;
+  tcp_ack_ctx_t ac = {};
+  u32 before, i, j, n_acks;
+
+  for (j = 0; j < ARRAY_LEN (cases); j++)
+    {
+      tcp_test_set_time (thread_index, 1);
+      tcp_test_cubic_init_epoch (tc, thread_index, cases[j].snd_mss, cases[j].w_max);
+      ac.bytes_acked = ac.acked_and_sacked = tc->snd_mss;
+
+      /* 1000 rtts in, well past K */
+      tcp_test_set_time (thread_index, 101);
+      before = tc->cwnd;
+      n_acks = tc->cwnd / tc->snd_mss;
+      for (i = 0; i < n_acks; i++)
+	{
+	  tc->snd_una += tc->snd_mss;
+	  tc->snd_nxt = tc->snd_una + tc->cwnd;
+	  tc->cwnd_limited_seq = tc->snd_una;
+	  tc->cc_algo->rcv_ack (tc, &ac);
+	}
+      TCP_TEST ((tc->cwnd > before && tc->cwnd <= before * 3 / 2 + tc->snd_mss),
+		"cubic grows at most 1.5x per round from %u segments of %u (cwnd %u -> %u)",
+		cases[j].w_max, cases[j].snd_mss, before, tc->cwnd);
+    }
+  tcp_test_set_time (thread_index, 1);
+
+  return 0;
+}
+
 static int
 tcp_test_cubic (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -3492,6 +3534,9 @@ tcp_test_cubic (vlib_main_t *vm, unformat_input_t *input)
     return rv;
 
   if ((rv = tcp_test_cubic_app_limited ()))
+    return rv;
+
+  if ((rv = tcp_test_cubic_target_clamp ()))
     return rv;
 
   if ((rv = tcp_test_cubic_reno_friendly ()))
