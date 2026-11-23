@@ -4,7 +4,7 @@ maintainer: Florin Coras <fcoras@cisco.com>
 features:
         - Core functionality (RFC793, RFC5681, RFC6691)
         - Extensions for high performance (RFC7323)
-        - Congestion control extensions (RFC3465, RFC8312)
+        - Congestion control extensions (RFC3465, RFC9438)
         - Loss recovery extensions (RFC2018, RFC3042, RFC6582, RFC6675, RFC6937)
         - Detection and prevention of spurious retransmits (RFC3522)
         - Defending spoofing and flooding attacks (RFC6528)

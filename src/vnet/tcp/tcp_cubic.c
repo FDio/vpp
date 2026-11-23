@@ -10,6 +10,8 @@
 #define beta_cubic 	0.7
 #define cubic_c		0.4
 #define west_const 	(3 * (1 - beta_cubic) / (1 + beta_cubic))
+/* 1 / west_const, so per ack paths multiply instead of dividing */
+#define west_const_inv ((1 + beta_cubic) / (3 * (1 - beta_cubic)))
 
 /* K in 2^-20 s ticks, u32 covers the max K of ~2207 s */
 #define CUBIC_K_SCALE (1U << 20)
@@ -131,7 +133,7 @@ cubic_resume_epoch (cubic_data_t *cd, f64 now)
 }
 
 /**
- * RFC 8312 Eq. 1
+ * RFC 9438 Sec. 4.2, Figure 1
  *
  * CUBIC window increase function. Time t is provided in seconds.
  */
@@ -145,14 +147,13 @@ W_cubic (cubic_data_t * cd, f64 t)
 }
 
 /**
- * RFC 8312 Eq. 2. Returns K in 2^-20 second ticks.
+ * RFC 9438 Sec. 4.2, Figure 2. Returns K in 2^-20 second ticks.
  */
 static inline u32
 K_cubic (cubic_data_t *cd, f64 wnd)
 {
-  /* K = cubic_root(W_max*(1-beta_cubic)/C)
-   * Because the current window may be less than W_max * beta_cubic because
-   * of fast convergence, we pass it as parameter, in unrounded segments */
+  /* K = cubic_root((W_max-cwnd_epoch)/C), with cwnd_epoch the window the
+   * epoch starts from, in unrounded segments */
   return pow (clib_max (cd->w_max - wnd, 0.0) / cubic_c, 1 / 3.0) * CUBIC_K_SCALE;
 }
 
@@ -162,6 +163,8 @@ cubic_hystart_lossless_exit (tcp_connection_t *tc, cubic_data_t *cd)
 {
   tc->cwnd -= tc->cwnd % tc->snd_mss;
   tc->ssthresh = tc->cwnd;
+  /* cwnd_prior is the exit window (RFC 9438 Sec. 4.10) */
+  tc->prev_cwnd = tc->cwnd;
   tc->cwnd_acc_bytes = 0;
   cd->mode = CUBIC_MODE_AVOIDANCE;
   cd->t_start = cubic_time (tc->c_thread_index);
@@ -270,21 +273,32 @@ cubic_hystart_rcv_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, cubic_data_t *cd
 }
 
 /**
- * RFC 8312 Eq. 4
+ * RFC 9438 Sec. 4.3
  *
- * Estimates the window size of AIMD(alpha_aimd, beta_aimd) for
- * alpha_aimd=3*(1-beta_cubic)/(1+beta_cubic) and beta_aimd=beta_cubic.
- * Time (t) and rtt should be provided in seconds. As per RFC 9438 Sec. 4.3, the estimate starts
- * from cwnd_epoch, i.e., W_cubic(0).
+ * Estimates the window size of AIMD(alpha_cubic, beta_cubic), with
+ * alpha_cubic = 3*(1-beta_cubic)/(1+beta_cubic) until the estimate reaches
+ * cwnd_prior, the cwnd before the last reduction, and 1 after. The estimate
+ * starts from cwnd_epoch, i.e., W_cubic(0), and grows per rtt, as ack
+ * counting does while cwnd-limited. Time (t) and rtt are in seconds, the
+ * estimate is in bytes, so cwnd_prior needs no conversion to segments.
  */
-static inline u32
-W_est (cubic_data_t *cd, f64 t, f64 rtt)
+static inline u64
+W_est (tcp_connection_t *tc, cubic_data_t *cd, f64 t, f64 rtt)
 {
-  f64 k = (f64) cd->K_ticks / CUBIC_K_SCALE;
+  f64 k = (f64) cd->K_ticks / CUBIC_K_SCALE, epoch, prior, rtts, w;
 
-  /* W_est(t) = cwnd_epoch+[3*(1-beta_cubic)/(1+beta_cubic)]*(t/RTT), with
-   * cwnd_epoch = W_cubic(0) = W_max-C*K^3, unrounded */
-  return cd->w_max - cubic_c * k * k * k + west_const * (t / rtt);
+  /* cwnd_epoch = W_cubic(0) = W_max-C*K^3, unrounded */
+  epoch = (cd->w_max - cubic_c * k * k * k) * tc->snd_mss;
+  prior = tc->prev_cwnd;
+  /* A segment per rtt */
+  rtts = t / rtt * tc->snd_mss;
+
+  w = epoch + west_const * rtts;
+  if (w <= prior)
+    return w;
+  if (epoch >= prior)
+    return epoch + rtts;
+  return prior + rtts - (prior - epoch) * west_const_inv;
 }
 
 static void
@@ -368,6 +382,10 @@ cubic_undo_recovery (tcp_connection_t *tc)
   f64 wnd = (f64) tc->cwnd / tc->snd_mss;
 
   cd->w_max = cd->prev_w_max;
+  /* The cwnd_prior from before the spurious event is not kept, so
+   * approximate it with w_max (RFC 9438 Sec. 4.9.2). Low after an rto or
+   * with fast convergence */
+  tc->prev_cwnd = clib_max (tc->prev_cwnd, cd->w_max * tc->snd_mss);
   cd->t_start = cubic_time (tc->c_thread_index);
   /* Convex epoch if the restored window already reached w_max */
   cd->K_ticks = (wnd < cd->w_max) ? K_cubic (cd, wnd) : 0;
@@ -434,10 +452,13 @@ cubic_rcv_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
   rtt_sec = clib_min (tc->mrtt_us, (f64) tc->srtt * TCP_TICK);
 
   w_cubic = W_cubic (cd, t + rtt_sec) * tc->snd_mss;
-  w_aimd = (u64) W_est (cd, t, rtt_sec) * tc->snd_mss;
+  w_aimd = W_est (tc, cd, t, rtt_sec);
   if (w_cubic < w_aimd)
     {
-      cubic_cwnd_accumulate (tc, tc->cwnd, ac->acked_and_sacked);
+      /* Reno-friendly region, cwnd grows as the estimate does. By
+       * alpha_cubic per cwnd acked until cwnd_prior, then by a segment */
+      thresh = tc->cwnd < tc->prev_cwnd ? tc->cwnd * west_const_inv : tc->cwnd;
+      cubic_cwnd_accumulate (tc, thresh, ac->acked_and_sacked);
     }
   else
     {
@@ -474,6 +495,8 @@ cubic_conn_init (tcp_connection_t *tc)
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
   tc->ssthresh = cubic_cfg.ssthresh;
   tc->cwnd = tcp_initial_cwnd (tc);
+  /* No reduction yet, also after a switch from another cc */
+  tc->prev_cwnd = tc->cwnd;
   cd->mode = cubic_cfg.hystart && tcp_in_slowstart (tc) ? CUBIC_MODE_HYSTART : CUBIC_MODE_AVOIDANCE;
   cd->prev_mode = CUBIC_MODE_AVOIDANCE;
 
