@@ -149,7 +149,6 @@ typedef enum hsi_tcp_drain_flags_
 {
   HSI_TCP_DRAIN_F_RX_OOO = 1 << 0,
   HSI_TCP_DRAIN_F_STALLED = 1 << 1,
-  HSI_TCP_DRAIN_F_WND_CLAMPED = 1 << 2,
   HSI_TCP_DRAIN_F_ABORT_SENT = 1 << 3,
   HSI_TCP_DRAIN_F_COMMIT_SENT = 1 << 4,
   HSI_TCP_DRAIN_F_HSI_CLOSED = 1 << 5,
@@ -194,7 +193,6 @@ struct hsi_tcp_drain_
   u32 snd_una;
   u32 snd_nxt;
   u32 rx_fifo_size; /**< rx fifo size before clamping it */
-  u32 rcv_wnd;	    /**< window advertised before clamping it */
   u32 cached_bytes;
   u32 *cached_buffers;
   hsi_tcp_drain_flags_t flags;
