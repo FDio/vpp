@@ -177,10 +177,11 @@ hsi_tcp_drain_fail_pair_silent (hsi_tcp_drain_t *drain)
 }
 
 /*
- * Pretend rx fifo can only fit what is already buffered, so tcp advertises a
- * zero window, also on data it sends while draining. Only the session's own
- * thread changes the size and it's restored before fifos are freed, so fifo
- * segment accounting is not touched.
+ * Pretend rx fifo can only fit what is already buffered, so tcp doesn't open the window while
+ * draining. Tcp never moves the right edge left and rcv_nxt doesn't advance, as hsi caches the
+ * data, so tcp keeps advertising the window it had and the remote's usable window drops as it
+ * sends. Only the session's own thread changes the size and it's restored before fifos are freed,
+ * so fifo segment accounting is not touched.
  */
 static_always_inline void
 hsi_tcp_drain_clamp_rx_fifo (session_t *s)
@@ -200,16 +201,6 @@ hsi_tcp_session_restore_fifos (session_t *s)
   drain = hsi_tcp_drain_get (s->thread_index, hsi_session_conn_key_from_session (s));
   if (drain && drain->rx_fifo_size && s->rx_fifo)
     s->rx_fifo->shr->size = drain->rx_fifo_size;
-}
-
-static_always_inline void
-hsi_tcp_send_zero_wnd_ack (session_t *s, tcp_connection_t *tc)
-{
-  /* Tcp won't shrink an advertised window, so start from a zero window and,
-   * with no rx fifo space, it stays closed */
-  hsi_tcp_drain_clamp_rx_fifo (s);
-  tc->rcv_wnd = 0;
-  tcp_send_ack (tc);
 }
 
 static_always_inline u8
@@ -246,9 +237,9 @@ hsi_tcp_segment_data_len (void *ip_hdr, tcp_header_t *tcp_hdr, u8 is_ip4, u32 *d
 }
 
 static_always_inline u8
-hsi_tcp_segment_in_rcv_wnd (tcp_connection_t *tc, u32 seq, u32 seq_end, u32 rcv_wnd)
+hsi_tcp_segment_in_rcv_wnd (tcp_connection_t *tc, u32 seq, u32 seq_end)
 {
-  return seq_geq (seq_end, tc->rcv_las) && seq_leq (seq, tc->rcv_nxt + rcv_wnd);
+  return seq_geq (seq_end, tc->rcv_las) && seq_leq (seq, tc->rcv_nxt + tc->rcv_wnd);
 }
 
 #define HSI_TCP_TRACKED_MAX_WND (TCP_WND_MAX << TCP_MAX_WND_SCALE)
@@ -476,10 +467,8 @@ hsi_tcp_drain_start (session_t *s, session_t *peer_s, tcp_connection_t *tc,
   hsi_tcp_drain_sample (s, tc, drain);
   drain->state = HSI_TCP_DRAIN_STATE_DRAINING;
   drain->rx_fifo_size = svm_fifo_size (s->rx_fifo);
-  drain->rcv_wnd = tc->rcv_wnd;
   tc->cfg_flags |= TCP_CFG_F_TRACKED;
-  hsi_tcp_send_zero_wnd_ack (s, tc);
-  drain->flags |= HSI_TCP_DRAIN_F_WND_CLAMPED;
+  hsi_tcp_drain_clamp_rx_fifo (s);
   hsi_worker_counter_inc (wrk, tcp_drain_started);
   hsi_timer_schedule (thread_index, now + HSI_TCP_DRAIN_SCAN_INTERVAL);
   hsi_drain_program_tx (s);
@@ -776,11 +765,10 @@ hsi_tcp_track_commit_flush (tcp_connection_t *tc)
 }
 
 /*
- * Ack that reopens the window closed while draining, to what the peer endpoint
- * advertises. Built from the session's commit snapshot, so seq, ack and
- * timestamps are consistent with what the tracker forwards afterwards. Sent
- * through tcp output, so it leaves like any other segment of the connection,
- * e.g., honoring its output node override.
+ * Ack that sets the window to what the peer endpoint advertises, as the remote may have used up
+ * the window tcp kept while draining. Built from the session's commit snapshot, so seq, ack and
+ * timestamps are consistent with what the tracker forwards afterwards. Sent through tcp output, so
+ * it leaves like any other segment of the connection, e.g., honoring its output node override.
  */
 static void
 hsi_tcp_send_window_update (tcp_connection_t *tc, hsi_tcp_track_snapshot_t *self,
@@ -796,7 +784,7 @@ hsi_tcp_send_window_update (tcp_connection_t *tc, hsi_tcp_track_snapshot_t *self
 
   ASSERT (tc->c_thread_index == vm->thread_index);
 
-  /* Tracker validates resets against the reopened window */
+  /* Tracker validates resets against this window */
   wnd = clib_min (peer->snd_wnd >> self->rcv_wscale, TCP_WND_MAX);
   tc->rcv_wnd = wnd << self->rcv_wscale;
 
@@ -1081,7 +1069,7 @@ hsi_tcp_drain_try_complete (session_t *s, tcp_connection_t *tc, hsi_tcp_drain_t 
   if (drain->state == HSI_TCP_DRAIN_STATE_FAILED)
     return -1;
 
-  /* Peer drains the shared fifo, keep the window closed */
+  /* Peer drains the shared fifo, don't let tcp open the window */
   hsi_tcp_drain_clamp_rx_fifo (s);
 
   peer_sh.handle = drain->peer_session_handle;
@@ -1176,8 +1164,7 @@ hsi_tcp_drain_cache_buffer (vlib_main_t *vm, vlib_buffer_t *b, tcp_connection_t 
   if (PREDICT_FALSE (tcp_syn (tcp_hdr)))
     goto drop;
 
-  /* Data sent before the remote saw the zero window is still accepted */
-  if (PREDICT_FALSE (!hsi_tcp_segment_in_rcv_wnd (tc, seq, seq_end, drain->rcv_wnd)))
+  if (PREDICT_FALSE (!hsi_tcp_segment_in_rcv_wnd (tc, seq, seq_end)))
     goto drop;
 
   if (tcp_ack (tcp_hdr))
@@ -1238,12 +1225,6 @@ hsi_tcp_drain_cache_buffer (vlib_main_t *vm, vlib_buffer_t *b, tcp_connection_t 
 
   hsi_drain_cache_buffer (&drain->cached_buffers, &drain->cached_bytes,
 			  vlib_get_buffer_index (vm, b), len);
-
-  if (!hsi_tcp_drain_flag_is_set (drain, HSI_TCP_DRAIN_F_WND_CLAMPED))
-    {
-      hsi_tcp_send_zero_wnd_ack (s, tc);
-      drain->flags |= HSI_TCP_DRAIN_F_WND_CLAMPED;
-    }
 
   hsi_worker_counter_inc (wrk, tcp_drain_cached);
 
