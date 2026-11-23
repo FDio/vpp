@@ -13,6 +13,7 @@
 
 #include <vlib/vlib.h>
 #include <vlib/cli_decl.h>
+#include <vlib/unix/unix.h>
 
 void
 vlib_cli_completions_free (vlib_cli_completion_t *c)
@@ -183,7 +184,7 @@ clib_error_t *
 cli_dispatch (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *c)
 {
   const vlib_cli_command_t *cmd = (vlib_cli_command_t *) c->function_arg;
-  cli_ctx_t ctx = {};
+  cli_ctx_t ctx = { .plain_text_only = vlib_unix_cli_plain_text_only () };
   u8 *line = 0, *captured = 0, *out;
   clib_error_t *error;
   uword ch;

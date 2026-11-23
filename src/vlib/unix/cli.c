@@ -3287,7 +3287,7 @@ vlib_unix_cli_set_prompt (char *prompt)
 static unix_cli_file_t *
 unix_cli_file_if_exists (unix_cli_main_t * cm)
 {
-  if (!cm->cli_file_pool)
+  if (!cm->cli_file_pool || pool_is_free_index (cm->cli_file_pool, cm->current_input_file_index))
     return 0;
   return pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
 }
@@ -3323,6 +3323,19 @@ vlib_unix_cli_ansi_capable (void)
   unix_cli_file_t *cf = unix_cli_file_if_interactive (cm);
 
   return cf && cf->ansi_capable;
+}
+
+u8
+vlib_unix_cli_plain_text_only (void)
+{
+  unix_cli_main_t *cm = &unix_cli_main;
+  unix_cli_file_t *cf = unix_cli_file_if_interactive (cm);
+
+  if ((unix_main.flags & UNIX_FLAG_NOCOLOR) || !cf || !cf->ansi_capable)
+    return 1;
+
+  /* the last session is not the one which runs the command, e.g. http cli server */
+  return vlib_get_current_process_node_index (vlib_get_main ()) != cf->process_node_index;
 }
 
 /** CLI command to quit the terminal session.
@@ -3671,7 +3684,7 @@ unix_cli_show_cli_sessions (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   unix_cli_main_t *cm = &unix_cli_main;
   clib_file_main_t *fm = &file_main;
-  table_t table = {}, *t = &table;
+  table_t table = { .no_ansi = ctx->plain_text_only }, *t = &table;
   unix_cli_file_t *cf;
   clib_file_t *uf;
 

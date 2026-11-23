@@ -112,6 +112,9 @@ u8 vlib_unix_cli_enable_disable_pager (u8 enable);
 
 /* Returns 1 when the current CLI session accepts ANSI escape sequences. */
 u8 vlib_unix_cli_ansi_capable (void);
+/* True if the current session can't or must not get ANSI sequences: the
+ * terminal is not ANSI capable (set terminal ansi) or unix { nocolor } is set */
+u8 vlib_unix_cli_plain_text_only (void);
 
 static inline unix_main_t *
 vlib_unix_get_main (void)
