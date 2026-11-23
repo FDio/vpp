@@ -1325,6 +1325,12 @@ session_config_fn (vlib_main_t *vm, unformat_input_t *input)
       else if (unformat (input, "wrk-mqs-segment-size %U", unformat_memory_size,
 			 &smm->wrk_mqs_segment_size))
 	;
+      else if (unformat (input, "max-app-events %u", &nitems))
+	{
+	  if (!nitems)
+	    return clib_error_return (0, "max-app-events must be greater than zero");
+	  smm->max_app_events = nitems;
+	}
       else if (unformat (input, "preallocated-sessions %d", &smm->preallocated_sessions))
 	;
       else if (unformat (input, "v4-session-table-buckets %d",

@@ -42,7 +42,7 @@ CFG_CORELIST_WKS="corelist-workers 2"
 # Socket and session configuration
 SOCK=/run/vpp-api.sock
 CLI_SOCK=localhost:5002
-SESSION_CFG="session { event-queue-length 100000 use-app-socket-api }"
+SESSION_CFG="session { event-queue-length 100000 use-app-socket-api${MAX_APP_EVENTS:+ max-app-events $MAX_APP_EVENTS} }"
 
 # Protocol configuration
 if [[ -n "$TSO_ENABLE" ]]; then
@@ -75,6 +75,9 @@ OPTIONS:
 EXAMPLES:
   # Basic usage with default IP (6.0.1.1)
   $0
+
+  # Limit each session app worker flush to 32 events
+  MAX_APP_EVENTS=32 $0
 
   # Specify different IP address
   $0 -a 6.0.1.2

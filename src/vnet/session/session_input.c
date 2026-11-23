@@ -87,11 +87,11 @@ app_worker_flush_events_inline (app_worker_t *app_wrk,
   u8 ring_index, mq_is_cong;
   session_state_t old_state;
   session_event_t _evt, *evt = &_evt;
-  u32 n_evts = 128, i;
+  u32 n_evts, i;
   session_t *s;
   int rv;
 
-  n_evts = clib_min (n_evts, clib_fifo_elts (app_wrk->wrk_evts[thread_index]));
+  n_evts = clib_min (session_main.max_app_events, clib_fifo_elts (app_wrk->wrk_evts[thread_index]));
 
   if (!is_builtin)
     {
