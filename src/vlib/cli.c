@@ -221,7 +221,7 @@ static vlib_cli_command_t *
 get_sub_command (vlib_cli_main_t * cm, vlib_cli_command_t * parent, u32 si)
 {
   vlib_cli_sub_command_t *s = vec_elt_at_index (parent->sub_commands, si);
-  return vec_elt_at_index (cm->commands, s->index);
+  return *vec_elt_at_index (cm->commands, s->index);
 }
 
 static uword
@@ -273,7 +273,7 @@ vlib_cli_complete_path (u8 *str, vlib_cli_command_t **parent, vlib_cli_command_t
   u8 **result = 0;
   unformat_input_t input;
   unformat_init_vector (&input, vec_dup (str));
-  c = vec_elt_at_index (vcm->commands, 0);
+  c = *vec_elt_at_index (vcm->commands, 0);
   *parent = c;
   *leaf = 0;
   *rest = 0;
@@ -408,7 +408,7 @@ vlib_cli_get_completions (u8 *str)
       vec_foreach (sc, leaf->sub_commands)
 	{
 	  vlib_cli_command_t *sub =
-	    vec_elt_at_index (vlib_get_global_main ()->cli_main.commands, sc->index);
+	    *vec_elt_at_index (vlib_get_global_main ()->cli_main.commands, sc->index);
 
 	  if (vec_len (sc->name) < n - start || memcmp (sc->name, rest + start, n - start))
 	    continue;
@@ -428,7 +428,7 @@ vlib_cli_get_completions (u8 *str)
 
       vec_foreach (sc, parent->sub_commands)
 	if (sc->name == *n)
-	  sub = vec_elt_at_index (vlib_get_global_main ()->cli_main.commands, sc->index);
+	  sub = *vec_elt_at_index (vlib_get_global_main ()->cli_main.commands, sc->index);
 
       vec_add2 (out, o, 1);
       o->text = format (0, "%v", *n);
@@ -472,7 +472,7 @@ format_vlib_cli_path (u8 * s, va_list * args)
 static vlib_cli_command_t *
 all_subs (vlib_cli_main_t * cm, vlib_cli_command_t * subs, u32 command_index)
 {
-  vlib_cli_command_t *c = vec_elt_at_index (cm->commands, command_index);
+  vlib_cli_command_t *c = *vec_elt_at_index (cm->commands, command_index);
   vlib_cli_sub_command_t *sc;
 
   if (c->function)
@@ -514,7 +514,7 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
   u8 *string;
   uword is_main_dispatch = cm == &vgm->cli_main;
 
-  parent = vec_elt_at_index (cm->commands, parent_command_index);
+  parent = *vec_elt_at_index (cm->commands, parent_command_index);
   if (is_main_dispatch && unformat (input, "help"))
     {
       uword help_at_end_of_line, i;
@@ -563,7 +563,7 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 	    {
 	      vlib_cli_command_t *d;
 
-	      d = vec_elt_at_index (cm->commands, subs[i].command_index);
+	      d = *vec_elt_at_index (cm->commands, subs[i].command_index);
 	      vlib_cli_output
 		(vm, "  %-30v %U", subs[i].name,
 		 format_vlib_cli_command_help, d, /* is_long */ 0);
@@ -663,7 +663,7 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 	si = &sub_input;
 
       if (has_sub_commands)
-	error = vlib_cli_dispatch_sub_commands (vm, cm, si, c - cm->commands);
+	error = vlib_cli_dispatch_sub_commands (vm, cm, si, c->index);
 
       /* An error of a declarative sub-command is its own, it does not mean that
        * the function of the parent command should handle the line instead. */
@@ -707,16 +707,14 @@ vlib_cli_dispatch_sub_commands (vlib_main_t * vm,
 	      if (!c->is_mp_safe)
 		vlib_worker_thread_barrier_sync (vm);
 	      if (PREDICT_FALSE (vec_len (cm->perf_counter_cbs) != 0))
-		clib_call_callbacks (cm->perf_counter_cbs, cm,
-				     c - cm->commands, 0 /* before */ );
+		clib_call_callbacks (cm->perf_counter_cbs, cm, c->index, 0 /* before */);
 
 	      c->hit_counter++;
 	      c_error = vlib_cli_call_function (vm, si, c);
 	      cm->error_from_declarative_command = c->handler && c_error;
 
 	      if (PREDICT_FALSE (vec_len (cm->perf_counter_cbs) != 0))
-		clib_call_callbacks (cm->perf_counter_cbs, cm,
-				     c - cm->commands, 1 /* after */ );
+		clib_call_callbacks (cm->perf_counter_cbs, cm, c->index, 1 /* after */);
 	      if (!c->is_mp_safe)
 		vlib_worker_thread_barrier_release (vm);
 
@@ -1324,8 +1322,8 @@ add_sub_command (vlib_cli_main_t * cm, uword parent_index, uword child_index)
   u8 *sub_name;
   word i, l;
 
-  p = vec_elt_at_index (cm->commands, parent_index);
-  c = vec_elt_at_index (cm->commands, child_index);
+  p = *vec_elt_at_index (cm->commands, parent_index);
+  c = *vec_elt_at_index (cm->commands, child_index);
 
   l = parent_path_len (c->path);
   if (l == ~0)
@@ -1412,6 +1410,17 @@ add_sub_command (vlib_cli_main_t * cm, uword parent_index, uword child_index)
     }
 }
 
+static vlib_cli_command_t *
+vlib_cli_alloc_command (vlib_cli_main_t *cm)
+{
+  vlib_cli_command_t *c = clib_mem_alloc (sizeof (*c));
+
+  clib_memset (c, 0, sizeof (*c));
+  c->index = vec_len (cm->commands);
+  vec_add1 (cm->commands, c);
+  return c;
+}
+
 static void
 vlib_cli_make_parent (vlib_cli_main_t * cm, uword ci)
 {
@@ -1422,7 +1431,7 @@ vlib_cli_make_parent (vlib_cli_main_t * cm, uword ci)
   /* Root command (index 0) should have already been added. */
   ASSERT (vec_len (cm->commands) > 0);
 
-  c = vec_elt_at_index (cm->commands, ci);
+  c = *vec_elt_at_index (cm->commands, ci);
   p_len = parent_path_len (c->path);
 
   /* No space?  Parent is root command. */
@@ -1441,11 +1450,10 @@ vlib_cli_make_parent (vlib_cli_main_t * cm, uword ci)
   if (!p)
     {
       /* Parent does not exist; create it. */
-      vec_add2 (cm->commands, parent, 1);
+      parent = vlib_cli_alloc_command (cm);
       parent->path = p_path;
-      hash_set_mem (cm->command_index_by_path, parent->path,
-		    parent - cm->commands);
-      pi = parent - cm->commands;
+      hash_set_mem (cm->command_index_by_path, parent->path, parent->index);
+      pi = parent->index;
     }
   else
     {
@@ -1490,6 +1498,7 @@ vlib_cli_register (vlib_main_t * vm, vlib_cli_command_t * c)
   vlib_global_main_t *vgm = vlib_get_global_main ();
   vlib_cli_main_t *cm = &vgm->cli_main;
   clib_error_t *error = 0;
+  vlib_cli_command_t *n;
   uword ci, *p;
   char *normalized_path;
 
@@ -1510,7 +1519,7 @@ vlib_cli_register (vlib_main_t * vm, vlib_cli_command_t * c)
       vlib_cli_command_t *d;
 
       ci = p[0];
-      d = vec_elt_at_index (cm->commands, ci);
+      d = *vec_elt_at_index (cm->commands, ci);
 
       /* If existing command was created via vlib_cli_make_parent
 	 replaced it with callers data. */
@@ -1525,6 +1534,7 @@ vlib_cli_register (vlib_main_t * vm, vlib_cli_command_t * c)
 
 	  /* Save internal fields. */
 	  d->path = save.path;
+	  d->index = save.index;
 	  d->sub_commands = save.sub_commands;
 	  d->sub_command_index_by_name = save.sub_command_index_by_name;
 	  d->sub_command_positions = save.sub_command_positions;
@@ -1547,14 +1557,15 @@ vlib_cli_register (vlib_main_t * vm, vlib_cli_command_t * c)
       if (vec_len (cm->commands) == 0)
 	{
 	  /* Create command with index 0; path is empty string. */
-	  vec_resize (cm->commands, 1);
+	  vlib_cli_alloc_command (cm);
 	}
 
       ci = vec_len (cm->commands);
       hash_set_mem (cm->command_index_by_path, normalized_path, ci);
-      vec_add1 (cm->commands, c[0]);
-
-      c = vec_elt_at_index (cm->commands, ci);
+      n = vlib_cli_alloc_command (cm);
+      *n = c[0];
+      n->index = ci;
+      c = n;
       c->path = normalized_path;
 
       /* Don't inherit from registration. */
@@ -1745,8 +1756,8 @@ sort_cmds_by_path (void *a1, void *a2)
   vlib_cli_command_t *c1, *c2;
   int i, lmin;
 
-  c1 = vec_elt_at_index (cm->commands, *index1);
-  c2 = vec_elt_at_index (cm->commands, *index2);
+  c1 = *vec_elt_at_index (cm->commands, *index1);
+  c2 = *vec_elt_at_index (cm->commands, *index2);
 
   lmin = vec_len (c1->path);
   lmin = (vec_len (c2->path) >= lmin) ? lmin : vec_len (c2->path);
@@ -1785,7 +1796,7 @@ cli_recursive_walk (vlib_cli_walk_args_t * aa)
   *a = *aa;
   cm = a->cm;
 
-  parent = vec_elt_at_index (cm->commands, a->parent_command_index);
+  parent = *vec_elt_at_index (cm->commands, a->parent_command_index);
 
   if (parent->function)
     {
@@ -1839,7 +1850,7 @@ format_mp_safe (u8 * s, va_list * args)
 
   for (i = 0; i < vec_len (cm->sort_vector); i++)
     {
-      c = vec_elt_at_index (cm->commands, cm->sort_vector[i]);
+      c = *vec_elt_at_index (cm->commands, cm->sort_vector[i]);
       s = format (s, format_string, c->path, c->hit_counter);
     }
 
