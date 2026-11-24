@@ -58,7 +58,7 @@ typedef struct
   clib_spinlock_t *lockp;
 
   /* time scale transform */
-  u32 unix_time_0;
+  time_t unix_time_0;
   f64 vlib_time_0;
 
   /* convenience */
