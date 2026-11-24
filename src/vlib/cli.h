@@ -107,14 +107,19 @@ typedef struct vlib_cli_command_t
 
   /* Hit counter */
   u32 hit_counter;
+
+  /* Index in the vector of all the commands, set when it is registered. */
+  u32 index;
 } vlib_cli_command_t;
 
 typedef void (vlib_cli_output_function_t) (uword arg,
 					   u8 * buffer, uword buffer_bytes);
 typedef struct vlib_cli_main_t
 {
-  /* Vector of all known commands. */
-  vlib_cli_command_t *commands;
+  /* Vector of all known commands. Each of them is allocated on its own, so a
+     pointer to a command stays valid when commands are registered later,
+     for example while a command is running. */
+  vlib_cli_command_t **commands;
 
   /* Hash table mapping normalized path to index into all_commands. */
   uword *command_index_by_path;
