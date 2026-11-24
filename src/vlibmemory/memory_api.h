@@ -12,6 +12,8 @@
 #include <vlibapi/api.h>
 #include <vlibapi/memory_shared.h>
 
+extern vlib_log_class_registration_t vl_api_client_log;
+
 svm_queue_t *vl_api_client_index_to_input_queue (u32 index);
 int vl_mem_api_init (const char *region_name);
 void vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm,

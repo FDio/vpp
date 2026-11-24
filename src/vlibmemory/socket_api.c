@@ -6,6 +6,7 @@
  * socket_api.c
  */
 
+#define _GNU_SOURCE
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -16,6 +17,7 @@
 #include <vppinfra/byte_order.h>
 #include <svm/ssvm.h>
 #include <vlibmemory/api.h>
+#include <vlibmemory/memory_api.h>
 
 #include <vlibmemory/vl_memory_msg_enum.h>
 
@@ -36,6 +38,10 @@
 #define vl_calcsizefun
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_calcsizefun
+
+#define log_debug(...) vlib_log_debug (vl_api_client_log.class, __VA_ARGS__)
+#define log_info(...)  vlib_log_info (vl_api_client_log.class, __VA_ARGS__)
+#define log_warn(...)  vlib_log_warn (vl_api_client_log.class, __VA_ARGS__)
 
 socket_main_t socket_main;
 
@@ -164,13 +170,16 @@ vl_socket_free_registration_index (u32 pool_index)
 
   if (pool_is_free_index (socket_main.registration_pool, pool_index))
     {
-      clib_warning ("main pool index %d already free", pool_index);
+      log_warn ("socket client index %u is already free", pool_index);
       return;
     }
   rp = pool_elt_at_index (socket_main.registration_pool, pool_index);
 
   vl_api_call_reaper_functions (
     clib_host_to_net_u32 (sock_api_registration_handle (rp)));
+
+  log_debug ("socket client '%s' disconnected, index %u", rp->name ? (char *) rp->name : "unnamed",
+	     pool_index);
 
   ASSERT (rp->registration_type != REGISTRATION_TYPE_FREE);
   for (i = 0; i < vec_len (rp->additional_fds_to_close); i++)
@@ -289,6 +298,10 @@ vl_socket_read_ready (clib_file_t * uf)
       if (n == 0 || (errno != EAGAIN && errno != EWOULDBLOCK))
 	{
 	  /* Peer closed the connection, or a severe read error occurred. */
+	  if (n == 0)
+	    log_debug ("socket client '%s' closed the connection", rp->name);
+	  else
+	    log_debug ("socket client '%s' read error: %s", rp->name, strerror (errno));
 	  vl_socket_request_remove_reg_index (reg_index);
 	}
       /* EAGAIN/EWOULDBLOCK means no data to process yet. */
@@ -406,9 +419,7 @@ vl_socket_write_ready (clib_file_t * uf)
 	    {
 	      break;
 	    }
-#if DEBUG > 2
-	  clib_warning ("write error, close the file...\n");
-#endif
+	  log_debug ("write error (%s), closing the socket client", strerror (errno));
 	  vl_socket_request_remove_reg_index (reg_index);
 	  return 0;
 	}
@@ -431,6 +442,10 @@ clib_error_t *
 vl_socket_error_ready (clib_file_t * uf)
 {
   u32 reg_index = uf->private_data;
+  vl_api_registration_t *rp = vl_socket_get_registration (reg_index);
+
+  if (rp)
+    log_debug ("socket client '%s' socket error", rp->name);
   vl_socket_request_remove_reg_index (reg_index);
   return 0;
 }
@@ -499,12 +514,23 @@ vl_api_sockclnt_create_t_handler (vl_api_sockclnt_create_t * mp)
   /* client already connected through shared memory? */
   if (!regp || regp->registration_type != REGISTRATION_TYPE_SOCKET_SERVER)
     {
-      clib_warning (
-	"unsupported API call: already connected though shared memory?");
+      log_warn ("sockclnt_create from a client which is not a socket "
+		"client, already connected through shared memory?");
       return;
     }
 
   regp->name = format (0, "%s%c", mp->name, 0);
+  {
+    struct ucred cred = { .pid = -1, .uid = -1, .gid = -1 };
+    socklen_t cl = sizeof (cred);
+    clib_file_t *cf = vl_api_registration_file (regp);
+
+    if (cf)
+      getsockopt (cf->file_descriptor, SOL_SOCKET, SO_PEERCRED, &cred, &cl);
+    log_debug ("socket client '%s' connected, index %u, pid %d uid %u, "
+	       "%u messages",
+	       regp->name, regp->vl_api_registration_pool_index, cred.pid, cred.uid, nmsg);
+  }
 
   u32 size = sizeof (*rp) + (nmsg * sizeof (vl_api_message_table_entry_t));
   rp = vl_msg_api_alloc_zero (size);
@@ -554,7 +580,7 @@ vl_api_sockclnt_delete_t_handler (vl_api_sockclnt_delete_t * mp)
     }
   else
     {
-      clib_warning ("unknown client ID %d", reg_index);
+      log_warn ("sockclnt_delete: unknown socket client index %u", reg_index);
       rp->response = htonl (-1);
       vl_api_send_msg (regp, (u8 *) rp);
     }
@@ -661,17 +687,18 @@ vl_api_sock_init_shm_t_handler (vl_api_sock_init_shm_t * mp)
   clib_file_t *cf;
   vl_api_shm_elem_config_t *config = 0;
   vl_shmem_hdr_t *shmem_hdr;
+  clib_error_t *error;
   int rv, tries = 1000;
 
   regp = vl_api_client_index_to_registration (mp->client_index);
   if (regp == 0)
     {
-      clib_warning ("API client disconnected");
+      log_warn ("sock_init_shm: client index %u is not registered", mp->client_index);
       return;
     }
   if (regp->registration_type != REGISTRATION_TYPE_SOCKET_SERVER)
     {
-      clib_warning ("Invalid registration");
+      log_warn ("sock_init_shm: client '%s' is not a socket client", regp->name);
       return;
     }
 
@@ -686,12 +713,18 @@ vl_api_sock_init_shm_t_handler (vl_api_sock_init_shm_t * mp)
   memfd->name = format (0, "%s%c", regp->name, 0);
 
   if ((rv = ssvm_server_init_memfd (memfd)))
-    goto reply;
+    {
+      log_warn ("memfd region for '%s' failed, rv %d", regp->name, rv);
+      goto reply;
+    }
 
   /* delete the unused heap created in ssvm_server_init_memfd and mark it
    * accessible again for ASAN */
   clib_mem_destroy_heap (memfd->sh->heap);
   clib_mem_unpoison ((void *) memfd->sh->ssvm_va, memfd->ssvm_size);
+
+  log_debug ("memfd region of socket client '%s' created, fd %d, size %U", regp->name, memfd->fd,
+	     format_memory_size, (u64) memfd->ssvm_size);
 
   /* Remember to close this fd when the socket connection goes away */
   vec_add1 (regp->additional_fds_to_close, memfd->fd);
@@ -748,7 +781,7 @@ reply:
   cf = vl_api_registration_file (regp);
   if (!cf)
     {
-      clib_warning ("cf removed");
+      log_warn ("socket client '%s' is gone, the memfd is not sent", regp->name);
       return;
     }
 
@@ -767,7 +800,11 @@ reply:
       usleep (1e3);
     }
 
-  vl_sock_api_send_fd_msg (cf->file_descriptor, &memfd->fd, 1);
+  if ((error = vl_sock_api_send_fd_msg (cf->file_descriptor, &memfd->fd, 1)))
+    {
+      log_warn ("memfd of '%s' not sent: %U", regp->name, format_clib_error, error);
+      clib_error_free (error);
+    }
 }
 
 #define foreach_vlib_api_msg                                                  \
@@ -886,6 +923,18 @@ socksvr_config (vlib_main_t * vm, unformat_input_t * input)
 }
 
 VLIB_CONFIG_FUNCTION (socksvr_config, "socksvr");
+
+static clib_error_t *
+socksvr_log_listen (vlib_main_t *vm)
+{
+  socket_main_t *sm = &socket_main;
+
+  if (sm->socket_name)
+    log_info ("api socket listening on %s", sm->socket_name);
+  return 0;
+}
+
+VLIB_MAIN_LOOP_ENTER_FUNCTION (socksvr_log_listen);
 
 void
 vlibsocket_reference ()
