@@ -19,6 +19,7 @@
 #include <vlibmemory/memory_client.h>
 #include <vlibmemory/memory_api.h>
 #include <vlibmemory/api.h>
+#include <vlibmemory/socket_client.h>
 
 #include <vapi/memclnt.api.vapi.h>
 #include <vapi/vlib.api.vapi.h>
@@ -86,6 +87,9 @@ struct vapi_ctx_s
   bool handle_keepalives;
   pthread_mutex_t requests_mutex;
   bool use_uds;
+  /* the api socket is the control channel of the memfd api region */
+  bool memfd_attached;
+  socket_client_main_t scm;
 
   svm_queue_t *vl_input_queue;
   clib_socket_t client_socket;
@@ -601,8 +605,7 @@ vapi_memclnt_create_v2_reply_t_handler (vapi_ctx_t ctx,
 }
 
 static void
-vapi_sockclnt_create_reply_t_handler (vapi_ctx_t ctx,
-				      vl_api_sockclnt_create_reply_t *mp)
+vapi_sockclnt_create_reply_t_handler (vapi_ctx_t ctx, vl_api_sockclnt_create_reply_t *mp)
 {
   int i;
   u8 *name_and_crc;
@@ -932,14 +935,20 @@ vapi_sock_client_disconnect (vapi_ctx_t ctx)
   return VAPI_OK;
 }
 
+static vapi_error_e vapi_memfd_client_detach (vapi_ctx_t ctx);
+
 int
 vapi_client_disconnect (vapi_ctx_t ctx)
 {
+  int rv;
+
   if (ctx->use_uds)
     {
       return vapi_sock_client_disconnect (ctx);
     }
-  return vapi_shm_client_disconnect (ctx);
+  rv = vapi_shm_client_disconnect (ctx);
+  vapi_memfd_client_detach (ctx);
+  return rv;
 }
 
 u32
@@ -956,9 +965,54 @@ vapi_api_get_msg_index (vapi_ctx_t ctx, u8 *name_and_crc)
   return ~0;
 }
 
+static vapi_error_e
+vapi_memfd_client_detach (vapi_ctx_t ctx)
+{
+  if (ctx->memfd_attached)
+    {
+      vl_socket_client_disconnect2 (&ctx->scm);
+      ctx->memfd_attached = false;
+    }
+  return VAPI_OK;
+}
+
+/*
+ * The api socket is only used to get the memfd region, the messages
+ * are exchanged through the queues in it.
+ */
+static vapi_error_e
+vapi_memfd_client_connect (vapi_ctx_t ctx, const char *path, const char *name,
+			   int response_queue_size, bool handle_keepalives)
+{
+  if (name == 0)
+    return VAPI_EINVAL;
+
+  ctx->my_client_index = ~0;
+
+  if (vl_socket_client_connect2 (&ctx->scm, (char *) (path ? path : API_SOCKET_FILE), (char *) name,
+				 0))
+    return VAPI_ECON_FAIL;
+  ctx->memfd_attached = true;
+
+  if (vl_socket_client_map_shm2 (&ctx->scm))
+    {
+      vapi_memfd_client_detach (ctx);
+      return VAPI_ECON_FAIL;
+    }
+
+  if (vapi_shm_client_connect (ctx, name, 0, response_queue_size, handle_keepalives) < 0)
+    {
+      vapi_memfd_client_detach (ctx);
+      return VAPI_ECON_FAIL;
+    }
+
+  return VAPI_OK;
+}
+
 vapi_error_e
 vapi_connect_ex (vapi_ctx_t ctx, const char *name, const char *path, int max_outstanding_requests,
-		 int response_queue_size, vapi_mode_e mode, bool handle_keepalives)
+		 int response_queue_size, vapi_mode_e mode, bool handle_keepalives,
+		 bool use_socket_only)
 {
   int rv;
 
@@ -978,9 +1032,15 @@ vapi_connect_ex (vapi_ctx_t ctx, const char *name, const char *path, int max_out
   clib_memset (ctx->requests, 0, size);
   /* coverity[MISSING_LOCK] - 177211 requests_mutex is not needed here */
   ctx->requests_start = ctx->requests_count = 0;
-  ctx->use_uds = true;
+  ctx->use_uds = use_socket_only;
 
-  if (vapi_sock_client_connect (ctx, (char *) path, name) != VAPI_OK)
+  if (use_socket_only)
+    {
+      if (vapi_sock_client_connect (ctx, (char *) path, name) != VAPI_OK)
+	return VAPI_ECON_FAIL;
+    }
+  else if (vapi_memfd_client_connect (ctx, path, name, response_queue_size, handle_keepalives) !=
+	   VAPI_OK)
     {
       return VAPI_ECON_FAIL;
     }
@@ -1061,7 +1121,7 @@ vapi_connect (vapi_ctx_t ctx, const char *name, const char *socket_path,
 	      bool handle_keepalives)
 {
   return vapi_connect_ex (ctx, name, socket_path, max_outstanding_requests, response_queue_size,
-			  mode, handle_keepalives);
+			  mode, handle_keepalives, false);
 }
 
 /*
@@ -1344,11 +1404,15 @@ vapi_disconnect (vapi_ctx_t ctx)
       return VAPI_EINVAL;
     }
 
+  vapi_error_e rv;
+
   if (ctx->use_uds)
     {
       return vapi_sock_disconnect (ctx);
     }
-  return vapi_shm_disconnect (ctx);
+  rv = vapi_shm_disconnect (ctx);
+  vapi_memfd_client_detach (ctx);
+  return rv;
 }
 
 vapi_error_e

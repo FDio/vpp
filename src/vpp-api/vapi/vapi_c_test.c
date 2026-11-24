@@ -30,6 +30,7 @@ DEFINE_VAPI_MSG_IDS_FAKE_API_JSON;
 
 static char *app_name = NULL;
 static char *api_sock_path = NULL;
+static bool use_socket_only = false;
 static const int max_outstanding_requests = 64;
 static const int response_queue_size = 32;
 
@@ -53,7 +54,7 @@ START_TEST (test_invalid_values)
   rv = vapi_send (ctx, sv);
   ck_assert_int_eq (VAPI_EINVAL, rv);
   rv = vapi_connect_ex (ctx, app_name, api_sock_path, max_outstanding_requests, response_queue_size,
-			VAPI_MODE_BLOCKING, true);
+			VAPI_MODE_BLOCKING, true, use_socket_only);
   ck_assert_int_eq (VAPI_OK, rv);
   rv = vapi_send (ctx, NULL);
   ck_assert_int_eq (VAPI_EINVAL, rv);
@@ -355,7 +356,7 @@ START_TEST (test_connect)
   vapi_error_e rv = vapi_ctx_alloc (&ctx);
   ck_assert_int_eq (VAPI_OK, rv);
   rv = vapi_connect_ex (ctx, app_name, api_sock_path, max_outstanding_requests, response_queue_size,
-			VAPI_MODE_BLOCKING, true);
+			VAPI_MODE_BLOCKING, true, use_socket_only);
   ck_assert_int_eq (VAPI_OK, rv);
   rv = vapi_disconnect (ctx);
   ck_assert_int_eq (VAPI_OK, rv);
@@ -372,7 +373,7 @@ setup_blocking (void)
   vapi_error_e rv = vapi_ctx_alloc (&ctx);
   ck_assert_int_eq (VAPI_OK, rv);
   rv = vapi_connect_ex (ctx, app_name, api_sock_path, max_outstanding_requests, response_queue_size,
-			VAPI_MODE_BLOCKING, true);
+			VAPI_MODE_BLOCKING, true, use_socket_only);
   ck_assert_int_eq (VAPI_OK, rv);
 }
 
@@ -382,7 +383,7 @@ setup_nonblocking (void)
   vapi_error_e rv = vapi_ctx_alloc (&ctx);
   ck_assert_int_eq (VAPI_OK, rv);
   rv = vapi_connect_ex (ctx, app_name, api_sock_path, max_outstanding_requests, response_queue_size,
-			VAPI_MODE_NONBLOCKING, true);
+			VAPI_MODE_NONBLOCKING, true, use_socket_only);
   ck_assert_int_eq (VAPI_OK, rv);
 }
 
@@ -1066,14 +1067,24 @@ test_suite (void)
 int
 main (int argc, char *argv[])
 {
-  if (3 != argc)
+  if (4 != argc)
     {
       printf ("Invalid argc==`%d'\n", argc);
       return EXIT_FAILURE;
     }
   app_name = argv[1];
   api_sock_path = argv[2];
-  printf ("App name: `%s', API socket: `%s'\n", app_name, api_sock_path);
+  if (!strcmp (argv[3], "memfd"))
+    use_socket_only = 0;
+  else if (!strcmp (argv[3], "socket"))
+    use_socket_only = 1;
+  else
+    {
+      printf ("Unrecognised required argument '%s', expected 'socket' or 'memfd'.\n", argv[3]);
+      return EXIT_FAILURE;
+    }
+  printf ("App name: `%s', API socket: `%s', messages over the socket %d\n", app_name,
+	  api_sock_path, use_socket_only);
 
   int number_failed;
   Suite *s;

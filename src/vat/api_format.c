@@ -88,6 +88,15 @@ vat_socket_connect (vat_main_t * vam)
   /* vpp expects the client index in network order */
   vam->my_client_index = htonl (socket_client_main.client_index);
   am->my_client_index = vam->my_client_index;
+
+  /* the api socket is the control channel, the messages use the memfd */
+  if (vam->no_memfd)
+    return 0;
+  if ((rv = vat_sock_init_shm (vam)))
+    return rv;
+  vam->vl_input_queue = am->shmem_hdr->vl_input_queue;
+  vam->my_client_index = am->my_client_index;
+  vam->client_index_invalid = 0;
   return 0;
 }
 #else /* vpp built-in case, we don't do sockets... */
@@ -2020,22 +2029,12 @@ _("disable",  L2_VTR_DISABLED)  \
 _("pop",  L2_VTR_POP_2)         \
 _("push",  L2_VTR_PUSH_2)
 
-static int
-api_sock_init_shm (vat_main_t * vam)
-{
 #if VPP_API_TEST_BUILTIN == 0
-  unformat_input_t *i = vam->input;
+int
+vat_sock_init_shm (vat_main_t *vam)
+{
   vl_api_shm_elem_config_t *config = 0;
-  u64 size = 64 << 20;
   int rv;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "size %U", unformat_memory_size, &size))
-	;
-      else
-	break;
-    }
 
   /*
    * Canned custom ring allocator config.
@@ -2074,6 +2073,27 @@ api_sock_init_shm (vat_main_t * vam)
   if (!rv)
     vam->client_index_invalid = 1;
   return rv;
+}
+
+#endif
+
+static int
+api_sock_init_shm (vat_main_t *vam)
+{
+#if VPP_API_TEST_BUILTIN == 0
+  unformat_input_t *i = vam->input;
+
+  /* the size is only accepted for compatibility, vpp decides it */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      u64 size;
+      if (unformat (i, "size %U", unformat_memory_size, &size))
+	;
+      else
+	break;
+    }
+
+  return vat_sock_init_shm (vam);
 #else
   return -99;
 #endif

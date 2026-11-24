@@ -220,6 +220,8 @@ typedef struct vat_main_
 
   socket_client_main_t *socket_client_main;
   u8 *socket_name;
+  /* exchange the messages through the api socket, not the memfd region */
+  u8 no_memfd;
 
   elog_main_t elog_main;
 
@@ -257,6 +259,7 @@ u8 *format_ip46_address (u8 * s, va_list * args);
 u8 *format_ethernet_address (u8 * s, va_list * args);
 
 int vat_socket_connect (vat_main_t * vam);
+int vat_sock_init_shm (vat_main_t *vam);
 
 #if VPP_API_TEST_BUILTIN
 #define print api_cli_output

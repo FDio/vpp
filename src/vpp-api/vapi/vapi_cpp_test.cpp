@@ -35,6 +35,7 @@ DEFINE_VAPI_MSG_IDS_FAKE_API_JSON;
 
 static char *app_name = nullptr;
 static char *api_sock_path = nullptr;
+static bool use_socket_only = false;
 static const int max_outstanding_requests = 32;
 static const int response_queue_size = 32;
 
@@ -60,8 +61,8 @@ Connection con;
 
 void setup (void)
 {
-  vapi_error_e rv =
-    con.connect (app_name, api_sock_path, max_outstanding_requests, response_queue_size, true);
+  vapi_error_e rv = con.connect (app_name, api_sock_path, max_outstanding_requests,
+				 response_queue_size, true, use_socket_only);
   ck_assert_int_eq (VAPI_OK, rv);
 }
 
@@ -462,14 +463,24 @@ Suite *test_suite (void)
 
 int main (int argc, char *argv[])
 {
-  if (3 != argc)
+  if (4 != argc)
     {
       printf ("Invalid argc==`%d'\n", argc);
       return EXIT_FAILURE;
     }
   app_name = argv[1];
   api_sock_path = argv[2];
-  printf ("App name: `%s', API socket: `%s'\n", app_name, api_sock_path);
+  if (!strcmp (argv[3], "memfd"))
+    use_socket_only = 0;
+  else if (!strcmp (argv[3], "socket"))
+    use_socket_only = 1;
+  else
+    {
+      printf ("Unrecognised required argument '%s', expected 'socket' or 'memfd'.\n", argv[3]);
+      return EXIT_FAILURE;
+    }
+  printf ("App name: `%s', API socket: `%s', messages over the socket %d\n", app_name,
+	  api_sock_path, use_socket_only);
 
   int number_failed;
   Suite *s;

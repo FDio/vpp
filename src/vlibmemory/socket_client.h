@@ -28,6 +28,9 @@ typedef struct
   ssvm_private_t memfd_segment;
 
   int want_shm_pthread;
+  /* only map the memfd region, do not create the shm api client */
+  int map_shm_only;
+  int shm_mapped;
 } socket_client_main_t;
 
 extern socket_client_main_t socket_client_main;
@@ -43,6 +46,7 @@ int vl_socket_client_write (void);
 void *vl_socket_client_msg_alloc (int nbytes);
 int vl_socket_client_init_shm (vl_api_shm_elem_config_t * config,
 			       int want_pthread);
+int vl_socket_client_map_shm (void);
 clib_error_t *vl_socket_client_recv_fd_msg (int fds[], int n_fds, u32 wait);
 
 /*
@@ -60,6 +64,7 @@ void *vl_socket_client_msg_alloc2 (socket_client_main_t * scm, int nbytes);
 int vl_socket_client_init_shm2 (socket_client_main_t * scm,
 				vl_api_shm_elem_config_t * config,
 				int want_pthread);
+int vl_socket_client_map_shm2 (socket_client_main_t *scm);
 clib_error_t *vl_socket_client_recv_fd_msg2 (socket_client_main_t * scm,
 					     int fds[], int n_fds, u32 wait);
 

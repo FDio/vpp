@@ -13,8 +13,10 @@ Connecting to VPP is done with :
     auto err = con.connect("example_client", nullptr, 32, 32);
 
 
-You can specify the path to the api socket/shared memory you want to connect to
-with the second parameter (set to ``nullptr``, meaning default)
+You can specify the path to the api socket you want to connect to with the
+second parameter (set to ``nullptr``, meaning default). The messages are
+exchanged through the memfd shared memory region which VPP passes over the
+socket.
 
 .. literalinclude:: ./api_example/api_example.cc
   :language: cpp

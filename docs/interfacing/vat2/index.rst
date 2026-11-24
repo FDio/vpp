@@ -5,7 +5,8 @@ VAT2
 ====
 
 VAT2 is a CLI tool to exercise VPP's :ref:`binary API <vpp_binapi>`
-via shared memory mainly for testing purposes.
+via shared memory mainly for testing purposes. The shared memory
+region is a memfd, which ``vat2`` gets from VPP through the API socket.
 
 History
 -------
@@ -27,7 +28,8 @@ Usage examples
 
 Here are a few working examples to get you started.
 
-``vat2`` talks to VPP over the API socket, ``/run/vpp/api.sock`` by default.
+``vat2`` connects to the API socket, ``/run/vpp/api.sock`` by default, and
+exchanges the messages through the memfd region VPP passes over it.
 If you started ``vpp`` with a different socket, pass it with ``--socket``:
 
 .. code-block:: console
