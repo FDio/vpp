@@ -505,7 +505,7 @@ vl_map_shmem (const char *region_name)
   clib_memset (a, 0, sizeof (*a));
   a->name = region_name;
   a->size = am->api_size ? am->api_size : (16 << 20);
-  a->flags = SVM_FLAGS_MHEAP;
+  a->flags = SVM_FLAGS_MHEAP | SVM_FLAGS_MEMFD;
   a->uid = am->api_uid;
   a->gid = am->api_gid;
   a->pvt_heap_size = am->api_pvt_heap_size;
