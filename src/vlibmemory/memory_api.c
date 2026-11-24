@@ -9,6 +9,14 @@
 #include <vlibmemory/api.h>
 #include <vlibmemory/memory_api.h>
 
+VLIB_REGISTER_LOG_CLASS (vl_api_client_log) = {
+  .class_name = "api",
+  .subclass_name = "client",
+};
+
+#define log_debug(...) vlib_log_debug (vl_api_client_log.class, __VA_ARGS__)
+#define log_warn(...)  vlib_log_warn (vl_api_client_log.class, __VA_ARGS__)
+
 #include <vlibmemory/vl_memory_msg_enum.h>	/* enumerate all vlib messages */
 
 #define vl_typedefs		/* define message structures */
@@ -192,6 +200,9 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
 
   vl_msg_pop_heap (oldheap);
 
+  log_debug ("memfd client '%s' connected, index %u, pid %d", regp->name,
+	     regp->vl_api_registration_pool_index, q->consumer_pid);
+
   rp = vl_msg_api_alloc (sizeof (*rp));
   rp->_vl_msg_id = ntohs (VL_API_MEMCLNT_CREATE_REPLY);
   rp->handle = (uword) regp;
@@ -274,6 +285,9 @@ vl_api_memclnt_create_v2_t_handler (vl_api_memclnt_create_v2_t *mp)
 
   vl_msg_pop_heap (oldheap);
 
+  log_debug ("memfd client '%s' connected, index %u, pid %d", regp->name,
+	     regp->vl_api_registration_pool_index, q->consumer_pid);
+
   rp = vl_msg_api_alloc (sizeof (*rp));
   rp->_vl_msg_id = ntohs (VL_API_MEMCLNT_CREATE_V2_REPLY);
   rp->handle = (uword) regp;
@@ -324,10 +338,8 @@ vl_api_memclnt_delete_t_handler (vl_api_memclnt_delete_t * mp)
 
   if (epoch != (am->shmem_hdr->application_restarts & VL_API_EPOCH_MASK))
     {
-      clib_warning
-	("Stale clnt delete index %d old epoch %d cur epoch %d",
-	 client_index, epoch,
-	 (am->shmem_hdr->application_restarts & VL_API_EPOCH_MASK));
+      log_warn ("stale memclnt_delete for index %d, old epoch %d, cur epoch %d", client_index,
+		epoch, (am->shmem_hdr->application_restarts & VL_API_EPOCH_MASK));
       return;
     }
 
@@ -338,6 +350,8 @@ vl_api_memclnt_delete_t_handler (vl_api_memclnt_delete_t * mp)
       int i;
       regp = *regpp;
       int private_registration = 0;
+
+      log_debug ("memfd client '%s' disconnected, index %u", regp->name, client_index);
 
       /* Send reply unless client asked us to do the cleanup */
       if (!mp->do_cleanup)
@@ -354,9 +368,9 @@ vl_api_memclnt_delete_t_handler (vl_api_memclnt_delete_t * mp)
 	  vl_msg_api_send_shmem (regp->vl_input_queue, (u8 *) & rp);
 	  if (client_index != regp->vl_api_registration_pool_index)
 	    {
-	      clib_warning ("mismatch client_index %d pool_index %d",
-			    client_index,
-			    regp->vl_api_registration_pool_index);
+	      log_warn ("memfd client '%s': mismatch client_index %d "
+			"pool_index %d",
+			regp->name, client_index, regp->vl_api_registration_pool_index);
 	      vl_msg_api_free (rp);
 	      return;
 	    }
@@ -416,7 +430,7 @@ vl_api_memclnt_delete_t_handler (vl_api_memclnt_delete_t * mp)
     }
   else
     {
-      clib_warning ("unknown client ID %d", mp->index);
+      log_warn ("memclnt_delete: unknown client index %d", mp->index);
     }
 }
 
@@ -437,7 +451,7 @@ void
       regp->unanswered_pings = 0;
     }
   else
-    clib_warning ("BUG: anonymous memclnt_keepalive_reply");
+    log_warn ("memclnt_keepalive_reply from an unknown client");
 }
 
 /**
@@ -613,15 +627,13 @@ vl_mem_send_client_keepalive_w_reg (api_main_t * am, f64 now,
 	      q = regp->vl_input_queue;
 	      if (kill (q->consumer_pid, 0) >= 0)
 		{
-		  clib_warning ("REAPER: lazy binary API client '%s'",
-				regp->name);
+		  log_warn ("memfd client '%s' does not answer, but is alive", regp->name);
 		  regp->unanswered_pings = 0;
 		  regp->last_heard = now;
 		}
 	      else
 		{
-		  clib_warning ("REAPER: binary API client '%s' died",
-				regp->name);
+		  log_warn ("memfd client '%s' died, removing it", regp->name);
 		  vec_add1 (*dead_indices, regpp - am->vl_clients);
 		}
 	    }
@@ -633,8 +645,7 @@ vl_mem_send_client_keepalive_w_reg (api_main_t * am, f64 now,
     }
   else
     {
-      clib_warning ("NULL client registration index %d",
-		    regpp - am->vl_clients);
+      log_warn ("NULL client registration, index %d", regpp - am->vl_clients);
       vec_add1 (*confused_indices, regpp - am->vl_clients);
     }
 }
@@ -709,7 +720,7 @@ vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm, f64 now)
 			goto found;
 		      }
 		  svm_pop_heap (oldheap);
-		  clib_warning ("private rp %llx AWOL", dead_rp);
+		  log_warn ("private region %llx of a dead client is gone", dead_rp);
 		  oldheap = svm_push_data_heap (am->vlib_rp);
 
 		found:
@@ -733,8 +744,7 @@ vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm, f64 now)
 	  else
 	    {
 	      svm_pop_heap (oldheap);
-	      clib_warning ("Duplicate free, client index %d",
-			    regpp - am->vl_clients);
+	      log_warn ("duplicate free of client index %d", regpp - am->vl_clients);
 	      oldheap = svm_push_data_heap (am->vlib_rp);
 	    }
 	}
