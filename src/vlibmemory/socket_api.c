@@ -856,6 +856,7 @@ static clib_error_t *
 socksvr_config (vlib_main_t * vm, unformat_input_t * input)
 {
   socket_main_t *sm = &socket_main;
+  api_main_t *am = vlibapi_get_main ();
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -871,7 +872,12 @@ socksvr_config (vlib_main_t * vm, unformat_input_t * input)
 	}
     }
 
-  if (!vec_len (sm->socket_name))
+  /* api-segment { prefix X } is kept for compatibility, it selects the
+   * socket unless socket-name is set */
+  if (!vec_len (sm->socket_name) && am->root_path)
+    sm->socket_name =
+      format (0, "%s/%s-%s", vlib_unix_get_runtime_dir (), am->root_path, API_SOCKET_FILENAME);
+  else if (!vec_len (sm->socket_name))
     sm->socket_name = format (0, "%s/%s", vlib_unix_get_runtime_dir (),
 			      API_SOCKET_FILENAME);
   vec_terminate_c_string (sm->socket_name);
