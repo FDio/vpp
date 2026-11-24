@@ -3676,6 +3676,76 @@ tcp_test_cubic_cwnd_prior (void)
   return 0;
 }
 
+/* The Reno-friendly region is chosen by comparing W_est with the curve at t,
+ * not one rtt ahead, so a long rtt flow does not switch to the cubic region
+ * early and delay its growth (RFC 9438 Sec. 4.3) */
+static int
+tcp_test_cubic_region_time (void)
+{
+  const clib_thread_index_t thread_index = 0;
+  const u32 snd_mss = 1000;
+  tcp_connection_t _tc, *tc = &_tc;
+  tcp_ack_ctx_t ac = { .bytes_acked = snd_mss, .acked_and_sacked = snd_mss };
+  u32 i, round, n_acks;
+
+  /* Cut from 40 to 28 segments, 50 ms rtt. Compared one rtt ahead, the
+   * curve passes the estimate early and round 10 does not grow */
+  tcp_test_set_time (thread_index, 1);
+  tcp_test_cubic_init_epoch (tc, thread_index, snd_mss, 40);
+  tc->mrtt_us = 0.05;
+  tc->srtt = 0.05 / TCP_TICK;
+  tc->prev_cwnd = 40 * snd_mss;
+  for (round = 1; round <= 10; round++)
+    {
+      tcp_test_set_time (thread_index, 1 + round * 0.05);
+      n_acks = tc->cwnd / snd_mss;
+      for (i = 0; i < n_acks; i++)
+	{
+	  tc->snd_una += snd_mss;
+	  tc->snd_nxt = tc->snd_una + tc->cwnd;
+	  tc->cwnd_limited_seq = tc->snd_una;
+	  tc->cc_algo->rcv_ack (tc, &ac);
+	}
+    }
+  TCP_TEST ((tc->cwnd >= 34 * snd_mss),
+	    "cubic stays Reno-friendly until the curve now reaches the estimate (cwnd %u)",
+	    tc->cwnd);
+  tcp_test_set_time (thread_index, 1);
+
+  return 0;
+}
+
+/* Where cubic cannot grow, the growth threshold is 50 * cwnd. Above ~86 MB
+ * that exceeds a u32 and must saturate, not wrap to a small threshold */
+static int
+tcp_test_cubic_max_thresh (void)
+{
+  const clib_thread_index_t thread_index = 0;
+  const u32 snd_mss = 1000, cwnd = 85900 * snd_mss;
+  tcp_connection_t _tc, *tc = &_tc;
+  tcp_ack_ctx_t ac = { .bytes_acked = snd_mss, .acked_and_sacked = snd_mss };
+  u32 i;
+
+  /* 50 * cwnd wraps to 32704 bytes. A lossless exit at cwnd keeps the curve
+   * and the estimate at cwnd, so no growth is due */
+  ASSERT ((u32) (50 * cwnd) < 33 * snd_mss);
+  tcp_test_set_time (thread_index, 1);
+  tcp_test_cubic_hystart_init (tc, thread_index, snd_mss);
+  tc->cwnd = tc->ssthresh = cwnd;
+  for (i = 0; i < 1000; i++)
+    {
+      tc->snd_una += snd_mss;
+      tc->snd_nxt = tc->snd_una + tc->cwnd;
+      tc->cwnd_limited_seq = tc->snd_una;
+      tc->cc_algo->rcv_ack (tc, &ac);
+    }
+  TCP_TEST ((tc->cwnd == cwnd), "cubic does not grow when 50 * cwnd exceeds a u32 (cwnd %u -> %u)",
+	    cwnd, tc->cwnd);
+  tcp_test_set_time (thread_index, 1);
+
+  return 0;
+}
+
 static int
 tcp_test_cubic (vlib_main_t *vm, unformat_input_t *input)
 {
@@ -3712,6 +3782,12 @@ tcp_test_cubic (vlib_main_t *vm, unformat_input_t *input)
     return rv;
 
   if ((rv = tcp_test_cubic_cwnd_prior ()))
+    return rv;
+
+  if ((rv = tcp_test_cubic_region_time ()))
+    return rv;
+
+  if ((rv = tcp_test_cubic_max_thresh ()))
     return rv;
 
   if ((rv = tcp_test_cubic_reno_friendly ()))
