@@ -314,7 +314,7 @@ def add_namespace_vlan(ns, parent, ifname, vlan_id):
                 "id",
                 str(vlan_id),
             ]
-            subprocess.run(cmd, capture_output=True, check=True)
+            _run_network_command(cmd, capture_output=True, check=True)
         except subprocess.CalledProcessError as e:
             raise Exception(
                 f"Error adding vlan {ifname} (id {vlan_id}) on {parent} "
@@ -345,7 +345,7 @@ def add_namespace_qinq(ns, parent, ifname, vlan_id):
                 "id",
                 str(vlan_id),
             ]
-            subprocess.run(cmd, capture_output=True, check=True)
+            _run_network_command(cmd, capture_output=True, check=True)
         except subprocess.CalledProcessError as e:
             raise Exception(
                 f"Error adding qinq {ifname} (id {vlan_id}) on {parent} "
@@ -367,7 +367,7 @@ def del_namespace_link(ns, ifname):
                 "del",
                 ifname,
             ]
-            subprocess.run(cmd, capture_output=True, check=True)
+            _run_network_command(cmd, capture_output=True, check=True)
         except subprocess.CalledProcessError as e:
             raise Exception(
                 f"Error deleting link {ifname} in namespace {ns}: "
