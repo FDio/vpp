@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "237854ff_428bb97b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3387
+      },
+      "writtenOn": "2026-11-24T18:13:45Z",
+      "side": 1,
+      "message": "Found while testing linux-cp under BGP failover: a netlink overflow during the change leaves routes on both the old and new next hop. The test forces the overflow by stopping VPP briefly; without the fix the route keeps both next hops.",
+      "revId": "c1c2131b071db0a824b8dcb9d6e243e68df347d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
