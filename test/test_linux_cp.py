@@ -355,6 +355,36 @@ class TestLinuxCP(VppTestCase):
         tun4.unconfig_ip4()
         tun6.unconfig_ip6()
 
+    def test_linux_cp_garp_request(self):
+        """Linux CP copies gratuitous ARP requests to the host"""
+
+        phy, host = self.pg2, self.pg0
+        phy.config_ip4()
+        self.addCleanup(phy.unconfig_ip4)
+        VppLcpPair(self, phy, host).add_vpp_config()
+
+        arp_request = Ether(src=phy.remote_mac, dst="ff:ff:ff:ff:ff:ff") / ARP(
+            op="who-has",
+            hwsrc=phy.remote_mac,
+            hwdst="00:00:00:00:00:00",
+            psrc=phy.remote_ip4,
+            pdst=phy.local_ip4,
+        )
+
+        # VPP answers an ordinary request for its address without copying it.
+        reply = self.send_and_expect(
+            phy, arp_request, phy, assert_nothing_captured=[host]
+        )[0]
+        self.assertEqual(reply[ARP].op, 2)
+
+        for target_mac in ("00:00:00:00:00:00", phy.remote_mac):
+            with self.subTest(target_mac=target_mac):
+                garp_request = arp_request.copy()
+                garp_request[ARP].hwdst = target_mac
+                garp_request[ARP].pdst = phy.remote_ip4
+                received = self.send_and_expect(phy, garp_request, host)[0]
+                self.assertEqual(bytes(received), bytes(garp_request))
+
 
 @unittest.skipIf("linux-cp" in config.excluded_plugins, "Exclude linux-cp plugin tests")
 class TestLinuxCPIpsec(TemplateIpsec, TemplateIpsecItf4, IpsecTun4):
