@@ -12,6 +12,8 @@
 #define west_const 	(3 * (1 - beta_cubic) / (1 + beta_cubic))
 /* 1 / west_const, so per ack paths multiply instead of dividing */
 #define west_const_inv ((1 + beta_cubic) / (3 * (1 - beta_cubic)))
+/* west_const_inv = 17/9 in 2^-16 fixed point, 1.8 ppm low */
+#define west_const_inv_q16 123790
 
 /* K in 2^-20 s ticks, u32 covers the max K of ~2207 s */
 #define CUBIC_K_SCALE (1U << 20)
@@ -137,8 +139,8 @@ cubic_resume_epoch (cubic_data_t *cd, f64 now)
  *
  * CUBIC window increase function. Time t is provided in seconds.
  */
-static inline u64
-W_cubic (cubic_data_t * cd, f64 t)
+static inline f64
+W_cubic (cubic_data_t *cd, f64 t)
 {
   f64 diff = t - (f64) cd->K_ticks / CUBIC_K_SCALE;
 
@@ -282,7 +284,7 @@ cubic_hystart_rcv_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac, cubic_data_t *cd
  * counting does while cwnd-limited. Time (t) and rtt are in seconds, the
  * estimate is in bytes, so cwnd_prior needs no conversion to segments.
  */
-static inline u64
+static inline f64
 W_est (tcp_connection_t *tc, cubic_data_t *cd, f64 t, f64 rtt)
 {
   f64 k = (f64) cd->K_ticks / CUBIC_K_SCALE, epoch, prior, rtts, w;
@@ -407,11 +409,18 @@ cubic_cwnd_accumulate (tcp_connection_t *tc, u32 thresh, u32 bytes_acked)
   tcp_cwnd_accumulate (tc, thresh, bytes_acked);
 }
 
+/** Threshold that practically stops growth, 50 * cwnd saturated to a u32 */
+static inline f64
+cubic_max_thresh (tcp_connection_t *tc)
+{
+  return clib_min (50.0 * tc->cwnd, (f64) ~0U);
+}
+
 static void
 cubic_rcv_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 {
   cubic_data_t *cd = (cubic_data_t *) tcp_cc_data (tc);
-  u64 w_cubic, w_aimd, target;
+  f64 w_cubic, target;
   f64 now, t, rtt_sec;
   u32 thresh;
 
@@ -451,17 +460,18 @@ cubic_rcv_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
   t = now - cd->t_start;
   rtt_sec = clib_min (tc->mrtt_us, (f64) tc->srtt * TCP_TICK);
 
-  w_cubic = W_cubic (cd, t + rtt_sec) * tc->snd_mss;
-  w_aimd = W_est (tc, cd, t, rtt_sec);
-  if (w_cubic < w_aimd)
+  /* Reno-friendly region if the curve now is below the estimate
+   * (RFC 9438 Sec. 4.3). The target below looks an rtt ahead */
+  if (W_cubic (cd, t) * tc->snd_mss < W_est (tc, cd, t, rtt_sec))
     {
       /* Reno-friendly region, cwnd grows as the estimate does. By
        * alpha_cubic per cwnd acked until cwnd_prior, then by a segment */
-      thresh = tc->cwnd < tc->prev_cwnd ? tc->cwnd * west_const_inv : tc->cwnd;
+      thresh = tc->cwnd < tc->prev_cwnd ? ((u64) tc->cwnd * west_const_inv_q16) >> 16 : tc->cwnd;
       cubic_cwnd_accumulate (tc, thresh, ac->acked_and_sacked);
     }
   else
     {
+      w_cubic = W_cubic (cd, t + rtt_sec) * tc->snd_mss;
       if (w_cubic > tc->cwnd)
 	{
 	  /* For NewReno and slow start, we increment cwnd based on the
@@ -475,15 +485,17 @@ cubic_rcv_ack (tcp_connection_t *tc, tcp_ack_ctx_t *ac)
 	   * before adding snd_mss to cwnd and compute the threshold. The
 	   * target is at most 1.5 * cwnd (RFC 9438 Sec. 4.2), so growth stays
 	   * below slow start's and cwnd grows at most every other segment. In
-	   * 64 bits, as snd_mss * cwnd exceeds 32 bits for multi-MB windows
+	   * floating point, as snd_mss * cwnd exceeds 32 bits for multi-MB
+	   * windows
 	   */
-	  target = clib_min (w_cubic, (u64) tc->cwnd * 3 / 2);
-	  thresh = clib_min ((u64) tc->snd_mss * tc->cwnd / (target - tc->cwnd), 50ULL * tc->cwnd);
+	  target = clib_min (w_cubic, 1.5 * tc->cwnd);
+	  thresh =
+	    clib_min ((f64) tc->snd_mss * tc->cwnd / (target - tc->cwnd), cubic_max_thresh (tc));
 	}
       else
 	{
 	  /* Practically we can't increment so just inflate threshold */
-	  thresh = 50 * tc->cwnd;
+	  thresh = cubic_max_thresh (tc);
 	}
       cubic_cwnd_accumulate (tc, thresh, ac->acked_and_sacked);
     }
