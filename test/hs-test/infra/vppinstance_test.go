@@ -213,3 +213,18 @@ func TestMemLeakReportSnapshotAllocations(t *testing.T) {
 		t.Fatalf("expected parser growth and the deliberate leak, got %d bytes in %d allocations\n%s", bytes, count, report)
 	}
 }
+
+func TestMemLeakReportReusedFilenameSample(t *testing.T) {
+	first := []VppMemTrace{
+		{Count: 1, Size: 32, Sample: "0x1000", Traceback: tbSaveMemoryTraceFilename},
+	}
+	second := []VppMemTrace{
+		{Count: 1, Size: 32, Sample: "0x2000", Traceback: tbSaveMemoryTraceFilename},
+		{Count: 1, Size: 32, Sample: "0x1000", Traceback: tbDeliberateLeak},
+	}
+	report, bytes, count := memLeakReport(first, second)
+	if bytes != 32 || count != 1 || !strings.Contains(report, "leak_memory_fn") {
+		t.Fatalf("expected the allocation at the reused address, got %d bytes in %d allocations\n%s",
+			bytes, count, report)
+	}
+}

@@ -947,6 +947,13 @@ func (vpp *VppInstance) MemLeakCheck(first, second []VppMemTrace) (int, int) {
 	return totalBytes, totalCounts
 }
 
+func memTraceCompareByTraceback(trace VppMemTrace) bool {
+	return slices.ContainsFunc(trace.Traceback, func(frame string) bool {
+		symbol, _, _ := strings.Cut(frame, " + ")
+		return symbol == "parse_string"
+	})
+}
+
 func memLeakReport(first, second []VppMemTrace) (string, int, int) {
 	totalBytes := 0
 	totalCounts := 0
@@ -957,15 +964,12 @@ func memLeakReport(first, second []VppMemTrace) (string, int, int) {
 		// The dump's filename is parsed before taking the snapshot, so its
 		// copy can have a new sample address each time. Match the stack to
 		// ignore that address change while still reporting parser growth.
-		compareTraceback := slices.ContainsFunc(trace.Traceback, func(frame string) bool {
-			symbol, _, _ := strings.Cut(frame, " + ")
-			return symbol == "parse_string"
-		})
+		compareTraceback := memTraceCompareByTraceback(trace)
 		baseline := slices.IndexFunc(trace1, func(previous VppMemTrace) bool {
 			if compareTraceback {
 				return slices.Equal(previous.Traceback, trace.Traceback)
 			}
-			return previous.Sample == trace.Sample
+			return previous.Sample == trace.Sample && !memTraceCompareByTraceback(previous)
 		})
 		deltaBytes, deltaCounts := trace.Size, trace.Count
 		if baseline >= 0 {
