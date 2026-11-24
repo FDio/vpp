@@ -12,7 +12,8 @@ export PYBUILD_DIR = @CMAKE_SOURCE_DIR@/vpp-api/python
 export PYBUILD_DESTDIR_python3=debian/python3-vpp-api/
 export PYBUILD_DISABLE_python3=test
 export PYBUILD_SYSTEM=distutils
-export INSTALL_DIR=/opt/vpp/external/$(shell uname -m)/
+EXT_DIR=/opt/vpp/external/$(shell uname -m)/
+OPT_DIR=/opt/vpp/optional/$(shell uname -m)/
 DH_WITH = systemd,python3
 
 build3vers := $(shell py3versions -sv)
@@ -44,4 +45,4 @@ override_dh_install:
 	done
 
 override_dh_shlibdeps:
-	dh_shlibdeps -l$(INSTALL_DIR)lib/:$(INSTALL_DIR)lib64
+	dh_shlibdeps -l$(EXT_DIR)lib/:$(EXT_DIR)lib64:$(OPT_DIR)lib/:$(OPT_DIR)lib64
