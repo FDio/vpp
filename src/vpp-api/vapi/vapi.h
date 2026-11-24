@@ -78,6 +78,9 @@ bool vapi_is_msg_available (vapi_ctx_t ctx, vapi_msg_id_t type);
 /**
  * @brief connect to vpp
  *
+ * The api socket is used to get the memfd shared memory region, the
+ * messages are exchanged through the queues in it.
+ *
  * @param ctx opaque vapi context, must be allocated using vapi_ctx_alloc first
  * @param name application name
  * @param socket_path path of the api socket, NULL for the default
@@ -102,12 +105,14 @@ vapi_error_e vapi_connect (vapi_ctx_t ctx, const char *name, const char *socket_
  * @param response_queue_size size of the response queue
  * @param mode mode of operation - blocking or nonblocking
  * @param handle_keepalives - if true, automatically handle memclnt_keepalive
+ * @param use_socket_only - if true, exchange the messages over the api socket,
+ *                         not through the memfd region
  *
  * @return VAPI_OK on success, other error code on error
  */
 vapi_error_e vapi_connect_ex (vapi_ctx_t ctx, const char *name, const char *path,
 			      int max_outstanding_requests, int response_queue_size,
-			      vapi_mode_e mode, bool handle_keepalives);
+			      vapi_mode_e mode, bool handle_keepalives, bool use_socket_only);
 
 /**
  * @brief connect to vpp from a client in same process

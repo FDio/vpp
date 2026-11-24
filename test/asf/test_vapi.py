@@ -19,9 +19,9 @@ class VAPITestCase(VppAsfTestCase):
     def tearDownClass(cls):
         super(VAPITestCase, cls).tearDownClass()
 
-    def run_vapi_c(self, path):
+    def run_vapi_c(self, path, transport):
         executable = f"{config.vpp_build_dir}/vpp/bin/vapi_c_test"
-        worker = Worker([executable, "vapi client", path], self.logger)
+        worker = Worker([executable, "vapi client", path, transport], self.logger)
         worker.start()
         timeout = 60
         worker.join(timeout)
@@ -40,14 +40,18 @@ class VAPITestCase(VppAsfTestCase):
             raise Exception("Timeout! Worker did not finish in %ss" % timeout)
         self.assert_equal(worker.result, 0, "Binary test return code")
 
-    def test_vapi_c(self):
-        """run C VAPI tests (over unix domain socket)"""
-        self.run_vapi_c(self.get_api_sock_path())
+    def test_vapi_c_memfd(self):
+        """run C VAPI tests (messages through the memfd region)"""
+        self.run_vapi_c(self.get_api_sock_path(), "memfd")
 
-    def run_vapi_cpp(self, path):
+    def test_vapi_c_socket(self):
+        """run C VAPI tests (messages over the api socket)"""
+        self.run_vapi_c(self.get_api_sock_path(), "socket")
+
+    def run_vapi_cpp(self, path, transport):
         """run C++ VAPI tests"""
         executable = f"{config.vpp_build_dir}/vpp/bin/vapi_cpp_test"
-        worker = Worker([executable, "vapi client", path], self.logger)
+        worker = Worker([executable, "vapi client", path, transport], self.logger)
         worker.start()
         timeout = 120
         worker.join(timeout)
@@ -65,9 +69,13 @@ class VAPITestCase(VppAsfTestCase):
             raise Exception("Timeout! Worker did not finish in %ss" % timeout)
         self.assert_equal(worker.result, 0, "Binary test return code")
 
-    def test_vapi_cpp(self):
-        """run C++ VAPI tests (over unix domain socket)"""
-        self.run_vapi_cpp(self.get_api_sock_path())
+    def test_vapi_cpp_memfd(self):
+        """run C++ VAPI tests (messages through the memfd region)"""
+        self.run_vapi_cpp(self.get_api_sock_path(), "memfd")
+
+    def test_vapi_cpp_socket(self):
+        """run C++ VAPI tests (messages over the api socket)"""
+        self.run_vapi_cpp(self.get_api_sock_path(), "socket")
 
 
 if __name__ == "__main__":

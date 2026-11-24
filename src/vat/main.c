@@ -426,6 +426,8 @@ main (int argc, char **argv)
 	json_output = 1;
       else if (unformat (a, "socket-name %s", &vam->socket_name))
 	;
+      else if (unformat (a, "no-memfd"))
+	vam->no_memfd = 1;
       else if (unformat (a, "default-socket"))
 	{
 	  vam->socket_name = format (0, "%s%c", API_SOCKET_FILE, 0);
@@ -440,7 +442,7 @@ main (int argc, char **argv)
 	  fformat (stderr,
 		   "%s: usage [in <f1> ... in <fn>] [out <fn>] [script] [json]\n"
 		   "[plugin_path <path>][default-socket][socket-name <name>]\n"
-		   "[plugin_name_filter <filter>]\n",
+		   "[no-memfd][plugin_name_filter <filter>]\n",
 		   argv[0]);
 	  exit (1);
 	}

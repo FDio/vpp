@@ -238,9 +238,11 @@ void
 vl_socket_client_disconnect2 (socket_client_main_t * scm)
 {
   if (vl_mem_client_is_connected ())
+    vl_client_disconnect_from_vlib ();
+  if (scm->shm_mapped)
     {
-      vl_client_disconnect_from_vlib ();
       ssvm_delete_memfd (&scm->memfd_segment);
+      scm->shm_mapped = 0;
     }
   if (scm->socket_fd && (close (scm->socket_fd) < 0))
     clib_unix_warning ("close");
@@ -401,6 +403,8 @@ static void vl_api_sock_init_shm_reply_t_handler
   retval = ssvm_client_init_memfd (memfd);
   if (retval)
     clib_warning ("WARNING: segment map returned %d", retval);
+  else
+    scm->shm_mapped = 1;
 
   /*
    * Pivot to the memory client segment that vpp just created
@@ -408,8 +412,15 @@ static void vl_api_sock_init_shm_reply_t_handler
   am->vlib_rp = (void *) (memfd->requested_va + MMAP_PAGESIZE);
   am->shmem_hdr = (void *) am->vlib_rp->user_ctx;
 
-  new_name = format (0, "%v[shm]%c", scm->name, 0);
   vl_client_install_client_message_handlers ();
+
+  if (scm->map_shm_only)
+    {
+      am->our_pid = getpid ();
+      return;
+    }
+
+  new_name = format (0, "%v[shm]%c", scm->name, 0);
   if (scm->want_shm_pthread)
     {
       vl_client_connect_to_vlib_no_map ("pvt", (char *) new_name,
@@ -597,6 +608,28 @@ vl_socket_client_init_shm2 (socket_client_main_t * scm,
 					   want_pthread);
   vl_socket_client_ctx_pop (old_ctx);
   return rv;
+}
+
+int
+vl_socket_client_map_shm2 (socket_client_main_t *scm)
+{
+  socket_client_main_t *old_ctx;
+  int rv;
+
+  old_ctx = vl_socket_client_ctx_push (scm);
+  scm->map_shm_only = 1;
+  rv = vl_socket_client_init_shm_internal (scm, 0, 0);
+  scm->map_shm_only = 0;
+  vl_socket_client_ctx_pop (old_ctx);
+  if (rv == 0 && vlibapi_get_main ()->shmem_hdr == 0)
+    rv = -1;
+  return rv;
+}
+
+int
+vl_socket_client_map_shm (void)
+{
+  return vl_socket_client_map_shm2 (socket_client_ctx);
 }
 
 clib_error_t *

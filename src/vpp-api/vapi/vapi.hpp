@@ -200,15 +200,18 @@ public:
    * @param socket_path path of the api socket, NULL for the default
    * @param max_queued_request max number of outstanding requests queued
    * @param handle_keepalives handle memclnt_keepalive automatically
+   * @param use_socket_only exchange the messages over the api socket, not
+   *                    through the memfd region
    *
    * @return VAPI_OK on success, other error code on error
    */
   vapi_error_e
   connect (const char *name, const char *socket_path, int max_outstanding_requests,
-	   int response_queue_size, bool handle_keepalives = true)
+	   int response_queue_size, bool handle_keepalives = true, bool use_socket_only = false)
   {
     return vapi_connect_ex (vapi_ctx, name, socket_path, max_outstanding_requests,
-			    response_queue_size, VAPI_MODE_BLOCKING, handle_keepalives);
+			    response_queue_size, VAPI_MODE_BLOCKING, handle_keepalives,
+			    use_socket_only);
   }
 
   /**
