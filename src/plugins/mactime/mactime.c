@@ -114,7 +114,8 @@ mactime_enable_disable_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 VLIB_CLI_COMMAND (mactime_enable_disable_command, static) = {
   .path = "mactime enable-disable",
   .short_help = "Enable or disable the time-based MAC source address filter on an interface",
-  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_sw_interface, .help = "physical interface"),
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_sw_interface, .alt_keyword = "sw_if_index",
+			       .help = "physical interface"),
 		    CLI_FLAG ("disable", .help = "disable the filter")),
   .handler = mactime_enable_disable_command_fn,
 };

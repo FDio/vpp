@@ -342,7 +342,7 @@ device_remove_if_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 VLIB_CLI_COMMAND (device_remove_if_cmd, static) = {
   .path = "device remove-interface",
   .short_help = "Remove the interface of a device port",
-  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_sw_interface)),
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_sw_interface, .alt_keyword = "sw-if-index")),
   .handler = device_remove_if_cmd_fn,
   .is_mp_safe = 1,
 };
@@ -350,11 +350,17 @@ VLIB_CLI_COMMAND (device_remove_if_cmd, static) = {
 static clib_error_t *
 device_create_sec_if_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  vnet_dev_api_port_add_sec_if_args_t a = { .primary_sw_if_index =
-					      cli_index (ctx, "primary-if-name") };
+  vnet_dev_api_port_add_sec_if_args_t a = {};
   cli_value_t *v;
   clib_error_t *err;
   vnet_dev_rv_t rv;
+
+  if ((v = cli_get (ctx, "primary-sw-if-index")))
+    a.primary_sw_if_index = v->u64;
+  else if (cli_get (ctx, "primary-if-name"))
+    a.primary_sw_if_index = cli_index (ctx, "primary-if-name");
+  else
+    return clib_error_return (0, "the interface of the port is missing");
 
   if ((v = cli_get (ctx, "if-name")))
     {
@@ -380,12 +386,14 @@ device_create_sec_if_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 VLIB_CLI_COMMAND (device_create_sec_if_cmd, static) = {
   .path = "device create-secondary-interface",
   .short_help = "Create a secondary interface of a device port",
-  .args = CLI_ARGS (CLI_KEYWORD ("primary-if-name", cli_type_sw_interface,
-				 .help = "interface of the port to add the secondary interface to"),
-		    CLI_OPT_KEYWORD ("if-name", cli_type_string,
-				     .help = "name of the secondary interface"),
-		    CLI_OPT_KEYWORD ("args", cli_type_string,
-				     .help = "interface arguments, quote if there are spaces")),
+  .args = CLI_ARGS (
+    CLI_OPT_KEYWORD ("primary-if-name", cli_type_sw_interface, .excludes = "primary-sw-if-index",
+		     .help = "interface of the port to add the secondary interface to"),
+    CLI_OPT_KEYWORD_F ("primary-sw-if-index", cli_type_u32, CLI_F_HIDDEN,
+		       .excludes = "primary-if-name"),
+    CLI_OPT_KEYWORD ("if-name", cli_type_string, .help = "name of the secondary interface"),
+    CLI_OPT_KEYWORD ("args", cli_type_string,
+		     .help = "interface arguments, quote if there are spaces")),
   .handler = device_create_sec_if_cmd_fn,
   .is_mp_safe = 1,
 };
@@ -407,7 +415,7 @@ device_remove_sec_if_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 VLIB_CLI_COMMAND (device_remove_sec_if_cmd, static) = {
   .path = "device remove-secondary-interface",
   .short_help = "Remove a secondary interface of a device port",
-  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_sw_interface)),
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_sw_interface, .alt_keyword = "sw-if-index")),
   .handler = device_remove_sec_if_cmd_fn,
   .is_mp_safe = 1,
 };

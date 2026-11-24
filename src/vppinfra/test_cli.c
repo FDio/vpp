@@ -713,6 +713,61 @@ test_leaks (void)
   return 0;
 }
 
+static const cli_arg_t alt_args[] = {
+  CLI_VALUE ("target", test_type_name, .alt_keyword = "index", .help = "name or index"),
+  CLI_OPT_KEYWORD ("count", cli_type_u32),
+  {},
+};
+
+static clib_error_t *
+test_alt_keyword (void)
+{
+  cli_ctx_t ctx = {};
+  cli_candidate_t *cands = 0;
+  clib_error_t *e;
+  u8 *line = format (0, "beta count 2");
+  u8 *c = format (0, "in");
+
+  e = cli_parse_line (alt_args, line, &ctx);
+  TEST_ASSERT (e == 0 && cli_index (&ctx, "target") == 1 && cli_u64 (&ctx, "count", 0) == 2);
+  cli_ctx_free (&ctx);
+
+  vec_reset_length (line);
+  line = format (line, "index 7 count 2");
+  e = cli_parse_line (alt_args, line, &ctx);
+  TEST_ASSERT (e == 0 && cli_index (&ctx, "target") == 7 && cli_u64 (&ctx, "count", 0) == 2);
+  cli_ctx_free (&ctx);
+
+  vec_reset_length (line);
+  line = format (line, "index");
+  e = cli_parse_line (alt_args, line, &ctx);
+  TEST_ASSERT (contains (e, "missing value for 'index'"));
+  clib_error_free (e);
+  cli_ctx_free (&ctx);
+
+  vec_reset_length (line);
+  line = format (line, "index x");
+  e = cli_parse_line (alt_args, line, &ctx);
+  TEST_ASSERT (contains (e, "'x' is not a number"));
+  clib_error_free (e);
+  cli_ctx_free (&ctx);
+
+  vec_reset_length (line);
+  line = format (line, "nobody");
+  e = cli_parse_line (alt_args, line, &ctx);
+  TEST_ASSERT (contains (e, "unknown name 'nobody'"));
+  clib_error_free (e);
+  cli_ctx_free (&ctx);
+
+  cli_complete_args (alt_args, c, &cands);
+  TEST_ASSERT (vec_len (cands) == 1 && strcmp ((char *) cands[0].text, "index") == 0);
+  cli_candidates_free (cands);
+
+  vec_free (c);
+  vec_free (line);
+  return 0;
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -723,7 +778,7 @@ main (int argc, char *argv[])
   if ((err = test_parse ()) || (err = test_errors ()) || (err = test_completion ()) ||
       (err = test_filters ()) || (err = test_output ()) || (err = test_rest_and_pipeline ()) ||
       (err = test_help_and_schema ()) || (err = test_constraints ()) || (err = test_types ()) ||
-      (err = test_leaks ()))
+      (err = test_alt_keyword ()) || (err = test_leaks ()))
     {
       fformat (stdout, "%U\n", format_clib_error, err);
       clib_error_free (err);
