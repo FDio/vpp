@@ -20,6 +20,8 @@
 #include <vnet/ip/ip.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/mfib/mfib_table.h>
+#include <vnet/mfib/ip6_mfib.h>
+#include <vnet/ip/ip6_link.h>
 #include <vnet/l2/l2_vtr.h>
 #include <vnet/fib/fib_api.h>
 #include <vnet/mfib/mfib_table.h>
@@ -588,6 +590,7 @@ ip_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 table_id)
 {
   CLIB_UNUSED (ip_interface_address_t * ia);
   u32 fib_index, mfib_index;
+  bool move_ip6_specials;
 
   /*
    * This if table does not exist = error is what we want in the end.
@@ -616,8 +619,23 @@ ip_table_bind (fib_protocol_t fproto, u32 sw_if_index, u32 table_id)
   }));
   /* clang-format on */
 
+  /*
+   * An interface with IPv6 enabled accepts the IPv6 specials (eg. the
+   * solicited-node groups of neighbor discovery) in the mfib of its table.
+   * IPv6 can be enabled without any addresses, eg. with only a link-local
+   * address, so those move along to the new table.
+   */
+  move_ip6_specials = (FIB_PROTOCOL_IP6 == fproto && ip6_link_is_enabled (sw_if_index) &&
+		       mfib_index != ip6_main.mfib_index_by_sw_if_index[sw_if_index]);
+
+  if (move_ip6_specials)
+    ip6_mfib_interface_enable_disable (sw_if_index, 0);
+
   fib_table_bind (fproto, sw_if_index, fib_index);
   mfib_table_bind (fproto, sw_if_index, mfib_index);
+
+  if (move_ip6_specials)
+    ip6_mfib_interface_enable_disable (sw_if_index, 1);
 
   return (0);
 }

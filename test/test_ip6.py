@@ -1550,6 +1550,52 @@ class TestIPv6NALocalTarget(VppTestCase):
         self.assertEqual(self.statistics.get_err_counter(counter), before + 4)
 
 
+class TestIPv6TableBindEnabled(VppTestCase):
+    """IPv6 table bind of an interface that has IPv6 enabled without addresses"""
+
+    def setUp(self):
+        super().setUp()
+        self.create_pg_interfaces(range(1))
+        self.table = VppIpTable(self, 10, is_ip6=1)
+        self.table.add_vpp_config()
+        self.pg0.admin_up()
+
+    def tearDown(self):
+        self.pg0.unconfig_ip6()
+        self.pg0.ip6_disable()
+        self.pg0.set_table_ip6(0)
+        self.pg0.admin_down()
+        super().tearDown()
+
+    def assert_ns_answered(self):
+        """An NS to the solicited-node group of pg0's address gets an NA, which needs the
+        group to accept pg0 in the mfib of pg0's table."""
+        nsma = in6_getnsma(inet_pton(AF_INET6, self.pg0.local_ip6))
+        ns = (
+            Ether(dst=in6_getnsmac(nsma), src=self.pg0.remote_mac)
+            / IPv6(src=self.pg0.remote_ip6, dst=inet_ntop(AF_INET6, nsma), hlim=255)
+            / ICMPv6ND_NS(tgt=self.pg0.local_ip6)
+            / ICMPv6NDOptSrcLLAddr(lladdr=self.pg0.remote_mac)
+        )
+        reply = self.send_and_expect(self.pg0, ns, self.pg0)[0]
+        self.assertEqual(reply[ICMPv6ND_NA].tgt, self.pg0.local_ip6)
+
+    def test_table_bind_ip6_enabled(self):
+        """IPv6 specials move with an IPv6 enabled interface to another table"""
+        # IPv6 is enabled without any addresses, as linux-cp does for the
+        # link-local address of an LCP, and stays enabled across table binds.
+        self.pg0.ip6_enable()
+
+        self.pg0.set_table_ip6(10)
+        self.pg0.config_ip6()
+        self.assert_ns_answered()
+
+        self.pg0.unconfig_ip6()
+        self.pg0.set_table_ip6(0)
+        self.pg0.config_ip6()
+        self.assert_ns_answered()
+
+
 class TestIPv6RouteLookup(VppTestCase):
     """IPv6 Route Lookup Test Case"""
 
