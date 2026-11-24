@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"runtime"
-	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -947,30 +946,52 @@ func (vpp *VppInstance) MemLeakCheck(first, second []VppMemTrace) (int, int) {
 	return totalBytes, totalCounts
 }
 
+func memTraceKey(trace VppMemTrace) string {
+	if len(trace.Traceback) == 0 {
+		return "s" + trace.Sample
+	}
+	var key strings.Builder
+	key.WriteByte('t')
+	for _, frame := range trace.Traceback {
+		key.WriteString(strconv.Itoa(len(frame)))
+		key.WriteByte(':')
+		key.WriteString(frame)
+	}
+	return key.String()
+}
+
+func memTracesByStack(traces []VppMemTrace) []VppMemTrace {
+	var grouped []VppMemTrace
+	indices := make(map[string]int, len(traces))
+	for _, trace := range traces {
+		key := memTraceKey(trace)
+		index, found := indices[key]
+		if !found {
+			indices[key] = len(grouped)
+			grouped = append(grouped, trace)
+		} else {
+			grouped[index].Size += trace.Size
+			grouped[index].Count += trace.Count
+		}
+	}
+	return grouped
+}
+
 func memLeakReport(first, second []VppMemTrace) (string, int, int) {
 	totalBytes := 0
 	totalCounts := 0
-	trace1 := memTracesSuppressReportNoise(first)
-	trace2 := memTracesSuppressReportNoise(second)
+	trace1 := memTracesByStack(memTracesSuppressReportNoise(first))
+	trace2 := memTracesByStack(memTracesSuppressReportNoise(second))
+	baseline := make(map[string]VppMemTrace, len(trace1))
+	for _, trace := range trace1 {
+		baseline[memTraceKey(trace)] = trace
+	}
 	report := ""
 	for _, trace := range trace2 {
-		// The dump's filename is parsed before taking the snapshot, so its
-		// copy can have a new sample address each time. Match the stack to
-		// ignore that address change while still reporting parser growth.
-		compareTraceback := slices.ContainsFunc(trace.Traceback, func(frame string) bool {
-			symbol, _, _ := strings.Cut(frame, " + ")
-			return symbol == "parse_string"
-		})
-		baseline := slices.IndexFunc(trace1, func(previous VppMemTrace) bool {
-			if compareTraceback {
-				return slices.Equal(previous.Traceback, trace.Traceback)
-			}
-			return previous.Sample == trace.Sample
-		})
 		deltaBytes, deltaCounts := trace.Size, trace.Count
-		if baseline >= 0 {
-			deltaBytes -= trace1[baseline].Size
-			deltaCounts -= trace1[baseline].Count
+		if previous, found := baseline[memTraceKey(trace)]; found {
+			deltaBytes -= previous.Size
+			deltaCounts -= previous.Count
 			if deltaBytes <= 0 {
 				continue
 			}

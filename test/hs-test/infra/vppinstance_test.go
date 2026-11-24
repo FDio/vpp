@@ -213,3 +213,76 @@ func TestMemLeakReportSnapshotAllocations(t *testing.T) {
 		t.Fatalf("expected parser growth and the deliberate leak, got %d bytes in %d allocations\n%s", bytes, count, report)
 	}
 }
+
+func TestMemLeakReportReusedFilenameSample(t *testing.T) {
+	first := []VppMemTrace{
+		{Count: 1, Size: 32, Sample: "0x1000", Traceback: tbSaveMemoryTraceFilename},
+	}
+	second := []VppMemTrace{
+		{Count: 1, Size: 32, Sample: "0x2000", Traceback: tbSaveMemoryTraceFilename},
+		{Count: 1, Size: 32, Sample: "0x1000", Traceback: tbDeliberateLeak},
+	}
+	report, bytes, count := memLeakReport(first, second)
+	if bytes != 32 || count != 1 || !strings.Contains(report, "leak_memory_fn") {
+		t.Fatalf("expected the allocation at the reused address, got %d bytes in %d allocations\n%s",
+			bytes, count, report)
+	}
+}
+
+func TestMemLeakReportTracebackSamples(t *testing.T) {
+	tests := []struct {
+		name   string
+		first  []VppMemTrace
+		second []VppMemTrace
+		bytes  int
+		count  int
+	}{
+		{
+			name: "unchanged traceback reuses parser sample",
+			first: []VppMemTrace{
+				{Count: 1, Size: 32, Sample: "0x1000", Traceback: tbSaveMemoryTraceFilename},
+				{Count: 1, Size: 64, Sample: "0x2000", Traceback: tbDeliberateLeak},
+			},
+			second: []VppMemTrace{
+				{Count: 1, Size: 32, Sample: "0x3000", Traceback: tbSaveMemoryTraceFilename},
+				{Count: 1, Size: 64, Sample: "0x1000", Traceback: tbDeliberateLeak},
+			},
+		},
+		{
+			name: "growing traceback changes sample",
+			first: []VppMemTrace{
+				{Count: 1, Size: 64, Sample: "0x2000", Traceback: tbDeliberateLeak},
+			},
+			second: []VppMemTrace{
+				{Count: 2, Size: 96, Sample: "0x3000", Traceback: tbDeliberateLeak},
+			},
+			bytes: 32,
+			count: 1,
+		},
+		{
+			name: "duplicate rendered tracebacks aggregate",
+			first: []VppMemTrace{
+				{Count: 1, Size: 32, Sample: "0x1000", Traceback: tbDeliberateLeak},
+				{Count: 1, Size: 64, Sample: "0x2000", Traceback: tbDeliberateLeak},
+			},
+			second: []VppMemTrace{
+				{Count: 1, Size: 32, Sample: "0x3000", Traceback: tbDeliberateLeak},
+				{Count: 2, Size: 96, Sample: "0x4000", Traceback: tbDeliberateLeak},
+			},
+			bytes: 32,
+			count: 1,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			report, bytes, count := memLeakReport(test.first, test.second)
+			if bytes != test.bytes || count != test.count {
+				t.Fatalf("got %d bytes in %d allocations, expected %d bytes in %d allocations\n%s",
+					bytes, count, test.bytes, test.count, report)
+			}
+			if test.bytes > 0 && strings.Count(report, "leak_memory_fn") != 1 {
+				t.Fatalf("expected one traceback in the report\n%s", report)
+			}
+		})
+	}
+}
