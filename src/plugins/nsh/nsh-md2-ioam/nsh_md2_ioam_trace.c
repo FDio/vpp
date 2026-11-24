@@ -343,7 +343,7 @@ nsh_md2_ioam_trace_init (vlib_main_t * vm)
 
   hm->vlib_main = vm;
   hm->vnet_main = vnet_get_main ();
-  gm->unix_time_0 = (u32) time (0);	/* Store starting time */
+  gm->unix_time_0 = time (0); /* Store starting time */
   gm->vlib_time_0 = vlib_time_now (vm);
 
   clib_memset (hm->counters, 0, sizeof (hm->counters));
