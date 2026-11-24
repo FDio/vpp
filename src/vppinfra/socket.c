@@ -385,6 +385,10 @@ clib_socket_init (clib_socket_t *s)
       if (d->is_local == 0 && s->local_only)
 	continue;
 
+      /* a name without prefix is a host:port, or a file if there is no ':' */
+      if (d->prefix[0] == 0 && (d->is_local == (strchr (s->config, ':') != 0)))
+	continue;
+
       if (strncmp (s->config, d->prefix, strlen (d->prefix)) == 0)
 	{
 	  data = d;
