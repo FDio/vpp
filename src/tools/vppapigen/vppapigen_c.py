@@ -2011,11 +2011,14 @@ api_{n} (cJSON *o)
     // XXX Will fail in case of event received. Do loop
   if (ntohs(*((u16 *)p)) != vac_get_msg_index(VL_API_{R}_CRC)) {{
     fprintf(stderr, "Mismatched reply\\n");
+    vac_free(p);
     return 0;
   }}
   vl_api_{r}_t *rmp = (vl_api_{r}_t *)p;
   vl_api_{r}_t_endian(rmp, 0);
-  return vl_api_{r}_t_tojson(rmp);
+  cJSON *json = vl_api_{r}_t_tojson(rmp);
+  vac_free(p);
+  return json;
 }}
 
 """
@@ -2057,11 +2060,13 @@ api_{n} (cJSON *o)
      */
     u16 reply_msg_id = ntohs(*((u16 *)p));
     if (reply_msg_id == ping_reply_msg_id) {{
+        vac_free(p);
         break;
     }}
 
     if (reply_msg_id == details_msg_id) {{
         if (l < sizeof(vl_api_{r}_t)) {{
+            vac_free(p);
             cJSON_free(reply);
             return 0;
         }}
@@ -2069,6 +2074,7 @@ api_{n} (cJSON *o)
         vl_api_{r}_t_endian(rmp, 0);
         cJSON_AddItemToArray(reply, vl_api_{r}_t_tojson(rmp));
     }}
+    vac_free(p);
   }}
   return reply;
 }}
@@ -2111,6 +2117,7 @@ api_{n} (cJSON *o)
         vl_api_{r}_t *rmp = (vl_api_{r}_t *)p;
         vl_api_{r}_t_endian(rmp, 0);
         cJSON_AddItemToArray(reply, vl_api_{r}_t_tojson(rmp));
+        vac_free(p);
         break;
     }}
 
@@ -2119,6 +2126,7 @@ api_{n} (cJSON *o)
         vl_api_{d}_t_endian(rmp, 0);
         cJSON_AddItemToArray(reply, vl_api_{d}_t_tojson(rmp));
     }}
+    vac_free(p);
   }}
   return reply;
 }}
