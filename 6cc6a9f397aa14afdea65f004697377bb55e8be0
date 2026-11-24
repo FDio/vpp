@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1c6e5c7f_9483ffcc",
+        "filename": "test/hs-test/infra/vppinstance.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 967,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-24T14:59:44Z",
+      "side": 1,
+      "message": "I think we will overcount when traceback reuse address",
+      "revId": "6cc6a9f397aa14afdea65f004697377bb55e8be0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
