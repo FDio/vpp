@@ -251,6 +251,7 @@ show_schema_fn (vlib_main_t *vm, cli_ctx_t *ctx)
   vlib_cli_main_t *cm = &vgm->cli_main;
   clib_json_text_t j;
   vlib_cli_command_t *c, *x;
+  u32 i;
 
   clib_json_init (&j);
   clib_json_add_object (&j, 0);
@@ -260,8 +261,9 @@ show_schema_fn (vlib_main_t *vm, cli_ctx_t *ctx)
   clib_json_parent (&j);
 
   clib_json_add_array (&j, "commands");
-  vec_foreach (c, cm->commands)
+  vec_foreach_index (i, cm->commands)
     {
+      c = cm->commands[i];
       if (!c->function || c->handler)
 	continue;
       clib_json_add_object (&j, 0);
