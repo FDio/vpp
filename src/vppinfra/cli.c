@@ -312,7 +312,18 @@ format_arg_usage (u8 *s, va_list *va)
       s = format (s, "%s", opt ? "" : ")");
       break;
     case CLI_K_SEQ:
-      s = format_arg_list (s, a->children, " ");
+      if (a->flags & CLI_F_LEAD)
+	{
+	  /* the leading keyword is not optional */
+	  s = format (s, "%s", a->children->name);
+	  if (a->children->kind == CLI_K_KEYWORD)
+	    s = format (s, " <%s>", a->children->name);
+	  if (a->children[1].kind)
+	    s = format (s, " ");
+	  s = format_arg_list (s, a->children + 1, " ");
+	}
+      else
+	s = format_arg_list (s, a->children, " ");
       break;
     case CLI_K_GROUP:
       s = format (s, "%s ", a->name);
@@ -498,7 +509,7 @@ add_first_candidates (cli_parse_t *p, const cli_arg_t *a, u8 *prefix)
       for (const cli_arg_t *c = a->children; c->kind; c++)
 	{
 	  add_first_candidates (p, c, prefix);
-	  if (!(c->flags & CLI_F_OPTIONAL) && c->kind != CLI_K_FLAG)
+	  if ((a->flags & CLI_F_LEAD) || (!(c->flags & CLI_F_OPTIONAL) && c->kind != CLI_K_FLAG))
 	    break;
 	}
       break;
@@ -672,7 +683,13 @@ parse_oneof (cli_parse_t *p, const cli_arg_t *a)
 	  continue;
 	}
       if (c->kind == CLI_K_SEQ)
-	r = parse_seq (p, c->children, 0);
+	{
+	  /* the first word has to be the keyword of the alternative */
+	  if ((c->flags & CLI_F_LEAD) &&
+	      (p->i >= p->n_tok || !tok_is_keyword (&p->tok[p->i], c->children)))
+	    continue;
+	  r = parse_seq (p, c->children, 0);
+	}
       else
 	r = parse_value (p, c);
       if (r != P_NOMATCH)
