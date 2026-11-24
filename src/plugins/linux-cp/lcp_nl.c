@@ -179,6 +179,7 @@ nl_register_vft (const nl_vft_t *nv)
 
 #define NL_DBG(...)   vlib_log_debug (nl_main.nl_logger, __VA_ARGS__);
 #define NL_INFO(...)  vlib_log_notice (nl_main.nl_logger, __VA_ARGS__);
+#define NL_WARN(...)  vlib_log_warn (nl_main.nl_logger, __VA_ARGS__);
 #define NL_ERROR(...) vlib_log_err (nl_main.nl_logger, __VA_ARGS__);
 
 static void lcp_nl_open_socket (void);
@@ -803,6 +804,31 @@ lcp_nl_get_cache (lcp_nl_obj_t t)
   return nm->nl_caches[t];
 }
 
+/* Set the socket's buffer sizes. The kernel caps SO_RCVBUF, which libnl
+ * uses, at net.core.rmem_max (208 kB by default), and a burst of changes
+ * then overflows the socket. SO_RCVBUFFORCE is not capped; it needs
+ * CAP_NET_ADMIN, which linux-cp needs anyway.
+ */
+static void
+lcp_nl_set_socket_buffer_size (struct nl_sock *sk)
+{
+  nl_main_t *nm = &nl_main;
+  int fd = nl_socket_get_fd (sk);
+  int size = nm->rx_buf_size;
+  socklen_t len = sizeof (size);
+
+  nl_socket_set_buffer_size (sk, nm->rx_buf_size, nm->tx_buf_size);
+  if (!nm->rx_buf_size)
+    return;
+  setsockopt (fd, SOL_SOCKET, SO_RCVBUFFORCE, &size, sizeof (size));
+
+  /* the kernel reports twice the size set */
+  if (getsockopt (fd, SOL_SOCKET, SO_RCVBUF, &size, &len) == 0 && size / 2 < nm->rx_buf_size)
+    NL_WARN ("Netlink receive buffer is %d bytes, not %u: raise "
+	     "net.core.rmem_max or give VPP CAP_NET_ADMIN",
+	     size / 2, nm->rx_buf_size);
+}
+
 /* Set the RX buffer size to be used on the netlink socket */
 void
 lcp_nl_set_buffer_size (u32 buf_size)
@@ -812,7 +838,7 @@ lcp_nl_set_buffer_size (u32 buf_size)
   nm->rx_buf_size = buf_size;
 
   if (nm->sk_route)
-    nl_socket_set_buffer_size (nm->sk_route, nm->rx_buf_size, nm->tx_buf_size);
+    lcp_nl_set_socket_buffer_size (nm->sk_route);
 }
 
 /* Set the batch size - maximum netlink messages to process at one time */
@@ -927,7 +953,7 @@ lcp_nl_open_socket (void)
 
   /* Set socket in nonblocking mode and increase buffer sizes */
   nl_socket_set_nonblocking (nm->sk_route);
-  nl_socket_set_buffer_size (nm->sk_route, nm->rx_buf_size, nm->tx_buf_size);
+  lcp_nl_set_socket_buffer_size (nm->sk_route);
 
   if (nm->clib_file_index == ~0)
     {

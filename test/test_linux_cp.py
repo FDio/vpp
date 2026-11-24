@@ -3,6 +3,8 @@
 import unittest
 import socket
 import subprocess
+import ctypes
+import os
 from ipaddress import ip_address, ip_interface
 
 from scapy.layers.inet import IP, UDP
@@ -667,6 +669,34 @@ class TestLinuxCPNetNSBase(VppTestCase):
         delete_all_namespaces(cls.ns_history_name)
         super().tearDownClass()
 
+    def nl_rx_buffer_size(self):
+        """The receive buffer size of VPP's netlink route socket. Copies
+        VPP's sockets here with pidfd_getfd (syscall 438) and asks the
+        kernel."""
+        libc = ctypes.CDLL(None, use_errno=True)
+        pidfd = os.pidfd_open(self.vpp.pid)
+        sizes = []
+        try:
+            for name in os.listdir(f"/proc/{self.vpp.pid}/fd"):
+                fd = libc.syscall(438, pidfd, int(name), 0)
+                if fd < 0:
+                    continue
+                try:
+                    sock = socket.socket(fileno=fd)
+                except OSError:
+                    os.close(fd)
+                    continue
+                with sock:
+                    if sock.family == socket.AF_NETLINK and sock.proto == 0:
+                        sizes.append(
+                            sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
+                        )
+        finally:
+            os.close(pidfd)
+        self.assertTrue(sizes, "VPP has no netlink route socket")
+        # the kernel reports twice the size set
+        return max(sizes) // 2
+
     def poll_for(self, description, fn, expected, timeout=2.0, interval=0.1):
         """Poll fn() until it returns expected, or fail after timeout."""
         iterations = int(timeout / interval)
@@ -807,6 +837,12 @@ class TestLinuxCPRoutes(TestLinuxCPNetNSBase):
 
         for lo in cls.lo_interfaces:
             lo.admin_up()
+
+    def test_linux_cp_nl_rx_buffer(self):
+        """Linux CP netlink socket gets the receive buffer it asks for"""
+        # linux-nl asks for 128 MB (NL_RX_BUF_SIZE_DEF); SO_RCVBUF alone is
+        # capped at net.core.rmem_max, 208 kB by default.
+        self.assertGreaterEqual(self.nl_rx_buffer_size(), 128 << 20)
 
     def test_linux_cp_route(self):
         """Linux CP Route"""
@@ -957,6 +993,26 @@ class TestLinuxCPRoutes(TestLinuxCPNetNSBase):
             )
         # leave the adj-fib alone on the entry before the neighbour goes
         self.wait_route_source("10.10.1.44/32", lcp_rt, present=False)
+
+
+@unittest.skipIf(config.skip_netns_tests, "netns not available or disabled from cli")
+class TestLinuxCPNlRxBufferSize(TestLinuxCPNetNSBase):
+    """Linux CP netlink receive buffer size from the startup config"""
+
+    extra_vpp_config = ["linux-nl", "{", "nl-rx-buffer-size", "1048576", "}"]
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # linux-nl opens its socket with the first pair
+        cls.create_loopback_interfaces(1)
+        cls.vapi.cli(f"lcp create loop0 host-if hloop0 netns {cls.ns_name}")
+
+    def test_linux_cp_nl_rx_buffer_size(self):
+        """Linux CP netlink socket gets the configured receive buffer"""
+        # 1 MB is above net.core.rmem_max's default, 208 kB, and below the
+        # 128 MB linux-nl asks for when nl-rx-buffer-size is not set.
+        self.assertEqual(self.nl_rx_buffer_size(), 1 << 20)
 
 
 ISIS_PROTO = 0x83
