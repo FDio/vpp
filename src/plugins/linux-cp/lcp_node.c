@@ -780,7 +780,7 @@ format_lcp_arp_trace (u8 *s, va_list *args)
 }
 
 /**
- * punt ARP replies to the host
+ * punt ARP replies and gratuitous ARP requests to the host
  */
 VLIB_NODE_FN (lcp_arp_phy_node)
 (vlib_main_t *vm, vlib_node_runtime_t *node, vlib_frame_t *frame)
@@ -824,10 +824,13 @@ VLIB_NODE_FN (lcp_arp_phy_node)
 	  vnet_feature_next (&next1, b1);
 
 	  /*
-	   * Replies might need to be received by the host, so we
-	   * make a copy of them.
+	   * Replies and gratuitous requests might need to be received by
+	   * the host, so we make a copy of them.
 	   */
-	  if (arp0->opcode == clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply))
+	  if (arp0->opcode == clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply) ||
+	      (arp0->opcode == clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_request) &&
+	       arp0->ip4_over_ethernet[0].ip4.as_u32 ==
+		 arp0->ip4_over_ethernet[1].ip4.as_u32))
 	    {
 	      lcp_itf_pair_t *lip0 = 0;
 	      u32 lipi0;
@@ -859,7 +862,10 @@ VLIB_NODE_FN (lcp_arp_phy_node)
 		    }
 		}
 	    }
-	  if (arp1->opcode == clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply))
+	  if (arp1->opcode == clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply) ||
+	      (arp1->opcode == clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_request) &&
+	       arp1->ip4_over_ethernet[0].ip4.as_u32 ==
+		 arp1->ip4_over_ethernet[1].ip4.as_u32))
 	    {
 	      lcp_itf_pair_t *lip1 = 0;
 	      u32 lipi1;
@@ -929,12 +935,15 @@ VLIB_NODE_FN (lcp_arp_phy_node)
 	  vnet_feature_next (&next0, b0);
 
 	  /*
-	   * Replies might need to be received by the host, so we
-	   * make a copy of them.
+	   * Replies and gratuitous requests might need to be received by
+	   * the host, so we make a copy of them.
 	   */
 	  arp_opcode = clib_host_to_net_u16 (arp0->opcode);
 
-	  if (arp_opcode == ETHERNET_ARP_OPCODE_reply)
+	  if (arp_opcode == ETHERNET_ARP_OPCODE_reply ||
+	      (arp_opcode == ETHERNET_ARP_OPCODE_request &&
+	       arp0->ip4_over_ethernet[0].ip4.as_u32 ==
+		 arp0->ip4_over_ethernet[1].ip4.as_u32))
 	    {
 	      lcp_itf_pair_t *lip0 = 0;
 	      vlib_buffer_t *c0;
