@@ -165,7 +165,7 @@ jobs:
 
       - name: MAKETEST VPP
         if: success()
-        uses: fdio/vpp/.github/actions/vpp-make-test@03f35503fee57df2348617498db28fde557a3880
+        uses: fdio/vpp/.github/actions/vpp-make-test@79d9bb725f9e4deffebe0171b0ad48f8bb20df99
         timeout-minutes: 180
         with:
           LOG_DIR: ${{ env.LOG_DIR }}
