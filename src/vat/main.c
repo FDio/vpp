@@ -87,6 +87,8 @@ do_one_file (vat_main_t * vam)
 				1 /* complain */ ,
 				0 /* level */ ,
 				8 /* max_level */ );
+      /* the line may have no trailing white space */
+      vec_terminate_c_string (this_cmd);
 
       if (vam->exec_mode == 0)
 	{
@@ -112,7 +114,8 @@ do_one_file (vat_main_t * vam)
 	      else
 		break;
 	    }
-	  *argsp++ = 0;
+	  if (argsp < this_cmd + vec_len (this_cmd))
+	    *argsp++ = 0;
 	  while (argsp < (this_cmd + vec_len (this_cmd)))
 	    {
 	      if (*argsp == ' ' || *argsp == '\t' || *argsp == '\n')
