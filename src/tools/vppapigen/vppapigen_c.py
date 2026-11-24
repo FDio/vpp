@@ -161,10 +161,14 @@ class ToJSON:
                 )
             )
         else:
+            # the string is received from the wire, it may be not terminated
             write(
-                '    cJSON_AddStringToObject(o, "{n}", (char *)a->{n});\n'.format(
-                    n=o.fieldname
-                )
+                "    {{\n"
+                "    char s[sizeof (a->{n}) + 1];\n"
+                "    memcpy (s, a->{n}, sizeof (a->{n}));\n"
+                "    s[sizeof (a->{n})] = 0;\n"
+                '    cJSON_AddStringToObject(o, "{n}", s);\n'
+                "    }}\n".format(n=o.fieldname)
             )
 
     def print_field(self, o):
