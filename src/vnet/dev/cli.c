@@ -147,10 +147,10 @@ dev_crypto_config_from_ctx (cli_ctx_t *ctx, vnet_dev_crypto_config_t *cc)
 }
 
 static clib_error_t *
-dev_copy_str (char *dst, u32 size, const char *what, cli_value_t *v)
+dev_copy_str (char *dst, u32 max_len, const char *what, cli_value_t *v)
 {
-  if (vec_len (v->str) >= size)
-    return clib_error_return (0, "%s is too long, up to %u characters", what, size - 1);
+  if (vec_len (v->str) > max_len)
+    return clib_error_return (0, "%s is too long, up to %u characters", what, max_len);
 
   clib_memcpy (dst, v->str, vec_len (v->str));
   dst[vec_len (v->str)] = 0;
@@ -165,7 +165,8 @@ device_attach_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
   clib_error_t *err;
   vnet_dev_rv_t rv;
 
-  err = dev_copy_str (a.device_id, sizeof (a.device_id), "device id", cli_get (ctx, "device-id"));
+  err =
+    dev_copy_str (a.device_id, sizeof (a.device_id) - 1, "device id", cli_get (ctx, "device-id"));
   if (err)
     return err;
 
@@ -278,7 +279,7 @@ device_create_if_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 
   if ((v = cli_get (ctx, "if-name")))
     {
-      err = dev_copy_str (a.intf_name, sizeof (a.intf_name), "interface name", v);
+      err = dev_copy_str (a.intf_name, sizeof (a.intf_name) - 1, "interface name", v);
       if (err)
 	return err;
     }
@@ -364,7 +365,7 @@ device_create_sec_if_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 
   if ((v = cli_get (ctx, "if-name")))
     {
-      err = dev_copy_str (a.intf_name, sizeof (a.intf_name), "interface name", v);
+      err = dev_copy_str (a.intf_name, sizeof (a.intf_name) - 1, "interface name", v);
       if (err)
 	return err;
     }
