@@ -93,6 +93,16 @@ An argument has a kind, a name, a type and optional modifiers.
 ``CLI_SEQ (...)``
   An ordered group of arguments, used as an alternative of ``CLI_ONEOF``.
 
+``CLI_SEQ_LEAD (...)``
+  A ``CLI_SEQ`` which is selected by its first argument, a ``CLI_FLAG`` or a
+  ``CLI_KEYWORD``. Flags are optional, so a plain ``CLI_SEQ`` which starts with
+  one is not selected by it and can swallow the words of the other
+  alternatives. With ``CLI_SEQ_LEAD`` the keyword has to be the next word, and
+  the other alternatives are tried when it is not. It is for commands which
+  take a sub-command, ``set <profile> auth ...``, ``set <profile> id ...``.
+  The leading keyword is the only one of the sequence which is not optional,
+  the others are declared as usual.
+
 ``CLI_GROUP (name, help, ...)``
   An optional keyword which enables its own keywords and flags, in any order:
   ``tunnel src 1.1.1.1 dst 2.2.2.2``. The child names are valid only after the

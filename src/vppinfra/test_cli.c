@@ -373,6 +373,112 @@ test_rest_and_pipeline (void)
   return test_dash ();
 }
 
+static const cli_arg_t lead_args[] = {
+  CLI_VALUE ("profile", cli_type_string),
+  CLI_ONEOF (
+    "what", 0,
+    CLI_SEQ_LEAD (
+      CLI_FLAG ("auth"),
+      CLI_ONEOF ("method", 0,
+		 CLI_SEQ_LEAD (CLI_FLAG ("rsa-sig"), CLI_KEYWORD ("cert-file", cli_type_file)),
+		 CLI_SEQ_LEAD (CLI_FLAG ("psk"), CLI_KEYWORD ("string", cli_type_string)))),
+    CLI_KEYWORD ("window", cli_type_u32), CLI_FLAG ("udp-encap"),
+    CLI_SEQ_LEAD (CLI_FLAG ("range"), CLI_VALUE ("first", cli_type_u32),
+		  CLI_VALUE ("last", cli_type_u32)),
+    CLI_SEQ_LEAD (CLI_FLAG ("responder"), CLI_VALUE ("interface", test_type_name),
+		  CLI_VALUE ("address", cli_type_string))),
+  {},
+};
+
+static clib_error_t *
+test_lead (void)
+{
+  cli_ctx_t ctx = {};
+  cli_candidate_t *cands = 0;
+  clib_error_t *e;
+  u8 *line = format (0, "p1 window 4096");
+  u8 *c = format (0, "p1 ");
+
+  e = cli_parse_line (lead_args, line, &ctx);
+  TEST_ASSERT (e == 0 && cli_u64 (&ctx, "window", 0) == 4096 && !cli_flag (&ctx, "auth"));
+  cli_ctx_free (&ctx);
+
+  vec_reset_length (line);
+  line = format (line, "p1 anything udp-encap");
+  e = cli_parse_line (lead_args, line, &ctx);
+  TEST_ASSERT (e != 0);
+  clib_error_free (e);
+  cli_ctx_free (&ctx);
+
+  vec_reset_length (line);
+  line = format (line, "p1 udp-encap");
+  e = cli_parse_line (lead_args, line, &ctx);
+  TEST_ASSERT (e == 0 && cli_flag (&ctx, "udp-encap") && !cli_flag (&ctx, "responder"));
+  cli_ctx_free (&ctx);
+
+  vec_reset_length (line);
+  line = format (line, "p1 auth rsa-sig cert-file /tmp/x.pem");
+  e = cli_parse_line (lead_args, line, &ctx);
+  TEST_ASSERT (e == 0 && cli_flag (&ctx, "auth") && cli_flag (&ctx, "rsa-sig") &&
+	       cli_get (&ctx, "cert-file") && !cli_flag (&ctx, "psk"));
+  cli_ctx_free (&ctx);
+
+  vec_reset_length (line);
+  line = format (line, "p1 auth psk string key");
+  e = cli_parse_line (lead_args, line, &ctx);
+  TEST_ASSERT (e == 0 && cli_flag (&ctx, "psk") && cli_get (&ctx, "string"));
+  cli_ctx_free (&ctx);
+
+  vec_reset_length (line);
+  line = format (line, "p1 range 1 5");
+  e = cli_parse_line (lead_args, line, &ctx);
+  TEST_ASSERT (e == 0 && cli_u64 (&ctx, "first", 0) == 1 && cli_u64 (&ctx, "last", 0) == 5);
+  cli_ctx_free (&ctx);
+
+  vec_reset_length (line);
+  line = format (line, "p1 range 1");
+  e = cli_parse_line (lead_args, line, &ctx);
+  TEST_ASSERT (e != 0);
+  clib_error_free (e);
+  cli_ctx_free (&ctx);
+
+  vec_reset_length (line);
+  line = format (line, "p1 responder beta 1.2.3.4");
+  e = cli_parse_line (lead_args, line, &ctx);
+  TEST_ASSERT (e == 0 && cli_index (&ctx, "interface") == 1);
+  cli_ctx_free (&ctx);
+
+  /* the keyword selects, other words do not match a sequence */
+  vec_reset_length (line);
+  line = format (line, "p1 bogus");
+  e = cli_parse_line (lead_args, line, &ctx);
+  TEST_ASSERT (e && contains (e, "auth"));
+  clib_error_free (e);
+  cli_ctx_free (&ctx);
+
+  vec_reset_length (line);
+  line = format (line, "p1");
+  e = cli_parse_line (lead_args, line, &ctx);
+  TEST_ASSERT (e != 0);
+  clib_error_free (e);
+  cli_ctx_free (&ctx);
+
+  /* completion offers the leading keywords only */
+  cli_complete_args (lead_args, c, &cands);
+  TEST_ASSERT (vec_len (cands) == 5);
+  cli_candidates_free (cands);
+  cands = 0;
+  vec_reset_length (c);
+  c = format (c, "p1 auth ");
+  cli_complete_args (lead_args, c, &cands);
+  TEST_ASSERT (vec_len (cands) == 2);
+  cli_candidates_free (cands);
+
+  vec_free (c);
+  vec_free (line);
+  return 0;
+}
+
 static clib_error_t *
 test_help_and_schema (void)
 {
@@ -402,7 +508,7 @@ test_help_and_schema (void)
   TEST_ASSERT (strstr ((char *) js, "\"name\":\t\"name\"") != 0);
   vec_free (js);
   clib_json_free (&j);
-  return 0;
+  return test_lead ();
 }
 
 /* defaults, constraints and deprecated arguments */

@@ -45,6 +45,10 @@ typedef enum
 #define CLI_F_REPEAT   (1 << 1)
 /* accepted, but not completed, not in the usage and not in the help */
 #define CLI_F_HIDDEN (1 << 2)
+/* CLI_SEQ in a CLI_ONEOF: the first argument of the sequence, a keyword or a flag, has to
+ * be given and selects the alternative. Without it the sequence is tried as a whole and a
+ * flag, being optional, never selects anything. */
+#define CLI_F_LEAD (1 << 3)
 
 typedef struct
 {
@@ -194,6 +198,14 @@ struct cli_arg_t
 #define CLI_SEQ(...)                                                                               \
   {                                                                                                \
     .kind = CLI_K_SEQ,                                                                             \
+    .children = (const cli_arg_t[]) { __VA_ARGS__, {} },                                           \
+  }
+/* An alternative of a CLI_ONEOF which is selected by its first argument, a CLI_FLAG or a
+ * CLI_KEYWORD: CLI_ONEOF ("what", 0, CLI_SEQ_LEAD (CLI_FLAG ("auth"), CLI_VALUE (...)), ...) */
+#define CLI_SEQ_LEAD(...)                                                                          \
+  {                                                                                                \
+    .kind = CLI_K_SEQ,                                                                             \
+    .flags = CLI_F_LEAD,                                                                           \
     .children = (const cli_arg_t[]) { __VA_ARGS__, {} },                                           \
   }
 
