@@ -116,6 +116,10 @@ struct cli_arg_t
   cli_kind_t kind;
   const char *name;
   const char *alias;
+  /* VALUE only: a second spelling of the value, "<alt_keyword> <number>", where the number
+   * is stored in v->index, as an interface type does. For commands which accepted e.g.
+   * "sw_if_index 5" in place of an interface name. */
+  const char *alt_keyword;
   const char *help;
   const cli_type_t *type;
   u32 flags;

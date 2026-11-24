@@ -297,6 +297,8 @@ format_arg_usage (u8 *s, va_list *va)
 	s = format (s, "%s", a->type->usage);
       else
 	s = format (s, "<%s>", a->name);
+      if (a->alt_keyword)
+	s = format (s, "|%s <n>", a->alt_keyword);
       break;
     case CLI_K_KEYWORD:
       s = format (s, "%s <%s>", a->name, a->name);
@@ -479,6 +481,8 @@ add_first_candidates (cli_parse_t *p, const cli_arg_t *a, u8 *prefix)
     case CLI_K_VALUE:
       if (a->type->complete)
 	a->type->complete (a, prefix, &p->cands);
+      if (a->alt_keyword && cli_prefix_match (a->alt_keyword, prefix))
+	cli_candidate_add (&p->cands, a->alt_keyword, a->help);
       break;
     case CLI_K_KEYWORD:
     case CLI_K_FLAG:
@@ -558,10 +562,42 @@ parse_value (cli_parse_t *p, const cli_arg_t *a)
       return P_OK;
     }
 
+  if (a->alt_keyword && a->kind == CLI_K_VALUE && tok_eq (t, a->alt_keyword) && !t->quoted)
+    {
+      u32 kw = p->i;
+
+      if (p->complete && p->i == p->n_tok - 1)
+	{
+	  cli_candidate_add (&p->cands, a->alt_keyword, a->help);
+	  return P_STOP;
+	}
+      if (p->i + 1 >= p->n_tok)
+	{
+	  set_err (p, p->n_tok, format (0, "missing value for '%s'", a->alt_keyword));
+	  return P_ERR;
+	}
+      if (p->complete && p->i + 1 == p->n_tok - 1)
+	return P_STOP;
+
+      err = cli_type_u32.parse (a, p->tok[p->i + 1].s, &v);
+      if (err)
+	{
+	  set_err (p, p->i + 1, err);
+	  return P_ERR;
+	}
+      v.index = v.u64;
+      v.tok = kw;
+      vec_add1 (p->values, v);
+      p->i += 2;
+      return P_OK;
+    }
+
   if (p->complete && p->i == p->n_tok - 1)
     {
       if (a->type->complete)
 	a->type->complete (a, t->s, &p->cands);
+      if (a->alt_keyword && cli_prefix_match (a->alt_keyword, t->s))
+	cli_candidate_add (&p->cands, a->alt_keyword, a->help);
       return P_STOP;
     }
 
@@ -1208,6 +1244,8 @@ cli_args_to_json (clib_json_text_t *j, const cli_arg_t *args)
 	clib_json_add_string (j, "name", "%s", a->name);
       if (a->alias)
 	clib_json_add_string (j, "alias", "%s", a->alias);
+      if (a->alt_keyword)
+	clib_json_add_string (j, "alt_keyword", "%s", a->alt_keyword);
       if (a->help)
 	clib_json_add_string (j, "help", "%s", a->help);
       if (a->type)

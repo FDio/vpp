@@ -350,7 +350,7 @@ tap_delete_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 VLIB_CLI_COMMAND (tap_delete__command, static) = {
   .path = "delete tap",
   .short_help = "Delete a tap interface",
-  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_sw_interface)),
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_sw_interface, .alt_keyword = "sw_if_index")),
   .handler = tap_delete_command_fn,
 };
 

@@ -116,6 +116,14 @@ Modifiers, set with designated fields after the type:
 ``.alias``
   A second accepted spelling of a keyword or flag.
 
+``.alt_keyword``
+  A second spelling of a ``CLI_VALUE``, ``<alt_keyword> <number>``. The number
+  is stored in ``v->index``, where the interface types keep their result, so
+  a handler reads it as before, with ``cli_index``. It is used by the commands
+  which took ``sw_if_index 5`` in place of the name of an interface, to keep
+  their old syntax: ``CLI_VALUE ("interface", cli_type_sw_interface, .alt_keyword =
+  "sw_if_index")``.
+
 ``.choices``
   Table for ``cli_type_enum`` and ``cli_type_flags``.
 
