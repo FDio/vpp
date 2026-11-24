@@ -687,16 +687,38 @@ vperf_client_worker_run_epoll (vperf_client_worker_t *wrk)
 
       for (i = 0; i < n_ev; i++)
 	{
+	  uint32_t events = wrk->ep_evts[i].events;
+
 	  ts = &wrk->sessions[wrk->ep_evts[i].data.u32];
 
 	  if (ts->is_done)
 	    continue;
 
-	  if (wrk->ep_evts[i].events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP))
+	  /* Edge-triggered input may not signal again until the FIFO is empty.
+	   * A graceful close can also arrive with data still in the FIFO. */
+	  if (!(events & EPOLLERR) && (events & (EPOLLIN | EPOLLHUP | EPOLLRDHUP)))
+	    {
+	      while (ts->stats.rx_bytes < ts->cfg.total_bytes &&
+		     vppcom_session_attr (ts->fd, VPPCOM_ATTR_GET_NREAD, 0, 0) > 0)
+		{
+		  rv = ts->read (ts, ts->rxbuf, ts->rxbuf_size);
+		  if (rv <= 0)
+		    break;
+		  if (ts->done (ts, check_rx))
+		    {
+		      n_active_sessions -= 1;
+		      break;
+		    }
+		}
+	      if (ts->is_done)
+		continue;
+	    }
+
+	  if (events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP))
 	    {
 	      /* if close return 1 we are done, otherwise it was unexpected
 	       * close */
-	      if (tp->close (ts, wrk->ep_evts[i].events))
+	      if (tp->close (ts, events))
 		{
 		  n_active_sessions -= 1;
 		  continue;
@@ -707,15 +729,7 @@ vperf_client_worker_run_epoll (vperf_client_worker_t *wrk)
 		  return -1;
 		}
 	    }
-	  if ((wrk->ep_evts[i].events & EPOLLIN) && ts->stats.rx_bytes < ts->cfg.total_bytes)
-	    {
-	      rv = ts->read (ts, ts->rxbuf, ts->rxbuf_size);
-	      if (rv < 0)
-		break;
-	      if (ts->done (ts, check_rx))
-		n_active_sessions -= 1;
-	    }
-	  if ((wrk->ep_evts[i].events & EPOLLOUT) && ts->stats.tx_bytes < ts->cfg.total_bytes)
+	  if ((events & EPOLLOUT) && ts->stats.tx_bytes < ts->cfg.total_bytes)
 	    {
 	      vperf_client_worker_epoll_send_add (wrk, ts);
 	    }
