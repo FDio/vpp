@@ -279,6 +279,34 @@ static const cli_arg_t rest_args[] = {
   {},
 };
 
+static const cli_arg_t dash_args[] = {
+  CLI_VALUE ("first", cli_type_u32),
+  CLI_VALUE ("sep", cli_type_dash),
+  CLI_VALUE ("last", cli_type_u32),
+  {},
+};
+
+static clib_error_t *
+test_dash (void)
+{
+  cli_ctx_t ctx = {};
+  u8 *line = format (0, "1 - 5");
+  clib_error_t *e = cli_parse_line (dash_args, line, &ctx);
+
+  TEST_ASSERT (e == 0 && cli_u64 (&ctx, "first", 0) == 1 && cli_u64 (&ctx, "last", 0) == 5);
+  cli_ctx_free (&ctx);
+
+  vec_reset_length (line);
+  line = format (line, "1 5");
+  e = cli_parse_line (dash_args, line, &ctx);
+  TEST_ASSERT (contains (e, "expected '-', not '5'"));
+  clib_error_free (e);
+  cli_ctx_free (&ctx);
+
+  vec_free (line);
+  return 0;
+}
+
 static clib_error_t *
 test_rest_and_pipeline (void)
 {
@@ -342,7 +370,7 @@ test_rest_and_pipeline (void)
   TEST_ASSERT (e == 0 && ctx.json);
   cli_ctx_free (&ctx);
   vec_free (line);
-  return 0;
+  return test_dash ();
 }
 
 static clib_error_t *

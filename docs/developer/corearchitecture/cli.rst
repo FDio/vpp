@@ -299,6 +299,10 @@ Generic types for values which are not tied to a component:
    * - ``cli_type_bitmap``
      - ``v->str``, a bitmap
      - ``0-3,5``
+   * - ``cli_type_dash``
+     - nothing
+     - the word ``-``, between the first and the last value of a range which is
+       written ``10 - 20``, as two values and a ``cli_type_dash`` in between
 
 ``cli_type_rest`` takes the rest of the line, up to a ``|``, exactly as it was
 typed. It is meant for text (``echo``, ``define``) and for commands that

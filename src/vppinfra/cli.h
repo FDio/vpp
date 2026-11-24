@@ -232,6 +232,8 @@ __clib_export extern cli_type_t cli_type_percent;
 __clib_export extern cli_type_t cli_type_flags;
 /* v->str is a vector of u32: 1,2,5-7. max is the number of entries */
 __clib_export extern cli_type_t cli_type_u32_list;
+/* the word "-", e.g. between the first and the last value of a range typed as "10 - 20" */
+__clib_export extern cli_type_t cli_type_dash;
 
 /* parse and complete of the types which have next_name */
 __clib_export u8 *cli_names_parse (const cli_arg_t *a, u8 *tok, cli_value_t *v);

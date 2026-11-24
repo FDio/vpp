@@ -517,6 +517,21 @@ parse_percent (const cli_arg_t *a, u8 *tok, cli_value_t *v)
   return err;
 }
 
+static u8 *
+parse_dash (const cli_arg_t *a, u8 *tok, cli_value_t *v)
+{
+  if (vec_len (tok) != 1 || tok[0] != '-')
+    return format (0, "expected '-', not '%v'", tok);
+  return 0;
+}
+
+CLIB_CLI_TYPE (cli_type_dash) = {
+  .name = "dash",
+  .help = "the word -",
+  .usage = "-",
+  .parse = parse_dash,
+};
+
 CLIB_CLI_TYPE (cli_type_percent) = {
   .name = "percent",
   .help = "0 to 100, with an optional %",
