@@ -933,6 +933,40 @@ class TestLinuxCPRoutes(TestLinuxCPNetNSBase):
 ISIS_PROTO = 0x83
 
 
+@unittest.skipIf(config.skip_netns_tests, "netns not available or disabled from cli")
+class TestLinuxCPLateNetNS(TestLinuxCPNetNSBase):
+    """Linux CP default netns made after VPP starts"""
+
+    @classmethod
+    def setUpNetNS(cls):
+        # VPP gets the name of a namespace that does not exist yet
+        super().setUpNetNS()
+        subprocess.run(["ip", "netns", "del", cls.ns_name], check=True)
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        create_namespace(cls.ns_history_name, ns=cls.ns_name)
+        cls.create_loopback_interfaces(1)
+        cls.vapi.cli(f"lcp create loop0 host-if hloop0 netns {cls.ns_name}")
+        cls.vapi.cli("set int ip address loop0 10.10.1.2/24")
+        cls.lo_interfaces[0].admin_up()
+
+    def test_linux_cp_late_netns_route(self):
+        """Linux CP Route in a default netns made after VPP starts"""
+        add_namespace_route(
+            self.ns_name, "192.168.1.0/24", dev="hloop0", gw_ip="10.10.1.1"
+        )
+        self.verify_paths(
+            "192.168.1.1/32",
+            dict(
+                type=FibPathType.FIB_PATH_TYPE_NORMAL,
+                sw_if_index=self.lo_interfaces[0].sw_if_index,
+                ip4="10.10.1.1",
+            ),
+        )
+
+
 @unittest.skipIf("linux-cp" in config.excluded_plugins, "Exclude linux-cp plugin tests")
 class TestLinuxCPOSI(VppTestCase):
     """Linux CP OSI registration and passthrough"""

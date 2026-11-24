@@ -886,6 +886,23 @@ lcp_nl_close_socket (void)
     }
 }
 
+/* Open the default namespace by name, as pairs do (lcp_itf_pair_add), so that
+ * one made after VPP read its config is found. -1 when there is none.
+ */
+static int
+lcp_nl_open_default_ns (void)
+{
+  u8 *ns = lcp_get_default_ns ();
+  int fd;
+
+  if (!ns)
+    return -1;
+  fd = clib_netns_open (ns);
+  if (fd == -1)
+    NL_ERROR ("Cannot open netns %s", ns);
+  return fd;
+}
+
 static void
 lcp_nl_open_socket (void)
 {
@@ -901,8 +918,8 @@ lcp_nl_open_socket (void)
   nm->sk_route = nl_socket_alloc ();
   nl_socket_disable_seq_check (nm->sk_route);
 
-  dest_ns_fd = lcp_get_default_ns_fd ();
-  if (dest_ns_fd)
+  dest_ns_fd = lcp_nl_open_default_ns ();
+  if (dest_ns_fd != -1)
     {
       curr_ns_fd = open ("/proc/self/ns/net", O_RDONLY);
       setns (dest_ns_fd, CLONE_NEWNET);
@@ -910,10 +927,14 @@ lcp_nl_open_socket (void)
 
   nl_connect (nm->sk_route, NETLINK_ROUTE);
 
-  if (dest_ns_fd && curr_ns_fd >= 0)
+  if (dest_ns_fd != -1)
     {
-      setns (curr_ns_fd, CLONE_NEWNET);
-      close (curr_ns_fd);
+      if (curr_ns_fd >= 0)
+	{
+	  setns (curr_ns_fd, CLONE_NEWNET);
+	  close (curr_ns_fd);
+	}
+      close (dest_ns_fd);
     }
 
   /* Subscribe to all the 'routing' notifications on the route socket */
@@ -972,8 +993,8 @@ lcp_nl_open_sync_socket (nl_sock_type_t sock_type)
 
   nm->sk_route_sync[sock_type] = sk_route = nl_socket_alloc ();
 
-  dest_ns_fd = lcp_get_default_ns_fd ();
-  if (dest_ns_fd > 0)
+  dest_ns_fd = lcp_nl_open_default_ns ();
+  if (dest_ns_fd != -1)
     {
       curr_ns_fd = clib_netns_open (NULL /* self */);
       if (clib_setns (dest_ns_fd) == -1)
@@ -982,7 +1003,7 @@ lcp_nl_open_sync_socket (nl_sock_type_t sock_type)
 
   nl_connect (sk_route, NETLINK_ROUTE);
 
-  if (dest_ns_fd > 0)
+  if (dest_ns_fd != -1)
     {
       if (curr_ns_fd == -1)
 	{
@@ -994,6 +1015,7 @@ lcp_nl_open_sync_socket (nl_sock_type_t sock_type)
 	    NL_ERROR ("Cannot set previous ns");
 	  close (curr_ns_fd);
 	}
+      close (dest_ns_fd);
     }
 
   NL_INFO ("Opened netlink synchronization socket %d of type %d",
