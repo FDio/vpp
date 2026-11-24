@@ -540,6 +540,12 @@ oct_port_poll (vlib_main_t *vm, vnet_dev_port_t *port)
       changes.link_speed = speed;
     }
 
+  if (link_info.status && (!port->duplex_known || port->full_duplex != link_info.full_duplex))
+    {
+      changes.change.link_duplex = 1;
+      changes.full_duplex = link_info.full_duplex;
+    }
+
   if (changes.change.any == 0)
     return;
 
