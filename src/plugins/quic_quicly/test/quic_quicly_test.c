@@ -797,7 +797,7 @@ quicly_test_retired_rx (vlib_main_t *vm, quic_quicly_main_t *qqm, const quic_eng
 	}
 
       /* A UDP dequeue event can still dispatch TX before UDP cleanup. */
-      engine->send_packets (ctx);
+      engine->send_packets (ctx, 0);
       QUICLY_TEST (!ctx->conn && count.count == 0 &&
 		     ctx->timers[QUIC_TIMER_TX] == QUIC_TIMER_HANDLE_INVALID,
 		   "late TX without an engine connection does not send or reschedule");

@@ -28,7 +28,8 @@ quic_conn_tx_timer_stop (quic_worker_ctx_t *wc, quic_ctx_t *ctx)
 }
 
 __clib_export void
-quic_conn_tx_timer_update (quic_worker_ctx_t *wc, quic_ctx_t *ctx, int64_t next_timeout)
+quic_conn_tx_timer_update (quic_worker_ctx_t *wc, quic_ctx_t *ctx, int64_t next_timeout,
+			   u8 from_conn_tx)
 {
   quic_timer_wheel_t *tw = &wc->timer_wheel;
   int64_t next_interval;
@@ -48,6 +49,13 @@ quic_conn_tx_timer_update (quic_worker_ctx_t *wc, quic_ctx_t *ctx, int64_t next_
       else
 	{
 	  quic_session = session_get (ctx->c_s_index, ctx->c_thread_index);
+	  if (from_conn_tx)
+	    {
+	      ASSERT (ctx->c_thread_index == vlib_get_thread_index ());
+	      /* fifo event is still set, requeue the current tx dispatch */
+	      quic_session->flags |= SESSION_F_CUSTOM_TX;
+	      return;
+	    }
 	  if (svm_fifo_set_event (quic_session->tx_fifo))
 	    {
 	      rv = session_program_tx_io_evt (quic_session->handle, SESSION_IO_EVT_TX);

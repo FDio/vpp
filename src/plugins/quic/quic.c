@@ -625,16 +625,12 @@ quic_custom_app_rx_callback (transport_connection_t * tc)
 static int
 quic_custom_tx_callback (void *s, transport_send_params_t * sp)
 {
-  session_t *stream_session = (session_t *) s;
-  quic_ctx_t *ctx;
+  session_t *session = s;
+  quic_ctx_t *ctx = quic_ctx_get (session->connection_index, session->thread_index);
 
-  ctx = quic_ctx_get (stream_session->connection_index,
-		      stream_session->thread_index);
   if (PREDICT_FALSE (!quic_ctx_is_stream (ctx)))
     {
-      /* this is invoked from quic_update_timer when we need to send
-       * immediately */
-      quic_eng_send_packets (ctx);
+      quic_eng_send_packets (ctx, 1);
       return 0;
     }
 
@@ -642,7 +638,7 @@ quic_custom_tx_callback (void *s, transport_send_params_t * sp)
 
   /* Add stream to engine tx scheduler. This decides when stream is to send and
    * how much. If successful deschedule from session layer scheduler */
-  if (quic_eng_stream_tx (ctx, stream_session))
+  if (quic_eng_stream_tx (ctx, session))
     sp->flags |= TRANSPORT_SND_F_DESCHED;
 
   return 0;
@@ -659,7 +655,7 @@ quic_udp_session_tx_callback (session_t *udp_session)
 {
   quic_ctx_t *ctx;
   ctx = quic_ctx_get (udp_session->opaque, udp_session->thread_index);
-  quic_eng_send_packets (ctx);
+  quic_eng_send_packets (ctx, 0);
   return 0;
 }
 

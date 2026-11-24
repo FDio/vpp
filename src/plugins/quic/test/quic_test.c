@@ -25,6 +25,12 @@ typedef struct
   u8 is_unidir;
 } quic_test_engine_t;
 
+typedef struct
+{
+  quic_worker_ctx_t *worker;
+  quic_conn_tx_timer_update_fn_t update_timer;
+} quic_test_tx_t;
+
 static int
 quic_test_connect_stream (void *conn, void **stream, quic_stream_data_t **stream_data, u8 is_unidir)
 {
@@ -35,6 +41,53 @@ quic_test_connect_stream (void *conn, void **stream, quic_stream_data_t **stream
   *stream = 0;
   *stream_data = 0;
   return engine->error;
+}
+
+static void
+quic_test_send_packets (quic_ctx_t *ctx, u8 from_conn_tx)
+{
+  quic_test_tx_t *tx = ctx->conn;
+
+  tx->update_timer (tx->worker, ctx, 0, from_conn_tx);
+}
+
+static int
+quic_test_tx_rearm (vlib_main_t *vm, quic_main_t *qm, quic_conn_tx_timer_update_fn_t update_timer)
+{
+  clib_thread_index_t thread_index = vlib_get_thread_index ();
+  quic_worker_ctx_t *worker = quic_wrk_ctx_get (qm, thread_index);
+  quic_test_tx_t tx = { .worker = worker, .update_timer = update_timer };
+  svm_fifo_signals_t signals = {};
+  svm_fifo_t fifo = { .signals = &signals };
+  transport_send_params_t sp = {};
+  session_t *session = session_alloc (thread_index);
+  u32 conn_index = quic_ctx_alloc (qm, thread_index);
+  quic_ctx_t *ctx = pool_elt_at_index (worker->ctx_pool, conn_index);
+  int res = 0;
+
+  session->connection_index = conn_index;
+  session->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, 1);
+  session->session_state = SESSION_STATE_READY;
+  session->tx_fifo = &fifo;
+  ctx->c_s_index = session->session_index;
+  ctx->c_c_index = conn_index;
+  ctx->c_proto = TRANSPORT_PROTO_QUIC;
+  ctx->conn_state = QUIC_CONN_STATE_READY;
+  ctx->conn = &tx;
+
+  /* The session layer still owns the FIFO event during custom TX. */
+  svm_fifo_set_event (&fifo);
+  tp_vfts[TRANSPORT_PROTO_QUIC].custom_tx (session, &sp);
+  QUIC_TEST (session->flags & SESSION_F_CUSTOM_TX, "immediate TX requests another dispatch");
+
+  session->flags &= ~SESSION_F_CUSTOM_TX;
+  update_timer (worker, ctx, 0, 0);
+  QUIC_TEST (!(session->flags & SESSION_F_CUSTOM_TX), "outside TX a pending event is coalesced");
+
+done:
+  session_free (session);
+  quic_ctx_free (qm, ctx);
+  return res;
 }
 
 static int
@@ -123,14 +176,22 @@ quic_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
   quic_worker_ctx_t *workers = 0, *saved_workers;
   session_worker_t *session_workers = 0, *saved_session_workers;
   quic_engine_vft_t *engines = 0, *saved_engines, **engine_vfts;
+  quic_conn_tx_timer_update_fn_t update_timer;
   const u32 n_threads = 2;
+  u8 test_stream = 0, test_tx = 0;
   int res = 0;
 
-  if ((!unformat (input, "stream-open-failure") && !unformat (input, "all")) ||
-      unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    return clib_error_return (0, "expected stream-open-failure or all");
+  if (unformat (input, "all"))
+    test_stream = test_tx = 1;
+  else if (unformat (input, "stream-open-failure"))
+    test_stream = 1;
+  else if (unformat (input, "tx-rearm"))
+    test_tx = 1;
+  if ((!test_stream && !test_tx) || unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "expected stream-open-failure, tx-rearm or all");
   QUIC_LOAD_SYMBOL_FROM_PLUGIN_TO ("quic_plugin.so", quic_main, qm);
   QUIC_LOAD_SYMBOL_FROM_PLUGIN_TO ("quic_plugin.so", quic_engine_vfts, engine_vfts);
+  QUIC_LOAD_SYMBOL_FROM_PLUGIN_TO ("quic_plugin.so", quic_conn_tx_timer_update, update_timer);
 
   /* The CLI holds the worker barrier and never yields while the private
    * session/context pools and mock engine replace the runtime tables. The
@@ -151,13 +212,17 @@ quic_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
     }
   vec_validate (engines, qm->engine_type);
   engines[qm->engine_type].connect_stream = quic_test_connect_stream;
+  engines[qm->engine_type].send_packets = quic_test_send_packets;
   qm->wrk_ctx = workers;
   session_main.wrk = session_workers;
   *engine_vfts = engines;
 
-  for (u32 thread_index = 0; thread_index < n_threads; thread_index++)
-    if ((res = quic_test_stream_open_failure (vm, qm, thread_index)))
-      break;
+  if (test_stream)
+    for (u32 thread_index = 0; thread_index < n_threads; thread_index++)
+      if ((res = quic_test_stream_open_failure (vm, qm, thread_index)))
+	break;
+  if (!res && test_tx)
+    res = quic_test_tx_rearm (vm, qm, update_timer);
 
   qm->wrk_ctx = saved_workers;
   session_main.wrk = saved_session_workers;
@@ -181,7 +246,7 @@ quic_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 
 VLIB_CLI_COMMAND (quic_test_command, static) = {
   .path = "test quic",
-  .short_help = "test quic [stream-open-failure|all]",
+  .short_help = "test quic [stream-open-failure|tx-rearm|all]",
   .function = quic_test,
   .is_mp_safe = 0,
 };
