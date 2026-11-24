@@ -596,6 +596,21 @@ vnet_dev_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
   return VNET_DEV_OK;
 }
 
+/* Duplex goes with a link that is up, once the driver has reported it. */
+static vnet_hw_interface_flags_t
+vnet_dev_port_hw_flags (vnet_dev_port_t *port)
+{
+  vnet_hw_interface_flags_t flags = VNET_HW_INTERFACE_FLAG_LINK_UP;
+
+  if (!port->link_up)
+    return 0;
+
+  if (port->duplex_known)
+    flags |=
+      port->full_duplex ? VNET_HW_INTERFACE_FLAG_FULL_DUPLEX : VNET_HW_INTERFACE_FLAG_HALF_DUPLEX;
+  return flags;
+}
+
 void
 vnet_dev_port_state_change (vlib_main_t *vm, vnet_dev_port_t *port,
 			    vnet_dev_port_state_changes_t changes)
@@ -614,23 +629,29 @@ vnet_dev_port_state_change (vlib_main_t *vm, vnet_dev_port_t *port,
       log_debug (port->dev, "port speed changed to %u", changes.link_speed);
     }
 
+  if (changes.change.link_duplex)
+    {
+      port->duplex_known = 1;
+      port->full_duplex = changes.full_duplex;
+      log_debug (port->dev, "port duplex changed to %s", changes.full_duplex ? "full" : "half");
+    }
+
   if (changes.change.link_state)
     {
       port->link_up = changes.link_state;
-      if (ifs)
-	{
-	  vnet_hw_interface_set_flags (
-	    vnm, ifs->primary_interface.hw_if_index,
-	    changes.link_state ? VNET_HW_INTERFACE_FLAG_LINK_UP : 0);
-	  pool_foreach_pointer (sif, ifs->secondary_interfaces)
-	    {
-	      vnet_hw_interface_set_flags (
-		vnm, sif->hw_if_index,
-		changes.link_state ? VNET_HW_INTERFACE_FLAG_LINK_UP : 0);
-	    }
-	}
       log_debug (port->dev, "port link state changed to %s",
 		 changes.link_state ? "up" : "down");
+    }
+
+  if ((changes.change.link_state || changes.change.link_duplex) && ifs)
+    {
+      vnet_hw_interface_flags_t flags = vnet_dev_port_hw_flags (port);
+
+      vnet_hw_interface_set_flags (vnm, ifs->primary_interface.hw_if_index, flags);
+      pool_foreach_pointer (sif, ifs->secondary_interfaces)
+	{
+	  vnet_hw_interface_set_flags (vnm, sif->hw_if_index, flags);
+	}
     }
 }
 
@@ -813,9 +834,8 @@ vnet_dev_port_if_create (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
       sw = vnet_get_hw_sw_interface (vnm, hw_if_index);
       hw = vnet_get_hw_interface (vnm, hw_if_index);
       sw_if_index = ifs->primary_interface.sw_if_index = sw->sw_if_index;
-      vnet_hw_interface_set_flags (
-	vnm, ifs->primary_interface.hw_if_index,
-	port->link_up ? VNET_HW_INTERFACE_FLAG_LINK_UP : 0);
+      vnet_hw_interface_set_flags (vnm, ifs->primary_interface.hw_if_index,
+				   vnet_dev_port_hw_flags (port));
       if (port->speed)
 	vnet_hw_interface_set_link_speed (
 	  vnm, ifs->primary_interface.hw_if_index, port->speed);
@@ -1069,9 +1089,7 @@ vnet_dev_port_add_sec_if (vlib_main_t *vm, vnet_dev_port_t *port, void *ptr)
 	vnet_dev_default_next_index_by_port_type[port->attr.type];
       sif->interface_created = 1;
       vnet_dev_port_update_tx_node_runtime (vm, port);
-      vnet_hw_interface_set_flags (
-	vnm, sif->hw_if_index,
-	port->link_up ? VNET_HW_INTERFACE_FLAG_LINK_UP : 0);
+      vnet_hw_interface_set_flags (vnm, sif->hw_if_index, vnet_dev_port_hw_flags (port));
       if (port->speed)
 	vnet_hw_interface_set_link_speed (vnm, sif->hw_if_index, port->speed);
 

@@ -508,6 +508,8 @@ typedef struct vnet_dev_port
   u8 initialized : 1;
   u8 started : 1;
   u8 link_up : 1;
+  u8 duplex_known : 1;
+  u8 full_duplex : 1;
   u8 promisc : 1;
   u8 rx_node_assigned : 1;
   vnet_dev_counter_main_t *counter_main;
