@@ -44,7 +44,8 @@ quic_conn_timer_stop (quic_timer_wheel_t *tw, quic_ctx_t *ctx, quic_timers_t tim
   ctx->timers[timer_id] = QUIC_TIMER_HANDLE_INVALID;
 }
 
-void quic_conn_tx_timer_update (quic_worker_ctx_t *wc, quic_ctx_t *ctx, int64_t next_timeout);
+void quic_conn_tx_timer_update (quic_worker_ctx_t *wc, quic_ctx_t *ctx, int64_t next_timeout,
+				u8 from_conn_tx);
 
 void quic_conn_tx_timer_stop (quic_worker_ctx_t *wc, quic_ctx_t *ctx);
 

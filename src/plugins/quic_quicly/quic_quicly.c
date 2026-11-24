@@ -236,7 +236,7 @@ quic_quicly_reschedule_ctx (quic_ctx_t *ctx)
   ASSERT (!quic_ctx_is_stream (ctx));
   int64_t next_timeout = quicly_get_first_timeout (ctx->conn);
   quic_mvt.conn_tx_timer_update (quic_wrk_ctx_get (quic_quicly_main.qm, ctx->c_thread_index), ctx,
-				 next_timeout);
+				 next_timeout, 0);
 }
 
 static_always_inline void
@@ -254,7 +254,7 @@ quic_quicly_set_udp_tx_evt (session_t *udp_session)
 }
 
 static void
-quic_quicly_send_packets (quic_ctx_t *ctx)
+quic_quicly_send_packets (quic_ctx_t *ctx, u8 from_conn_tx)
 {
   quic_quicly_main_t *qqm = &quic_quicly_main;
   struct iovec *packets = qqm->tx_packets[ctx->c_thread_index];
@@ -265,6 +265,7 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
   quicly_address_t quicly_rmt_ip, quicly_lcl_ip;
   u8 *buf = qqm->tx_bufs[ctx->c_thread_index];
   session_dgram_hdr_t hdr;
+  int64_t next_timeout;
   int ret;
 
   ASSERT (vec_len (buf) >= (QUIC_QUICLY_SEND_PACKET_VEC_SIZE * QUIC_MAX_PACKET_SIZE));
@@ -293,7 +294,7 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
 				 max_packets * (QUIC_MAX_PACKET_SIZE + SESSION_CONN_HDR_LEN)))
     {
       quic_worker_ctx_t *wc = quic_wrk_ctx_get (quic_quicly_main.qm, ctx->c_thread_index);
-      quic_mvt.conn_tx_timer_update (wc, ctx, wc->time_now + 1);
+      quic_mvt.conn_tx_timer_update (wc, ctx, wc->time_now + 1, from_conn_tx);
       return;
     }
 
@@ -330,7 +331,9 @@ quic_quicly_send_packets (quic_ctx_t *ctx)
 	    svm_fifo_max_dequeue (udp_session->rx_fifo));
 
 reschedule:
-  quic_quicly_reschedule_ctx (ctx);
+  next_timeout = quicly_get_first_timeout (ctx->conn);
+  quic_mvt.conn_tx_timer_update (quic_wrk_ctx_get (quic_quicly_main.qm, ctx->c_thread_index), ctx,
+				 next_timeout, from_conn_tx);
 
   return;
 
@@ -347,7 +350,7 @@ quic_quicly_tx_timer_expired (u32 conn_index, clib_thread_index_t thread_index)
 
   ctx = quic_quicly_get_quic_ctx (conn_index, thread_index);
   ctx->timers[QUIC_TIMER_TX] = QUIC_TIMER_HANDLE_INVALID;
-  quic_quicly_send_packets (ctx);
+  quic_quicly_send_packets (ctx, 0);
 }
 
 static_always_inline session_t *
@@ -2017,7 +2020,7 @@ send:
   if (PREDICT_TRUE (ctx->conn != NULL))
     {
       if (quicly_get_first_timeout (ctx->conn) <= wc->time_now)
-	quic_quicly_send_packets (ctx);
+	quic_quicly_send_packets (ctx, 0);
       else
 	quic_quicly_reschedule_ctx (ctx);
     }

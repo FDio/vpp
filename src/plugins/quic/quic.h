@@ -475,7 +475,7 @@ typedef struct quic_engine_vft_
   int (*udp_session_rx_packets) (session_t *udp_session);
   void (*ack_rx_data) (session_t *stream_session);
   u64 (*stream_tx) (quic_ctx_t *ctx, session_t *stream_session);
-  void (*send_packets) (quic_ctx_t *ctx);
+  void (*send_packets) (quic_ctx_t *ctx, u8 from_conn_tx);
   u8 *(*format_connection_stats) (u8 *s, va_list *args);
   u8 *(*format_stream_stats) (u8 *s, va_list *args);
   quic_stream_id_t (*stream_get_stream_id) (quic_ctx_t *ctx);
@@ -523,7 +523,7 @@ format_quic_crypto_context (u8 *s, va_list *args)
 typedef void (*quic_register_engine_fn_t) (const quic_engine_vft_t *vft,
 					   quic_engine_type_t engine_type);
 typedef void (*quic_conn_tx_timer_update_fn_t) (quic_worker_ctx_t *wc, quic_ctx_t *ctx,
-						int64_t next_timeout);
+						int64_t next_timeout, u8 from_conn_tx);
 typedef void (*quic_conn_tx_timer_stop_fn_t) (quic_worker_ctx_t *wc, quic_ctx_t *ctx);
 typedef void (*quic_conn_accept_timer_stop_fn_t) (quic_worker_ctx_t *wc, quic_ctx_t *ctx);
 
