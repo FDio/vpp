@@ -96,10 +96,14 @@ parse_sub_id (const cli_arg_t *a, u8 *tok, cli_value_t *v)
     return cli_type_range.parse (a, tok, v);
 
   u8 *err = cli_type_u32.parse (a, tok, v);
+  u64 id;
 
   if (err)
     return err;
-  v->range.start = v->range.stop = v->u64;
+
+  id = v->u64;
+  v->range.start = id;
+  v->range.stop = id;
   return 0;
 }
 
@@ -167,7 +171,7 @@ show_or_clear_hw_interfaces (vlib_main_t *vm, cli_ctx_t *ctx, int is_show)
 	    { /* show only bonded interface and all its slave interfaces */
 	      /* snapshot: hi may not survive a CLI output (pager) */
 	      uword *bond_info = clib_bitmap_dup (hi->bond_info);
-	      int hw_idx;
+	      uword hw_idx;
 	      vnet_hw_interface_t *shi;
 	      vlib_cli_output (vm, "%U\n", format_vnet_hw_interface, vnm, hi, verbose);
 
@@ -1061,6 +1065,9 @@ mtu_cmd (vlib_main_t *vm, cli_ctx_t *ctx)
       return vnet_hw_interface_set_mtu (vnm, hw_if_index, mtu);
     }
 
+  if (proto >= VNET_N_MTU)
+    return clib_error_return (0, "unknown protocol");
+
   /* Set default packet MTU (including L3 header) or a per protocol one */
   mtus[proto] = mtu;
   vnet_sw_interface_set_protocol_mtu (vnm, sw_if_index, mtus);
@@ -1921,6 +1928,7 @@ pcap_trace_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
   a->sw_if_index = cli_index (ctx, "interface") == ~0 ? 0 : cli_index (ctx, "interface");
   a->filter = cli_flag (ctx, "filter");
   a->max_bytes_per_pkt = cli_u64 (ctx, "max-bytes-per-pkt", 512);
+  /* coverity[overflow_assign] - ~0 is truncated to ~0 */
   a->drop_err = (v = cli_get (ctx, "error")) ? v->u64 : ~0;
 
   rv = vnet_pcap_dispatch_trace_configure (a);
