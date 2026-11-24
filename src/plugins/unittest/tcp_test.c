@@ -5097,6 +5097,7 @@ tcp_test_rst_burst (vlib_main_t *vm, unformat_input_t *input)
   if (!TCP_TEST_I ((n_buffers == 2), "rst_burst: allocate RST buffers"))
     {
       if (n_buffers)
+	/* coverity[overrun-buffer-val] - n_buffers is at most the 2 buffers requested */
 	vlib_buffer_free (vm, buffer_indices, n_buffers);
       buffer_indices[0] = VLIB_BUFFER_INVALID_INDEX;
       rv = 1;
@@ -5203,6 +5204,7 @@ tcp_test_fin_rst_burst_steps (void *arg)
   if (!TCP_TEST_I ((n_buffers == 2), "fin_rst_burst: allocate FIN/RST buffers"))
     {
       if (n_buffers)
+	/* coverity[overrun-buffer-val] - n_buffers is at most the 2 buffers requested */
 	vlib_buffer_free (vm, buffer_indices, n_buffers);
       buffer_indices[0] = VLIB_BUFFER_INVALID_INDEX;
       rv = 1;
@@ -5377,6 +5379,7 @@ tcp_test_timewait_syn_burst_steps (void *arg)
   if (!TCP_TEST_I ((n_buffers == 2), "timewait_syn_burst: allocate SYN buffers"))
     {
       if (n_buffers)
+	/* coverity[overrun-buffer-val] - n_buffers is at most the 2 buffers requested */
 	vlib_buffer_free (vm, buffer_indices, n_buffers);
       buffer_indices[0] = VLIB_BUFFER_INVALID_INDEX;
       rv = 1;
