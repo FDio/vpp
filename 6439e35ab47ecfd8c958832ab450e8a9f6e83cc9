@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "95b61523_ed4ebea0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2512
+      },
+      "writtenOn": "2026-11-24T11:40:26Z",
+      "side": 1,
+      "message": "Cherry Picked from branch master for stable 2610",
+      "revId": "6439e35ab47ecfd8c958832ab450e8a9f6e83cc9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
