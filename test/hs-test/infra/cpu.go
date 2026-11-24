@@ -146,8 +146,13 @@ func (c *CpuAllocatorT) Allocate(nCpus int, offset int) (*CpuContext, error) {
 	}
 
 	if NumaAwareCpuAlloc {
-		minCpu1 = minCpu - len(c.numa0)
-		maxCpu1 = maxCpu - len(c.numa0)
+		// numa0 takes only the blocks that fit whole. Index numa1 from where
+		// those end, so the block cut short at numa0's end starts numa1 and
+		// the next block follows it. Clamping that block to numa1's start
+		// instead pinned it to the cores of the next one.
+		numa0Fit := len(c.numa0) / nCpus * nCpus
+		minCpu1 = minCpu - numa0Fit
+		maxCpu1 = maxCpu - numa0Fit
 		if minCpu1 < 0 {
 			minCpu1 = 0
 			maxCpu1 = nCpus - 1
