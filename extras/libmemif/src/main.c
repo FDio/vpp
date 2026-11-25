@@ -975,6 +975,7 @@ memif_close_queues (memif_socket_t *ms, memif_queue_t *queues, int nqueues)
 	      /* Stop listening for events */
 	      fde.fd = mq->int_fd;
 	      fde.type = MEMIF_FD_EVENT_DEL;
+	      fde.private_ctx = NULL;
 	      ctx = ms->epfd != -1 ? ms : ms->private_ctx;
 	      ms->args.on_control_fd_update (fde, ctx);
 	      close (mq->int_fd);
@@ -1073,6 +1074,7 @@ memif_delete_socket (memif_socket_handle_t * sock)
     {
       fde.fd = ms->listener_fd;
       fde.type = MEMIF_FD_EVENT_DEL;
+      fde.private_ctx = NULL;
       ctx = ms->epfd != -1 ? ms : ms->private_ctx;
       ms->args.on_control_fd_update (fde, ctx);
     }
