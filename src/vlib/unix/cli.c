@@ -3234,6 +3234,7 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
 	return error;
 
       template.read_function = unix_cli_listen_read_ready;
+      /* coverity[overflow_const] - s->fd is valid when clib_socket_init succeeds */
       template.file_descriptor = s->fd;
       template.description = format (0, "cli listener %s", s->config);
 
