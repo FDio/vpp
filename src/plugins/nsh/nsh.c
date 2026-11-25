@@ -214,7 +214,7 @@ nsh_init (vlib_main_t * vm)
   //alagalah - validate we don't really need to use the node value
   vxlan4_gpe_input = vlib_get_node_by_name (vm, (u8 *) "vxlan4-gpe-input");
   vxlan6_gpe_input = vlib_get_node_by_name (vm, (u8 *) "vxlan6-gpe-input");
-  nm->vgm = vlib_get_plugin_symbol ("vxlan-gpe_plugin.so", "vxlan_gpe_main");
+  nm->vgm = vlib_get_plugin_symbol ("vxlan_gpe_plugin.so", "vxlan_gpe_main");
   if (vxlan4_gpe_input == 0 || vxlan6_gpe_input == 0 || nm->vgm == 0)
     {
       error = clib_error_return (0, "vxlan_gpe_plugin.so is not loaded");

@@ -62,6 +62,32 @@ of files: rule/function definitions, and target lists.
       add_subdirectory(${dir})
     endforeach()
 
+Selecting the plugins to build
+------------------------------
+
+All plugins are built by default. ``./configure -P <list>`` builds only the
+plugins in the comma separated list, and the cmake variable
+``VPP_EXCLUDED_PLUGINS`` takes plugins out of the full build. To change the
+selection of a configured build tree without remembering the variables, use
+the targets which exist for every plugin directory:
+
+::
+
+    ninja enable-plugin-ssh
+    ninja disable-plugin-ssh
+
+The name is the one the plugin registers with ``add_vpp_plugin``, for example
+``soft-rss``. Underscores in the name are always changed to dashes, so
+``soft_rss`` is the same plugin, and the dashes are always changed to
+underscores in the names of the files and the cmake targets of the plugin,
+which are ``soft_rss_plugin.so`` and ``soft_rss_plugin``. The names with either
+spelling are accepted in ``./configure -P``, in ``VPP_PLUGINS`` and in
+``VPP_EXCLUDED_PLUGINS``, the targets have the names with dashes. The targets
+change the plugin list, configure the build tree again, and print the result. Run ``ninja`` after
+that to build. A plugin which needs a library that is not installed is skipped
+by its own ``CMakeLists.txt`` and stays out of the build, with a warning from
+cmake.
+
 How to write a plugin CMakeLists.txt file
 -----------------------------------------
 

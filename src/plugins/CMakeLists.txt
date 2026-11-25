@@ -25,6 +25,55 @@ set(VPP_EXCLUDED_PLUGINS
 set(VPP_PLUGINS_FILTER "")
 set(VPP_PLUGINS_EXCLUDE "")
 
+# ninja enable-plugin-<name> and ninja disable-plugin-<name> change the list of plugins to build.
+# <name> is the name the plugin registers with add_vpp_plugin (), which has dashes, the name of
+# its directory works as well when it is different.
+function(vpp_add_plugin_select_targets target_name plugin_name)
+  foreach(_action enable disable)
+    if(NOT TARGET ${_action}-plugin-${target_name})
+      add_custom_target(${_action}-plugin-${target_name}
+        COMMAND ${CMAKE_COMMAND}
+          -DACTION=${_action}
+          -DPLUGIN=${plugin_name}
+          -DVPP_PLUGINS=${VPP_PLUGINS}
+          -DVPP_EXCLUDED_PLUGINS=${VPP_EXCLUDED_PLUGINS}
+          -DBUILD_DIR=${CMAKE_BINARY_DIR}
+          -P ${CMAKE_CURRENT_SOURCE_DIR}/../cmake/plugin-select.cmake
+        COMMENT "${_action} the ${plugin_name} plugin"
+        USES_TERMINAL
+        VERBATIM
+      )
+    endif()
+  endforeach()
+endfunction()
+
+file(GLOB _vpp_plugin_cmake_files RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/*/CMakeLists.txt
+)
+foreach(f ${_vpp_plugin_cmake_files})
+  get_filename_component(_vpp_plugin_dir ${f} DIRECTORY)
+  file(STRINGS ${CMAKE_CURRENT_SOURCE_DIR}/${f} _vpp_plugin_calls REGEX "add_vpp_plugin[ \t]*\\(")
+  set(_vpp_plugin_names)
+  foreach(_call ${_vpp_plugin_calls})
+    string(REGEX MATCH "add_vpp_plugin[ \t]*\\([ \t]*([A-Za-z0-9_-]+)" _match "${_call}")
+    if(CMAKE_MATCH_1)
+      string(REPLACE "_" "-" _vpp_plugin_name ${CMAKE_MATCH_1})
+      list(APPEND _vpp_plugin_names ${_vpp_plugin_name})
+    endif()
+  endforeach()
+  if(NOT _vpp_plugin_names)
+    string(REPLACE "_" "-" _vpp_plugin_names ${_vpp_plugin_dir})
+  endif()
+  foreach(_name ${_vpp_plugin_names})
+    vpp_add_plugin_select_targets(${_name} ${_name})
+  endforeach()
+  list(LENGTH _vpp_plugin_names _n_names)
+  if(_n_names EQUAL 1)
+    string(REPLACE "_" "-" _dir_d ${_vpp_plugin_dir})
+    vpp_add_plugin_select_targets(${_dir_d} ${_vpp_plugin_names})
+  endif()
+endforeach()
+
 # Allow explicit disable without scanning subdirs.
 if(VPP_PLUGINS STREQUAL "none")
   message(STATUS "VPP plugins explicitly disabled")
@@ -34,11 +83,13 @@ endif()
 if(DEFINED VPP_PLUGINS AND NOT VPP_PLUGINS STREQUAL "")
   string(REGEX REPLACE "[ \t]*,[ \t]*" ";" VPP_PLUGINS_FILTER "${VPP_PLUGINS}")
   list(FILTER VPP_PLUGINS_FILTER EXCLUDE REGEX "^$")
+  string(REPLACE "_" "-" VPP_PLUGINS_FILTER "${VPP_PLUGINS_FILTER}")
 endif()
 
 if(DEFINED VPP_EXCLUDED_PLUGINS AND NOT VPP_EXCLUDED_PLUGINS STREQUAL "")
   string(REGEX REPLACE "[,]+" ";" VPP_PLUGINS_EXCLUDE "${VPP_EXCLUDED_PLUGINS}")
   list(FILTER VPP_PLUGINS_EXCLUDE EXCLUDE REGEX "^$")
+  string(REPLACE "_" "-" VPP_PLUGINS_EXCLUDE "${VPP_PLUGINS_EXCLUDE}")
 endif()
 
 # Initialize built list and request sentinels for validation.
