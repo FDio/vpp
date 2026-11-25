@@ -1439,11 +1439,13 @@ qpack_serialize_response (u8 *app_headers, u32 app_headers_len,
   p = qpack_encode_status_code (p, control_data->sc);
 
   /* server name */
-  p = qpack_encode_header (p, HTTP_HEADER_SERVER, control_data->server_name,
-			   control_data->server_name_len, 0);
+  if (control_data->server_name)
+    p = qpack_encode_header (p, HTTP_HEADER_SERVER, control_data->server_name,
+			     control_data->server_name_len, 0);
 
   /* date */
-  p = qpack_encode_header (p, HTTP_HEADER_DATE, control_data->date, control_data->date_len, 0);
+  if (control_data->date)
+    p = qpack_encode_header (p, HTTP_HEADER_DATE, control_data->date, control_data->date_len, 0);
 
   /* content length if any */
   if (control_data->send_content_length)

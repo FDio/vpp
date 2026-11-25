@@ -47,6 +47,24 @@ quic_get_engine_type (quic_engine_type_t requested,
   return engine_type;
 }
 
+static void
+quic_stream_set_tx_stop_cb (session_t *s, quic_stream_tx_stop_cb_t cb)
+{
+  quic_ctx_t *ctx = quic_ctx_get (s->connection_index, s->thread_index);
+  ASSERT (s->thread_index == vlib_get_thread_index () && quic_ctx_is_stream (ctx));
+  ctx->tx_stop_cb = cb;
+}
+
+static void
+quic_stream_set_tx_reset_error (session_t *s, quic_app_err_code_t error)
+{
+  quic_ctx_t *ctx = quic_ctx_get (s->connection_index, s->thread_index);
+  ASSERT (s->thread_index == vlib_get_thread_index () && quic_ctx_is_stream (ctx) &&
+	  (u64) error < (1ULL << 62));
+  ctx->app_err_code_tx = error;
+  ctx->flags |= QUIC_F_ABORT_TX;
+}
+
 __clib_export clib_error_t *
 quic_plugin_methods_vtable_init (quic_plugin_methods_t *m)
 {
@@ -700,8 +718,8 @@ quic_get_transport_endpoint (u32 ctx_index, clib_thread_index_t thread_index,
 }
 
 static int
-quic_session_attribute (u32 ctx_index, clib_thread_index_t thread_index,
-			u8 is_get, transport_endpt_attr_t *attr)
+quic_session_attribute (u32 ctx_index, clib_thread_index_t thread_index, u8 is_get,
+			transport_endpt_attr_t *attr)
 {
   quic_ctx_t *ctx;
 

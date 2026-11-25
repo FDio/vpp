@@ -864,10 +864,8 @@ http_test_parse_response (const char *first_resp, uword first_resp_len,
   memset (&control_data, 0, sizeof (control_data));
   rv = _hpack_parse_response ((u8 *) first_resp, (u32) first_resp_len, buf,
 			      254, &control_data, &headers, dynamic_table);
-  if (rv != HTTP2_ERROR_NO_ERROR ||
-      control_data.parsed_bitmap != parsed_bitmap ||
-      control_data.sc != HTTP_STATUS_FOUND || vec_len (headers) != 3 ||
-      dynamic_table->used != 222)
+  if (rv != HTTP2_ERROR_NO_ERROR || control_data.parsed_bitmap != parsed_bitmap ||
+      control_data.wire_status != 302 || vec_len (headers) != 3 || dynamic_table->used != 222)
     return 1;
   if (headers[0].name_len != 13 || headers[0].value_len != 7)
     return 1;
@@ -898,10 +896,8 @@ http_test_parse_response (const char *first_resp, uword first_resp_len,
   memset (&control_data, 0, sizeof (control_data));
   rv = _hpack_parse_response ((u8 *) second_resp, (u32) second_resp_len, buf,
 			      254, &control_data, &headers, dynamic_table);
-  if (rv != HTTP2_ERROR_NO_ERROR ||
-      control_data.parsed_bitmap != parsed_bitmap ||
-      control_data.sc != HTTP_STATUS_TEMPORARY_REDIRECT ||
-      vec_len (headers) != 3 || dynamic_table->used != 222)
+  if (rv != HTTP2_ERROR_NO_ERROR || control_data.parsed_bitmap != parsed_bitmap ||
+      control_data.wire_status != 307 || vec_len (headers) != 3 || dynamic_table->used != 222)
     return 2;
   if (headers[0].name_len != 13 || headers[0].value_len != 7)
     return 1;
@@ -932,10 +928,8 @@ http_test_parse_response (const char *first_resp, uword first_resp_len,
   memset (&control_data, 0, sizeof (control_data));
   rv = _hpack_parse_response ((u8 *) third_resp, (u32) third_resp_len, buf,
 			      254, &control_data, &headers, dynamic_table);
-  if (rv != HTTP2_ERROR_NO_ERROR ||
-      control_data.parsed_bitmap != parsed_bitmap ||
-      control_data.sc != HTTP_STATUS_OK || vec_len (headers) != 5 ||
-      dynamic_table->used != 215)
+  if (rv != HTTP2_ERROR_NO_ERROR || control_data.parsed_bitmap != parsed_bitmap ||
+      control_data.wire_status != 200 || vec_len (headers) != 5 || dynamic_table->used != 215)
     return 3;
   if (headers[0].name_len != 13 || headers[0].value_len != 7)
     return 1;
@@ -1506,12 +1500,14 @@ http_test_pseudo_headers (vlib_main_t *vm)
   const struct
   {
     char *name, *value, *extra_name, *extra_value;
-    u8 valid, bad_index;
+    u16 status_code;
+    u8 bad_index;
   } responses[] = {
-    { ":status", "200", 0, 0, 1, 0 },
-    { ":status", "100", 0, 0, 1, 0 },
-    { ":status", "103", 0, 0, 1, 0 },
-    { ":status", "599", "server", "", 1, 0 },
+    { ":status", "200", 0, 0, 200, 0 },
+    { ":status", "100", 0, 0, 100, 0 },
+    { ":status", "103", 0, 0, 103, 0 },
+    { ":status", "199", 0, 0, 199, 0 },
+    { ":status", "599", "server", "", 599, 0 },
     { 0, 0, 0, 0, 0, 0 },
     { "server", "", 0, 0, 0, 0 },
     { ":status", "", 0, 0, 0, 0 },
@@ -1561,7 +1557,7 @@ http_test_pseudo_headers (vlib_main_t *vm)
 		   parse_h3 (input, vec_len (input), buf, vec_len (buf), &cd, &headers, &decoder) :
 		   parse_h2 (input, vec_len (input), buf, vec_len (buf), &cd, &headers, &table);
 	u32 expected =
-	  responses[i].valid ?
+	  responses[i].status_code ?
 	    (qpack ? HTTP3_ERROR_NO_ERROR : HTTP2_ERROR_NO_ERROR) :
 	  responses[i].bad_index ?
 	    (qpack ? HTTP3_ERROR_QPACK_DECOMPRESSION_FAILED : HTTP2_ERROR_COMPRESSION_ERROR) :
@@ -1572,6 +1568,9 @@ http_test_pseudo_headers (vlib_main_t *vm)
 	vec_free (headers);
 	HTTP_TEST (rv == expected, "%s response pseudo-header case %u: %u, expected %u",
 		   qpack ? "QPACK" : "HPACK", i, rv, expected);
+	if (responses[i].status_code)
+	  HTTP_TEST (cd.wire_status == responses[i].status_code, "%s preserves wire status %u",
+		     qpack ? "QPACK" : "HPACK", responses[i].status_code);
       }
   return 0;
 }
@@ -2530,11 +2529,10 @@ http_test_qpack (vlib_main_t *vm)
   vec_validate_init_empty (buf, 63, 0);
   err = _qpack_parse_response (resp, 3, buf, vec_len (buf), &resp_control_data,
 			       &headers, &decoder_ctx);
-  HTTP_TEST (
-    (err == HTTP3_ERROR_NO_ERROR &&
-     resp_control_data.parsed_bitmap == HPACK_PSEUDO_HEADER_STATUS_PARSED &&
-     resp_control_data.sc == HTTP_STATUS_OK && vec_len (headers) == 0),
-    "decoder result: %U", format_http3_error, err);
+  HTTP_TEST ((err == HTTP3_ERROR_NO_ERROR &&
+	      resp_control_data.parsed_bitmap == HPACK_PSEUDO_HEADER_STATUS_PARSED &&
+	      resp_control_data.wire_status == 200 && vec_len (headers) == 0),
+	     "decoder result: %U", format_http3_error, err);
   vec_free (buf);
   vec_free (headers);
 
@@ -2625,7 +2623,7 @@ http_test_qpack (vlib_main_t *vm)
 		 format_http3_error, err);
       if (err == HTTP3_ERROR_NO_ERROR)
 	HTTP_TEST (resp_control_data.parsed_bitmap == HPACK_PSEUDO_HEADER_STATUS_PARSED &&
-		     resp_control_data.sc == HTTP_STATUS_OK &&
+		     resp_control_data.wire_status == 200 &&
 		     decoder_ctx.delta_base == prefix_tests[i].delta_base,
 		   "response fields decoded with %s", prefix_tests[i].name);
       vec_free (headers);
@@ -3521,11 +3519,21 @@ http_test_streaming_lifecycle (vlib_main_t *vm)
 
   msg.data.type = HTTP_MSG_DATA_PTR;
   msg.data.body_len = 4;
-  STREAM_TEST (svm_fifo_enqueue (fifo, sizeof (body_ptr), (u8 *) &body_ptr) == sizeof (body_ptr),
-	       "body pointer enqueued");
   init_tx_buffer (&req, &msg);
   STREAM_TEST (req.tx_buf.type == HTTP_BUFFER_PTR && http_buffer_bytes_left (&req.tx_buf) == 4,
 	       "known-length pointer buffer uses its declared length");
+  svm_fifo_seg_t *segs;
+  u32 n_segs;
+  STREAM_TEST (http_buffer_get_segs (&req.tx_buf, 4, &segs, &n_segs) == 0,
+	       "pointer body can arrive after buffer initialization");
+  STREAM_TEST (svm_fifo_enqueue (fifo, sizeof (body_ptr) - 1, (u8 *) &body_ptr) ==
+		   sizeof (body_ptr) - 1 &&
+		 http_buffer_get_segs (&req.tx_buf, 4, &segs, &n_segs) == 0,
+	       "an incomplete pointer produces no data");
+  STREAM_TEST (svm_fifo_enqueue (fifo, 1, (u8 *) &body_ptr + sizeof (body_ptr) - 1) == 1 &&
+		 http_buffer_get_segs (&req.tx_buf, 4, &segs, &n_segs) == 4 && n_segs == 1 &&
+		 segs[0].data == body,
+	       "completed pointer produces the declared body");
   http_buffer_drain (&req.tx_buf, 4);
   STREAM_TEST (svm_fifo_max_dequeue_cons (fifo) == 0,
 	       "completed pointer body releases its pointer");
@@ -5884,6 +5892,11 @@ http_test_reply_framing (vlib_main_t *vm)
       { 1, 1, 0 } },
   };
 
+  static const u16 status_codes[] = {
+#define _(c, s, str) [HTTP_STATUS_##s] = c,
+    foreach_http_status_code
+#undef _
+  };
   void (*serialize[2]) (u8 *, u32, hpack_response_control_data_t *, u8 **);
   http2_error_t (*parse_h2) (u8 *, u32, u8 *, u32, hpack_response_control_data_t *,
 			     http_field_line_t **, hpack_dynamic_table_t *);
@@ -5945,7 +5958,7 @@ http_test_reply_framing (vlib_main_t *vm)
 			     parse_h2 (encoded, vec_len (encoded), decoded_headers,
 				       sizeof (decoded_headers), &decoded, &headers, &table);
 	    u8 ok = parse_rv == (qpack ? HTTP3_ERROR_NO_ERROR : HTTP2_ERROR_NO_ERROR) &&
-		    decoded.sc == msg.code &&
+		    decoded.wire_status == status_codes[msg.code] &&
 		    (decoded.content_len_header_index != (uword) ~0) == framing.send_content_length;
 	    if (ok && framing.send_content_length)
 	      {

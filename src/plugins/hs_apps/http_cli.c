@@ -8,6 +8,7 @@
 #include <http/http.h>
 #include <http/http_header_names.h>
 #include <http/http_content_types.h>
+#include <vlib/unix/plugin.h>
 
 #define HCS_DEBUG 0
 
@@ -405,6 +406,20 @@ hcs_schedule_cli (hcs_cli_args_t *args)
 }
 
 static void
+hcs_send_continue (session_t *s, const http_msg_t *request)
+{
+  if (!(request->data.flags & HTTP_MSG_DATA_F_EXPECT_CONTINUE) ||
+      (!request->data.body_len && request->data.type != HTTP_MSG_DATA_STREAMING))
+    return;
+
+  http_msg_t msg = { .type = HTTP_MSG_REPLY, .code = HTTP_STATUS_CONTINUE };
+  int rv = svm_fifo_enqueue (s->tx_fifo, sizeof (msg), (u8 *) &msg);
+  ASSERT (rv == sizeof (msg));
+  if (svm_fifo_set_event (s->tx_fifo))
+    session_program_tx_io_evt (s->handle, SESSION_IO_EVT_TX);
+}
+
+static void
 hcs_echo_complete (hcs_session_t *hs)
 {
   hs->echo_rx = 0;
@@ -585,6 +600,7 @@ hcs_ts_rx_callback (session_t *ts)
       hs->echo_rx = 1;
       hs->rx_left = msg.data.body_len;
       svm_fifo_dequeue_drop (ts->rx_fifo, control_len);
+      hcs_send_continue (ts, &msg);
       return hcs_echo_rx (ts, hs, control_len);
     }
 
@@ -609,6 +625,7 @@ hcs_ts_rx_callback (session_t *ts)
       hs->echo_rx = 1;
       hs->rx_left = msg.data.body_len;
       svm_fifo_dequeue_drop (ts->rx_fifo, control_len);
+      hcs_send_continue (ts, &msg);
       return hcs_echo_rx (ts, hs, control_len);
     }
 
@@ -646,6 +663,7 @@ hcs_ts_rx_callback (session_t *ts)
     {
       hs->pending_cli = clib_mem_alloc (sizeof (args));
       *hs->pending_cli = args;
+      hcs_send_continue (ts, &msg);
     }
   else
     hcs_schedule_cli (&args);
@@ -884,8 +902,7 @@ hcs_listen ()
   if (sep.flags & SESSION_ENDPT_CFG_F_SECURE)
     {
       transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
-	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO,
-	sizeof (transport_endpt_crypto_cfg_t));
+	&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_CRYPTO, sizeof (transport_endpt_crypto_cfg_t));
       ext_cfg->crypto.ckpair_index = hcm->ckpair_index;
       if (hcm->flags & HCS_LISTENER_F_HTTP1_ONLY)
 	ext_cfg->crypto.alpn_protos[0] = TLS_ALPN_PROTO_HTTP_1_1;
@@ -907,8 +924,7 @@ hcs_listen ()
       hash_set_mem (hcm->index_by_uri, map->uri, map - hcm->uri_map_pool);
     }
 
-  if (sep.flags & SESSION_ENDPT_CFG_F_SECURE)
-    session_endpoint_free_ext_cfgs (&a->sep_ext);
+  session_endpoint_free_ext_cfgs (&a->sep_ext);
 
   return rv;
 }

@@ -75,6 +75,24 @@ static const char *connection_upgrade_template = "Connection: upgrade\r\n"
 static const http_token_t chunked_header = { http_token_lit ("Transfer-Encoding: chunked\r\n") };
 static const http_token_t last_chunk = { http_token_lit ("0\r\n\r\n") };
 
+static void
+http1_send_continue (http_ctx_t *hc, http_ctx_t *req)
+{
+  static const u8 reply[] = "HTTP/1.1 100 Continue\r\n\r\n";
+  svm_fifo_seg_t seg = { (u8 *) reply, sizeof (reply) - 1 };
+  if (hc->state < HTTP_CONN_STATE_TRANSPORT_CLOSED && http_req_expect_has_body (req))
+    {
+      if (!http_io_ts_write_segs (hc, &seg, 1, 0, 1))
+	{
+	  http_io_ts_add_want_deq_ntf (hc);
+	  return;
+	}
+      http_io_ts_after_write (hc, 0);
+      http_stats_responses_sent_inc (hc->c_thread_index);
+    }
+  req->req_flags &= ~HTTP_REQ_F_RX_CONTINUE_PENDING;
+}
+
 always_inline http_ctx_t *
 http1_conn_alloc_req (u32 hc_index, clib_thread_index_t thread_index)
 {
@@ -137,7 +155,7 @@ http1_cancel_request_upload (http_ctx_t *hc, http_ctx_t *req)
 {
   http_io_as_drain_all (req);
   hc->flags &= ~HTTP_CONN_F_PENDING_LAST_CHUNK;
-  req->req_flags |= HTTP_REQ_F_TX_EOF;
+  req->req_flags |= HTTP_REQ_F_TX_EOF | HTTP_REQ_F_TX_CANCELLED;
   http_buffer_free (&req->tx_buf);
   http_req_state_change (req, HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY);
 }
@@ -171,7 +189,7 @@ http1_close_completed_reply (http_ctx_t *hc, http_ctx_t *req)
 static int
 http1_response_tx_complete (http_ctx_t *hc, http_ctx_t *req)
 {
-  if (!(req->req_flags & HTTP_REQ_F_RX_STREAMING))
+  if (!(req->req_flags & (HTTP_REQ_F_RX_STREAMING | HTTP_REQ_F_RX_BODY_ABORTED)))
     return 0;
   http_req_state_change (req, HTTP_REQ_STATE_IDLE);
   session_transport_closed_notify (&req->connection);
@@ -208,8 +226,11 @@ http1_staged_rx_len (http_ctx_t *req)
 static u32
 http1_rx_max_write (http_ctx_t *req)
 {
-  u32 available = http_io_as_max_write (req);
+  session_t *as = session_get (req->c_s_index, req->c_thread_index);
+  u32 available = svm_fifo_max_enqueue_prod (as->rx_fifo);
   u32 reserved = sizeof (http_msg_t) + req->http1_rx_staged_len;
+  if (req->req_flags & HTTP_REQ_F_TX_EXPECT_CONTINUE)
+    available = clib_min (available, svm_fifo_size (as->rx_fifo) - sizeof (http_msg_t));
   return available > reserved ? available - reserved : 0;
 }
 
@@ -712,12 +733,13 @@ http1_parse_status_line (http_ctx_t *req, u8 *rx_buf, u32 line_end)
   parse_int (status_code, 100);
   parse_int (status_code, 10);
   parse_int (status_code, 1);
-  if (status_code < 100 || status_code > 599)
+  if (status_code < 100 || status_code > 599 || (p < end && *p != ' '))
     {
       clib_warning ("invalid status code %d", status_code);
       return HTTP1_PARSE_ERROR;
     }
   req->status_code = http_sc_by_u16 (status_code);
+  req->status_is_continue = status_code == 100;
   HTTP_DBG (0, "status code: %d", status_code);
 
   /* set buffer offset to nex line start */
@@ -1206,8 +1228,14 @@ http1_req_state_wait_transport_reply (http_ctx_t *hc, http_ctx_t *req, transport
     goto error;
 
   if (http_status_code_str[req->status_code][0] == '1' &&
+      (req->content_len_header_index != ~0 || req->transfer_encoding_header_index != ~0))
+    goto error;
+
+  if (http_status_code_str[req->status_code][0] == '1' &&
       req->status_code != HTTP_STATUS_SWITCHING_PROTOCOLS)
     {
+      if (req->status_is_continue)
+	http_req_notify_continue (req);
       /* Consume only this response, preserving a buffered final response. */
       http_io_ts_drain (hc, req->control_data_len - req->http1_rx_staged_len);
       http1_parse_state_reset (req);
@@ -1305,6 +1333,7 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
   http1_parse_result_t rv;
   u32 body_available, body_sent;
   u8 *rx_buf;
+  u8 expect = 0;
 
   /* Nothing yet, wait for data or timer expire */
   if (!http_io_ts_max_read (hc))
@@ -1312,6 +1341,7 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
 
   if (req->http1_parse_state == HTTP1_PARSE_STATE_IDLE)
     {
+      req->req_flags &= ~(HTTP_REQ_F_RX_EXPECT_CONTINUE | HTTP_REQ_F_RX_CONTINUE_PENDING);
       if ((hc->flags & HTTP_CONN_F_NO_APP_SESSION) && http_conn_prepare_request (hc, req, 0))
 	{
 	  ec = HTTP_STATUS_INTERNAL_ERROR;
@@ -1388,6 +1418,9 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
   if (rv != HTTP1_PARSE_OK)
     goto error;
 
+  if (!(req->req_flags & HTTP_REQ_F_IS_TUNNEL) && rx_buf[req->headers_offset - 3] != '0')
+    expect = http_req_expect (req, rx_buf);
+
   if (http1_stage_to_length (hc, req, req->control_data_len))
     {
       clib_warning ("not enough room for request headers in app's rx fifo");
@@ -1395,12 +1428,15 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
       goto error;
     }
   body_available = clib_min (req->body_len, http_io_ts_max_read (hc));
+  if (expect)
+    req->req_flags |= HTTP_REQ_F_RX_EXPECT_CONTINUE;
   body_sent = clib_min (body_available, http1_rx_max_write (req));
   if (http1_stage_rx_data (hc, req, body_sent) != body_sent)
     goto error;
 
   msg.type = HTTP_MSG_REQUEST;
   msg.method_type = req->method;
+  msg.data.flags = 0;
   msg.data.type =
     req->req_flags & HTTP_REQ_F_RX_STREAMING ? HTTP_MSG_DATA_STREAMING : HTTP_MSG_DATA_INLINE;
   msg.data.len = req->control_data_len + body_sent;
@@ -1418,6 +1454,8 @@ http1_req_state_wait_transport_method (http_ctx_t *hc, http_ctx_t *req, transpor
   msg.data.body_len = req->body_len;
   msg.data.headers_ctx = pointer_to_uword (req->headers);
   msg.data.upgrade_proto = req->upgrade_proto;
+  if (expect)
+    msg.data.flags |= HTTP_MSG_DATA_F_EXPECT_CONTINUE;
 
   if (http_io_as_rx_publish (req, &msg, req->http1_rx_staged_len))
     {
@@ -1912,7 +1950,7 @@ http1_req_state_wait_app_reply (http_ctx_t *hc, http_ctx_t *req, transport_send_
     {
       if (framing.send_content_length)
 	http_tx_buf (hc) = format (http_tx_buf (hc), content_len_template, msg.data.body_len);
-      if (req->req_flags & HTTP_REQ_F_RX_STREAMING)
+      if (req->req_flags & (HTTP_REQ_F_RX_STREAMING | HTTP_REQ_F_RX_BODY_ABORTED))
 	http_tx_buf (hc) = format (http_tx_buf (hc), "Connection: close\r\n");
     }
 
@@ -2016,6 +2054,7 @@ http1_req_state_wait_app_method (http_ctx_t *hc, http_ctx_t *req, transport_send
 
   chunked = msg.data.type == HTTP_MSG_DATA_STREAMING;
   req->method = msg.method_type;
+  http_req_set_tx_expect (req, &msg);
   if (PREDICT_FALSE (msg.method_type == HTTP_REQ_PUT && !chunked && !msg.data.body_len))
     {
       clib_warning ("PUT request should include data");
@@ -2488,6 +2527,24 @@ http1_app_tx_callback (http_ctx_t *hc, u32 req_index, transport_send_params_t *s
 
   req = http_ctx_get_w_thread (req_index, hc->c_thread_index);
 
+  if (PREDICT_FALSE (req->req_flags & HTTP_REQ_F_TX_CANCELLED))
+    {
+      http_io_as_drain_all (req);
+      return;
+    }
+  if (PREDICT_FALSE (req->req_flags & HTTP_REQ_F_RX_EXPECT_CONTINUE) &&
+      http_req_read_app_continue (hc, req, sp) && !http_io_as_max_read (req))
+    return;
+  if (PREDICT_FALSE (req->req_flags & HTTP_REQ_F_RX_CONTINUE_PENDING))
+    {
+      http1_send_continue (hc, req);
+      if (req->req_flags & HTTP_REQ_F_RX_CONTINUE_PENDING)
+	{
+	  http_req_deschedule (req, sp);
+	  return;
+	}
+    }
+
   if (!http1_req_state_is_tx_valid (req))
     {
       /* Sometimes the server apps can send the response earlier
@@ -2496,6 +2553,8 @@ http1_app_tx_callback (http_ctx_t *hc, u32 req_index, transport_send_params_t *s
 	   req->req_state == HTTP_REQ_STATE_TRANSPORT_IO_MORE_STREAMING_DATA) &&
 	  (hc->flags & HTTP_CONN_F_IS_SERVER))
 	{
+	  req->req_flags |= HTTP_REQ_F_RX_BODY_ABORTED;
+	  req->req_flags &= ~HTTP_REQ_F_RX_EXPECT_CONTINUE;
 	  http_io_ts_drain_all (hc);
 	  http_req_state_change (req, HTTP_REQ_STATE_WAIT_APP_REPLY);
 	}
@@ -2670,6 +2729,16 @@ http1_transport_close_callback (http_ctx_t *hc)
       return;
     }
 
+  if ((hc->flags & HTTP_CONN_F_IS_SERVER) && hc->state == HTTP_CONN_STATE_TRANSPORT_CLOSED &&
+      req->req_state == HTTP_REQ_STATE_TRANSPORT_IO_MORE_DATA && req->to_recv &&
+      !http_io_ts_max_read (hc))
+    {
+      session_transport_reset_notify (&req->connection);
+      session_transport_closed_notify (&req->connection);
+      http_disconnect_transport (hc);
+      return;
+    }
+
   /* Nothing more to rx, propagate to app */
   if (!http_io_ts_max_read (hc))
     {
@@ -2701,6 +2770,7 @@ http1_transport_reset_callback (http_ctx_t *hc)
   if (!(hc->flags & HTTP_CONN_F_HAS_REQUEST))
     return;
   http_ctx_t *req = http1_conn_get_req (hc);
+  req->req_flags &= ~(HTTP_REQ_F_RX_EXPECT_CONTINUE | HTTP_REQ_F_RX_CONTINUE_PENDING);
   if (!(hc->flags & HTTP_CONN_F_IS_SERVER) && http1_req_state_is_body_tx (req))
     http1_cancel_request_upload (hc, req);
   hc->flags &= ~HTTP_CONN_F_PENDING_LAST_CHUNK;
@@ -2717,6 +2787,12 @@ http1_transport_conn_reschedule_callback (http_ctx_t *hc)
 {
   ASSERT (hc->flags & HTTP_CONN_F_HAS_REQUEST);
   http_ctx_t *req = http1_conn_get_req (hc);
+  if (req->req_flags & HTTP_REQ_F_RX_CONTINUE_PENDING)
+    {
+      http1_send_continue (hc, req);
+      if (req->req_flags & HTTP_REQ_F_RX_CONTINUE_PENDING)
+	return;
+    }
   /* Retry a terminating chunk that could not be queued at application EOF. */
   if (hc->flags & HTTP_CONN_F_PENDING_LAST_CHUNK)
     {
@@ -2754,6 +2830,7 @@ const static http_engine_vft_t http1_engine = {
   .req_get_connection = http1_req_get_connection,
   .format_req = http1_format_req,
   .app_tx_callback = http1_app_tx_callback,
+  .send_continue = http1_send_continue,
   .app_rx_evt_callback = http1_app_rx_evt_callback,
   .app_close_callback = http1_app_close_callback,
   .app_reset_callback = http1_app_reset_callback,

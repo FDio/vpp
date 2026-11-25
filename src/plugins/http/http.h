@@ -407,6 +407,11 @@ typedef enum http_msg_data_type_
   HTTP_MSG_DATA_N_TYPES,
 } http_msg_data_type_t;
 
+typedef enum http_msg_data_flags_ : u8
+{
+  HTTP_MSG_DATA_F_EXPECT_CONTINUE = 1 << 0,
+} http_msg_data_flags_t;
+
 typedef struct http_field_line_
 {
   u32 name_offset;
@@ -441,6 +446,7 @@ typedef enum http_target_form_ : u8
 typedef struct http_msg_data_
 {
   http_msg_data_type_t type;
+  http_msg_data_flags_t flags;
   u64 len;
   http_url_scheme_t scheme;
   http_target_form_t target_form;
@@ -1082,6 +1088,25 @@ http_token_is_case (const char *actual, uword actual_len, const char *expected, 
 	return 0;
     }
   return 1;
+}
+
+static inline u8
+http_expect_has_continue (const char *value, u32 len)
+{
+  const char *end = value + len;
+  while (value < end)
+    {
+      const char *next = memchr (value, ',', end - value);
+      const char *last = next ? next : end;
+      while (value < last && (*value == ' ' || *value == '\t'))
+	value++;
+      while (value < last && (last[-1] == ' ' || last[-1] == '\t'))
+	last--;
+      if (value < last && http_token_is_case (value, last - value, http_token_lit ("100-continue")))
+	return 1;
+      value = next ? next + 1 : end;
+    }
+  return 0;
 }
 
 /**

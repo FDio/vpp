@@ -54,7 +54,11 @@ typedef struct
 
 typedef struct
 {
-  http_status_code_t sc;
+  union
+  {
+    http_status_code_t sc;
+    u16 wire_status;
+  };
   u8 send_content_length;
   u64 content_len;
   u8 *server_name;
