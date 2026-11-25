@@ -1901,7 +1901,9 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       /* Valid SYN or SYN-ACK. Move connection from half-open pool to
        * current thread pool. */
       new_tc = tcp_connection_alloc_w_base (thread_index, &tc);
-      new_tc->rcv_nxt = vnet_buffer (b[0])->tcp.seq_end;
+      /* Only the SYN is received here. Data on a SYN-ACK is read below, from
+       * rcv_nxt, data on a SYN is left for the peer to retransmit */
+      new_tc->rcv_nxt = seq + 1;
       new_tc->irs = seq;
       new_tc->timers[TCP_TIMER_RETRANSMIT_SYN] = TCP_TIMER_HANDLE_INVALID;
 
@@ -1990,9 +1992,10 @@ tcp46_syn_sent_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
       /* Read data, if any */
       if (PREDICT_FALSE (vnet_buffer (b[0])->tcp.data_len))
 	{
-	  clib_warning ("rcvd data in syn-sent");
+	  /* The data follows the SYN */
+	  vnet_buffer (b[0])->tcp.seq_number = new_tc->rcv_nxt;
 	  error = tcp_segment_rcv (wrk, new_tc, b[0]);
-	  if (error == TCP_ERROR_ACK_OK)
+	  if (error == TCP_ERROR_ENQUEUED)
 	    error = TCP_ERROR_SYN_ACKS_RCVD;
 	}
       else
