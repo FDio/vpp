@@ -16,6 +16,24 @@
       "message": "I think we will overcount when traceback reuse address",
       "revId": "6cc6a9f397aa14afdea65f004697377bb55e8be0",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cfd85b01_f6e12552",
+        "filename": "test/hs-test/infra/vppinstance.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 967,
+      "author": {
+        "id": 3325
+      },
+      "writtenOn": "2026-11-25T08:02:02Z",
+      "side": 1,
+      "message": "I reproduced the overcount. Patchset 2 compares totals by traceback and adds a regression test for a reused sample address with unchanged allocation totals.",
+      "parentUuid": "1c6e5c7f_9483ffcc",
+      "revId": "6cc6a9f397aa14afdea65f004697377bb55e8be0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
