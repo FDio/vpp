@@ -13,6 +13,7 @@
 #include <vppinfra/format_ansi.h>
 
 #include <limits.h>
+#include <pwd.h>
 #include <signal.h>
 #include <sys/ucontext.h>
 #include <syslog.h>
@@ -37,6 +38,31 @@ char *vlib_default_runtime_dir __attribute__ ((weak));
 char *vlib_default_runtime_dir = "vlib";
 
 unix_main_t unix_main;
+
+/* /etc/<name> for root, $XDG_CONFIG_HOME/<name> or ~/.config/<name> for the others */
+static u8 *
+unix_default_config_dir (void)
+{
+  char *xdg = getenv ("XDG_CONFIG_HOME"), *home = getenv ("HOME");
+  struct passwd *pw;
+
+  if (geteuid () == 0)
+    return format (0, "/etc/%s%c", vlib_default_runtime_dir, 0);
+
+  if (xdg && xdg[0] == '/')
+    return format (0, "%s/%s%c", xdg, vlib_default_runtime_dir, 0);
+
+  if (home == 0 || home[0] == 0)
+    {
+      pw = getpwuid (geteuid ());
+      home = pw ? pw->pw_dir : 0;
+    }
+
+  if (home == 0)
+    return 0;
+
+  return format (0, "%s/.config/%s%c", home, vlib_default_runtime_dir, 0);
+}
 
 static clib_error_t *
 unix_main_init (vlib_main_t * vm)
@@ -383,6 +409,8 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 	use_current_dir = 1;
       else if (unformat (input, "runtime-dir %s", &um->runtime_dir))
 	;
+      else if (unformat (input, "config-dir %s", &um->config_dir))
+	;
       else if (unformat (input, "cli-line-mode"))
 	um->cli_line_mode = 1;
       else if (unformat (input, "cli-no-banner"))
@@ -474,7 +502,11 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
     {
       char cwd[PATH_MAX];
       if (getcwd (cwd, PATH_MAX))
-	um->runtime_dir = format (um->runtime_dir, "%s%c", cwd, 0);
+	{
+	  um->runtime_dir = format (um->runtime_dir, "%s%c", cwd, 0);
+	  if (um->config_dir == 0)
+	    um->config_dir = format (0, "%s%c", cwd, 0);
+	}
     }
 
   if (um->runtime_dir == 0)
@@ -487,6 +519,9 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 	um->runtime_dir = format (0, "/run/user/%u/%s%c", uid,
 				  vlib_default_runtime_dir, 0);
     }
+
+  if (um->config_dir == 0)
+    um->config_dir = unix_default_config_dir ();
 
   /* Ensure the runtime directory is created */
   error = vlib_unix_recursive_mkdir ((char *) um->runtime_dir);

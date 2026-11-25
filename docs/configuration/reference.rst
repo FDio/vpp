@@ -212,6 +212,27 @@ runtime-dir <dir>
 
      runtime-dir /tmp/vpp
 
+config-dir <dir>
+^^^^^^^^^^^^^^^^
+
+     Set the configuration directory, which is the default location for
+     configuration files that are not part of the startup configuration, like
+     the host key of the ssh plugin. Default is based on User ID used to
+     start VPP. Typically it is *'root'*, which defaults to *'/etc/vpp/'*.
+     Otherwise, defaults to *'$XDG_CONFIG_HOME/vpp/'*, or *'~/.config/vpp/'*
+     when *XDG_CONFIG_HOME* is not set. VPP does not create the directory.
+
+.. code-block:: console
+
+     config-dir /home/user/vpp
+
+use-current-dir
+^^^^^^^^^^^^^^^
+
+     Use the current directory as the runtime directory and as the
+     configuration directory. A *config-dir* which is set explicitly is
+     not changed.
+
 poll-sleep-usec <n>
 ^^^^^^^^^^^^^^^^^^^
 

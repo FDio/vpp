@@ -46,6 +46,9 @@ typedef struct
   /* runtime directory path */
   u8 *runtime_dir;
 
+  /* configuration directory path, 0 if it is not known */
+  u8 *config_dir;
+
   /* pidfile filename */
   u8 *pidfile;
 
@@ -126,6 +129,12 @@ static inline char *
 vlib_unix_get_runtime_dir (void)
 {
   return (char *) unix_main.runtime_dir;
+}
+
+static inline char *
+vlib_unix_get_config_dir (void)
+{
+  return (char *) unix_main.config_dir;
 }
 
 /* thread stack array; vec_len = max number of threads */
