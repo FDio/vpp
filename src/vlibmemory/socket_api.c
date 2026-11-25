@@ -859,6 +859,7 @@ vl_sock_api_init (vlib_main_t * vm)
 
   template.read_function = socksvr_accept_ready;
   template.write_function = socksvr_bogus_write;
+  /* coverity[overflow_const] - sock->fd is valid when clib_socket_init succeeds */
   template.file_descriptor = sock->fd;
   template.description = format (0, "socksvr %s", sock->config);
   template.private_data = rp - sm->registration_pool;
