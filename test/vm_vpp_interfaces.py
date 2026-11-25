@@ -10,6 +10,7 @@ from vpp_qemu_utils import (
     disable_interface_gso,
     add_namespace_route,
     libmemif_test_app,
+    network_fixture_suffix,
 )
 from vpp_iperf import start_iperf, stop_iperf
 from framework import VppTestCase
@@ -20,8 +21,6 @@ import time
 import sys
 import os
 from vm_test_config import test_config
-import random
-import string
 import subprocess
 import fcntl
 
@@ -894,9 +893,7 @@ class TestVPPInterfacesQemu:
         """Create an AF_XDP interface and configure it in VPP and Linux."""
         try:
             # Generate unique random suffixes for interface names to prevent conflicts
-            random_suffix = "".join(
-                random.choices(string.ascii_lowercase + string.digits, k=8)
-            )
+            random_suffix = network_fixture_suffix()
             unique_host_side_name = f"{host_side_name}{random_suffix}"
             unique_vpp_side_name = f"{vpp_side_name}{random_suffix}"
 

@@ -13,6 +13,12 @@ from filelock import BaseFileLock, FileLock
 from multiprocessing import Process
 
 NETWORK_COMMAND_TIMEOUT = 30
+_fixture_random = random.SystemRandom()
+
+
+def network_fixture_suffix():
+    """Generate a short name suffix independently of the test seed."""
+    return "".join(_fixture_random.choices(string.ascii_lowercase + string.digits, k=8))
 
 
 def net_helper_lock() -> BaseFileLock:
@@ -62,10 +68,7 @@ def create_namespace(history_file, ns=None, prefix="vpp_ns"):
             result = None
 
             for retry in range(retries):
-                suffix = "".join(
-                    random.choices(string.ascii_lowercase + string.digits, k=8)
-                )
-                new_namespace_name = f"{prefix}{suffix}"
+                new_namespace_name = f"{prefix}{network_fixture_suffix()}"
                 # Check if the namespace already exists
                 result = _run_network_command(
                     ["ip", "netns", "add", new_namespace_name],
@@ -435,14 +438,8 @@ def create_host_interface(
         retries = 5
 
         for attempt in range(retries):
-            if_name = (
-                host_if_name
-                or f"hostif{''.join(random.choices(string.ascii_lowercase + string.digits, k=8))}"
-            )
-            new_vpp_if_name = (
-                vpp_if_name
-                or f"vppout{''.join(random.choices(string.ascii_lowercase + string.digits, k=8))}"
-            )
+            if_name = host_if_name or f"hostif{network_fixture_suffix()}"
+            new_vpp_if_name = vpp_if_name or f"vppout{network_fixture_suffix()}"
 
             result = _run_network_command(
                 [
