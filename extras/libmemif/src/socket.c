@@ -711,6 +711,7 @@ memif_delete_control_channel (memif_control_channel_t *cc)
 
   fde.fd = cc->fd;
   fde.type = MEMIF_FD_EVENT_DEL;
+  fde.private_ctx = NULL;
   ctx = ms->epfd != -1 ? ms : ms->private_ctx;
   cc->sock->args.on_control_fd_update (fde, ctx);
 
