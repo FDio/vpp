@@ -1006,6 +1006,7 @@ application_alloc_worker_and_init (application_t * app, app_worker_t ** wrk)
    */
   sm = segment_manager_alloc ();
   sm->app_wrk_index = app_wrk->wrk_index;
+  sm->app_index = app->app_index;
   /* Link the segment manager to the worker before init so a failed
      init_first is fully rolled back by app_worker_free () below. */
   app_wrk->connects_seg_manager = segment_manager_index (sm);

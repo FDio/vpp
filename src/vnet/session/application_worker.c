@@ -150,6 +150,7 @@ app_worker_alloc_listener_segment_manager (app_worker_t *app_wrk)
 
   sm = segment_manager_alloc ();
   sm->app_wrk_index = app_wrk->wrk_index;
+  sm->app_index = app_wrk->app_index;
   segment_manager_init (sm);
 
   /* Once the first segment is mapped, don't remove it until unlisten */

@@ -60,6 +60,9 @@ typedef struct _segment_manager
   /** Owner app worker index */
   u32 app_wrk_index;
 
+  /** Owner app, whose segment properties the manager uses */
+  u32 app_index;
+
   /**
    * First segment should not be deleted unless segment manger is deleted.
    * This also indicates that the segment manager is the first to have been

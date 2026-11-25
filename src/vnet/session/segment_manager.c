@@ -80,8 +80,7 @@ do {									\
 static segment_manager_props_t *
 segment_manager_properties_get (segment_manager_t * sm)
 {
-  app_worker_t *app_wrk = app_worker_get (sm->app_wrk_index);
-  return application_get_segment_manager_properties (app_wrk->app_index);
+  return application_get_segment_manager_properties (sm->app_index);
 }
 
 segment_manager_props_t *
