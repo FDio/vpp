@@ -27,14 +27,19 @@ static int dummy_on_interrupt (void *, void *, uint16_t);
 static int
 dummy_on_connect (void *a, void *b)
 {
+  return 0;
 }
+
 static int
 dummy_on_disconnect (void *a, void *b)
 {
+  return 0;
 }
+
 static int
 dummy_on_interrupt (void *a, void *b, uint16_t c)
 {
+  return 0;
 }
 
 static void
@@ -200,7 +205,7 @@ TEST (MemifMain, MemifSetConnectionRequestTimer)
   timer.it_value.tv_sec = 2;
   timer.it_value.tv_nsec = 0;
   timer.it_interval.tv_sec = 2;
-  timer.it_value.tv_nsec = 0;
+  timer.it_interval.tv_nsec = 0;
   memif_set_connection_request_timer (msh, timer);
 
   TEST_ASSERT_NOT_EQUAL_INT (-1, ms->timer_fd);
