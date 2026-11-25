@@ -606,6 +606,7 @@ next_algorithm_name (const cli_arg_t *a, u32 *iter, u32 *value, const char **hel
       if (help)
 	*help = "hash";
       (*iter)++;
+      /* coverity[overrun-local] - i + 1 is below VNET_CRYPTO_N_HASH_ALGS */
       return cm->hash_algs[i + 1].name;
     }
 
