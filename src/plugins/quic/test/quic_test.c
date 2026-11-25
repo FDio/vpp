@@ -76,6 +76,7 @@ quic_test_tx_rearm (vlib_main_t *vm, quic_main_t *qm, quic_conn_tx_timer_update_
   ctx->conn = &tx;
 
   /* The session layer still owns the FIFO event during custom TX. */
+  /* coverity[check_return] - test only needs the event flag set */
   svm_fifo_set_event (&fifo);
   tp_vfts[TRANSPORT_PROTO_QUIC].custom_tx (session, &sp);
   QUIC_TEST (session->flags & SESSION_F_CUSTOM_TX, "immediate TX requests another dispatch");
