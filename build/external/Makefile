@@ -71,6 +71,15 @@ $(DEV_DEB): deb/debian/changelog
 build-deb: $(DEV_DEB)
 
 install-deb:
+ifneq ($(and $(filter true,$(GITHUB_ACTIONS)),$(filter prod sandbox,$(FDIO_NAMESPACE))),)
+	@if ! bash ./install-deb-ci.sh "$(DEB_VER)-$(PKG_SUFFIX)" "$(DEB_ARCH)" \
+	    "$(DEV_DEB)" "$(INSTALLED_VER)"; then \
+	  echo "Building $(DEV_DEB) from source"; \
+	  $(MAKE) --always-make $(DEV_DEB) && sudo dpkg -i $(DEV_DEB) && \
+	    printf '%s %s\n' "$$(git rev-parse HEAD)" "$(DEB_VER)-$(PKG_SUFFIX)" \
+	      > "$$(git rev-parse --git-path vpp-ext-deps-ci-installed)"; \
+	fi
+else
 ifneq ($(INSTALLED_VER),$(DEB_VER)-$(PKG_SUFFIX))
 	@echo $(LINE)
 	@echo " Installing vpp-ext-deps debian package $(DEB_VER)-$(PKG_SUFFIX)"
@@ -81,6 +90,7 @@ else
 	@echo $(LINE)
 	@echo " Up-to-date vpp-ext-deps debian package $(DEB_VER)-$(PKG_SUFFIX) already installed"
 	@echo $(LINE)
+endif
 endif
 
 check-deb:
