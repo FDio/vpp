@@ -172,6 +172,12 @@ quicly_test_stream_close (vlib_main_t *vm, quic_quicly_main_t *qqm,
       QUICLY_TEST (ctx->flags & QUIC_F_STREAM_TX_CLOSED, "stream TX is marked closed");
       QUICLY_TEST (session->session_state == SESSION_STATE_TRANSPORT_CLOSING,
 		   "session waits for application acknowledgment");
+      /* App can shut down either direction before it acks the close */
+      engine->proto_on_half_close (ctx_index, thread_index, 0 /* is_rx */);
+      engine->proto_on_half_close (ctx_index, thread_index, 1 /* is_rx */);
+      QUICLY_TEST (pool_elts (worker->ctx_pool) == 1 &&
+		     !(ctx->flags & (QUIC_F_APP_CLOSED_TX | QUIC_F_APP_CLOSED_RX)),
+		   "half-close after engine destruction is ignored");
       /* Session-layer notification ordering is covered by HST. Mark its
        * acknowledgment delivered before exercising transport ownership. */
       session->session_state = SESSION_STATE_TRANSPORT_DELETED;
