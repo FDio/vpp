@@ -41,6 +41,15 @@ ifeq ($(PARALLEL),)
 PARALLEL=1
 endif
 
+# The parallel allocator assumes the default container CPU counts.
+ifneq ($(filter test test-debug test-cov,$(MAKECMDGOALS)),)
+ifneq ($(PARALLEL),1)
+ifneq ($(CPUS) $(VPP_CPUS),1 1)
+$(error Non-default CPUS or VPP_CPUS requires PARALLEL=1)
+endif
+endif
+endif
+
 ifeq ($(REPEAT),)
 REPEAT=0
 endif
@@ -213,7 +222,7 @@ help:
 	@echo
 	@echo "'make test' specific arguments:"
 	@echo " CPU0=[true|false]        - use cpu0"
-	@echo " CPUS=[n]                 - number of cpus to allocate to each non-VPP container (default = 1)"
+	@echo " CPUS=[n]                 - CPUs per non-VPP container (default = 1, other values require PARALLEL=1)"
 	@echo " DEBUG=[true|false]       - attach VPP to GDB"
 	@echo " DRYRUN=[true|false]      - set up containers but don't run tests"
 	@echo " GINKGO_TIMEOUT=[Ns/m/h]  - Ginkgo timeout override (3h by default)"
@@ -232,7 +241,7 @@ help:
 	@echo " TEST=[name1,name2...]    - specific test(s) to run"
 	@echo " TIMEOUT=[minutes]        - test timeout override (5 minutes by default)"
 	@echo " V or VERBOSE=[0|1|2]     - verbose output"
-	@echo " VPP_CPUS=[n]             - number of cpus to allocate to each VPP container (default = 1)"
+	@echo " VPP_CPUS=[n]             - CPUs per VPP container (default = 1, other values require PARALLEL=1)"
 	@echo " VPPSRC=[path-to-vpp-src] - path to vpp source files (for gdb)"
 
 .PHONY: list-tests
