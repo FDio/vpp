@@ -1,0 +1,147 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "7dbf5936_292331a5",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-25T17:50:40Z",
+      "side": 1,
+      "message": "OUT_DIR in docs/Makefile is $(BR)/docs",
+      "range": {
+        "startLine": 22,
+        "startChar": 28,
+        "endLine": 22,
+        "endChar": 47
+      },
+      "revId": "f23176fc0ea6873ccbb8c72be723a8482385db42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "52712d86_e7ffd4e5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-25T17:50:40Z",
+      "side": 1,
+      "message": "Looks good, some minor comments...",
+      "revId": "f23176fc0ea6873ccbb8c72be723a8482385db42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "86babf6e_84dfbf17",
+        "filename": "docs/Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-25T17:50:40Z",
+      "side": 1,
+      "message": "\u0027make test\u0027 and \u0027make docs\u0027 both build using the same requirements-3.txt, but generate separate venv directories:\n\ndwallacelf@daw-server-2:/scratch/dwallacelf/lf/vpp.47971$ find . -name *venv\n./build-root/test/venv\n./build-root/docs/venv\n\nThis is not a problem for the CI since they get build in different containers, but is redundant locally.  I had intended to consolidate them into $(BR)/venv, but event today\u0027s build generates separate venv directories:\n\nhttps://github.com/FDio/vpp/blob/master/docs/Makefile#L46\nhttps://github.com/FDio/vpp/blob/master/test/Makefile#L54\n\nIf you feel ok to clean this up here, that would be great.  If not, can you please retain the existing docs path: $(BR)/venv, then it will be a one-line change to fix \u0027make test\u0027 in a separate gerrit change.  I clearly took the latter path previously and forgot to fix \u0027make test\u0027 venv location :/",
+      "revId": "f23176fc0ea6873ccbb8c72be723a8482385db42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e2b4a4e6_bb86a8fd",
+        "filename": "docs/Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-25T17:50:40Z",
+      "side": 1,
+      "message": "Please output the URL to the index file if the docs build succeeds:\n\ndiff --git a/docs/Makefile b/docs/Makefile\nindex 190e7549a..46b30ffd6 100644\n--- a/docs/Makefile\n+++ b/docs/Makefile\n@@ -30,6 +30,7 @@ PIP_VERSION ?\u003d $(shell grep \u0027PIP_VERSION\u003d\u0027 ${WS_ROOT}/test/Makefile | cut -d\u0027\u003d\u0027\n PIP_TOOLS_VERSION ?\u003d $(shell grep \u0027PIP_TOOLS_VERSION\u003d\u0027 ${WS_ROOT}/test/Makefile | cut -d\u0027\u003d\u0027 -f2)\n\n OUT_DIR \u003d $(BR)/docs\n+HTML_INDEX_FILE \u003d $(OUT_DIR)/html/index.html\n VENV_DIR ?\u003d $(OUT_DIR)/venv\n DOCS_PY \u003d $(VENV_DIR)/bin/python3 $(WS_ROOT)/docs/docs.py\n\n@@ -56,6 +57,11 @@ venv:\n .PHONY: docs\n docs: venv\n        @$(DOCS_PY) build --out-dir $(OUT_DIR) --venv $(VENV_DIR)\n+       @( \\\n+               if [ -f ${HTML_INDEX_FILE}  ] ; then \\\n+                       echo \"Local docs URL: file:///${HTML_INDEX_FILE}\"; \\\n+               fi; \\\n+       )\n\n .PHONY: spell\n spell: docs",
+      "revId": "f23176fc0ea6873ccbb8c72be723a8482385db42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "24860655_24e39bbc",
+        "filename": "src/cmake/docs.cmake",
+        "patchSetId": 3
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-25T17:50:40Z",
+      "side": 1,
+      "message": "OUT_DIR in docs/Makefile is $(BR)/docs",
+      "range": {
+        "startLine": 6,
+        "startChar": 45,
+        "endLine": 6,
+        "endChar": 69
+      },
+      "revId": "f23176fc0ea6873ccbb8c72be723a8482385db42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8ec41f4a_982d0a69",
+        "filename": "src/cmake/docs.cmake",
+        "patchSetId": 3
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-25T17:50:40Z",
+      "side": 1,
+      "message": "Same problem here.  Maybe run \u0027make docs\u0027 and have your AI buddy verify the comments are in sync with reality.\n\nOr better yet, just get rid of the hardcoded paths in the comments and refer to the source file.  The comments are going to get out of sync if someone changes paths in other files.",
+      "range": {
+        "startLine": 10,
+        "startChar": 53,
+        "endLine": 10,
+        "endChar": 71
+      },
+      "revId": "f23176fc0ea6873ccbb8c72be723a8482385db42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5d7f1c23_902404f3",
+        "filename": "src/cmake/venv.cmake",
+        "patchSetId": 3
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-25T17:50:40Z",
+      "side": 1,
+      "message": "Consider using \u0027uv\u0027 if it is installed [0] instead of \"venv + pip-tools\" for a performance gain like in \u0027make test\u0027: \n\nhttps://github.com/FDio/vpp/blob/master/test/Makefile#L68\n\n[0] uv is installed in the CI docker executor images",
+      "range": {
+        "startLine": 33,
+        "startChar": 0,
+        "endLine": 37,
+        "endChar": 53
+      },
+      "revId": "f23176fc0ea6873ccbb8c72be723a8482385db42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
