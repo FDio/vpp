@@ -137,6 +137,7 @@ class TestTCPUnitTests(VppAsfTestCase):
             "rto",
             "rst",
             "fin-rst",
+            "syn-data",
             "timewait",
             "cubic",
             "bbr",

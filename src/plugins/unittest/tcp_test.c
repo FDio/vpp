@@ -5376,6 +5376,204 @@ cleanup:
   return rv;
 }
 
+/* Data on a SYN-ACK follows the SYN in sequence space. It must be delivered to
+ * the app, not dropped as old after rcv_nxt already moved past it, as that
+ * acks data that is lost. Data on a SYN, in a simultaneous open, is not read,
+ * so it must not be acked either */
+#define TCP_TEST_SYN_DATA_LEN 100
+
+typedef struct
+{
+  tcp_e2e_ctx_t *ctx;
+  u32 irs;
+  u8 is_ack;
+} tcp_test_syn_data_args_t;
+
+static volatile u32 tcp_test_syn_data_n_rx;
+
+static int
+tcp_test_syn_data_rx_callback (session_t *s)
+{
+  tcp_test_syn_data_n_rx++;
+  return 0;
+}
+
+/* Runs on the connection's thread, see tcp_e2e_call_on_thread */
+static int
+tcp_test_syn_data_steps (void *arg)
+{
+  tcp_test_syn_data_args_t *a = arg;
+  tcp_connection_t *tc = a->ctx->client_tc;
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_node_runtime_t *node;
+  vlib_frame_t *frame;
+  tcp_header_t *tcp;
+  vlib_buffer_t *b;
+  u32 bi, i, *to;
+  u8 *data;
+
+  if (!TCP_TEST_I ((vlib_buffer_alloc (vm, &bi, 1) == 1), "syn_data: allocate buffer"))
+    return 1;
+
+  b = vlib_get_buffer (vm, bi);
+  vlib_buffer_reset (b);
+  b->current_length = sizeof (*tcp) + TCP_TEST_SYN_DATA_LEN;
+  vnet_buffer (b)->tcp.hdr_offset = 0;
+  vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
+  vnet_buffer (b)->tcp.seq_number = a->irs;
+  /* As tcp_input_lookup_buffer sets it, without the SYN */
+  vnet_buffer (b)->tcp.seq_end = a->irs + TCP_TEST_SYN_DATA_LEN;
+  vnet_buffer (b)->tcp.ack_number = tc->snd_nxt;
+  vnet_buffer (b)->tcp.data_offset = sizeof (*tcp);
+  vnet_buffer (b)->tcp.data_len = TCP_TEST_SYN_DATA_LEN;
+
+  tcp = vlib_buffer_get_current (b);
+  clib_memset (tcp, 0, sizeof (*tcp));
+  tcp->src_port = tc->c_rmt_port;
+  tcp->dst_port = tc->c_lcl_port;
+  tcp->seq_number = clib_host_to_net_u32 (a->irs);
+  tcp->ack_number = a->is_ack ? clib_host_to_net_u32 (tc->snd_nxt) : 0;
+  tcp->data_offset_and_reserved = 5 << 4;
+  tcp->flags = TCP_FLAG_SYN | (a->is_ack ? TCP_FLAG_ACK : 0);
+  tcp->window = clib_host_to_net_u16 (65535);
+  data = (u8 *) (tcp + 1);
+  for (i = 0; i < TCP_TEST_SYN_DATA_LEN; i++)
+    data[i] = i;
+
+  frame = vlib_get_frame_to_node (vm, tcp4_syn_sent_node.index);
+  node = vlib_node_get_runtime (vm, tcp4_syn_sent_node.index);
+  to = vlib_frame_vector_args (frame);
+  to[0] = bi;
+  frame->n_vectors = 1;
+  /* Frees the buffer */
+  tcp4_syn_sent_node.function (vm, node, frame);
+  vlib_frame_free (vm, frame);
+  return 0;
+}
+
+static int
+tcp_test_syn_data_one (vlib_main_t *vm, u8 is_ack)
+{
+  tcp_e2e_params_t params = {
+    .name = "syn_data",
+    .client_addr = 0x36363601,
+    .server_addr = 0x37373701,
+    .client_vrf = 0,
+    .server_vrf = 2,
+    .server_port = 2289,
+    .client_port = 0,
+    .secret = 2288,
+    .client_only = 1,
+  };
+  const char *what = is_ack ? "syn-ack" : "syn";
+  tcp_e2e_ctx_t _ctx, *ctx = &_ctx;
+  tcp_test_syn_data_args_t args = { .ctx = ctx, .irs = 1 << 20, .is_ack = is_ack };
+  u8 rx[TCP_TEST_SYN_DATA_LEN], want[TCP_TEST_SYN_DATA_LEN];
+  tcp_connection_t *tc;
+  application_t *app;
+  u32 n_data, tries, i;
+  session_t *s;
+  int rv = 0;
+
+  tcp_test_syn_data_n_rx = 0;
+  if (!TCP_TEST_I ((tcp_e2e_setup (vm, ctx, &params) == 0), "syn_data %s: half-open setup", what))
+    {
+      rv = 1;
+      goto done;
+    }
+
+  /* No routes, so only the injected segment can move the half-open on */
+  if (!TCP_TEST_I ((ctx->client_tc->state == TCP_STATE_SYN_SENT),
+		   "syn_data %s: connection starts in SYN_SENT", what))
+    {
+      rv = 1;
+      goto done;
+    }
+  app = application_get (ctx->client_index);
+  app->cb_fns.builtin_app_rx_callback = tcp_test_syn_data_rx_callback;
+
+  if (tcp_e2e_call_on_thread (vm, ctx->client_tc->c_thread_index, tcp_test_syn_data_steps, &args))
+    {
+      rv = 1;
+      goto done;
+    }
+
+  for (tries = 0; connected_session_index == ~0 && tries < 100; tries++)
+    tcp_e2e_pump (vm, 1e-3);
+  if (!TCP_TEST_I ((connected_session_index != ~0), "syn_data %s: app notified of connect", what))
+    {
+      rv = 1;
+      goto done;
+    }
+  /* Let the rx notification, if any, reach the app */
+  for (tries = 0; is_ack && !tcp_test_syn_data_n_rx && tries < 100; tries++)
+    tcp_e2e_pump (vm, 1e-3);
+
+  tcp_e2e_wait_pools (vm);
+  s = session_get (connected_session_index, connected_session_thread);
+  tc = (tcp_connection_t *) session_get_transport (s);
+  n_data = svm_fifo_max_dequeue (s->rx_fifo);
+
+  if (!TCP_TEST_I ((tc->state == (is_ack ? TCP_STATE_ESTABLISHED : TCP_STATE_SYN_RCVD)),
+		   "syn_data %s: state %U", what, format_tcp_state, tc->state))
+    rv = 1;
+  if (!TCP_TEST_I ((tc->irs == args.irs), "syn_data %s: irs %u expected %u", what, tc->irs,
+		   args.irs))
+    rv = 1;
+
+  if (!is_ack)
+    {
+      /* Only the SYN is acked, the peer retransmits the data */
+      if (!TCP_TEST_I ((tc->rcv_nxt == args.irs + 1), "syn_data %s: rcv_nxt %u expected %u", what,
+		       tc->rcv_nxt, args.irs + 1))
+	rv = 1;
+      if (!TCP_TEST_I ((n_data == 0), "syn_data %s: rx fifo has %u bytes expected 0", what, n_data))
+	rv = 1;
+      goto done;
+    }
+
+  /* The data, after the SYN, is received and in the app's fifo */
+  if (!TCP_TEST_I ((tc->rcv_nxt == args.irs + 1 + TCP_TEST_SYN_DATA_LEN),
+		   "syn_data %s: rcv_nxt %u expected %u", what, tc->rcv_nxt,
+		   args.irs + 1 + TCP_TEST_SYN_DATA_LEN))
+    rv = 1;
+  if (!TCP_TEST_I ((n_data == TCP_TEST_SYN_DATA_LEN),
+		   "syn_data %s: rx fifo has %u bytes expected %u", what, n_data,
+		   TCP_TEST_SYN_DATA_LEN))
+    {
+      rv = 1;
+      goto done;
+    }
+  for (i = 0; i < TCP_TEST_SYN_DATA_LEN; i++)
+    want[i] = i;
+  svm_fifo_peek (s->rx_fifo, 0, TCP_TEST_SYN_DATA_LEN, rx);
+  if (!TCP_TEST_I ((!memcmp (rx, want, sizeof (rx))), "syn_data %s: rx data matches", what))
+    rv = 1;
+  if (!TCP_TEST_I ((tcp_test_syn_data_n_rx > 0), "syn_data %s: app notified of rx data", what))
+    rv = 1;
+
+done:
+  if (!tcp_e2e_teardown (vm, ctx))
+    rv = 1;
+  return rv;
+}
+
+static int
+tcp_test_syn_data (vlib_main_t *vm, unformat_input_t *input)
+{
+  int rv;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      vlib_cli_output (vm, "parse error: '%U'", format_unformat_error, input);
+      return -1;
+    }
+
+  rv = tcp_test_syn_data_one (vm, 1 /* is_ack */);
+  rv |= tcp_test_syn_data_one (vm, 0 /* is_ack */);
+  return rv;
+}
+
 /* A FIN queues a closing notification. If an RST for the same connection is
  * processed later in the same dispatch, it moves the connection to CLOSED
  * while the disconnect remains queued. The queued notification must then be
@@ -15513,6 +15711,10 @@ tcp_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	{
 	  res = tcp_test_fin_rst_burst (vm, input);
 	}
+      else if (unformat (input, "syn-data"))
+	{
+	  res = tcp_test_syn_data (vm, input);
+	}
       else if (unformat (input, "timewait"))
 	{
 	  res = tcp_test_timewait_syn_burst (vm, input);
@@ -15562,6 +15764,8 @@ tcp_test (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd_arg)
 	  if ((res = tcp_test_rst_burst (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_fin_rst_burst (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_syn_data (vm, input)))
 	    goto done;
 	  if ((res = tcp_test_timewait_syn_burst (vm, input)))
 	    goto done;
