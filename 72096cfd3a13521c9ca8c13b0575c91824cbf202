@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cdc96959_cae6ebd0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-25T14:36:16Z",
+      "side": 1,
+      "message": "I see zero value in having\n\n```\nRelated work on iPerf CPU affinity is in Gerrit 47701.\nhttps://gerrit.fd.io/r/c/vpp/+/47701\n```\n\npart of the commit message.",
+      "revId": "72096cfd3a13521c9ca8c13b0575c91824cbf202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5577a027_92ae03c2",
+        "filename": "test/vpp_iperf.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-25T14:36:16Z",
+      "side": 1,
+      "message": "This comment is noise.",
+      "revId": "72096cfd3a13521c9ca8c13b0575c91824cbf202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "cc6e8295_0e320da1",
+        "filename": "test/vpp_iperf.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-25T14:36:16Z",
+      "side": 1,
+      "message": "How about making this a sane sentence like \"Check if the expected pid owns the socket\".",
+      "revId": "72096cfd3a13521c9ca8c13b0575c91824cbf202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a6cd4754_e97658b9",
+        "filename": "test/vpp_iperf.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-25T14:36:16Z",
+      "side": 1,
+      "message": "This is hard to read.\n\nMove L115-L117 after L131:\n\nThe this becomes:\n\n```\nremaining \u003d deadline - time.monotonic()\nif remaining \u003c\u003d 0:\n    break\ntime.sleep(min(0.05, remaining))\n```",
+      "revId": "72096cfd3a13521c9ca8c13b0575c91824cbf202",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
