@@ -12,6 +12,7 @@
 #include <vppinfra/unix.h>
 
 #define HCC_DEBUG 0
+#define HCC_CONTINUE_TIMEOUT 1.0
 
 #if HCC_DEBUG
 #define HCC_DBG(_fmt, _args...) clib_warning (_fmt, ##_args)
@@ -65,6 +66,7 @@ typedef struct
   http_req_method_t method;
   u8 use_ptr;
   u8 no_headers;
+  u8 expect_continue;
   u8 stream;
   u8 close_after_tx;
   u8 eof_after_drain;
@@ -81,6 +83,8 @@ typedef struct
   u8 need_crypto;
   u8 use_http3;
   u8 use_http2;
+  void (*set_continue_callback) (session_t *as, http_continue_cb_t cb);
+  void (*resume_request_body) (session_t *as);
 } hcc_main_t;
 
 typedef enum
@@ -90,6 +94,7 @@ typedef enum
   HCC_CONNECT_FAILED,
   HCC_REQUEST_FAILED,
   HCC_TX_READY,
+  HCC_EXPECT_HEADERS_SENT,
 } hcc_cli_signal_t;
 
 static hcc_main_t hcc_main;
@@ -172,6 +177,33 @@ hcc_send_body (session_t *s, hcc_session_t *hs)
   return 0;
 }
 
+static void
+hcc_continue_callback (session_t *s, http_continue_event_t event)
+{
+  hcc_main_t *hcm = &hcc_main;
+  if (event == HTTP_CONTINUE_RECEIVED)
+    hcm->resume_request_body (s);
+  else
+    vlib_process_signal_event_mt (hcm->vlib_main, hcm->cli_node_index, HCC_EXPECT_HEADERS_SENT,
+				  s->handle);
+}
+
+static void
+hcc_resume_request_body_rpc (void *arg)
+{
+  hcc_main_t *hcm = &hcc_main;
+  session_t *s = session_get_from_handle_if_valid (pointer_to_uword (arg));
+  if (!s)
+    return;
+  app_worker_t *app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+  if (app_wrk && app_wrk->app_index == hcm->app_index)
+    {
+      hcc_session_t *hs = hcc_session_get (s->opaque, s->thread_index);
+      if (!hs->is_closed && !hs->have_reply)
+	hcm->resume_request_body (s);
+    }
+}
+
 static int
 hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as, session_error_t err)
 {
@@ -207,6 +239,8 @@ hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as, session_e
 
   msg.type = HTTP_MSG_REQUEST;
   msg.method_type = hcm->method;
+  if (hcm->expect_continue)
+    msg.data.flags = HTTP_MSG_DATA_F_EXPECT_CONTINUE;
   /* request target */
   msg.data.target_path_offset = 0;
   /* request target len must be without null termination */
@@ -257,6 +291,8 @@ hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as, session_e
 
   if (hcm->use_ptr)
     new_hs->tx_offset = vec_len (hcm->body);
+  if (hcm->expect_continue)
+    hcm->set_continue_callback (as, hcc_continue_callback);
   return hcc_send_body (as, new_hs);
 }
 
@@ -606,6 +642,8 @@ hcc_run (vlib_main_t *vm, int print_output)
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   hcc_main_t *hcm = &hcc_main;
   uword event_type, *event_data = 0;
+  session_handle_t continue_handle = SESSION_INVALID_HANDLE;
+  f64 continue_deadline = 0;
   u32 num_threads;
   clib_error_t *err = 0;
   hcc_worker_t *wrk;
@@ -631,15 +669,31 @@ hcc_run (vlib_main_t *vm, int print_output)
 
   while (1)
     {
-      vlib_process_wait_for_event_or_clock (vm, 10);
+      f64 wait = continue_deadline ? clib_max (0.0, continue_deadline - vlib_time_now (vm)) : 10;
+      vlib_process_wait_for_event_or_clock (vm, wait);
       event_type = vlib_process_get_events (vm, &event_data);
-      if (event_type != HCC_TX_READY)
+      if (event_type == HCC_EXPECT_HEADERS_SENT)
+	{
+	  continue_handle = event_data[0];
+	  continue_deadline = vlib_time_now (vm) + HCC_CONTINUE_TIMEOUT;
+	}
+      else if (event_type == ~0 && continue_deadline)
+	{
+	  session_send_rpc_evt_to_thread_force (session_thread_from_handle (continue_handle),
+						hcc_resume_request_body_rpc,
+						uword_to_pointer (continue_handle, void *));
+	  continue_deadline = 0;
+	}
+      else if (event_type == HCC_TX_READY)
+	{
+	  vlib_process_suspend (vm, hcm->tx_delay);
+	  for (u32 i = 0; i < vec_len (event_data); i++)
+	    session_send_rpc_evt_to_thread_force (session_thread_from_handle (event_data[i]),
+						  hcc_send_body_rpc,
+						  uword_to_pointer (event_data[i], void *));
+	}
+      else
 	break;
-      vlib_process_suspend (vm, hcm->tx_delay);
-      for (u32 i = 0; i < vec_len (event_data); i++)
-	session_send_rpc_evt_to_thread_force (session_thread_from_handle (event_data[i]),
-					      hcc_send_body_rpc,
-					      uword_to_pointer (event_data[i], void *));
       vec_reset_length (event_data);
     }
   switch (event_type)
@@ -748,6 +802,7 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hcm->method = HTTP_REQ_GET;
   hcm->use_ptr = 0;
   hcm->no_headers = 0;
+  hcm->expect_continue = 0;
   hcm->stream = 0;
   hcm->close_after_tx = 0;
   hcm->eof_after_drain = 0;
@@ -815,8 +870,7 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	hcm->use_http2 = 1;
       else
 	{
-	  err = clib_error_return (0, "unknown input `%U'",
-				   format_unformat_error, line_input);
+	  err = clib_error_return (0, "unknown input `%U'", format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -858,9 +912,33 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
     http_add_header (&headers, HTTP_HEADER_ACCEPT,
 		     http_content_type_token (HTTP_CONTENT_TEXT_HTML));
   vec_foreach (header, hcm->custom_headers)
-    http_add_custom_header (&headers, (char *) header->name, vec_len (header->name),
-			    (char *) header->value, vec_len (header->value));
+    {
+      if (http_token_is_case ((char *) header->name, vec_len (header->name),
+			      http_token_lit ("expect")))
+	{
+	  hcm->expect_continue |=
+	    http_expect_has_continue ((char *) header->value, vec_len (header->value));
+	  http_add_header (&headers, HTTP_HEADER_EXPECT, (char *) header->value,
+			   vec_len (header->value));
+	}
+      else
+	http_add_custom_header (&headers, (char *) header->name, vec_len (header->name),
+				(char *) header->value, vec_len (header->value));
+    }
   hcm->headers_len = headers.tail_offset;
+
+  if (hcm->expect_continue)
+    {
+      hcm->set_continue_callback =
+	vlib_get_plugin_symbol ("http_plugin.so", "http_set_continue_callback");
+      hcm->resume_request_body =
+	vlib_get_plugin_symbol ("http_plugin.so", "http_resume_request_body");
+      if (!hcm->set_continue_callback || !hcm->resume_request_body)
+	{
+	  err = clib_error_return (0, "HTTP continue callbacks unavailable");
+	  goto done;
+	}
+    }
 
   if ((rv = parse_target ((char **) &hcm->uri, (char **) &hcm->http_query)))
     {
@@ -869,6 +947,7 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
       goto done;
     }
 
+  hcm->connect_sep = (session_endpoint_cfg_t) SESSION_ENDPOINT_CFG_NULL;
   if ((rv = parse_uri ((char *) hcm->uri, &hcm->connect_sep)))
     {
       err = clib_error_return (0, "Uri parse error: %d", rv);

@@ -64,6 +64,20 @@ typedef struct transport_endpt_cfg_http
   u16 h3_alt_svc_port;
 } transport_endpt_cfg_http_t;
 
+/** Allow the body of the current server request after validating its headers. */
+void http_accept_request_body (session_t *as);
+
+typedef enum
+{
+  HTTP_CONTINUE_HEADERS_SENT,
+  HTTP_CONTINUE_RECEIVED,
+} http_continue_event_t;
+
+typedef void (*http_continue_cb_t) (session_t *as, http_continue_event_t event);
+
+void http_set_continue_callback (session_t *as, http_continue_cb_t cb);
+void http_resume_request_body (session_t *as);
+
 typedef struct
 {
   char *base;
@@ -407,6 +421,11 @@ typedef enum http_msg_data_type_
   HTTP_MSG_DATA_N_TYPES,
 } http_msg_data_type_t;
 
+typedef enum http_msg_data_flags_
+{
+  HTTP_MSG_DATA_F_EXPECT_CONTINUE = 1 << 0,
+} http_msg_data_flags_t;
+
 typedef struct http_field_line_
 {
   u32 name_offset;
@@ -441,6 +460,7 @@ typedef enum http_target_form_ : u8
 typedef struct http_msg_data_
 {
   http_msg_data_type_t type;
+  u8 flags;
   u64 len;
   http_url_scheme_t scheme;
   http_target_form_t target_form;
@@ -1082,6 +1102,25 @@ http_token_is_case (const char *actual, uword actual_len, const char *expected, 
 	return 0;
     }
   return 1;
+}
+
+static inline u8
+http_expect_has_continue (const char *value, u32 len)
+{
+  const char *end = value + len;
+  while (value < end)
+    {
+      const char *next = memchr (value, ',', end - value);
+      const char *last = next ? next : end;
+      while (value < last && (*value == ' ' || *value == '\t'))
+	value++;
+      while (value < last && (last[-1] == ' ' || last[-1] == '\t'))
+	last--;
+      if (value < last && http_token_is_case (value, last - value, http_token_lit ("100-continue")))
+	return 1;
+      value = next ? next + 1 : end;
+    }
+  return 0;
 }
 
 /**

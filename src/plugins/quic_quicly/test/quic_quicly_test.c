@@ -950,6 +950,12 @@ done:
   return res ? clib_error_return (0, "receive cancellation test failed") : 0;
 }
 
+static void
+quicly_test_tx_stop_cb (session_t *s)
+{
+  s->opaque++;
+}
+
 static int
 quicly_test_rx_fin (vlib_main_t *vm, quic_quicly_main_t *qqm,
 		    const quicly_stream_callbacks_t *callbacks, const quic_engine_vft_t *engine)
@@ -971,6 +977,7 @@ quicly_test_rx_fin (vlib_main_t *vm, quic_quicly_main_t *qqm,
     { "empty FIN with TX awaiting acknowledgment", 0, 1, 1, 0, 0, 0 },
     { "DATA and FIN with TX awaiting acknowledgment", 4, 1, 1, 1, 0, 0 },
     { "FIN after RX cancellation and TX shutdown", 0, 1, 0, 0, 1, 0 },
+    { "STOP_SENDING with TX open before DATA and FIN", 4, 0, 0, 1, 0, 1 },
     { "STOP_SENDING after TX shutdown before empty FIN", 0, 1, 0, 0, 0, 1 },
     { "STOP_SENDING with TX awaiting acknowledgment before empty FIN", 0, 1, 1, 0, 0, 1 },
     { "STOP_SENDING with TX awaiting acknowledgment before DATA and FIN", 4, 1, 1, 1, 0, 1 },
@@ -1013,18 +1020,21 @@ quicly_test_rx_fin (vlib_main_t *vm, quic_quicly_main_t *qqm,
   session->tx_fifo = txf;
   session->app_wrk_index = app_wrk->wrk_index;
   session->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, 1);
-  ctx_index = quic_ctx_alloc (qm, thread_index);
-  ctx = pool_elt_at_index (qm->wrk_ctx[thread_index].ctx_pool, ctx_index);
-  ctx->c_c_index = ctx_index;
-  ctx->c_s_index = session->session_index;
-  ctx->c_proto = TRANSPORT_PROTO_QUIC;
-  session->connection_index = ctx_index;
   for (u32 i = 0; i < sizeof (body); i++)
     body[i] = (i * 17 + 3) & 0xff;
 
   for (u32 i = 0; i < ARRAY_LEN (tests); i++)
     {
       vlib_cli_output (vm, "%s", tests[i].name);
+      if (!ctx)
+	{
+	  ctx_index = quic_ctx_alloc (qm, thread_index);
+	  ctx = pool_elt_at_index (qm->wrk_ctx[thread_index].ctx_pool, ctx_index);
+	  ctx->c_c_index = ctx_index;
+	  ctx->c_s_index = session->session_index;
+	  ctx->c_proto = TRANSPORT_PROTO_QUIC;
+	  session->connection_index = ctx_index;
+	}
       stream = (quicly_stream_t) { .conn = (quicly_conn_t *) &conn };
       data = clib_mem_alloc (sizeof (*data));
       clib_memset (data, 0, sizeof (*data));
@@ -1038,6 +1048,7 @@ quicly_test_rx_fin (vlib_main_t *vm, quic_quicly_main_t *qqm,
       range = (quicly_range_t) {};
       stream.sendstate.final_size = tests[i].tx_shutdown ? 0 : UINT64_MAX;
       ctx->flags = QUIC_F_IS_STREAM;
+      ctx->tx_stop_cb = 0;
       ctx->stream = &stream;
       ctx->bytes_written = 0;
       session->session_state = SESSION_STATE_READY;
@@ -1062,13 +1073,31 @@ quicly_test_rx_fin (vlib_main_t *vm, quic_quicly_main_t *qqm,
 
       if (tests[i].stop_sending)
 	{
+	  if (!tests[i].tx_shutdown)
+	    {
+	      session->opaque = 0;
+	      ctx->tx_stop_cb = quicly_test_tx_stop_cb;
+	    }
 	  ctx->app_err_code = 0x999;
 	  callbacks->on_send_stop (&stream, QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (0x100));
+	  if (!tests[i].tx_shutdown)
+	    {
+	      callbacks->on_send_stop (&stream, QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (0x100));
+	      QUICLY_TEST (clib_fifo_elts (app_wrk->wrk_evts[thread_index]) == 1,
+			   "STOP_SENDING with TX open queues exactly one event");
+	      clib_fifo_sub1 (app_wrk->wrk_evts[thread_index], event);
+	      QUICLY_TEST (event.event_type == SESSION_CTRL_EVT_RPC && event.rpc_args.fp &&
+			     pointer_to_uword (event.rpc_args.arg) == session->handle &&
+			     (ctx->flags & QUIC_F_STREAM_TX_CLOSED),
+			   "the directional event reports the closed send side");
+	      ((void (*) (session_t *)) event.rpc_args.fp) (event.rpc_args.arg);
+	      QUICLY_TEST (session->opaque == 1, "the session RPC invokes the stop callback");
+	    }
 	  QUICLY_TEST (session->session_state == SESSION_STATE_READY &&
 			 clib_fifo_elts (app_wrk->wrk_evts[thread_index]) == 0 &&
 			 !(ctx->c_flags & TRANSPORT_CONNECTION_F_ERROR) &&
 			 ctx->app_err_code == 0x999,
-		       "STOP_SENDING after TX shutdown preserves response RX and its error code");
+		       "STOP_SENDING preserves response RX and its error code");
 	}
 
       callbacks->on_receive (&stream, 0, 0, 0);

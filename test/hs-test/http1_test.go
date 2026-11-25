@@ -30,7 +30,7 @@ import (
 
 func init() {
 	RegisterVethTests(HttpCliTest, HttpCliConnectErrorTest, HttpCliConnectNoRouteTest,
-		HttpCliListenTcpPortInUseTest, HttpCliTlsTest, HttpCliEchoTest)
+		HttpCliListenTcpPortInUseTest, HttpCliTlsTest, HttpCliEchoTest, HttpExpectContinueEndToEndTest)
 	RegisterSoloVethTests(HttpClientGetMemLeakTest)
 	RegisterHttp1Suite("Http1Suite", HeaderServerTest, HttpPersistentConnectionTest, HttpPipeliningTest,
 		HttpMethodsTest, HttpMethodsFragmentedTest, HttpHeadResponseFramingTest, HttpCliOptionsStreamTest,
@@ -53,6 +53,7 @@ func init() {
 		HttpClientRedirect302Test, HttpClientRedirect308Test, HttpClientRedirectLimitTest, HttpClientRedirectGetMemLeakTest,
 		HttpClientRedirectPostMemLeakTest, HttpClientFragmentedHeadersTest)
 	RegisterHttp1Suite("Http1SuiteStreaming", HttpCliSmallRxFifoReplyTest, HttpCliFragmentedReplyTest,
+		Http1ExpectContinueClientTest, Http1ExpectContinueServerTest, Http1ExpectContinueServerLifecycleTest,
 		HttpCliClientGetBodyTest, HttpCliClientGetBodyPtrTest,
 		HttpCliClientPostBodyTest, HttpCliClientPostBodyPtrTest,
 		HttpCliClientPutBodyTest, HttpCliClientPutBodyPtrTest,
@@ -95,6 +96,472 @@ func init() {
 
 const wwwRootPath = "/tmp/www_root"
 const defaultHttpTimeout = time.Second * 10
+
+const (
+	httpExpectQuiet = 40 * time.Millisecond
+	httpExpectReply = "expect-continue-complete"
+)
+
+type httpExpectClientCase struct {
+	name, options, action string
+	tls, fragmented       bool
+	coalesced             bool
+	finalStatus           string
+}
+
+func httpExpectClientCases() []httpExpectClientCase {
+	return []httpExpectClientCase{
+		{name: "inline", action: "continue"},
+		{name: "immediate continue", action: "immediate", options: "use-ptr"},
+		{name: "pointer over TLS", action: "continue", options: "use-ptr", tls: true, fragmented: true},
+		{name: "producer EOF while gated", action: "continue", options: "stream", fragmented: true},
+		{name: "producer EOF after drain", action: "continue", options: "stream eof-after-drain"},
+		{name: "bounded fallback", action: "fallback", options: "stream"},
+		{name: "bounded fallback with a pointer body", action: "fallback", options: "use-ptr"},
+		{name: "final rejection before continue", action: "reject"},
+		{name: "final rejection with a pending producer", action: "reject", options: "stream"},
+		{name: "100 and final rejection in the same read", action: "reject", coalesced: true},
+		{name: "final success before continue", action: "reject", finalStatus: "200"},
+		{name: "response EOF while waiting", action: "fin-before-continue", options: "use-ptr"},
+		{name: "continue without final response", action: "fin", options: "stream"},
+		{name: "reset while waiting", action: "reset", options: "use-ptr"},
+		{name: "empty streamed upload", action: "empty", options: "stream"},
+	}
+}
+
+func (tc httpExpectClientCase) body() string {
+	switch tc.action {
+	case "empty":
+		return ""
+	case "reject", "reset":
+		return strings.Repeat("expect-body!", 8192)
+	}
+	if strings.Contains(tc.options, "eof-after-drain") {
+		return strings.Repeat("expect-body!", 8192)
+	}
+	return "expect-body"
+}
+
+func (tc httpExpectClientCase) outputError(output string) error {
+	want := httpExpectReply
+	if strings.HasPrefix(tc.action, "fin") || tc.action == "reset" {
+		want = "transport closed"
+	}
+	if !strings.Contains(output, want) {
+		return fmt.Errorf("expected %q from CLI, got %q", want, output)
+	}
+	return nil
+}
+
+func (tc httpExpectClientCase) rejectStatus() string {
+	if tc.finalStatus != "" {
+		return tc.finalStatus
+	}
+	return "417"
+}
+
+type httpExpectClientPeer struct {
+	quiet   func() error
+	interim func(status string, fragmented bool) error
+	upload  func() (string, error)
+	final   func(status, body string) error
+	abort   func(reset bool) error
+	reject  func() error
+}
+
+func (p httpExpectClientPeer) exchange(tc httpExpectClientCase) error {
+	if tc.action != "empty" && tc.action != "immediate" {
+		if err := p.quiet(); err != nil {
+			return fmt.Errorf("before any response: %w", err)
+		}
+	}
+	switch tc.action {
+	case "immediate":
+		if err := p.interim("100", false); err != nil {
+			return err
+		}
+	case "continue", "fin":
+		for _, status := range []string{"103", "199"} {
+			if err := p.interim(status, false); err != nil {
+				return err
+			}
+		}
+		if err := p.quiet(); err != nil {
+			return fmt.Errorf("after 103 and 199: %w", err)
+		}
+		if err := p.interim("100", tc.fragmented); err != nil {
+			return err
+		}
+		if tc.action == "fin" {
+			return p.abort(false)
+		}
+		if err := p.interim("100", false); err != nil {
+			return err
+		}
+	case "reject":
+		return p.reject()
+	case "fin-before-continue":
+		return p.abort(false)
+	case "reset":
+		return p.abort(true)
+	}
+	body, err := p.upload()
+	if err != nil {
+		return fmt.Errorf("reading upload after %s: %w", tc.action, err)
+	}
+	if body != tc.body() {
+		return fmt.Errorf("upload length %d and contents differ from expected %d bytes", len(body), len(tc.body()))
+	}
+	if tc.action == "fallback" {
+		// A late 100 can arrive after the request direction has already ended.
+		if err := p.interim("100", false); err != nil {
+			return err
+		}
+	}
+	return p.final("200", httpExpectReply)
+}
+
+func httpExpectNoBytes(r io.Reader, deadline func(time.Time) error) error {
+	if err := deadline(time.Now().Add(httpExpectQuiet)); err != nil {
+		return err
+	}
+	var first [1]byte
+	n, err := r.Read(first[:])
+	if resetErr := deadline(time.Now().Add(6 * time.Second)); resetErr != nil {
+		return resetErr
+	}
+	var timeout net.Error
+	if n == 0 && errors.As(err, &timeout) && timeout.Timeout() {
+		return nil
+	}
+	return fmt.Errorf("expected no request bytes, read %d byte(s), error %v", n, err)
+}
+
+func httpExpectListen(host, alpn string, secure bool) (net.Listener, string) {
+	listener, err := net.Listen("tcp", net.JoinHostPort(host, "0"))
+	AssertNil(err)
+	AssertNil(listener.(*net.TCPListener).SetDeadline(time.Now().Add(defaultHttpTimeout)))
+	if !secure {
+		return listener, "http"
+	}
+	cert, err := tls.LoadX509KeyPair("resources/cert/localhost.crt", "resources/cert/localhost.key")
+	if err != nil {
+		listener.Close()
+	}
+	AssertNil(err)
+	return tls.NewListener(listener, &tls.Config{Certificates: []tls.Certificate{cert}, NextProtos: []string{alpn}}), "https"
+}
+
+func httpExpectTCPPeer(listener net.Listener, exchange func(net.Conn) error) <-chan error {
+	done := make(chan error, 1)
+	go func() {
+		done <- func() error {
+			conn, err := listener.Accept()
+			if err != nil {
+				return err
+			}
+			defer conn.Close()
+			if err := conn.SetDeadline(time.Now().Add(6 * time.Second)); err != nil {
+				return err
+			}
+			return exchange(conn)
+		}()
+	}()
+	return done
+}
+
+func httpExpectRunClient(vpp *VppInstance, tc httpExpectClientCase, version, uri string) string {
+	body := tc.body()
+	data := ""
+	if len(body) > 0 {
+		file := "/tmp/http-expect-body"
+		AssertNil(vpp.Container.CreateFile(file, body))
+		data = "file " + file
+	}
+	return vpp.Vppctl("http cli client %s method post fifo-size 4 %s header Expect:100-continue %s uri %s",
+		version, tc.options, data, uri)
+}
+
+func Http1ExpectContinueClientTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	var failures []string
+	for _, tc := range httpExpectClientCases() {
+		listener, scheme := httpExpectListen(s.HostAddr(), "http/1.1", tc.tls)
+		done := httpExpectTCPPeer(listener, func(conn net.Conn) error {
+			reader := bufio.NewReader(conn)
+			request, err := http.ReadRequest(reader)
+			if err != nil {
+				return err
+			}
+			if tc.action != "empty" && !strings.EqualFold(request.Header.Get("Expect"), "100-continue") {
+				return fmt.Errorf("missing 100-continue expectation in request")
+			}
+			quiet := func() error { return httpExpectNoBytes(reader, conn.SetReadDeadline) }
+			final := func(status, body string) error {
+				_, err := fmt.Fprintf(conn, "HTTP/1.1 %s Final\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s",
+					status, len(body), body)
+				return err
+			}
+			return (httpExpectClientPeer{
+				quiet: quiet,
+				interim: func(status string, fragmented bool) error {
+					if fragmented {
+						if _, err := fmt.Fprintf(conn, "HTTP/1.1 %s Interim\r\n\r", status); err != nil {
+							return err
+						}
+						if err := quiet(); err != nil {
+							return fmt.Errorf("before the last byte of interim headers: %w", err)
+						}
+						_, err := io.WriteString(conn, "\n")
+						return err
+					}
+					_, err := fmt.Fprintf(conn, "HTTP/1.1 %s Interim\r\n\r\n", status)
+					return err
+				},
+				upload: func() (string, error) {
+					body, err := io.ReadAll(request.Body)
+					return string(body), err
+				},
+				final: final,
+				abort: func(reset bool) error {
+					if reset {
+						return conn.(*net.TCPConn).SetLinger(0)
+					}
+					if err := conn.(*net.TCPConn).CloseWrite(); err != nil {
+						return err
+					}
+					_, err := io.Copy(io.Discard, reader)
+					return err
+				},
+				reject: func() error {
+					interim := ""
+					if tc.coalesced {
+						interim = "HTTP/1.1 100 Continue\r\n\r\n"
+					}
+					_, err := fmt.Fprintf(conn, "%sHTTP/1.1 %s Final\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s",
+						interim, tc.rejectStatus(), len(httpExpectReply), httpExpectReply)
+					if err != nil {
+						return err
+					}
+					n, err := io.Copy(io.Discard, reader)
+					if n != 0 {
+						return fmt.Errorf("sent %d request bytes after final response", n)
+					}
+					return err
+				},
+			}).exchange(tc)
+		})
+		output := httpExpectRunClient(vpp, tc, "", scheme+"://"+listener.Addr().String()+"/echo")
+		listener.Close()
+		if err := <-done; err != nil {
+			failures = append(failures, fmt.Sprintf("%s: %v", tc.name, err))
+		} else if err := tc.outputError(output); err != nil {
+			failures = append(failures, fmt.Sprintf("%s: %v", tc.name, err))
+		}
+	}
+	AssertEmpty(failures)
+}
+
+type httpExpectServerCase struct {
+	name, path, body, status string
+	expect                   []string
+	streamed, fragmented     bool
+}
+
+func httpExpectServerCases() []httpExpectServerCase {
+	return []httpExpectServerCase{
+		{name: "fixed length", path: "/echo", body: "expect-body", status: "200",
+			expect: []string{"100-continue"}},
+		{name: "fragmented request with repeated expectations", path: "/echo", body: "expect-body", status: "200",
+			expect: []string{"x-unsupported", "x-other, 100-ConTinue"}, fragmented: true},
+		{name: "streamed body across FIFO boundaries", path: "/echo-stream-drain",
+			body: strings.Repeat("expect-body!", 8192), status: "200",
+			expect: []string{"100-continue"}, streamed: true},
+	}
+}
+
+func http1ExpectReadReply(reader *bufio.Reader) (*http.Response, error) {
+	return http.ReadResponse(reader, &http.Request{Method: "POST"})
+}
+
+func Http1ExpectContinueServerTest(s *Http1Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	for _, secure := range []bool{false, true} {
+		address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+		scheme := "http"
+		if secure {
+			address = net.JoinHostPort(s.VppAddr(), s.Ports.Https)
+			scheme = "https"
+		}
+		AssertEmpty(vpp.Vppctl("http cli server http1-only fifo-size 4 listener add uri %s://%s", scheme, address))
+		for _, tc := range httpExpectServerCases() {
+			By(fmt.Sprintf("%s over %s", tc.name, scheme))
+			func() {
+				dialer := net.Dialer{Timeout: defaultHttpTimeout}
+				var conn net.Conn
+				var err error
+				if secure {
+					conn, err = tls.DialWithDialer(&dialer, "tcp", address, &tls.Config{InsecureSkipVerify: true,
+						NextProtos: []string{"http/1.1"}})
+				} else {
+					conn, err = dialer.Dial("tcp", address)
+				}
+				AssertNil(err)
+				defer conn.Close()
+				AssertNil(conn.SetDeadline(time.Now().Add(5 * time.Second)))
+				reader := bufio.NewReader(conn)
+				wire := fmt.Sprintf("POST %s HTTP/1.1\r\nHost: %s\r\n", tc.path, address)
+				for _, expect := range tc.expect {
+					wire += "eXpEcT:\t" + expect + " \r\n"
+				}
+				if tc.streamed {
+					wire += "Transfer-Encoding: chunked\r\n"
+				} else {
+					wire += fmt.Sprintf("Content-Length: %d\r\n", len(tc.body))
+				}
+				wire += "\r\n"
+				if tc.fragmented {
+					for _, part := range []string{wire[:len(wire)-2], wire[len(wire)-2 : len(wire)-1]} {
+						_, err = io.WriteString(conn, part)
+						AssertNil(err)
+						AssertNil(httpExpectNoBytes(reader, conn.SetReadDeadline))
+					}
+					wire = wire[len(wire)-1:]
+				}
+				_, err = io.WriteString(conn, wire)
+				AssertNil(err)
+				response, err := http1ExpectReadReply(reader)
+				AssertNil(err, "expected 100 before sending request body")
+				AssertHttpStatus(response, http.StatusContinue)
+				AssertHttpHeaderNotPresent(response, "Content-Length")
+				AssertEmpty(response.TransferEncoding)
+				AssertNil(response.Body.Close())
+				body := tc.body
+				if tc.streamed {
+					body = httpCliChunkedBody(body)
+				}
+				_, err = io.WriteString(conn, body)
+				AssertNil(err)
+				response, err = http1ExpectReadReply(reader)
+				AssertNil(err)
+				AssertHttpStatus(response, http.StatusOK)
+				data, err := io.ReadAll(response.Body)
+				AssertNil(err)
+				AssertEqual(tc.body, string(data))
+				AssertNil(response.Body.Close())
+				if !tc.streamed {
+					_, err = io.WriteString(conn, "POST /echo HTTP/1.1\r\nHost: example.com\r\nContent-Length: 0\r\n\r\n")
+					AssertNil(err)
+					response, err = http1ExpectReadReply(reader)
+					AssertNil(err)
+					AssertHttpStatus(response, http.StatusOK)
+					AssertNil(response.Body.Close())
+				}
+			}()
+		}
+	}
+}
+
+func Http1ExpectContinueServerLifecycleTest(s *Http1Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	AssertEmpty(s.Containers.Vpp.VppInstance.Vppctl("http cli server http1-only fifo-size 4 uri http://%s", address))
+	for _, tc := range []struct {
+		name, wire string
+		status     int
+	}{
+		{"known empty", "POST /echo HTTP/1.1\r\nHost: example.com\r\nExpect: 100-continue\r\nContent-Length: 0\r\n\r\n", 200},
+		{"early application reply", "POST /show/version HTTP/1.1\r\nHost: example.com\r\nExpect: 100-continue\r\nContent-Length: 8\r\n\r\n", 405},
+		{"HTTP/1.0", "POST /echo HTTP/1.0\r\nHost: example.com\r\nExpect: 100-continue\r\nContent-Length: 8\r\n\r\n", 0},
+		{"invalid framing", "POST /echo HTTP/1.1\r\nHost: example.com\r\nExpect: 100-continue\r\nContent-Length: x\r\n\r\n", 400},
+		{"eager upload", "POST /echo HTTP/1.1\r\nHost: example.com\r\nExpect: 100-continue\r\nContent-Length: 4\r\n\r\nbody", 200},
+		{"unsupported expectation with eager upload", "POST /echo HTTP/1.1\r\nHost: example.com\r\nExpect: x-unsupported\r\nContent-Length: 4\r\n\r\nbody", 200},
+		{"FIN before complete request headers", "POST /echo HTTP/1.1\r\nHost: example.com\r\nExpect: 100-continue\r\n", 0},
+		{"FIN before declared body ends", "POST /echo HTTP/1.1\r\nHost: example.com\r\nExpect: 100-continue\r\nContent-Length: 8\r\n\r\n", 0},
+	} {
+		By(tc.name)
+		func() {
+			conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+			AssertNil(err)
+			defer conn.Close()
+			AssertNil(conn.SetDeadline(time.Now().Add(5 * time.Second)))
+			_, err = io.WriteString(conn, tc.wire)
+			AssertNil(err)
+			reader := bufio.NewReader(conn)
+			if tc.name == "FIN before declared body ends" {
+				response, err := http1ExpectReadReply(reader)
+				AssertNil(err)
+				AssertHttpStatus(response, http.StatusContinue)
+				AssertNil(response.Body.Close())
+				_, err = io.WriteString(conn, "short")
+				AssertNil(err)
+			}
+			if tc.status == 0 {
+				AssertNil(conn.(*net.TCPConn).CloseWrite())
+			}
+			if tc.name == "FIN before complete request headers" {
+				_, err := reader.Peek(1)
+				AssertEqual(io.EOF, err)
+				return
+			}
+			response, err := http1ExpectReadReply(reader)
+			if tc.name == "HTTP/1.0" || tc.name == "FIN before declared body ends" {
+				if err != nil {
+					var timeout net.Error
+					AssertEqual(false, errors.As(err, &timeout) && timeout.Timeout())
+					return
+				}
+				AssertNotEqual(http.StatusContinue, response.StatusCode)
+				AssertEqual(true, response.StatusCode >= 400)
+				return
+			}
+			AssertNil(err)
+			if tc.name == "eager upload" && response.StatusCode == http.StatusContinue {
+				AssertNil(response.Body.Close())
+				response, err = http1ExpectReadReply(reader)
+				AssertNil(err)
+			}
+			AssertHttpStatus(response, tc.status)
+			if tc.status == 405 {
+				AssertEqual(true, response.Close, "unread request body requires closing the connection")
+			}
+			body, err := io.ReadAll(response.Body)
+			AssertNil(err)
+			AssertNil(response.Body.Close())
+			if tc.name == "eager upload" || tc.name == "unsupported expectation with eager upload" {
+				AssertEqual("body", string(body))
+			}
+		}()
+	}
+}
+
+func HttpExpectContinueEndToEndTest(s *VethsSuite) {
+	server, client := s.Containers.ServerVpp.VppInstance, s.Containers.ClientVpp.VppInstance
+	ip := s.Interfaces.Server.Ip4AddressString()
+	clear := "http://" + net.JoinHostPort(ip, s.Ports.Port1)
+	secure := "https://" + net.JoinHostPort(ip, s.Ports.Port2)
+	AssertEmpty(server.Vppctl("http cli server fifo-size 4 uri %s", clear))
+	AssertEmpty(server.Vppctl("http cli server http3-enabled listener add uri %s", secure))
+	var failures []string
+	for _, version := range []struct{ name, option, uri string }{
+		{"HTTP/1", "", clear},
+		{"HTTP/2", "http2", secure},
+		{"HTTP/3", "http3", secure},
+	} {
+		for _, options := range []string{"", "use-ptr", "stream", "stream eof-after-drain"} {
+			server.Vppctl("clear http stats")
+			client.Vppctl("clear http stats")
+			tc := httpExpectClientCase{action: "continue", options: options}
+			output := httpExpectRunClient(client, tc, version.option, version.uri+"/echo")
+			sent, received := server.Vppctl("show http stats"), client.Vppctl("show http stats")
+			if strings.TrimSpace(output) != tc.body() ||
+				!strings.Contains(sent, "2 responses sent") || !strings.Contains(received, "2 responses received") {
+				failures = append(failures, fmt.Sprintf("%s %q: expected an exact echo and two responses, got %d echo bytes\nserver: %s\nclient: %s",
+					version.name, options, len(strings.TrimSpace(output)), sent, received))
+			}
+		}
+	}
+	AssertEmpty(failures)
+}
 
 // Use complete HTTP implementations as peers as well as the raw framing peers.
 // Both directions stream, and response trailers must not become application data.

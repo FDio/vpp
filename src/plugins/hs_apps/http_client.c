@@ -511,6 +511,7 @@ hc_session_connected_callback (u32 app_index, u32 ho_index, session_t *s,
 	wrk->msg.data.body_len = 0;
 
       wrk->msg.type = HTTP_MSG_REQUEST;
+      wrk->msg.data.flags = 0;
       /* request target len must be without null termination */
       wrk->msg.data.target_path_len = strlen ((char *) hcm->target);
       /* custom headers */
@@ -698,6 +699,7 @@ hc_redirect (session_t *s, hc_worker_t *wrk, hc_session_t *hc_session,
 
       wrk->msg.method_type = hcm->req_method;
       wrk->msg.type = HTTP_MSG_REQUEST;
+      wrk->msg.data.flags = 0;
       /* request target len must be without null termination */
       wrk->msg.data.target_path_len = strlen ((char *) hcm->target);
       /* custom headers */

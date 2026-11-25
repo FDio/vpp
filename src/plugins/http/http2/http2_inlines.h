@@ -78,6 +78,9 @@ http2_req_update_peer_window (http_worker_t *wrk, http_ctx_t *hc, http_ctx_t *re
     return -1;
   req->peer_stream_window = (i32) new_value;
   HTTP_DBG (1, "new window size %ld", req->peer_stream_window);
+  if ((req->req_flags & (HTTP_REQ_F_TX_HEADERS_PENDING | HTTP_REQ_F_TX_CANCELLED)) ||
+      http_req_waiting_continue (req))
+    return 0;
   /* Late credit must not restart an already finished streaming producer. */
   if ((req->req_flags & HTTP_REQ_F_TX_STREAMING) && !req->tx_buf.vft)
     return 0;

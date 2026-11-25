@@ -756,8 +756,29 @@ coding, DATA frames, or application EOF. Status 304 supports both known and
 unknown representation lengths. Set ``body_len`` to zero for statuses 1xx,
 204, and 205. The plugin omits Content-Length for 1xx and 204.
 
-The plugin consumes valid informational replies internally, except for HTTP/1
-protocol switching. The request stays active while waiting for a final reply,
-and any active request upload can continue. Automatic Expect/100-continue
-upload negotiation and forwarding informational responses to proxy applications
-are not provided.
+Informational replies stay out of the application receive FIFO, except for
+HTTP/1 protocol switching. The request stays active while waiting for a final
+reply, and any active request upload can continue.
+
+For a client request, the application writes ``Expect: 100-continue`` in the
+headers and sets ``HTTP_MSG_DATA_F_EXPECT_CONTINUE`` in ``msg.data.flags``.
+An in-process application registers a callback with
+``http_set_continue_callback()`` on the session worker before submitting the
+request. The transport pauses the body after queuing the request headers and
+calls the callback with ``HTTP_CONTINUE_HEADERS_SENT``. It reports a valid 100
+received while the body is paused as ``HTTP_CONTINUE_RECEIVED``.
+
+The application calls ``http_resume_request_body()`` on the session worker
+when it decides to send the body. The CLI client does so on receipt of 100 or
+after one second. Callbacks run on the session worker and may resume the body
+directly. Applications that need to close or reset a session from the callback
+schedule that action for later. Final replies arrive through the normal
+receive FIFO, and the application decides whether to retry the request.
+Applications that reuse a session cancel the previous request's fallback
+timer before submitting another request.
+
+For a server request, the transport sets the same flag in ``msg.data.flags``
+when the parsed headers contain ``Expect: 100-continue``. The application
+validates the request headers, then calls ``http_accept_request_body()`` from
+the session's worker before waiting for the body, or sends a final reply if the
+request can be answered from the headers. The CLI server uses this API.
