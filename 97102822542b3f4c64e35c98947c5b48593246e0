@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d2746d2d_cbea0d5e",
+        "filename": "src/plugins/http/http_plugin.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 768,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-25T09:59:52Z",
+      "side": 1,
+      "message": "why should be this handled by http transport? this is app responsibility, in http transport we just allow this step in state machine if app ask for it explicitly, as indicator that client app want use \"Expect: 100-continue\" I would add flag member to http_msg_data_t, we have hole between type and len anyway, to avoid scanning app headers, app still emit header itself because order matter in header with multiple values. in http transport we just validate that interim response conform rules defined in HTTP RFCs",
+      "range": {
+        "startLine": 764,
+        "startChar": 53,
+        "endLine": 768,
+        "endChar": 33
+      },
+      "revId": "97102822542b3f4c64e35c98947c5b48593246e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "17711aef_e3f00d82",
+        "filename": "src/plugins/http/http_plugin.rst",
+        "patchSetId": 1
+      },
+      "lineNbr": 776,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-25T09:59:52Z",
+      "side": 1,
+      "message": "again we should just allow this step in state machine and let app handle it. to make it easier for, reverse proxy, apps we should add check if request contain \"Expect: 100-continue\" during headers parsing and set the same flag in http_msg_data_t. http transport just make sure that interim response conform rules defined in HTTP RFCs",
+      "range": {
+        "startLine": 770,
+        "startChar": 0,
+        "endLine": 776,
+        "endChar": 0
+      },
+      "revId": "97102822542b3f4c64e35c98947c5b48593246e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4c32eee5_138bf0c5",
+        "filename": "src/vnet/session/transport_types.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 465,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-25T09:59:52Z",
+      "side": 1,
+      "message": "this should not be attributes, things like this need to be handled via session layer events",
+      "range": {
+        "startLine": 465,
+        "startChar": 1,
+        "endLine": 465,
+        "endChar": 40
+      },
+      "revId": "97102822542b3f4c64e35c98947c5b48593246e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
