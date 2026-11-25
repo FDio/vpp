@@ -253,6 +253,7 @@ class TestVPPInterfacesQemu:
 
         # Initialize teardown state before any setup operation can fail.
         self.tap_interfaces = []
+        self.af_xdp_interfaces = []
         self.memif_interfaces = []
         self.ingress_if_idxes = []
         self.egress_if_idxes = []
@@ -329,6 +330,21 @@ class TestVPPInterfacesQemu:
 
         # Handle client interface types
         delete_all_host_interfaces(self.if_history_name)
+        # Prepare both veth pairs first so their settling periods can overlap.
+        af_xdp_links = {}
+        prefixes = layer2 if x_connect_mode == "L2" else layer3
+        for side, namespace, if_types in (
+            ("client", self.client_namespace, client_if_types),
+            ("server", self.server_namespace, server_if_types),
+        ):
+            if "af_xdp" in if_types:
+                af_xdp_links[side] = self.prepare_af_xdp_link(
+                    namespace,
+                    side,
+                    prefixes[f"{side}_ip4_prefix"],
+                    prefixes[f"{side}_ip6_prefix"],
+                )
+
         for client_if_type in client_if_types:
             if client_if_type == "af_packet":
                 (
@@ -419,18 +435,7 @@ class TestVPPInterfacesQemu:
             elif client_if_type == "af_xdp":
                 self.ingress_if_idx = self.create_af_xdp(
                     namespace=self.client_namespace,
-                    host_side_name=af_xdp_config["iprf_client_interface_on_linux"],
-                    vpp_side_name=af_xdp_config["iprf_client_interface_on_vpp"],
-                    ip4_prefix=(
-                        layer2["client_ip4_prefix"]
-                        if x_connect_mode == "L2"
-                        else layer3["client_ip4_prefix"]
-                    ),
-                    ip6_prefix=(
-                        layer2["client_ip6_prefix"]
-                        if x_connect_mode == "L2"
-                        else layer3["client_ip6_prefix"]
-                    ),
+                    link=af_xdp_links["client"],
                     version=client_if_version,
                     multi_buffer=enable_client_if_multi_buffer,
                     busy_poll_usecs=client_if_busy_poll_usecs,
@@ -514,10 +519,7 @@ class TestVPPInterfacesQemu:
             elif server_if_type == "af_xdp":
                 self.egress_if_idx = self.create_af_xdp(
                     namespace=self.server_namespace,
-                    host_side_name=af_xdp_config["iprf_server_interface_on_linux"],
-                    vpp_side_name=af_xdp_config["iprf_server_interface_on_vpp"],
-                    ip4_prefix=server_ip4_prefix,
-                    ip6_prefix=server_ip6_prefix,
+                    link=af_xdp_links["server"],
                     version=server_if_version,
                     multi_buffer=enable_server_if_multi_buffer,
                     busy_poll_usecs=server_if_busy_poll_usecs,
@@ -878,103 +880,54 @@ class TestVPPInterfacesQemu:
         else:
             return False
 
+    def prepare_af_xdp_link(self, namespace, side, ip4_prefix, ip6_prefix):
+        """Create and verify a veth pair before its AF_XDP settling period."""
+        suffix = network_fixture_suffix()
+        host_name = af_xdp_config[f"iprf_{side}_interface_on_linux"] + suffix
+        vpp_name = af_xdp_config[f"iprf_{side}_interface_on_vpp"] + suffix
+
+        create_host_interface(
+            self.if_history_name,
+            namespace,
+            ip4_prefix,
+            ip6_prefix,
+            vpp_if_name=vpp_name,
+            host_if_name=host_name,
+        )
+
+        for ifname, prefix in (
+            (vpp_name, ["ip"]),
+            (host_name, ["ip", "netns", "exec", namespace, "ip"]),
+        ):
+            for attempt in range(5):
+                check = subprocess.run(
+                    prefix + ["link", "show", "dev", ifname],
+                    capture_output=True,
+                    text=True,
+                )
+                if check.returncode == 0:
+                    break
+                self.logger.warning(
+                    f"AF_XDP link {ifname} not ready, attempt {attempt + 1}/5"
+                )
+                time.sleep(0.5)
+            else:
+                raise RuntimeError(f"AF_XDP link {ifname} does not exist")
+        return host_name, vpp_name, time.monotonic() + 1
+
     def create_af_xdp(
         self,
         namespace,
-        host_side_name,
-        vpp_side_name,
-        ip4_prefix,
-        ip6_prefix,
+        link,
         version,
         multi_buffer=0,
         busy_poll_usecs=0,
         busy_poll_budget=0,
     ):
-        """Create an AF_XDP interface and configure it in VPP and Linux."""
+        """Attach a VPP AF_XDP interface after the veth pair has settled."""
+        unique_host_side_name, unique_vpp_side_name, settled_at = link
         try:
-            # Generate unique random suffixes for interface names to prevent conflicts
-            random_suffix = network_fixture_suffix()
-            unique_host_side_name = f"{host_side_name}{random_suffix}"
-            unique_vpp_side_name = f"{vpp_side_name}{random_suffix}"
-
-            self.logger.debug(
-                f"Creating AF_XDP interfaces with names: {unique_host_side_name} and {unique_vpp_side_name}"
-            )
-
-            # Clean up any existing interfaces with the same name
-            os.system(
-                f"ip netns exec {namespace} ip link del {unique_host_side_name} 2>/dev/null || true"
-            )
-            os.system(f"ip link del {unique_vpp_side_name} 2>/dev/null || true")
-
-            # Create the host interface
-            create_host_interface(
-                self.if_history_name,
-                namespace,
-                ip4_prefix,
-                ip6_prefix,
-                vpp_if_name=unique_vpp_side_name,
-                host_if_name=unique_host_side_name,
-            )
-
-            # Verify that the host interfaces were created successfully
-            max_check_attempts = 5
-            check_interval = 0.5
-
-            # Check for VPP-side interface
-            for attempt in range(max_check_attempts):
-                vpp_if_check = subprocess.run(
-                    ["ip", "link", "show", "dev", unique_vpp_side_name],
-                    capture_output=True,
-                    text=True,
-                )
-                if vpp_if_check.returncode == 0:
-                    self.logger.debug(
-                        f"VPP-side interface {unique_vpp_side_name} exists"
-                    )
-                    break
-                self.logger.warning(
-                    f"VPP-side interface {unique_vpp_side_name} not ready, attempt {attempt+1}/{max_check_attempts}"
-                )
-                time.sleep(check_interval)
-            else:
-                raise Exception(
-                    f"VPP-side interface {unique_vpp_side_name} does not exist after {max_check_attempts} checks"
-                )
-
-            # Check for namespace-side interface
-            for attempt in range(max_check_attempts):
-                host_if_check = subprocess.run(
-                    [
-                        "ip",
-                        "netns",
-                        "exec",
-                        namespace,
-                        "ip",
-                        "link",
-                        "show",
-                        "dev",
-                        unique_host_side_name,
-                    ],
-                    capture_output=True,
-                    text=True,
-                )
-                if host_if_check.returncode == 0:
-                    self.logger.debug(
-                        f"Host-side interface {unique_host_side_name} exists in namespace {namespace}"
-                    )
-                    break
-                self.logger.warning(
-                    f"Host-side interface {unique_host_side_name} not ready, attempt {attempt+1}/{max_check_attempts}"
-                )
-                time.sleep(check_interval)
-            else:
-                raise Exception(
-                    f"Host-side interface {unique_host_side_name} does not exist in namespace {namespace} after {max_check_attempts} checks"
-                )
-
-            # Add delay to ensure host interface is fully initialized
-            time.sleep(1)
+            time.sleep(max(0, settled_at - time.monotonic()))
 
             af_xdp_flags = VppEnum.vl_api_af_xdp_flag_t
             flags = 0
@@ -1025,6 +978,7 @@ class TestVPPInterfacesQemu:
                 )
 
             sw_if_index = result.sw_if_index
+            self.af_xdp_interfaces.append(sw_if_index)
 
             if busy_poll_usecs or busy_poll_budget:
                 expected_usecs = busy_poll_usecs or 20
@@ -1043,11 +997,6 @@ class TestVPPInterfacesQemu:
             self.linux_interfaces.append(["", unique_vpp_side_name])
             self.linux_interfaces.append([namespace, unique_host_side_name])
 
-            # Track AF_XDP interfaces for tearDown
-            if not hasattr(self, "af_xdp_interfaces"):
-                self.af_xdp_interfaces = []
-            self.af_xdp_interfaces.append(sw_if_index)
-
             # Add to ingress/egress lists based on namespace
             if namespace == self.client_namespace:
                 self.ingress_if_idxes.append(sw_if_index)
@@ -1062,14 +1011,6 @@ class TestVPPInterfacesQemu:
 
         except Exception as e:
             self.logger.error(f"Error creating AF_XDP interface: {e}")
-            # Cleanup on failure
-            try:
-                os.system(
-                    f"ip netns exec {namespace} ip link del {unique_host_side_name} 2>/dev/null || true"
-                )
-                os.system(f"ip link del {unique_vpp_side_name} 2>/dev/null || true")
-            except:
-                pass
             raise
 
 
