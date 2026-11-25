@@ -135,10 +135,8 @@ def create_test(test_name, test, ip_version, mtu):
                 memif_sock_path=self.get_memif_sock_path(), logger=self.logger
             )
 
-        # Start an instance of an iperf server using
-        # a unique port. Save the iperf cmdline for
-        # terminating the iperf_server process after the test.
-        self.iperf_cmd = start_iperf(
+        # Each test owns its server and reaps it even when the client fails.
+        server, retry_not_before = start_iperf(
             ip_version=ip_version,
             client_ns=self.client_namespace,
             server_ns=self.server_namespace,
@@ -147,6 +145,7 @@ def create_test(test_name, test, ip_version, mtu):
             logger=self.logger,
             cpus=self.helper_affinity(),
         )
+        self.addCleanup(stop_iperf, server)
         # Send traffic between iperf client & server
         self.assertTrue(
             start_iperf(
@@ -160,6 +159,7 @@ def create_test(test_name, test, ip_version, mtu):
                 duration=2,
                 logger=self.logger,
                 cpus=self.helper_affinity(),
+                retry_not_before=retry_not_before,
             )
         )
 
@@ -647,11 +647,6 @@ class TestVPPInterfacesQemu:
         # Clean up namespaces and processes
         try:
             delete_all_namespaces(self.ns_history_file)
-        except Exception:
-            pass
-        try:
-            if hasattr(self, "iperf_cmd"):
-                stop_iperf(" ".join(self.iperf_cmd))
         except Exception:
             pass
         try:
