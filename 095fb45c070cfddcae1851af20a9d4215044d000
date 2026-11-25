@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e60ce1f7_243b8138",
+        "filename": "src/plugins/quic/test/quic_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-25T11:59:13Z",
+      "side": 1,
+      "message": "return value can be ignored in test, we don\u0027t need to validate if it is changed\nhttps://gerrit.fd.io/r/c/vpp/+/48178",
+      "revId": "095fb45c070cfddcae1851af20a9d4215044d000",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
