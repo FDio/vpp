@@ -5,8 +5,8 @@
 import subprocess
 import os
 import sys
+import tempfile
 import time
-import signal
 from asfframework import VppAsfTestCase
 from config import available_cpus
 
@@ -45,7 +45,7 @@ class VppIperf:
         self.server_ip = server_ip
         self.duration = 10
         self.timeout_delay = 20
-        self.server_init_delay = 3
+        self.server_start_timeout = 3
         self.client_retries = 3
         self.client_retry_delay = 3
         self.client_connect_timeout = "3000"
@@ -83,38 +83,62 @@ class VppIperf:
             sys.exit(1)
 
     def start_iperf_server(self):
-        """Starts the  iperf server and returns the process cmdline args."""
-        args = [
-            "ip",
-            "netns",
-            "exec",
-            self.server_ns,
-            self.iperf,
-            "-s",
-            "-D",
-        ]
+        """Start the server and return its process and any early-connect deadline."""
+        netns = ["ip", "netns", "exec", self.server_ns]
+        args = netns + [self.iperf, "-s"]
         args.extend(self.server_args.split())
-        cmd = " ".join(args)
-        self.logger.debug(f"Starting iperf server: {cmd}")
-        try:
-            result = subprocess.run(
+        self.logger.debug("Starting iperf server: %s", " ".join(args))
+        with tempfile.TemporaryFile() as log:
+            server = subprocess.Popen(
                 args,
-                timeout=self.duration + self.timeout_delay,
-                encoding="utf-8",
-                capture_output=True,
+                stdout=log,
+                stderr=subprocess.STDOUT,
                 preexec_fn=lambda: set_iperf_affinity(self.cpus),
             )
-            if result.returncode != 0:
-                raise Exception(
-                    "Error: Failed to start iPerf server",
-                    (result.stdout or "") + (result.stderr or ""),
+            try:
+                return server, self.wait_for_iperf_server(server, netns)
+            except BaseException:
+                stop_iperf(server)
+                log.seek(0)
+                self.logger.error(
+                    "iperf server output: %s",
+                    log.read(4096).decode(errors="replace"),
                 )
-        except subprocess.TimeoutExpired as e:
-            raise Exception(
-                "Error: Timeout expired for iPerf server", self._to_text(e.output)
-            )
-        VppAsfTestCase.sleep(self.server_init_delay)
-        return args[4:]
+                raise
+
+    def wait_for_iperf_server(self, server, netns):
+        """Return the regular client start time if the socket is already listening."""
+        deadline = time.monotonic() + self.server_start_timeout
+        while (
+            os.path.basename(self.iperf) == "iperf3"
+            and (remaining := deadline - time.monotonic()) > 0
+            and server.poll() is None
+        ):
+            try:
+                sockets = subprocess.run(
+                    netns + ["ss", "-H", "-lntup"],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    errors="replace",
+                    timeout=remaining,
+                )
+            except (OSError, subprocess.SubprocessError):
+                break
+            # Check if the expected PID owns the socket.
+            if f"pid={server.pid}," in sockets.stdout and server.poll() is None:
+                return deadline
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            time.sleep(min(0.05, remaining))
+        status = server.poll()
+        if status is None:
+            time.sleep(max(0, deadline - time.monotonic()))
+            status = server.poll()
+        if status is not None:
+            raise RuntimeError(f"iperf server exited with status {status}")
+        return None
 
     @staticmethod
     def _to_text(value):
@@ -124,7 +148,7 @@ class VppIperf:
             return value.decode("utf-8", errors="replace")
         return str(value)
 
-    def start_iperf_client(self):
+    def start_iperf_client(self, retry_not_before=None):
         args = [
             "ip",
             "netns",
@@ -140,15 +164,34 @@ class VppIperf:
         if os.path.basename(self.iperf) == "iperf3" and "--connect-timeout" not in args:
             args.extend(["--connect-timeout", self.client_connect_timeout])
         cmd = " ".join(args)
+
+        def run_client():
+            return subprocess.run(
+                args,
+                timeout=self.duration + self.timeout_delay,
+                encoding="utf-8",
+                capture_output=True,
+                preexec_fn=lambda: set_iperf_affinity(self.cpus),
+            )
+
+        if retry_not_before is not None and time.monotonic() < retry_not_before:
+            result = run_client()
+            # Only a failed control connection can use the regular retry window.
+            if not (
+                result.returncode
+                and not result.stdout
+                and result.stderr.lower().startswith(
+                    "iperf3: error - unable to connect to server"
+                )
+            ):
+                return result
+            delay = retry_not_before - time.monotonic()
+            if delay > 0:
+                VppAsfTestCase.sleep(delay)
+
         for attempt in range(1, self.client_retries + 1):
             try:
-                result = subprocess.run(
-                    args,
-                    timeout=self.duration + self.timeout_delay,
-                    encoding="utf-8",
-                    capture_output=True,
-                    preexec_fn=lambda: set_iperf_affinity(self.cpus),
-                )
+                result = run_client()
                 transient_error = "unable to connect to server" in (
                     (result.stderr or "").lower()
                 )
@@ -171,20 +214,21 @@ class VppIperf:
                     self._to_text(e.output) + self._to_text(e.stderr),
                 )
 
-    def start(self, server_only=False, client_only=False):
+    def start(self, server_only=False, client_only=False, retry_not_before=None):
         """Runs iPerf.
 
-        Starts the iperf server daemon & runs the iperf client.
+        Starts the iperf server or runs the iperf client.
         arguments:-
-        server_only -- start the iperf server daemon only
+        server_only -- start the iperf server only
         client_only -- run the iperf client only
+        retry_not_before -- regular client start time after a failed early connection
         Return True if we have no errors in iPerf client, else False.
         """
         self.ensure_init()
         if not client_only:
             return self.start_iperf_server()
         if not server_only:
-            result = self.start_iperf_client()
+            result = self.start_iperf_client(retry_not_before)
             self.logger.debug(f"Iperf client args: {result.args}")
             self.logger.debug(result.stdout)
             if result.returncode != 0 or result.stderr:
@@ -213,6 +257,7 @@ def start_iperf(
     client_only=False,
     logger=None,
     cpus=None,
+    retry_not_before=None,
 ):
     """Start an iperf connection stream using the iPerf object.
 
@@ -234,6 +279,7 @@ def start_iperf(
     client_only - start the iperf client only
     logger - test logger
     cpus - CPUs on which to run the iPerf process
+    retry_not_before - regular client start time after a failed early connection
     """
     iperf = VppIperf()
     is_iperf3 = os.path.basename(iperf.iperf) == "iperf3"
@@ -260,36 +306,21 @@ def start_iperf(
     iperf.duration = duration
     iperf.logger = logger
     iperf.cpus = cpus
-    return iperf.start(server_only=server_only, client_only=client_only)
+    return iperf.start(
+        server_only=server_only,
+        client_only=client_only,
+        retry_not_before=retry_not_before,
+    )
 
 
-def stop_iperf(iperf_cmd):
-    """Stop the iperf process matching the iperf_cmd string."""
+def stop_iperf(server):
+    """Stop and reap the iperf server started by this test."""
+    server.terminate()
     try:
-        result = subprocess.run(
-            ["pgrep", "-x", "-f", iperf_cmd],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            encoding="utf-8",
-        )
-        pids = result.stdout.strip().split()
-        if not pids:
-            # No matching iperf3 processes found
-            return
-
-        for pid in pids:
-            try:
-                # First send SIGTERM to cleanup and notify the parent process
-                os.kill(int(pid), signal.SIGTERM)
-                time.sleep(2)
-                os.kill(int(pid), 0)  # Check if still alive
-                os.kill(int(pid), signal.SIGKILL)
-            except ProcessLookupError:
-                pass  # Process already exited
-            except Exception as e:
-                print(f"Error terminating iperf3 process {pid}: {e}")
-    except Exception as e:
-        print(f"Failed to run pgrep for '{iperf_cmd}': {e}")
+        server.wait(timeout=2)
+    except subprocess.TimeoutExpired:
+        server.kill()
+        server.wait()
 
 
 if __name__ == "__main__":
