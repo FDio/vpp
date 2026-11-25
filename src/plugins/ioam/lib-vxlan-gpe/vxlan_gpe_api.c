@@ -206,11 +206,10 @@ ioam_vxlan_gpe_init (vlib_main_t * vm)
   vlib_node_t *vxlan_gpe_decap_node = NULL;
   uword next_node = 0;
 
-  sm->gpe_main =
-    vlib_get_plugin_symbol ("vxlan-gpe_plugin.so", "vxlan_gpe_main");
+  sm->gpe_main = vlib_get_plugin_symbol ("vxlan_gpe_plugin.so", "vxlan_gpe_main");
   if (sm->gpe_main == 0)
     {
-      return clib_error_return (0, "vxlan-gpe_plugin.so is not loaded");
+      return clib_error_return (0, "vxlan_gpe_plugin.so is not loaded");
     }
 
   sm->vlib_main = vm;

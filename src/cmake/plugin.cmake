@@ -18,23 +18,26 @@ macro(add_vpp_plugin name)
     "SOURCES;API_FILES;MULTIARCH_SOURCES;MULTIARCH_FORCE_ON;LINK_LIBRARIES;INSTALL_HEADERS;API_TEST_SOURCES;VAT_AUTO_TEST;SUPPORTED_OS_LIST"
     ${ARGN}
   )
+  # the name of a plugin has dashes, the names of its files and targets have underscores
+  string(REPLACE "_" "-" name_d "${name}")
+  string(REPLACE "-" "_" name_c "${name}")
   set(_vpp_exclude_plugin 0)
   if(DEFINED VPP_EXCLUDED_PLUGINS AND NOT VPP_EXCLUDED_PLUGINS STREQUAL "")
     get_property(_vpp_plugins_exclude GLOBAL PROPERTY VPP_PLUGINS_EXCLUDE)
-    list(FIND _vpp_plugins_exclude ${name} _vpp_exclude_idx)
+    list(FIND _vpp_plugins_exclude ${name_d} _vpp_exclude_idx)
     if(NOT _vpp_exclude_idx EQUAL -1)
       list(REMOVE_AT _vpp_plugins_exclude ${_vpp_exclude_idx})
       set_property(GLOBAL PROPERTY VPP_PLUGINS_EXCLUDE "${_vpp_plugins_exclude}")
       set(_vpp_exclude_plugin 1)
     endif()
   endif()
-  set_property(GLOBAL APPEND PROPERTY VPP_PLUGINS_ALL_LIST ${name})
+  set_property(GLOBAL APPEND PROPERTY VPP_PLUGINS_ALL_LIST ${name_d})
   if(DEFINED VPP_PLUGINS AND NOT VPP_PLUGINS STREQUAL "")
     if(VPP_PLUGINS STREQUAL "none")
       return()
     endif()
     get_property(_vpp_plugins_filter GLOBAL PROPERTY VPP_PLUGINS_FILTER)
-    list(FIND _vpp_plugins_filter ${name} _vpp_plugin_idx)
+    list(FIND _vpp_plugins_filter ${name_d} _vpp_plugin_idx)
     if(_vpp_plugin_idx EQUAL -1)
       return()
     endif()
@@ -46,10 +49,10 @@ macro(add_vpp_plugin name)
     endif()
   endif()
   if (PLUGIN_SUPPORTED_OS_LIST AND NOT ${CMAKE_SYSTEM_NAME} IN_LIST PLUGIN_SUPPORTED_OS_LIST)
-    message(WARNING "unsupported OS - ${name} plugin disabled")
+    message(WARNING "unsupported OS - ${name_d} plugin disabled")
     return()
   endif()
-  set(plugin_name ${name}_plugin)
+  set(plugin_name ${name_c}_plugin)
   set(api_includes)
   if(NOT PLUGIN_COMPONENT)
     set(PLUGIN_COMPONENT vpp-plugin-core)
@@ -71,7 +74,7 @@ macro(add_vpp_plugin name)
       ${CMAKE_CURRENT_BINARY_DIR}/${f}.h
       ${CMAKE_CURRENT_BINARY_DIR}/${f}_enum.h
       ${CMAKE_CURRENT_BINARY_DIR}/${f}_types.h
-      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vpp_plugins/${name}/${dir}
+      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vpp_plugins/${name_c}/${dir}
       COMPONENT ${PLUGIN_DEV_COMPONENT}
     )
   endforeach()
@@ -113,13 +116,13 @@ macro(add_vpp_plugin name)
       get_filename_component(dir ${file} DIRECTORY)
       install(
 	FILES ${file}
-	DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vpp_plugins/${name}/${dir}
+	DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vpp_plugins/${name_c}/${dir}
 	COMPONENT vpp-dev
       )
     endforeach()
   endif()
   if(PLUGIN_API_TEST_SOURCES)
-    set(test_plugin_name ${name}_test_plugin)
+    set(test_plugin_name ${name_c}_test_plugin)
     add_library(${test_plugin_name} SHARED ${PLUGIN_API_TEST_SOURCES}
 		${api_includes})
     target_compile_options(${test_plugin_name} PUBLIC ${VPP_DEFAULT_MARCH_FLAGS})
@@ -140,10 +143,10 @@ macro(add_vpp_plugin name)
     )
   endif()
   if (PLUGIN_API_FILES AND NOT PLUGIN_VAT_AUTO_TEST STREQUAL OFF)
-    add_vpp_test_library(${name}_test_plugin ${PLUGIN_API_FILES})
+    add_vpp_test_library(${name_c}_test_plugin ${PLUGIN_API_FILES})
   endif()
 
-  set_property(GLOBAL APPEND PROPERTY VPP_PLUGINS_LIST ${name})
+  set_property(GLOBAL APPEND PROPERTY VPP_PLUGINS_LIST ${name_d})
 
   install(
     TARGETS ${plugin_name}

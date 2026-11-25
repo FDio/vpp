@@ -469,6 +469,7 @@ parser.add_argument(
     dest="excluded_plugins",
     required=False,
     action="append",
+    type=lambda name: name.replace("-", "_"),
     default=[],
     help="Exclude the tests that indicate they require this plugin(s)",
 )

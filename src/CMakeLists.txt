@@ -456,6 +456,7 @@ if(TARGET vnet AND CMAKE_READELF)
 
   get_property(_vnet_export_check_plugins GLOBAL PROPERTY VPP_PLUGINS_LIST)
   foreach(name ${_vnet_export_check_plugins})
+    string(REPLACE "-" "_" name "${name}")
     if(TARGET ${name}_plugin)
       list(APPEND _vnet_export_check_dependencies ${name}_plugin)
       list(APPEND _vnet_export_check_consumers $<TARGET_FILE:${name}_plugin>)
