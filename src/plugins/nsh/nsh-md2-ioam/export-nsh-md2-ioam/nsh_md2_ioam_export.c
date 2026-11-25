@@ -143,7 +143,7 @@ nsh_md2_ioam_export_init (vlib_main_t * vm)
   clib_error_t *error = 0;
 
   em->set_id = IPFIX_NSH_MD2_IOAM_EXPORT_ID;
-  em->unix_time_0 = (u32) time (0);	/* Store starting time */
+  em->unix_time_0 = time (0); /* Store starting time */
   em->vlib_time_0 = vlib_time_now (vm);
 
   em->my_hbh_slot = ~0;
