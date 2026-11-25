@@ -1153,6 +1153,7 @@ vp_proto_http_connected (session_t *s, vp_test_cfg_t *cfg, vp_test_worker_t *wrk
   /* open request from here, cheating? */
   msg.type = HTTP_MSG_REQUEST;
   msg.method_type = HTTP_REQ_POST;
+  msg.data.flags = 0;
   msg.data.target_path_offset = 0;
   msg.data.target_path_len = 1;
   msg.data.headers_offset = msg.data.target_path_len;

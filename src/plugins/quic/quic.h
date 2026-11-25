@@ -182,6 +182,7 @@ typedef enum quic_ctx_flags_
   QUIC_F_STREAM_TX_CLOSED = (1 << 7),
   QUIC_F_APP_CLOSED_RX = (1 << 8),
   QUIC_F_STREAM_DELETING = (1 << 9),
+  QUIC_F_ABORT_TX = (1 << 10),
 } quic_ctx_flags_t;
 
 typedef enum quic_cc_type
@@ -204,6 +205,8 @@ typedef enum quic_timers_ : u8
 
 /* This structure is used to implement the concept of VPP connection for QUIC.
  * We create one per connection and one per stream. */
+typedef void (*quic_stream_tx_stop_cb_t) (session_t *s);
+
 typedef struct quic_ctx_
 {
   union
@@ -258,8 +261,9 @@ typedef struct quic_ctx_
   void *peer_cert; /* X509 * stored as void * to avoid including openssl headers */
   quic_app_err_code_t app_err_code;
   quic_app_err_code_t app_err_code_rx;
+  quic_app_err_code_t app_err_code_tx;
   u64 opaque; /* engine can store something here */
-  /* 8 bytes left to next cache line */
+  quic_stream_tx_stop_cb_t tx_stop_cb;
 } quic_ctx_t;
 
 /* Make sure our custom fields don't overlap with the fields we use in
@@ -526,12 +530,16 @@ typedef void (*quic_conn_tx_timer_update_fn_t) (quic_worker_ctx_t *wc, quic_ctx_
 						int64_t next_timeout, u8 from_conn_tx);
 typedef void (*quic_conn_tx_timer_stop_fn_t) (quic_worker_ctx_t *wc, quic_ctx_t *ctx);
 typedef void (*quic_conn_accept_timer_stop_fn_t) (quic_worker_ctx_t *wc, quic_ctx_t *ctx);
+typedef void (*quic_stream_set_tx_stop_cb_fn_t) (session_t *s, quic_stream_tx_stop_cb_t cb);
+typedef void (*quic_stream_set_tx_reset_error_fn_t) (session_t *s, quic_app_err_code_t error);
 
 #define foreach_quic_plugin_exported_method_name                                                   \
   _ (register_engine)                                                                              \
   _ (conn_tx_timer_update)                                                                         \
   _ (conn_accept_timer_stop)                                                                       \
-  _ (conn_tx_timer_stop)
+  _ (conn_tx_timer_stop)                                                                           \
+  _ (stream_set_tx_stop_cb)                                                                        \
+  _ (stream_set_tx_reset_error)
 
 typedef struct
 {

@@ -121,7 +121,15 @@ typedef enum http_req_state_ : u8
   _ (RX_HEADERS_RECEIVED, "rx-headers-received")                                                   \
   _ (RX_TRAILERS, "rx-trailers")                                                                   \
   _ (TX_CANCELLED, "tx-cancelled")                                                                 \
-  _ (RX_REPLY_PENDING, "rx-reply-pending")
+  _ (RX_REPLY_PENDING, "rx-reply-pending")                                                         \
+  _ (TX_EXPECT_CONTINUE, "tx-expect-continue")                                                     \
+  _ (RX_EXPECT_CONTINUE, "rx-expect-continue")                                                     \
+  _ (RX_CONTINUE_PENDING, "rx-continue-pending")                                                   \
+  _ (RX_BODY_ABORTED, "rx-body-aborted")                                                           \
+  _ (TX_ABORT_PENDING, "tx-abort-pending")                                                         \
+  _ (TX_HEADERS_PENDING, "tx-headers-pending")                                                     \
+  _ (TX_BODY_STARTED, "tx-body-started")                                                           \
+  _ (RX_CONTINUE_REPORTED, "rx-continue-reported")
 
 typedef enum http_req_flags_bit_
 {
@@ -420,6 +428,7 @@ typedef struct http_ctx_
 	http_capsule_rx_ctx_t capsule_ctx_rx;
       };
       http_status_code_t status_code;
+      u8 status_is_continue;
       http_req_method_t method;
       http_req_state_t req_state; /* state-machine state */
       http_req_flags_t req_flags;
@@ -540,6 +549,7 @@ typedef enum http_ctrl_msg_type_ : u8
   HTTP_CTRL_MSG_WIN_UPDATE,
   HTTP_CTRL_MSG_RST_STREAM,
   HTTP_CTRL_MSG_END_STREAM,
+  HTTP_CTRL_MSG_CONTINUE,
 } http_ctrl_msg_type_t;
 
 typedef struct
@@ -607,6 +617,7 @@ typedef struct http_engine_vft_
     u32 req_index, clib_thread_index_t thread_index);
   u8 *(*format_req) (u8 *s, va_list *args);
   void (*app_tx_callback) (http_ctx_t *hc, u32 req_index, transport_send_params_t *sp);
+  void (*send_continue) (http_ctx_t *hc, http_ctx_t *req);
   void (*app_rx_evt_callback) (http_ctx_t *hc, u32 req_index, clib_thread_index_t thread_index);
   void (*app_close_callback) (http_ctx_t *hc, u32 req_index, clib_thread_index_t thread_index,
 			      u8 is_shutdown);
@@ -794,6 +805,18 @@ u8 *http_get_app_target (http_ctx_t *req, http_msg_t *msg);
  * @note STREAMING uses a FIFO buffer with an internal unlimited length.
  */
 void http_req_tx_buffer_init (http_ctx_t *req, const http_msg_t *msg);
+
+u8 http_req_expect (const http_ctx_t *req, const u8 *headers);
+void http_req_set_tx_expect (http_ctx_t *req, const http_msg_t *msg);
+void http_req_notify_continue (http_ctx_t *req);
+u8 http_req_read_app_continue (http_ctx_t *hc, http_ctx_t *req, transport_send_params_t *sp);
+
+static_always_inline u8
+http_req_expect_has_body (const http_ctx_t *req)
+{
+  return !(req->req_flags & (HTTP_REQ_F_IS_TUNNEL | HTTP_REQ_F_RX_EOF)) &&
+	 (req->to_recv || (req->req_flags & HTTP_REQ_F_RX_STREAMING));
+}
 
 always_inline void
 http_req_app_close (http_ctx_t *req, u8 is_shutdown)

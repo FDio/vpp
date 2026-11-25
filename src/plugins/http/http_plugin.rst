@@ -756,8 +756,24 @@ coding, DATA frames, or application EOF. Status 304 supports both known and
 unknown representation lengths. Set ``body_len`` to zero for statuses 1xx,
 204, and 205. The plugin omits Content-Length for 1xx and 204.
 
-The plugin consumes valid informational replies internally, except for HTTP/1
-protocol switching. The request stays active while waiting for a final reply,
-and any active request upload can continue. Automatic Expect/100-continue
-upload negotiation and forwarding informational responses to proxy applications
-are not provided.
+The request stays active after an informational reply. The plugin delivers
+HTTP/1 protocol switching and the first valid 100 for an opted-in request to
+the application receive FIFO.
+
+For a client request, the application writes ``Expect: 100-continue`` in the
+headers and sets ``HTTP_MSG_DATA_F_EXPECT_CONTINUE`` in ``msg.data.flags``.
+Enqueue the request metadata, target and headers first. Enqueue the body or
+body pointer when the application decides to send it. A valid 100 is delivered
+as an ``HTTP_MSG_REPLY`` with code ``HTTP_STATUS_CONTINUE`` and zero data length.
+The CLI client uses the TX FIFO empty notification to start its one-second
+fallback timer. It sends the body when it reads the 100 reply or when the
+timer expires. Final replies follow the normal receive FIFO format.
+Applications that reuse a session cancel the previous request's fallback
+timer before submitting another request.
+
+For a server request, the transport sets the same flag in ``msg.data.flags``
+when the parsed headers contain ``Expect: 100-continue``. The application
+validates the request headers, then enqueues an ``HTTP_MSG_REPLY`` with code
+``HTTP_STATUS_CONTINUE`` and zero data length before waiting for the body.
+The application can also enqueue a final reply if the request can be answered
+from its headers.

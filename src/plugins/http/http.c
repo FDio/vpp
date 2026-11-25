@@ -9,6 +9,7 @@
 
 #include <quic/quic.h>
 #include <http/http.h>
+#include <http/http_header_names.h>
 #include <http/http_private.h>
 #include <http/http_timer.h>
 
@@ -544,6 +545,68 @@ http_get_app_header_list (http_ctx_t *req, http_msg_t *msg)
     }
 
   return app_headers;
+}
+
+u8
+http_req_expect (const http_ctx_t *req, const u8 *headers)
+{
+  const http_field_line_t *field;
+  headers += req->headers_offset;
+  vec_foreach (field, req->headers)
+    if (http_token_is_case ((const char *) headers + field->name_offset, field->name_len,
+			    http_header_name_token (HTTP_HEADER_EXPECT)) &&
+	http_expect_has_continue ((const char *) headers + field->value_offset, field->value_len))
+      return 1;
+  return 0;
+}
+
+void
+http_req_set_tx_expect (http_ctx_t *req, const http_msg_t *msg)
+{
+  req->req_flags &= ~(HTTP_REQ_F_TX_EXPECT_CONTINUE | HTTP_REQ_F_RX_CONTINUE_REPORTED);
+  if ((req->req_flags & HTTP_REQ_F_IS_TUNNEL) ||
+      (!msg->data.body_len && msg->data.type != HTTP_MSG_DATA_STREAMING) ||
+      !(msg->data.flags & HTTP_MSG_DATA_F_EXPECT_CONTINUE))
+    return;
+  req->req_flags |= HTTP_REQ_F_TX_EXPECT_CONTINUE;
+}
+
+void
+http_req_notify_continue (http_ctx_t *req)
+{
+  if ((req->req_flags & (HTTP_REQ_F_TX_EXPECT_CONTINUE | HTTP_REQ_F_RX_CONTINUE_REPORTED)) !=
+      HTTP_REQ_F_TX_EXPECT_CONTINUE)
+    return;
+
+  http_msg_t msg = { .type = HTTP_MSG_REPLY, .code = HTTP_STATUS_CONTINUE };
+  if (http_io_as_rx_publish (req, &msg, 0))
+    return;
+  req->req_flags |= HTTP_REQ_F_RX_CONTINUE_REPORTED;
+  http_app_worker_rx_notify (req);
+}
+
+u8
+http_req_read_app_continue (http_ctx_t *hc, http_ctx_t *req, transport_send_params_t *sp)
+{
+  http_msg_t msg;
+  if (http_io_as_max_read (req) < sizeof (msg))
+    return 0;
+  http_get_app_msg (req, &msg, 1);
+  req->req_flags &= ~HTTP_REQ_F_RX_EXPECT_CONTINUE;
+  if (msg.type != HTTP_MSG_REPLY || msg.code != HTTP_STATUS_CONTINUE ||
+      msg.data.type != HTTP_MSG_DATA_INLINE || msg.data.len || msg.data.headers_len ||
+      msg.data.body_len)
+    return 0;
+
+  http_io_as_drain (req, sizeof (msg));
+  sp->bytes_dequeued += sizeof (msg);
+  if (http_req_expect_has_body (req) && !(req->req_flags & HTTP_REQ_F_PEER_CLOSED) &&
+      hc->state < HTTP_CONN_STATE_TRANSPORT_CLOSED)
+    {
+      req->req_flags |= HTTP_REQ_F_RX_CONTINUE_PENDING;
+      http_vfts[hc->version].send_continue (hc, req);
+    }
+  return 1;
 }
 
 u8 *
@@ -1179,6 +1242,7 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
       head_index = http_ctx_alloc_w_thread (ti);
       head = http_ctx_get_w_thread (head_index, ti);
       memset (head, 0xff, sizeof (*head));
+      /* Both worker lists use the same pool entry with independent links. */
       clib_llist_anchor_init (wrk->ctx_pool, sched_list, head);
       wrk->sched_head = (clib_llist_index_t) (head_index);
       vec_validate (wrk->header_list, clib_max (hm->h2_settings.max_header_list_size,
@@ -1417,11 +1481,12 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 	    app_listener_index, lhc_index);
 
   ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_HTTP);
-  if (ext_cfg && ext_cfg->opaque)
+  if (ext_cfg)
     {
       transport_endpt_cfg_http_t *http_cfg = (transport_endpt_cfg_http_t *) ext_cfg->data;
       HTTP_DBG (1, "app set timeout %u", http_cfg->timeout);
-      lhc->hc_timeout = http_cfg->timeout;
+      if (http_cfg->timeout)
+	lhc->hc_timeout = http_cfg->timeout;
       if (http_cfg->h3_alt_svc_port)
 	metadata->h3_alt_svc_port = format (0, "h3=\":%u\"", http_cfg->h3_alt_svc_port);
       lhc->flags |=

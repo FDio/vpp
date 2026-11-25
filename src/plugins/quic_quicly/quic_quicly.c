@@ -40,6 +40,9 @@ typedef quic_quicly_rx_error_t (*quic_quicly_rx_handler) (quic_ctx_t *ctx,
 							  quic_quicly_rx_packet_ctx_t *pctx,
 							  struct sockaddr *src_addr);
 
+static_always_inline quic_ctx_t *
+quic_quicly_get_quic_ctx_if_valid (u32 ctx_index, clib_thread_index_t thread_index);
+
 static_always_inline quicly_context_t *
 quic_quicly_get_quicly_ctx_from_ctx (quic_ctx_t *ctx)
 {
@@ -544,11 +547,23 @@ quic_quicly_fifo_egress_emit (quicly_stream_t *stream, size_t off, void *dst,
 }
 
 static void
+quic_quicly_tx_stop_rpc (session_t *arg)
+{
+  session_t *s = session_get_from_handle_if_valid (pointer_to_uword (arg));
+  if (!s || s->app_wrk_index == APP_INVALID_INDEX || (s->flags & SESSION_F_APP_CLOSED) ||
+      session_get_transport_proto (s) != TRANSPORT_PROTO_QUIC)
+    return;
+
+  quic_ctx_t *ctx = quic_quicly_get_quic_ctx_if_valid (s->connection_index, s->thread_index);
+  if (ctx && ctx->c_s_index == s->session_index && ctx->tx_stop_cb)
+    ctx->tx_stop_cb (s);
+}
+
+static void
 quic_quicly_on_stop_sending (quicly_stream_t *stream, quicly_error_t quicly_error)
 {
   quic_stream_data_t *stream_data = (quic_stream_data_t *) stream->data;
-  quic_ctx_t *sctx =
-    quic_quicly_get_quic_ctx (stream_data->ctx_id, stream_data->thread_index);
+  quic_ctx_t *sctx = quic_quicly_get_quic_ctx (stream_data->ctx_id, stream_data->thread_index);
 
   QUIC_DBG (2, "STOP_SENDING: session 0x%lx, sctx_index %u, thread %u, flags 0x%x, err %U",
 	    session_handle (session_get (sctx->c_s_index, sctx->c_thread_index)), sctx->c_c_index,
@@ -558,6 +573,22 @@ quic_quicly_on_stop_sending (quicly_stream_t *stream, quicly_error_t quicly_erro
    * cancelling that send side must not turn its response into a stream reset. */
   if (!(sctx->flags & (QUIC_F_APP_CLOSED | QUIC_F_APP_CLOSED_TX)))
     {
+      if (sctx->tx_stop_cb)
+	{
+	  session_t *s = session_get (sctx->c_s_index, sctx->c_thread_index);
+	  app_worker_t *app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+	  if (app_wrk)
+	    {
+	      session_event_t evt = {
+		.event_type = SESSION_CTRL_EVT_RPC,
+		.rpc_args = { .fp = quic_quicly_tx_stop_rpc,
+			      .arg = uword_to_pointer (s->handle, void *) },
+	      };
+	      sctx->flags |= QUIC_F_APP_CLOSED_TX | QUIC_F_STREAM_TX_CLOSED;
+	      app_worker_add_event_custom (app_wrk, s->thread_index, &evt);
+	      return;
+	    }
+	}
       sctx->app_err_code = QUICLY_ERROR_GET_ERROR_CODE (quicly_error);
       sctx->c_flags |= TRANSPORT_CONNECTION_F_ERROR;
       session_transport_reset_notify (&sctx->connection);
@@ -1317,6 +1348,14 @@ quic_quicly_on_app_half_closed (u32 ctx_index, clib_thread_index_t thread_index,
   QUIC_DBG (2, "App half-closing session 0x%lx ctx_index %u", session_handle (stream_session),
 	    ctx->c_c_index);
   ctx->flags |= QUIC_F_APP_CLOSED_TX;
+  if (ctx->flags & QUIC_F_ABORT_TX)
+    {
+      ctx->flags |= QUIC_F_STREAM_TX_CLOSED;
+      quicly_reset_stream (stream, QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (ctx->app_err_code_tx));
+      quic_quicly_reschedule_ctx (
+	quic_quicly_get_quic_ctx (ctx->quic_connection_ctx_id, ctx->c_thread_index));
+      return;
+    }
   quic_quicly_stream_shutdown_tx (ctx, stream_session);
 }
 

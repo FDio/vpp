@@ -117,21 +117,10 @@ buf_ptr_init (http_buffer_t *hb, void *data, u64 len)
 {
   svm_fifo_t *f = (svm_fifo_t *) data;
   http_buffer_ptr_t *bf;
-  uword ptr;
-  int rv;
 
   bf = (http_buffer_ptr_t *) &hb->data;
-
-  /* Peek the pointer, do not drain the fifo until done with transfer */
-  rv = svm_fifo_peek (f, 0, sizeof (ptr), (u8 *) &ptr);
-  ASSERT (rv == sizeof (ptr));
-
   bf->f = f;
   bf->segs = 0;
-  vec_validate (bf->segs, 0);
-
-  bf->segs[0].data = uword_to_pointer (ptr, u8 *);
-
   bf->len = len;
 }
 
@@ -150,6 +139,14 @@ buf_ptr_get_segs (http_buffer_t *hb, u32 max_len, svm_fifo_seg_t **fs,
 {
   http_buffer_ptr_t *bf = (http_buffer_ptr_t *) &hb->data;
 
+  if (!bf->segs)
+    {
+      uword ptr;
+      if (svm_fifo_peek (bf->f, 0, sizeof (ptr), (u8 *) &ptr) != sizeof (ptr))
+	return 0;
+      vec_validate (bf->segs, 0);
+      bf->segs[0].data = uword_to_pointer (ptr, u8 *);
+    }
   *n_segs = 1;
   bf->segs[0].len = clib_min (bf->len, (u64) max_len);
 

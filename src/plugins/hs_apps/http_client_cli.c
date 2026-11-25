@@ -12,6 +12,7 @@
 #include <vppinfra/unix.h>
 
 #define HCC_DEBUG 0
+#define HCC_CONTINUE_TIMEOUT 1.0
 
 #if HCC_DEBUG
 #define HCC_DBG(_fmt, _args...) clib_warning (_fmt, ##_args)
@@ -33,6 +34,7 @@ typedef struct
   u8 tx_eof;
   u8 tx_pending;
   u8 rx_streaming;
+  u8 wait_continue;
   http_status_code_t status;
 } hcc_session_t;
 
@@ -65,6 +67,7 @@ typedef struct
   http_req_method_t method;
   u8 use_ptr;
   u8 no_headers;
+  u8 expect_continue;
   u8 stream;
   u8 close_after_tx;
   u8 eof_after_drain;
@@ -90,6 +93,7 @@ typedef enum
   HCC_CONNECT_FAILED,
   HCC_REQUEST_FAILED,
   HCC_TX_READY,
+  HCC_EXPECT_HEADERS_SENT,
 } hcc_cli_signal_t;
 
 static hcc_main_t hcc_main;
@@ -138,7 +142,17 @@ hcc_send_body (session_t *s, hcc_session_t *hs)
   u64 left = vec_len (hcm->body) - hs->tx_offset;
   int rv;
 
-  if (left)
+  if (left && hcm->use_ptr)
+    {
+      uword body = pointer_to_uword (hcm->body);
+      svm_fifo_seg_t seg = { (u8 *) &body, sizeof (body) };
+      rv = svm_fifo_enqueue_segments (s->tx_fifo, &seg, 1, 0 /* allow partial */);
+      if (rv == sizeof (body))
+	hs->tx_offset = vec_len (hcm->body);
+      else
+	svm_fifo_add_want_deq_ntf (s->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF);
+    }
+  else if (left)
     {
       rv = svm_fifo_enqueue (s->tx_fifo, left, hcm->body + hs->tx_offset);
       if (rv > 0)
@@ -170,6 +184,32 @@ hcc_send_body (session_t *s, hcc_session_t *hs)
 	}
     }
   return 0;
+}
+
+static void
+hcc_start_request_body (session_t *s, hcc_session_t *hs)
+{
+  if (!hs->wait_continue)
+    return;
+  hs->wait_continue = 0;
+  svm_fifo_del_want_deq_ntf (s->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY);
+  hcc_send_body (s, hs);
+}
+
+static void
+hcc_continue_timeout_rpc (void *arg)
+{
+  hcc_main_t *hcm = &hcc_main;
+  session_t *s = session_get_from_handle_if_valid (pointer_to_uword (arg));
+  if (!s)
+    return;
+  app_worker_t *app_wrk = app_worker_get_if_valid (s->app_wrk_index);
+  if (app_wrk && app_wrk->app_index == hcm->app_index)
+    {
+      hcc_session_t *hs = hcc_session_get (s->opaque, s->thread_index);
+      if (!hs->is_closed && !hs->have_reply)
+	hcc_start_request_body (s, hs);
+    }
 }
 
 static int
@@ -207,6 +247,9 @@ hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as, session_e
 
   msg.type = HTTP_MSG_REQUEST;
   msg.method_type = hcm->method;
+  new_hs->wait_continue = hcm->expect_continue && vec_len (hcm->body);
+  if (new_hs->wait_continue)
+    msg.data.flags = HTTP_MSG_DATA_F_EXPECT_CONTINUE;
   /* request target */
   msg.data.target_path_offset = 0;
   /* request target len must be without null termination */
@@ -234,7 +277,7 @@ hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as, session_e
       segs[n_segs++] = (svm_fifo_seg_t) { (u8 *) &target, sizeof (target) };
       if (msg.data.headers_len)
 	segs[n_segs++] = (svm_fifo_seg_t) { (u8 *) &headers, sizeof (headers) };
-      if (msg.data.body_len)
+      if (msg.data.body_len && !new_hs->wait_continue)
 	segs[n_segs++] = (svm_fifo_seg_t) { (u8 *) &body, sizeof (body) };
       expected += (n_segs - 1) * sizeof (uword);
     }
@@ -255,6 +298,13 @@ hcc_ts_connected_callback (u32 app_index, u32 hc_index, session_t *as, session_e
       return -1;
     }
 
+  if (new_hs->wait_continue)
+    {
+      svm_fifo_add_want_deq_ntf (as->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY);
+      if (svm_fifo_set_event (as->tx_fifo))
+	session_program_tx_io_evt (as->handle, SESSION_IO_EVT_TX);
+      return 0;
+    }
   if (hcm->use_ptr)
     new_hs->tx_offset = vec_len (hcm->body);
   return hcc_send_body (as, new_hs);
@@ -284,6 +334,13 @@ hcc_ts_tx_callback (session_t *ts)
   hcc_session_t *hs = hcc_session_get (ts->opaque, ts->thread_index);
   if (hs->is_closed || hs->tx_eof)
     return 0;
+  if (hs->wait_continue)
+    {
+      svm_fifo_del_want_deq_ntf (ts->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY);
+      vlib_process_signal_event_mt (hcm->vlib_main, hcm->cli_node_index, HCC_EXPECT_HEADERS_SENT,
+				    ts->handle);
+      return 0;
+    }
   if (hcm->tx_delay)
     {
       if (!hs->tx_pending)
@@ -307,7 +364,7 @@ hcc_send_body_rpc (void *arg)
     return;
   hs = hcc_session_get (s->opaque, s->thread_index);
   hs->tx_pending = 0;
-  if (!hs->is_closed && !hs->tx_eof)
+  if (!hs->is_closed && !hs->tx_eof && !hs->wait_continue)
     hcc_send_body (s, hs);
 }
 
@@ -358,6 +415,7 @@ hcc_ts_rx_callback (session_t *ts)
   hcc_main_t *hcm = &hcc_main;
   hcc_session_t *hs;
   http_msg_t msg;
+  u8 got_continue = 0;
   int rv;
 
   hs = hcc_session_get (ts->opaque, ts->thread_index);
@@ -368,10 +426,14 @@ hcc_ts_rx_callback (session_t *ts)
       return 0;
     }
 
-  if (!hs->have_reply)
+  while (!hs->have_reply)
     {
       if (!svm_fifo_max_dequeue (ts->rx_fifo))
-	return 0;
+	{
+	  if (got_continue)
+	    hcc_start_request_body (ts, hs);
+	  return 0;
+	}
       /* read the http message header */
       rv = svm_fifo_dequeue (ts->rx_fifo, sizeof (msg), (u8 *) &msg);
       ASSERT (rv == sizeof (msg));
@@ -383,6 +445,17 @@ hcc_ts_rx_callback (session_t *ts)
 	}
       /* drop everything up to body */
       svm_fifo_dequeue_drop (ts->rx_fifo, msg.data.body_offset);
+      if (msg.code == HTTP_STATUS_CONTINUE)
+	{
+	  got_continue = 1;
+	  continue;
+	}
+      if (hs->wait_continue)
+	{
+	  hs->wait_continue = 0;
+	  hs->tx_eof = 1;
+	  svm_fifo_del_want_deq_ntf (ts->tx_fifo, SVM_FIFO_WANT_DEQ_NOTIF_IF_EMPTY);
+	}
       hs->to_recv = hcm->method == HTTP_REQ_HEAD ? 0 : msg.data.body_len;
       hs->have_reply = 1;
       if (!hcm->stream || http_status_code_str[msg.code][0] != '2')
@@ -606,6 +679,8 @@ hcc_run (vlib_main_t *vm, int print_output)
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   hcc_main_t *hcm = &hcc_main;
   uword event_type, *event_data = 0;
+  session_handle_t continue_handle = SESSION_INVALID_HANDLE;
+  f64 continue_deadline = 0;
   u32 num_threads;
   clib_error_t *err = 0;
   hcc_worker_t *wrk;
@@ -631,15 +706,31 @@ hcc_run (vlib_main_t *vm, int print_output)
 
   while (1)
     {
-      vlib_process_wait_for_event_or_clock (vm, 10);
+      f64 wait = continue_deadline ? clib_max (0.0, continue_deadline - vlib_time_now (vm)) : 10;
+      vlib_process_wait_for_event_or_clock (vm, wait);
       event_type = vlib_process_get_events (vm, &event_data);
-      if (event_type != HCC_TX_READY)
+      if (event_type == HCC_EXPECT_HEADERS_SENT)
+	{
+	  continue_handle = event_data[0];
+	  continue_deadline = vlib_time_now (vm) + HCC_CONTINUE_TIMEOUT;
+	}
+      else if (event_type == ~0 && continue_deadline)
+	{
+	  session_send_rpc_evt_to_thread_force (session_thread_from_handle (continue_handle),
+						hcc_continue_timeout_rpc,
+						uword_to_pointer (continue_handle, void *));
+	  continue_deadline = 0;
+	}
+      else if (event_type == HCC_TX_READY)
+	{
+	  vlib_process_suspend (vm, hcm->tx_delay);
+	  for (u32 i = 0; i < vec_len (event_data); i++)
+	    session_send_rpc_evt_to_thread_force (session_thread_from_handle (event_data[i]),
+						  hcc_send_body_rpc,
+						  uword_to_pointer (event_data[i], void *));
+	}
+      else
 	break;
-      vlib_process_suspend (vm, hcm->tx_delay);
-      for (u32 i = 0; i < vec_len (event_data); i++)
-	session_send_rpc_evt_to_thread_force (session_thread_from_handle (event_data[i]),
-					      hcc_send_body_rpc,
-					      uword_to_pointer (event_data[i], void *));
       vec_reset_length (event_data);
     }
   switch (event_type)
@@ -748,6 +839,7 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
   hcm->method = HTTP_REQ_GET;
   hcm->use_ptr = 0;
   hcm->no_headers = 0;
+  hcm->expect_continue = 0;
   hcm->stream = 0;
   hcm->close_after_tx = 0;
   hcm->eof_after_drain = 0;
@@ -815,8 +907,7 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	hcm->use_http2 = 1;
       else
 	{
-	  err = clib_error_return (0, "unknown input `%U'",
-				   format_unformat_error, line_input);
+	  err = clib_error_return (0, "unknown input `%U'", format_unformat_error, line_input);
 	  goto done;
 	}
     }
@@ -858,8 +949,19 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
     http_add_header (&headers, HTTP_HEADER_ACCEPT,
 		     http_content_type_token (HTTP_CONTENT_TEXT_HTML));
   vec_foreach (header, hcm->custom_headers)
-    http_add_custom_header (&headers, (char *) header->name, vec_len (header->name),
-			    (char *) header->value, vec_len (header->value));
+    {
+      if (http_token_is_case ((char *) header->name, vec_len (header->name),
+			      http_token_lit ("expect")))
+	{
+	  hcm->expect_continue |=
+	    http_expect_has_continue ((char *) header->value, vec_len (header->value));
+	  http_add_header (&headers, HTTP_HEADER_EXPECT, (char *) header->value,
+			   vec_len (header->value));
+	}
+      else
+	http_add_custom_header (&headers, (char *) header->name, vec_len (header->name),
+				(char *) header->value, vec_len (header->value));
+    }
   hcm->headers_len = headers.tail_offset;
 
   if ((rv = parse_target ((char **) &hcm->uri, (char **) &hcm->http_query)))
@@ -869,6 +971,7 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
       goto done;
     }
 
+  hcm->connect_sep = (session_endpoint_cfg_t) SESSION_ENDPOINT_CFG_NULL;
   if ((rv = parse_uri ((char *) hcm->uri, &hcm->connect_sep)))
     {
       err = clib_error_return (0, "Uri parse error: %d", rv);
