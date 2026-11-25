@@ -122,53 +122,45 @@ def create_test(test_name, test, ip_version, mtu):
     @unittest.skipIf(
         config.skip_netns_tests, "netns not available or disabled from cli"
     )
+    @unittest.skipIf(
+        ip_version == 6 and mtu < 1280, "IPv6 requires an MTU of at least 1280"
+    )
     def test_func(self):
         self.logger.debug(f"Starting unittest:{test_name}")
         self.setUpTestToplogy(test=test, ip_version=ip_version)
-        result = self.set_interfaces_mtu(
-            mtu=mtu,
-            ip_version=ip_version,
-            vpp_interfaces=self.vpp_interfaces,
-            linux_interfaces=self.linux_interfaces,
-        )
+        self.set_interfaces_mtu(mtu)
         if "memif" in self.if_types:
             self.logger.debug("Starting libmemif test_app for memif test")
             self.memif_process = libmemif_test_app(
                 memif_sock_path=self.get_memif_sock_path(), logger=self.logger
             )
-        if result is True:
-            # Start an instance of an iperf server using
-            # a unique port. Save the iperf cmdline for
-            # terminating the iperf_server process after the test.
-            self.iperf_cmd = start_iperf(
+
+        # Start the iperf server on a unique port and save its command line
+        # so teardown can stop it.
+        self.iperf_cmd = start_iperf(
+            ip_version=ip_version,
+            client_ns=self.client_namespace,
+            server_ns=self.server_namespace,
+            server_only=True,
+            server_args=f"-p {self.iperf_port}",
+            logger=self.logger,
+            cpus=self.helper_affinity(),
+        )
+        # Send traffic between iperf client & server
+        self.assertTrue(
+            start_iperf(
                 ip_version=ip_version,
                 client_ns=self.client_namespace,
                 server_ns=self.server_namespace,
-                server_only=True,
-                server_args=f"-p {self.iperf_port}",
+                server_ipv4_address=self.server_ip4_address,
+                server_ipv6_address=self.server_ip6_address,
+                client_args=f"-p {self.iperf_port}",
+                client_only=True,
+                duration=2,
                 logger=self.logger,
                 cpus=self.helper_affinity(),
             )
-            # Send traffic between iperf client & server
-            self.assertTrue(
-                start_iperf(
-                    ip_version=ip_version,
-                    client_ns=self.client_namespace,
-                    server_ns=self.server_namespace,
-                    server_ipv4_address=self.server_ip4_address,
-                    server_ipv6_address=self.server_ip6_address,
-                    client_args=f"-p {self.iperf_port}",
-                    client_only=True,
-                    duration=2,
-                    logger=self.logger,
-                    cpus=self.helper_affinity(),
-                )
-            )
-        else:
-            return unittest.skip(
-                f"Skipping test:{test_name} as mtu:{mtu} is "
-                f"invalid for TCP/IPv{ip_version}"
-            )
+        )
 
     test_func.__name__ = test_name
     return test_func
@@ -850,34 +842,17 @@ class TestVPPInterfacesQemu:
                 sw_if_index=sw_if_index, is_add=1, prefix=ip_interface(ip_prefix)
             )
 
-    def set_interfaces_mtu(self, mtu, ip_version, **kwargs):
-        """Set MTUs on VPP and Linux interfaces.
-
-        arguments --
-        mtu -- mtu value
-        ip_version - 4 or 6
-        kwargs['vpp_interfaces'] -- list of vpp interface if indexes
-        kwargs['linux_interfaces'] -- list of tuples (namespace, interface_names)
-        return True if mtu is set, else False
-        """
-        vpp_interfaces = kwargs.get("vpp_interfaces")
-        linux_interfaces = kwargs.get("linux_interfaces")
-        # IPv6 on Linux requires an MTU value >=1280
-        if (ip_version == 6 and mtu >= 1280) or ip_version == 4:
-            for sw_if_idx in vpp_interfaces:
-                self.vapi.sw_interface_set_mtu(
-                    sw_if_index=sw_if_idx, mtu=[mtu, 0, 0, 0]
-                )
-            for namespace, interface_name in linux_interfaces:
-                set_interface_mtu(
-                    namespace=namespace,
-                    interface=interface_name,
-                    mtu=mtu,
-                    logger=self.logger,
-                )
-            return True
-        else:
-            return False
+    def set_interfaces_mtu(self, mtu):
+        """Set MTUs on VPP and Linux interfaces."""
+        for sw_if_idx in self.vpp_interfaces:
+            self.vapi.sw_interface_set_mtu(sw_if_index=sw_if_idx, mtu=[mtu, 0, 0, 0])
+        for namespace, interface_name in self.linux_interfaces:
+            set_interface_mtu(
+                namespace=namespace,
+                interface=interface_name,
+                mtu=mtu,
+                logger=self.logger,
+            )
 
     def create_af_xdp(
         self,
