@@ -88,6 +88,23 @@ that to build. A plugin which needs a library that is not installed is skipped
 by its own ``CMakeLists.txt`` and stays out of the build, with a warning from
 cmake.
 
+The drivers, the crypto engines, the tools and the tests have the same targets,
+``enable-driver-<name>``, ``enable-crypto-engine-<name>``,
+``enable-tool-<name>``, ``enable-test-<name>`` and the ``disable-`` ones, which
+change ``VPP_DRIVERS``, ``VPP_CRYPTO_ENGINES``, ``VPP_TOOLS`` and
+``VPP_TESTS``:
+
+::
+
+    ninja disable-driver-mlx5
+    ninja enable-crypto-engine-openssl
+
+The name is the one given to ``add_vpp_driver``, ``add_vpp_crypto_engine``,
+``add_vpp_tool`` or ``add_vpp_test``, and it is not changed. Disabling an item in a build which builds all of them
+turns the list into the items that are built now, without the disabled one. If
+the new lists do not configure, for example when the driver is not available on
+the platform, the build tree stays as it was.
+
 How to write a plugin CMakeLists.txt file
 -----------------------------------------
 

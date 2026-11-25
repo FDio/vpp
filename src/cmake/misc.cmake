@@ -136,3 +136,46 @@ macro(vpp_check_consumed_list list_var message)
     endif()
   endif()
 endmacro()
+
+##############################################################################
+# ninja enable-<kind>-<name> and ninja disable-<kind>-<name> targets, see
+# select.cmake
+##############################################################################
+function(vpp_add_select_targets kind target_name name selected excluded all)
+  foreach(_action enable disable)
+    if(NOT TARGET ${_action}-${kind}-${target_name})
+      add_custom_target(${_action}-${kind}-${target_name}
+        COMMAND ${CMAKE_COMMAND}
+          -DKIND=${kind}
+          -DACTION=${_action}
+          -DNAME=${name}
+          -DSELECTED=${selected}
+          -DEXCLUDED=${excluded}
+          -DALL=${all}
+          -DBUILD_DIR=${CMAKE_BINARY_DIR}
+          -P ${CMAKE_SOURCE_DIR}/cmake/select.cmake
+        COMMENT "${_action} the ${name} ${kind}"
+        USES_TERMINAL
+        VERBATIM
+      )
+    endif()
+  endforeach()
+endfunction()
+
+# the names given to <call> (add_vpp_driver for example) in the CMakeLists.txt
+# files below <dir>
+function(vpp_find_registered_names var call dir)
+  file(GLOB_RECURSE _files ${dir}/CMakeLists.txt)
+  set(_names)
+  foreach(_file ${_files})
+    file(STRINGS ${_file} _calls REGEX "^[ \t]*${call}[ \t]*\\(")
+    foreach(_call ${_calls})
+      string(REGEX MATCH "${call}[ \t]*\\([ \t]*([A-Za-z0-9_-]+)" _match "${_call}")
+      if(CMAKE_MATCH_1)
+        list(APPEND _names ${CMAKE_MATCH_1})
+      endif()
+    endforeach()
+  endforeach()
+  list(REMOVE_DUPLICATES _names)
+  set(${var} ${_names} PARENT_SCOPE)
+endfunction()

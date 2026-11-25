@@ -53,6 +53,15 @@ list(REMOVE_DUPLICATES VPP_CRYPTO_ENGINES_LIST)
 list(SORT VPP_CRYPTO_ENGINES_LIST)
 set(VPP_CRYPTO_ENGINES_LIST ${VPP_CRYPTO_ENGINES_LIST} PARENT_SCOPE)
 
+# ninja enable-crypto-engine-<name> and ninja disable-crypto-engine-<name> change the list of
+# crypto engines to build. The engines which are not built on this platform are not in the list
+# of all engines.
+vpp_find_registered_names(_vpp_engine_names add_vpp_crypto_engine ${CMAKE_CURRENT_SOURCE_DIR})
+string(REPLACE ";" "," _vpp_engines_built "${VPP_CRYPTO_ENGINES_LIST}")
+foreach(_name ${_vpp_engine_names})
+  vpp_add_select_targets(crypto-engine ${_name} ${_name} "${VPP_CRYPTO_ENGINES}" "" "${_vpp_engines_built}")
+endforeach()
+
 # Fail if any requested crypto engines were not found/registered.
 get_property(_vpp_crypto_engines_filter GLOBAL PROPERTY VPP_CRYPTO_ENGINES_FILTER)
 vpp_check_consumed_list(_vpp_crypto_engines_filter "VPP_CRYPTO_ENGINES requested but not found")

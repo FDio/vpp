@@ -28,25 +28,6 @@ set(VPP_PLUGINS_EXCLUDE "")
 # ninja enable-plugin-<name> and ninja disable-plugin-<name> change the list of plugins to build.
 # <name> is the name the plugin registers with add_vpp_plugin (), which has dashes, the name of
 # its directory works as well when it is different.
-function(vpp_add_plugin_select_targets target_name plugin_name)
-  foreach(_action enable disable)
-    if(NOT TARGET ${_action}-plugin-${target_name})
-      add_custom_target(${_action}-plugin-${target_name}
-        COMMAND ${CMAKE_COMMAND}
-          -DACTION=${_action}
-          -DPLUGIN=${plugin_name}
-          -DVPP_PLUGINS=${VPP_PLUGINS}
-          -DVPP_EXCLUDED_PLUGINS=${VPP_EXCLUDED_PLUGINS}
-          -DBUILD_DIR=${CMAKE_BINARY_DIR}
-          -P ${CMAKE_CURRENT_SOURCE_DIR}/../cmake/plugin-select.cmake
-        COMMENT "${_action} the ${plugin_name} plugin"
-        USES_TERMINAL
-        VERBATIM
-      )
-    endif()
-  endforeach()
-endfunction()
-
 file(GLOB _vpp_plugin_cmake_files RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/*/CMakeLists.txt
 )
@@ -65,12 +46,12 @@ foreach(f ${_vpp_plugin_cmake_files})
     string(REPLACE "_" "-" _vpp_plugin_names ${_vpp_plugin_dir})
   endif()
   foreach(_name ${_vpp_plugin_names})
-    vpp_add_plugin_select_targets(${_name} ${_name})
+    vpp_add_select_targets(plugin ${_name} ${_name} "${VPP_PLUGINS}" "${VPP_EXCLUDED_PLUGINS}" "")
   endforeach()
   list(LENGTH _vpp_plugin_names _n_names)
   if(_n_names EQUAL 1)
     string(REPLACE "_" "-" _dir_d ${_vpp_plugin_dir})
-    vpp_add_plugin_select_targets(${_dir_d} ${_vpp_plugin_names})
+    vpp_add_select_targets(plugin ${_dir_d} ${_vpp_plugin_names} "${VPP_PLUGINS}" "${VPP_EXCLUDED_PLUGINS}" "")
   endif()
 endforeach()
 
