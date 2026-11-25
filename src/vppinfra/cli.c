@@ -575,7 +575,7 @@ parse_value (cli_parse_t *p, const cli_arg_t *a)
 
   if (a->alt_keyword && a->kind == CLI_K_VALUE && tok_eq (t, a->alt_keyword) && !t->quoted)
     {
-      u32 kw = p->i;
+      u32 kw = p->i, index;
 
       if (p->complete && p->i == p->n_tok - 1)
 	{
@@ -596,7 +596,8 @@ parse_value (cli_parse_t *p, const cli_arg_t *a)
 	  set_err (p, p->i + 1, err);
 	  return P_ERR;
 	}
-      v.index = v.u64;
+      index = v.u64;
+      v.index = index;
       v.tok = kw;
       vec_add1 (p->values, v);
       p->i += 2;
