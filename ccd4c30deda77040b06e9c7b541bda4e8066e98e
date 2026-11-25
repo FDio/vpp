@@ -24,6 +24,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "d9982f06_215748ef",
+        "filename": ".github/workflows/vpp-merge-maketest.yml",
+        "patchSetId": 2
+      },
+      "lineNbr": 281,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-25T03:10:32Z",
+      "side": 1,
+      "message": "Ack, simplified to `${{ matrix.run_tests }}`.",
+      "parentUuid": "0d5c0ec2_ee4c5f57",
+      "range": {
+        "startLine": 281,
+        "startChar": 16,
+        "endLine": 281,
+        "endChar": 27
+      },
+      "revId": "ccd4c30deda77040b06e9c7b541bda4e8066e98e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ac552c3e_76290572",
@@ -47,6 +71,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "f22a27c4_9c08537a",
+        "filename": ".github/workflows/vpp-merge-maketest.yml",
+        "patchSetId": 2
+      },
+      "lineNbr": 331,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-25T03:10:32Z",
+      "side": 1,
+      "message": "Kept this defensive guard because **build-only** jobs skip `make test`, so `/tmp/vpp-failed-unittests` may not exist in those jobs.",
+      "parentUuid": "ac552c3e_76290572",
+      "range": {
+        "startLine": 331,
+        "startChar": 10,
+        "endLine": 331,
+        "endChar": 48
+      },
+      "revId": "ccd4c30deda77040b06e9c7b541bda4e8066e98e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a3219350_a15e47f5",
@@ -60,6 +108,24 @@
       "writtenOn": "2026-11-25T00:16:50Z",
       "side": 1,
       "message": "Same comment here.",
+      "revId": "ccd4c30deda77040b06e9c7b541bda4e8066e98e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "80bca8a8_cb69457e",
+        "filename": ".github/workflows/vpp-verify-maketest.yml",
+        "patchSetId": 2
+      },
+      "lineNbr": 290,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-25T03:10:32Z",
+      "side": 1,
+      "message": "Kept this defensive guard because **build-only** jobs skip `make test`, so `/tmp/vpp-failed-unittests` may not exist in those jobs.",
+      "parentUuid": "a3219350_a15e47f5",
       "revId": "ccd4c30deda77040b06e9c7b541bda4e8066e98e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }

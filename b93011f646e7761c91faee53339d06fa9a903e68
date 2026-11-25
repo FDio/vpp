@@ -16,6 +16,24 @@
       "message": "All supported OS versions must be run to build release images and push artifacts to packagecloud on merge.  \n\nThe ones below that are marked \u0027run_tests \u003d\u003d true\u0027 should continue to run tests after merge because our merge strategy is \u0027rebase on merge\u0027 and the rest should skip running tests to save CI cycles.",
       "revId": "b93011f646e7761c91faee53339d06fa9a903e68",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "eae019f8_45078223",
+        "filename": ".github/workflows/vpp-merge-maketest.yml",
+        "patchSetId": 2
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 3121
+      },
+      "writtenOn": "2026-11-25T03:10:32Z",
+      "side": 0,
+      "message": "Restored release builds and package publishing for Ubuntu 22.04, 24.04, and 26.04 on both architectures, plus Debian 12 x86. Tests remain enabled for Ubuntu 26.04 ARM/x86 and Debian 12 x86 after merge; the other jobs skip tests.",
+      "parentUuid": "8e5bf4c8_78240420",
+      "revId": "b93011f646e7761c91faee53339d06fa9a903e68",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
