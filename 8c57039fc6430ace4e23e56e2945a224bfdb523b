@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "da6bb2f3_11f96731",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-25T15:56:25Z",
+      "side": 1,
+      "message": "Since you\u0027re already consuming system entropy here for some purposes, what\u0027s the advantage of doing whatever this patch is doing instead of using that randomness for seeding the pseudorandom generator? Why keep the old behaviour somewhere and add new behaviour here and only here?",
+      "revId": "8c57039fc6430ace4e23e56e2945a224bfdb523b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
