@@ -26,6 +26,30 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "892c9c9f_4cd99241",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-25T21:48:43Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7dbf5936_292331a5",
+      "range": {
+        "startLine": 22,
+        "startChar": 28,
+        "endLine": 22,
+        "endChar": 47
+      },
+      "revId": "f23176fc0ea6873ccbb8c72be723a8482385db42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "52712d86_e7ffd4e5",
         "filename": "/PATCHSET_LEVEL",
         "patchSetId": 3
@@ -58,6 +82,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "36240cd7_2eef6e4d",
+        "filename": "docs/Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-25T21:48:43Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "86babf6e_84dfbf17",
+      "revId": "f23176fc0ea6873ccbb8c72be723a8482385db42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "e2b4a4e6_bb86a8fd",
@@ -75,6 +117,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7d577c6d_45c0a46d",
+        "filename": "docs/Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-25T21:48:43Z",
+      "side": 1,
+      "message": "To be done in a separate change.",
+      "parentUuid": "e2b4a4e6_bb86a8fd",
+      "revId": "f23176fc0ea6873ccbb8c72be723a8482385db42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "24860655_24e39bbc",
@@ -88,6 +148,30 @@
       "writtenOn": "2026-11-25T17:50:40Z",
       "side": 1,
       "message": "OUT_DIR in docs/Makefile is $(BR)/docs",
+      "range": {
+        "startLine": 6,
+        "startChar": 45,
+        "endLine": 6,
+        "endChar": 69
+      },
+      "revId": "f23176fc0ea6873ccbb8c72be723a8482385db42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "23546a48_8aba36d1",
+        "filename": "src/cmake/docs.cmake",
+        "patchSetId": 3
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-25T21:48:43Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "24860655_24e39bbc",
       "range": {
         "startLine": 6,
         "startChar": 45,
@@ -121,6 +205,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "dfd2ca47_4f7a5fd0",
+        "filename": "src/cmake/docs.cmake",
+        "patchSetId": 3
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-25T21:48:43Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8ec41f4a_982d0a69",
+      "range": {
+        "startLine": 10,
+        "startChar": 53,
+        "endLine": 10,
+        "endChar": 71
+      },
+      "revId": "f23176fc0ea6873ccbb8c72be723a8482385db42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5d7f1c23_902404f3",
@@ -134,6 +242,30 @@
       "writtenOn": "2026-11-25T17:50:40Z",
       "side": 1,
       "message": "Consider using \u0027uv\u0027 if it is installed [0] instead of \"venv + pip-tools\" for a performance gain like in \u0027make test\u0027: \n\nhttps://github.com/FDio/vpp/blob/master/test/Makefile#L68\n\n[0] uv is installed in the CI docker executor images",
+      "range": {
+        "startLine": 33,
+        "startChar": 0,
+        "endLine": 37,
+        "endChar": 53
+      },
+      "revId": "f23176fc0ea6873ccbb8c72be723a8482385db42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4cd8fee7_481bf210",
+        "filename": "src/cmake/venv.cmake",
+        "patchSetId": 3
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-25T21:48:43Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5d7f1c23_902404f3",
       "range": {
         "startLine": 33,
         "startChar": 0,
