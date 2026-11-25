@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0d5c0ec2_ee4c5f57",
+        "filename": ".github/workflows/vpp-merge-maketest.yml",
+        "patchSetId": 2
+      },
+      "lineNbr": 281,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-25T00:16:50Z",
+      "side": 1,
+      "message": "I\u0027m not sure what value there is in the \u0027always() \u0026\u0026\u0027 part of the condition.\n\nUnless there is something funky that I\u0027m missing, this devolves into\nif: ${{ matrix.run_tests }}",
+      "range": {
+        "startLine": 281,
+        "startChar": 16,
+        "endLine": 281,
+        "endChar": 27
+      },
+      "revId": "ccd4c30deda77040b06e9c7b541bda4e8066e98e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ac552c3e_76290572",
+        "filename": ".github/workflows/vpp-merge-maketest.yml",
+        "patchSetId": 2
+      },
+      "lineNbr": 331,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-25T00:16:50Z",
+      "side": 1,
+      "message": "Technically this is not necessary because make test presently always creates \u0027/tmp/vpp-failed-unittests\u0027. If that ever changes and the directory is not there, then there would simply be a message to stderr \"ls: cannot access \u0027/tmp/vpp-failed-unittests\u0027: No such file or directory\" that would end up in the console log.\n\nHowever, it doesn\u0027t cost much so feel free to leave it in.",
+      "range": {
+        "startLine": 331,
+        "startChar": 10,
+        "endLine": 331,
+        "endChar": 48
+      },
+      "revId": "ccd4c30deda77040b06e9c7b541bda4e8066e98e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a3219350_a15e47f5",
+        "filename": ".github/workflows/vpp-verify-maketest.yml",
+        "patchSetId": 2
+      },
+      "lineNbr": 290,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2026-11-25T00:16:50Z",
+      "side": 1,
+      "message": "Same comment here.",
+      "revId": "ccd4c30deda77040b06e9c7b541bda4e8066e98e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
