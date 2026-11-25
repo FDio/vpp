@@ -166,7 +166,7 @@ vxlan_gpe_ioam_export_init (vlib_main_t * vm)
 
   /* Ask for a correctly-sized block of API message decode slots */
   em->msg_id_base = setup_message_id_table ();
-  em->unix_time_0 = (u32) time (0);	/* Store starting time */
+  em->unix_time_0 = time (0); /* Store starting time */
   em->vlib_time_0 = vlib_time_now (vm);
 
   em->my_hbh_slot = ~0;
