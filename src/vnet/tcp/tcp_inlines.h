@@ -181,14 +181,16 @@ tcp_initial_cwnd (const tcp_connection_t *tc)
 always_inline void
 tcp_cwnd_accumulate (tcp_connection_t * tc, u32 thresh, u32 bytes)
 {
-  tc->cwnd_acc_bytes += bytes;
-  if (tc->cwnd_acc_bytes >= thresh)
+  /* In 64 bits, so credit close to a u32 threshold does not wrap */
+  u64 acc = (u64) tc->cwnd_acc_bytes + bytes;
+
+  if (acc >= thresh)
     {
-      u32 inc = tc->cwnd_acc_bytes / thresh;
-      tc->cwnd_acc_bytes -= inc * thresh;
-      tc->cwnd += inc * tc->snd_mss;
-      tc->cwnd = clib_min (tc->cwnd, tc->tx_fifo_size);
+      u64 inc = acc / thresh;
+      acc -= inc * thresh;
+      tc->cwnd = clib_min ((u64) tc->cwnd + inc * tc->snd_mss, tc->tx_fifo_size);
     }
+  tc->cwnd_acc_bytes = acc;
 }
 
 always_inline u32

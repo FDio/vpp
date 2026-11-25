@@ -3741,6 +3741,17 @@ tcp_test_cubic_max_thresh (void)
     }
   TCP_TEST ((tc->cwnd == cwnd), "cubic does not grow when 50 * cwnd exceeds a u32 (cwnd %u -> %u)",
 	    cwnd, tc->cwnd);
+
+  /* Credit just below the saturated threshold must not wrap a u32, the next
+   * ack crosses it and grows cwnd by a segment */
+  tc->cwnd_acc_bytes = ~0U - snd_mss / 2;
+  tc->snd_una += snd_mss;
+  tc->snd_nxt = tc->snd_una + tc->cwnd;
+  tc->cwnd_limited_seq = tc->snd_una;
+  tc->cc_algo->rcv_ack (tc, &ac);
+  TCP_TEST ((tc->cwnd == cwnd + snd_mss && tc->cwnd_acc_bytes == snd_mss / 2),
+	    "cubic credit at the saturated threshold grows cwnd (cwnd %u acc %u)", tc->cwnd,
+	    tc->cwnd_acc_bytes);
   tcp_test_set_time (thread_index, 1);
 
   return 0;
