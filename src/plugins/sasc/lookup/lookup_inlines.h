@@ -206,6 +206,7 @@ static inline int
 sasc_calc_key(vlib_buffer_t *b, u32 context_id, sasc_session_key_t *k, u64 *h, bool is_ip6,
               enum sasc_lookup_mode_e lookup_mode, bool *is_icmp_error) {
     int rv;
+    *is_icmp_error = false;
     if (is_ip6) {
         rv = sasc_calc_key_v6(b, context_id, lookup_mode, k, is_icmp_error);
 

@@ -215,7 +215,7 @@ snort_enq_prepare_flow_ids (vlib_buffer_t **b, u32 *flow_ids, u32 n_left)
 static_always_inline void
 clib_array_hash_to_index_u32 (u32 *src, u32 n_indices, u32 n_elts)
 {
-  if (count_set_bits (n_indices) == 1)
+  if (n_elts && count_set_bits (n_indices) == 1)
     {
       clib_array_mask_u32 (src, n_indices - 1, n_elts);
       return;
