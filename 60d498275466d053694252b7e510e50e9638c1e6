@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d870ac7c_48ffb481",
+        "filename": "src/vnet/sfdp/format.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 306,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-25T16:31:52Z",
+      "side": 1,
+      "message": "Same comment, could we please use vec_elt(...) ?",
+      "revId": "60d498275466d053694252b7e510e50e9638c1e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "94e84db9_68a53ba4",
+        "filename": "src/vnet/sfdp/sfdp.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 166,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-25T16:31:52Z",
+      "side": 1,
+      "message": "It is currently not possible to specify the sp_node used for pre-filtering through the API (it is supported in CLI).\n\nTo maintain backwards compatibility, could you propose a new API `sfdp_set_sp_node_v2` / `vl_api_sfdp_sp_node_v2_t` which would follow the updated \u0027foreach_sfdp_sp_node\u0027 define and allow specifying the pre-filtering sp nodes ?",
+      "revId": "60d498275466d053694252b7e510e50e9638c1e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "322cf35c_51a736cb",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 331,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-25T16:31:52Z",
+      "side": 1,
+      "message": "Could we use vec_elt(...) instead of *vec_elt_at_index(...) here ?",
+      "revId": "60d498275466d053694252b7e510e50e9638c1e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5beff5c2_6684d83e",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 410,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-25T16:31:52Z",
+      "side": 1,
+      "message": "Same comment, could we use vec_elt(...) ?",
+      "revId": "60d498275466d053694252b7e510e50e9638c1e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "4f1644dc_7fe972e2",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 421,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-25T16:31:52Z",
+      "side": 1,
+      "message": "Same comment, could we use vec_elt(...) ?",
+      "revId": "60d498275466d053694252b7e510e50e9638c1e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8db9a13d_a5cc456b",
+        "filename": "src/vnet/sfdp/sfdp.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 418,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-25T16:31:52Z",
+      "side": 1,
+      "message": "Could you please add related documentation in `sfdp.rst` concerning pre-filters (how pre-filter function, how to register pre-filter new functions, how to configure them for a specific tenant, etc).\n\nI think it\u0027d be also important to specify that pre-filters hooks are currently present as part of the SFDP default IP4/IP6 5-tuple parsers - supporting them when adding custom parsers requires adding a specific hook.",
+      "revId": "60d498275466d053694252b7e510e50e9638c1e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d6f4589b_27939139",
+        "filename": "src/vnet/sfdp/sfdp.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 418,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-25T16:31:52Z",
+      "side": 1,
+      "message": "For SFDP services, we detect if services were registered with a duplicate name and return an error at init (see `sfdp_service_init()`), would it be possible to also check for pre-filter duplicate registration at init time ?",
+      "revId": "60d498275466d053694252b7e510e50e9638c1e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
