@@ -858,8 +858,15 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
     http_add_header (&headers, HTTP_HEADER_ACCEPT,
 		     http_content_type_token (HTTP_CONTENT_TEXT_HTML));
   vec_foreach (header, hcm->custom_headers)
-    http_add_custom_header (&headers, (char *) header->name, vec_len (header->name),
-			    (char *) header->value, vec_len (header->value));
+    {
+      if (http_token_is_case ((char *) header->name, vec_len (header->name),
+			      http_token_lit ("expect")))
+	http_add_header (&headers, HTTP_HEADER_EXPECT, (char *) header->value,
+			 vec_len (header->value));
+      else
+	http_add_custom_header (&headers, (char *) header->name, vec_len (header->name),
+				(char *) header->value, vec_len (header->value));
+    }
   hcm->headers_len = headers.tail_offset;
 
   if ((rv = parse_target ((char **) &hcm->uri, (char **) &hcm->http_query)))
@@ -869,6 +876,7 @@ hcc_command_fn (vlib_main_t *vm, unformat_input_t *input,
       goto done;
     }
 
+  hcm->connect_sep = (session_endpoint_cfg_t) SESSION_ENDPOINT_CFG_NULL;
   if ((rv = parse_uri ((char *) hcm->uri, &hcm->connect_sep)))
     {
       err = clib_error_return (0, "Uri parse error: %d", rv);

@@ -28,6 +28,7 @@ func init() {
 		Htttp2TlsNoAlpnTest, Http2TcpClientCloseDuringHandshakeTest,
 		Http2PseudoHeadersTest, Http2ResponsePseudoHeadersTest, Http2MethodsTest, Http2MethodsClientTest,
 		Http2HeadClientReuseTest, Http2InterimResponsesTest, Http2HeadContentLengthTest,
+		Http2ExpectContinueClientTest, Http2ExpectContinueServerTest, Http2ExpectContinueServerLifecycleTest,
 		Http2ClientStreamingBodyTest, Http2ClientStreamingAbortTest,
 		Http2ClientStreamingFinalResetTest, Http2ClientKnownLengthFinalResetTest, Http2ClientStreamingBodylessTest,
 		Http2ServerStreamingBodyTest, Http2ServerStreamingPaddingTest,
@@ -1364,6 +1365,332 @@ func http2TxReadBody(p *http2RxPeer, id uint32, window uint32, replenish bool) (
 			connectionCredit += int64(f.Length)
 		}
 	}
+}
+
+func (p *http2RxPeer) expectNoData() error {
+	return p.expectQuiet(false)
+}
+
+func (p *http2RxPeer) expectQuiet(finalSent bool) error {
+	if err := p.conn.SetReadDeadline(time.Now().Add(httpExpectQuiet)); err != nil {
+		return err
+	}
+	defer p.conn.SetReadDeadline(time.Now().Add(6 * time.Second))
+	for {
+		frame, err := p.framer.ReadFrame()
+		if timeout, ok := err.(net.Error); ok && timeout.Timeout() {
+			return nil
+		}
+		if finalSent && err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if finalSent {
+			switch f := frame.(type) {
+			case *http2.RSTStreamFrame:
+				continue
+			case *http2.GoAwayFrame:
+				if f.ErrCode == http2.ErrCodeNo {
+					continue
+				}
+			case *http2.DataFrame:
+				if len(f.Data()) == 0 && f.StreamEnded() {
+					continue
+				}
+			}
+		}
+		handled, err := p.control(frame)
+		if err != nil {
+			return err
+		}
+		if !handled {
+			return fmt.Errorf("unexpected %s on stream %d", frame.Header().Type, frame.Header().StreamID)
+		}
+	}
+}
+
+func (p *http2RxPeer) readExpectHeaders() (*http2.MetaHeadersFrame, error) {
+	for {
+		frame, err := p.framer.ReadFrame()
+		if err != nil {
+			return nil, err
+		}
+		if h, ok := frame.(*http2.MetaHeadersFrame); ok {
+			return h, nil
+		}
+		handled, err := p.control(frame)
+		if err != nil {
+			return nil, err
+		}
+		if !handled {
+			return nil, fmt.Errorf("expected HEADERS, got %s", frame.Header().Type)
+		}
+	}
+}
+
+func Http2ExpectContinueClientTest(s *Http2Suite) {
+	vpp := s.Containers.Vpp.VppInstance
+	var failures []string
+	cases := append(httpExpectClientCases(),
+		httpExpectClientCase{name: "window update before continue", action: "continue", options: "stream"},
+		httpExpectClientCase{name: "window update after continue", action: "continue", options: "stream"},
+		httpExpectClientCase{name: "fragmented upload HEADERS", action: "immediate", options: "stream fifo-size 32 header x-long:" + strings.Repeat("h", 24000)})
+	for _, tc := range cases {
+		listener, scheme := httpExpectListen(s.HostAddr(), "h2", tc.tls)
+		release := make(chan struct{})
+		done := httpExpectTCPPeer(listener, func(conn net.Conn) error {
+			preface := make([]byte, len(http2.ClientPreface))
+			if _, err := io.ReadFull(conn, preface); err != nil {
+				return err
+			}
+			if string(preface) != http2.ClientPreface {
+				return fmt.Errorf("invalid HTTP/2 client preface")
+			}
+			p := newHttp2RxPeer(conn)
+			window := uint32(1024)
+			initial := window
+			if strings.HasPrefix(tc.name, "window update") {
+				initial = 0
+			}
+			if err := p.framer.WriteSettings(http2.Setting{ID: http2.SettingInitialWindowSize, Val: initial}); err != nil {
+				return err
+			}
+			h, err := p.readExpectHeaders()
+			if err != nil {
+				return err
+			}
+			if strings.Contains(tc.options, "x-long:") && h.HeadersEnded() {
+				return fmt.Errorf("request must span HEADERS and CONTINUATION frames")
+			}
+			var expect string
+			for _, field := range h.RegularFields() {
+				if field.Name == "expect" {
+					expect = field.Value
+				}
+			}
+			ended := h.StreamEnded()
+			if tc.action != "empty" && (!strings.EqualFold(expect, "100-continue") || ended) {
+				return fmt.Errorf("request HEADERS must contain Expect and leave stream open, got %v", h.Fields)
+			}
+			id := h.StreamID
+			if tc.name == "window update before continue" {
+				if err := p.framer.WriteWindowUpdate(id, window); err != nil {
+					return err
+				}
+			}
+			final := func(status, body string) error {
+				fields := []hpack.HeaderField{{Name: ":status", Value: status},
+					{Name: "content-length", Value: strconv.Itoa(len(body))}}
+				if err := p.headers(id, fields, false, false); err != nil {
+					return err
+				}
+				return p.data(id, []byte(body), true, 0)
+			}
+			err = (httpExpectClientPeer{
+				quiet: p.expectNoData,
+				interim: func(status string, fragmented bool) error {
+					fields := []hpack.HeaderField{{Name: ":status", Value: status}}
+					if !fragmented {
+						return p.headers(id, fields, false, false)
+					}
+					block := http2HeaderBlock(fields...)
+					if err := p.framer.WriteHeaders(http2.HeadersFrameParam{StreamID: id, BlockFragment: block[:1]}); err != nil {
+						return err
+					}
+					if err := p.expectNoData(); err != nil {
+						return fmt.Errorf("before END_HEADERS: %w", err)
+					}
+					return p.framer.WriteContinuation(id, true, block[1:])
+				},
+				upload: func() (string, error) {
+					if ended {
+						return "", nil
+					}
+					if tc.name == "window update after continue" {
+						if err := p.expectNoData(); err != nil {
+							return "", fmt.Errorf("before stream window opened: %w", err)
+						}
+						if err := p.framer.WriteWindowUpdate(id, window); err != nil {
+							return "", err
+						}
+					}
+					body, _, err := http2TxReadBody(p, id, window, true)
+					return string(body), err
+				},
+				final: final,
+				abort: func(reset bool) error {
+					if !reset {
+						return conn.(*net.TCPConn).CloseWrite()
+					}
+					return p.framer.WriteRSTStream(id, http2.ErrCodeCancel)
+				},
+				reject: func() error {
+					var wire bytes.Buffer
+					writer := http2.NewFramer(&wire, nil)
+					reply := func(status string, fields ...hpack.HeaderField) error {
+						fields = append([]hpack.HeaderField{{Name: ":status", Value: status}}, fields...)
+						return writer.WriteHeaders(http2.HeadersFrameParam{StreamID: id, EndHeaders: true,
+							BlockFragment: http2HeaderBlock(fields...)})
+					}
+					if tc.coalesced {
+						if err := reply("100"); err != nil {
+							return err
+						}
+					}
+					if err := reply(tc.rejectStatus(), hpack.HeaderField{Name: "content-length", Value: strconv.Itoa(len(httpExpectReply))}); err != nil {
+						return err
+					}
+					if err := writer.WriteData(id, true, []byte(httpExpectReply)); err != nil {
+						return err
+					}
+					if err := writer.WriteRSTStream(id, http2.ErrCodeNo); err != nil {
+						return err
+					}
+					if _, err := conn.Write(wire.Bytes()); err != nil {
+						return err
+					}
+					return p.expectQuiet(true)
+				},
+			}).exchange(tc)
+			if err == nil {
+				<-release
+			}
+			return err
+		})
+		output := httpExpectRunClient(vpp, tc, "http2", scheme+"://"+listener.Addr().String()+"/echo")
+		close(release)
+		listener.Close()
+		if err := <-done; err != nil {
+			failures = append(failures, fmt.Sprintf("%s: %v", tc.name, err))
+		} else if err := tc.outputError(output); err != nil {
+			failures = append(failures, fmt.Sprintf("%s: %v", tc.name, err))
+		}
+	}
+	AssertEmpty(failures)
+}
+
+func http2ExpectRequest(address, path, length string, expect []string) []hpack.HeaderField {
+	fields := http2RxRequest(address, "POST")
+	fields[3].Value = path
+	if length != "" {
+		fields = append(fields, hpack.HeaderField{Name: "content-length", Value: length})
+	}
+	for _, value := range expect {
+		fields = append(fields, hpack.HeaderField{Name: "expect", Value: value})
+	}
+	return fields
+}
+
+func (p *http2RxPeer) expectReply(id uint32, status string) []byte {
+	headers, err := p.readExpectHeaders()
+	AssertNil(err)
+	AssertEqual(id, headers.StreamID)
+	AssertEqual(status, headers.PseudoValue("status"))
+	if status == "100" {
+		AssertEqual(false, headers.StreamEnded())
+		for _, field := range headers.RegularFields() {
+			AssertNotEqual("content-length", field.Name)
+		}
+		return nil
+	}
+	if headers.StreamEnded() {
+		return nil
+	}
+	data, nextStatus, err := p.response(id)
+	AssertNil(err)
+	AssertEmpty(nextStatus, "only one final response is permitted")
+	return data
+}
+
+func Http2ExpectContinueServerTest(s *Http2Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	AssertEmpty(s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://%s", address))
+	p := http2RxConnect(address, http2.Setting{ID: http2.SettingInitialWindowSize, Val: 1024})
+	defer p.conn.Close()
+	id := uint32(1)
+	for _, tc := range httpExpectServerCases() {
+		By(tc.name)
+		AssertNil(p.conn.SetDeadline(time.Now().Add(5 * time.Second)))
+		length := strconv.Itoa(len(tc.body))
+		if tc.streamed {
+			length = ""
+		}
+		fields := http2ExpectRequest(address, tc.path, length, tc.expect)
+		if tc.fragmented {
+			block := http2HeaderBlock(fields...)
+			AssertNil(p.framer.WriteHeaders(http2.HeadersFrameParam{StreamID: id, BlockFragment: block[:len(block)-1]}))
+			AssertNil(p.expectNoData(), "no interim response before END_HEADERS")
+			AssertNil(p.framer.WriteContinuation(id, true, block[len(block)-1:]))
+			p.streams[id] = p.initialWindow
+		} else {
+			AssertNil(p.headers(id, fields, false, false))
+		}
+		p.expectReply(id, "100")
+		other := id + 2
+		AssertNil(p.headers(other, http2ExpectRequest(address, "/echo", "0", nil), true, false))
+		AssertEmpty(p.expectReply(other, "200"), "another stream must finish while the first awaits its body")
+		AssertNil(p.data(id, []byte(tc.body), true, 0))
+		AssertEqual(tc.body, string(p.expectReply(id, tc.status)))
+		id += 4
+	}
+}
+
+func Http2ExpectContinueServerLifecycleTest(s *Http2Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	AssertEmpty(s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://%s", address))
+	p := http2RxConnect(address)
+	defer p.conn.Close()
+	expect := []string{"100-continue"}
+	By("A known empty request needs only a final response")
+	AssertNil(p.headers(1, http2ExpectRequest(address, "/echo", "0", expect), true, false))
+	AssertEmpty(p.expectReply(1, "200"))
+	By("The CLI can reject from the headers before receiving body bytes")
+	AssertNil(p.headers(3, http2ExpectRequest(address, "/show/version", "8", expect), false, false))
+	p.expectReply(3, "405")
+	By("A declared body cannot end on the request HEADERS")
+	AssertNil(p.headers(5, http2ExpectRequest(address, "/echo", "8", expect), true, true))
+	for {
+		frame, err := p.framer.ReadFrame()
+		AssertNil(err)
+		if reset, ok := frame.(*http2.RSTStreamFrame); ok {
+			if reset.StreamID == 3 {
+				AssertEqual(http2.ErrCodeNo, reset.ErrCode)
+				continue
+			}
+			AssertEqual(uint32(5), reset.StreamID)
+			AssertEqual(http2.ErrCodeProtocol, reset.ErrCode)
+			break
+		}
+		handled, err := p.control(frame)
+		AssertNil(err)
+		AssertEqual(true, handled, "expected a reset instead of an interim response")
+	}
+	By("Unsupported expectations reject the request even with eager DATA in the same write")
+	var wire bytes.Buffer
+	writer := http2.NewFramer(&wire, nil)
+	fields := http2ExpectRequest(address, "/echo", "8", []string{"100-continue, x-unsupported"})
+	AssertNil(writer.WriteHeaders(http2.HeadersFrameParam{StreamID: 7, EndHeaders: true,
+		BlockFragment: http2HeaderBlock(fields...)}))
+	AssertNil(writer.WriteData(7, false, []byte("short")))
+	_, err := p.conn.Write(wire.Bytes())
+	AssertNil(err)
+	AssertEmpty(p.expectReply(7, "417"))
+	for {
+		frame, err := p.framer.ReadFrame()
+		AssertNil(err)
+		if reset, ok := frame.(*http2.RSTStreamFrame); ok {
+			AssertEqual(uint32(7), reset.StreamID)
+			AssertEqual(http2.ErrCodeNo, reset.ErrCode)
+			break
+		}
+		handled, err := p.control(frame)
+		AssertNil(err)
+		AssertEqual(true, handled, "expected the reset to follow the final reply")
+	}
+	AssertNil(p.headers(9, http2ExpectRequest(address, "/echo", "0", nil), true, false))
+	AssertEmpty(p.expectReply(9, "200"))
 }
 
 func http2StreamingTxClient(s *Http2Suite, method, body, options, client string, window uint32, replenish bool) {

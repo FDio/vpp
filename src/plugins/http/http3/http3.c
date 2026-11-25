@@ -107,6 +107,7 @@ http3_stream_free_req_w_index (u32 req_index, clib_thread_index_t thread_index, 
 static_always_inline void
 http3_stream_close (http_ctx_t *stream, http_ctx_t *req)
 {
+  http_req_stop_expect_timer (req);
   http_ctx_t *hc;
 
   http_close_transport_stream (stream);
@@ -151,6 +152,7 @@ http3_stream_close (http_ctx_t *stream, http_ctx_t *req)
 static_always_inline void
 http3_stream_notify_error (http_ctx_t *stream, http_ctx_t *req)
 {
+  http_req_stop_expect_timer (req);
   /* Mark the stream closed before notifying the application. */
   stream->state = HTTP_CONN_STATE_CLOSED;
   if (stream->flags & HTTP_CONN_F_NO_APP_SESSION)
@@ -255,6 +257,66 @@ http3_stream_cancel_rx (http_ctx_t *stream, http_ctx_t *req)
   return 0;
 }
 
+static void
+http3_cancel_upload (http_ctx_t *stream, http_ctx_t *req, u8 peer_stopped)
+{
+  http_req_stop_expect_timer (req);
+  http_buffer_free (&req->tx_buf);
+  req->tx_buf.vft = 0;
+  http_io_as_drain_all (req);
+  req->req_flags |= HTTP_REQ_F_TX_EOF | HTTP_REQ_F_TX_CANCELLED;
+  if (!(req->req_flags & HTTP_REQ_F_RX_HEADERS_RECEIVED))
+    http_req_state_change (req, HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY);
+
+  if (!peer_stopped)
+    {
+      if (!(req->req_flags & HTTP_REQ_F_TX_STREAMING))
+	{
+	  transport_endpt_attr_t attr = { .type = TRANSPORT_ENDPT_ATTR_APP_PROTO_ERR_CODE_TX,
+					  .app_proto_err_code_tx = HTTP3_ERROR_NO_ERROR };
+	  session_t *ts = session_get_from_handle (stream->hc_tc_session_handle);
+	  session_transport_attribute (ts, 0, &attr);
+	}
+      http_half_close_transport_stream (stream);
+    }
+  if (req->req_flags & HTTP_REQ_F_PEER_CLOSED)
+    stream->state = HTTP_CONN_STATE_TRANSPORT_CLOSED;
+}
+
+static_always_inline void
+http3_check_peer_tx_stop (http_ctx_t *stream, http_ctx_t *req)
+{
+  if (!(req->req_flags & HTTP_REQ_F_TX_EXPECT_CONTINUE) || !req->tx_buf.vft)
+    return;
+  transport_endpt_attr_t attr = { .type = TRANSPORT_ENDPT_ATTR_STREAM_TX_STOP };
+  session_t *ts = session_get_from_handle (stream->hc_tc_session_handle);
+  if (!session_transport_attribute (ts, 1, &attr) && attr.stream_tx_stop)
+    http3_cancel_upload (stream, req, 1);
+}
+
+static void
+http3_send_continue (http_ctx_t *stream, http_ctx_t *req)
+{
+  if (http_req_expect_has_body (req) && !(req->req_flags & HTTP_REQ_F_PEER_CLOSED))
+    {
+      hpack_response_control_data_t control = { .sc = HTTP_STATUS_CONTINUE };
+      u8 fh[HTTP3_FRAME_HEADER_MAX_LEN];
+      vec_reset_length (http_tx_buf (stream));
+      qpack_serialize_response (0, 0, &control, &http_tx_buf (stream));
+      u32 len = vec_len (http_tx_buf (stream));
+      u32 fh_len = http3_frame_header_write (HTTP3_FRAME_TYPE_HEADERS, len, fh);
+      svm_fifo_seg_t segs[2] = { { fh, fh_len }, { http_tx_buf (stream), len } };
+      if (!http_io_ts_write_segs (stream, segs, 2, 0, 1))
+	{
+	  http_io_ts_add_want_deq_ntf (stream);
+	  return;
+	}
+      http_io_ts_after_write (stream, 0);
+      http_stats_responses_sent_inc (stream->c_thread_index);
+    }
+  req->req_flags &= ~HTTP_REQ_F_RX_CONTINUE_PENDING;
+}
+
 static_always_inline int
 http3_stream_ctx_reset (http_ctx_t *old_stream, http_ctx_t *req)
 {
@@ -266,6 +328,7 @@ http3_stream_ctx_reset (http_ctx_t *old_stream, http_ctx_t *req)
 
   ASSERT (old_stream->flags & HTTP_CONN_F_BIDIRECTIONAL_STREAM);
   ASSERT (!(old_stream->flags & HTTP_CONN_F_IS_SERVER));
+  http_req_stop_expect_timer (req);
 
   /* confirm close if quic was waiting for us to read all data */
   if (old_stream->state == HTTP_CONN_STATE_TRANSPORT_CLOSED)
@@ -664,7 +727,8 @@ http3_req_state_wait_app_method (http_ctx_t *stream, http_ctx_t *req, transport_
   http_req_state_t new_state = HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY;
 
   req->req_flags &= ~(HTTP_REQ_F_RX_STREAMING | HTTP_REQ_F_RX_EOF | HTTP_REQ_F_RX_HEADERS_RECEIVED |
-		      HTTP_REQ_F_RX_TRAILERS | HTTP_REQ_F_PEER_CLOSED);
+		      HTTP_REQ_F_RX_TRAILERS | HTTP_REQ_F_PEER_CLOSED | HTTP_REQ_F_TX_BODY_STARTED |
+		      HTTP_REQ_F_TX_EXPECT_CONTINUE);
   http_get_app_msg (req, &msg, 1);
   ASSERT (msg.type == HTTP_MSG_REQUEST);
   if (msg.data.type == HTTP_MSG_DATA_STREAMING &&
@@ -755,6 +819,15 @@ http3_req_state_wait_app_method (http_ctx_t *stream, http_ctx_t *req, transport_
   if (msg.data.headers_len)
     app_headers = http_get_app_header_list (req, &msg);
 
+  http_req_set_tx_expect (req, &msg, app_headers);
+  if (req->req_flags & HTTP_REQ_F_TX_EXPECT_CONTINUE)
+    {
+      transport_endpt_attr_t attr = { .type = TRANSPORT_ENDPT_ATTR_STREAM_TX_STOP,
+				      .stream_tx_stop = 1 };
+      session_t *ts = session_get_from_handle (stream->hc_tc_session_handle);
+      session_transport_attribute (ts, 0, &attr);
+    }
+
   qpack_serialize_request (app_headers, msg.data.headers_len, &control_data, &http_tx_buf (stream));
 
   headers_len = vec_len (http_tx_buf (stream));
@@ -791,7 +864,18 @@ http3_req_state_wait_app_method (http_ctx_t *stream, http_ctx_t *req, transport_
   if (msg.data.type == HTTP_MSG_DATA_STREAMING && !http_io_as_max_read (req))
     {
       if (req->req_flags & HTTP_REQ_F_TX_EOF)
-	http3_stream_tx_complete (stream, req, sp);
+	{
+	  http3_stream_tx_complete (stream, req, sp);
+	  return HTTP_SM_STOP;
+	}
+      if (!(req->req_flags & HTTP_REQ_F_TX_EXPECT_CONTINUE))
+	return HTTP_SM_STOP;
+    }
+
+  if (req->req_flags & HTTP_REQ_F_TX_EXPECT_CONTINUE)
+    {
+      http_req_start_expect_timer (req);
+      http_req_deschedule (req, sp);
       return HTTP_SM_STOP;
     }
 
@@ -836,6 +920,8 @@ http3_req_state_app_io_more_streaming_data (http_ctx_t *stream, http_ctx_t *req,
   n_written = http_io_ts_write_segs (stream, segs, n_segs + 1, sp, 0);
   *n_sent += n_written;
   ASSERT (n_written == n_read + segs[0].len);
+  if (req->req_flags & HTTP_REQ_F_TX_EXPECT_CONTINUE)
+    req->req_flags |= HTTP_REQ_F_TX_BODY_STARTED;
   http_buffer_drain (&req->tx_buf, n_read);
   if ((req->req_flags & HTTP_REQ_F_TX_EOF) && !http_io_as_max_read (req))
     http3_stream_tx_complete (stream, req, sp);
@@ -890,6 +976,8 @@ http3_req_state_app_io_more_data (http_ctx_t *stream, http_ctx_t *req, transport
   *n_sent += n_written;
   n_written -= fh_len;
   ASSERT (n_written == n_read);
+  if (req->req_flags & HTTP_REQ_F_TX_EXPECT_CONTINUE)
+    req->req_flags |= HTTP_REQ_F_TX_BODY_STARTED;
   http_buffer_drain (hb, n_written);
   finished = (http_buffer_bytes_left (hb) == 0);
 
@@ -903,6 +991,8 @@ http3_req_state_app_io_more_data (http_ctx_t *stream, http_ctx_t *req, transport
       else
 	{
 	  /* all done, close stream for sending */
+	  http_buffer_free (hb);
+	  hb->vft = 0;
 	  http_half_close_transport_stream (stream);
 	  http_req_state_change (req, HTTP_REQ_STATE_WAIT_TRANSPORT_REPLY);
 	}
@@ -1264,6 +1354,19 @@ http3_req_state_wait_transport_method (http_ctx_t *stream, http_ctx_t *req,
   res = (req->req_flags & HTTP_REQ_F_IS_TUNNEL) ? HTTP_SM_STOP : HTTP_SM_CONTINUE;
   req->to_recv = req->body_len;
 
+  if (!(req->req_flags & HTTP_REQ_F_IS_TUNNEL))
+    {
+      http_expect_t expect = http_req_expect (req, wrk->header_list);
+      if (expect & HTTP_EXPECT_UNSUPPORTED)
+	{
+	  http3_stream_respond_early (stream, req, HTTP_STATUS_EXPECTATION_FAILED);
+	  return HTTP_SM_STOP;
+	}
+      if (expect & HTTP_EXPECT_CONTINUE)
+	req->req_flags |= HTTP_REQ_F_RX_EXPECT_CONTINUE;
+      http_req_maybe_send_continue (stream, req);
+    }
+
   http_set_target_path (req, wrk->header_list, control_data.path, control_data.path_len,
 			control_data.query_offset);
 
@@ -1372,23 +1475,21 @@ http3_req_state_wait_transport_reply (http_ctx_t *stream, http_ctx_t *req,
     }
 
   /* Informational headers do not start or complete the response body. */
+  http3_check_peer_tx_stop (stream, req);
   if (http_status_code_str[req->status_code][0] == '1')
     {
+      if (control_data.status_is_continue && control_data.content_len_header_index == ~0)
+	http_req_release_upload (req);
       req->fh.length = 0;
       return HTTP_SM_CONTINUE;
     }
 
   /* Rejections may stop the upload; successful responses can be full-duplex. */
-  if (http_status_code_str[req->status_code][0] != '2' && http_req_tx_streaming_pending (req))
-    {
-      http_buffer_free (&req->tx_buf);
-      req->tx_buf.vft = 0;
-      http_io_as_drain_all (req);
-      req->req_flags |= HTTP_REQ_F_TX_EOF | HTTP_REQ_F_TX_CANCELLED;
-      http_half_close_transport_stream (stream);
-      if (req->req_flags & HTTP_REQ_F_PEER_CLOSED)
-	stream->state = HTTP_CONN_STATE_TRANSPORT_CLOSED;
-    }
+  u8 expecting = (req->req_flags & HTTP_REQ_F_TX_EXPECT_CONTINUE) && req->tx_buf.vft;
+  if ((expecting && (!(req->req_flags & HTTP_REQ_F_TX_BODY_STARTED) ||
+		     !(req->req_flags & HTTP_REQ_F_TX_STREAMING))) ||
+      (http_status_code_str[req->status_code][0] != '2' && http_req_tx_streaming_pending (req)))
+    http3_cancel_upload (stream, req, 0);
 
   if ((req->req_flags & HTTP_REQ_F_IS_TUNNEL) && http_status_code_str[req->status_code][0] == '2')
     {
@@ -2338,7 +2439,9 @@ http3_stream_transport_rx_req (http_ctx_t *req, http_ctx_t *stream, http_req_sta
 	    }
 	  if (req->req_state != headers_state &&
 	      !(!(stream->flags & HTTP_CONN_F_IS_SERVER) &&
-		req->req_state == HTTP_REQ_STATE_APP_IO_MORE_STREAMING_DATA))
+		(req->req_state == HTTP_REQ_STATE_APP_IO_MORE_STREAMING_DATA ||
+		 (req->req_state == HTTP_REQ_STATE_APP_IO_MORE_DATA &&
+		  (req->req_flags & HTTP_REQ_F_TX_EXPECT_CONTINUE)))))
 	    {
 	      HTTP_DBG (1, "unexpected frame, state: %U", format_http_req_state, req->req_state);
 	      err = HTTP3_ERROR_FRAME_UNEXPECTED;
@@ -2621,12 +2724,27 @@ http3_app_tx_callback (http_ctx_t *stream, u32 req_index, transport_send_params_
 
   req = http_ctx_get_w_thread (req_index, thread_index);
   HTTP_DBG (1, "stream [%u]%x req %x", thread_index, stream->hc_hc_index, req_index);
+  http3_check_peer_tx_stop (stream, req);
   /* Ignore late producer events after the upload was cancelled. */
   if (req->req_flags & HTTP_REQ_F_TX_CANCELLED)
     {
       http_io_as_drain_all (req);
       http_req_deschedule (req, sp);
       return;
+    }
+  if (PREDICT_FALSE (http_req_waiting_continue (req)))
+    {
+      http_req_deschedule (req, sp);
+      return;
+    }
+  if (PREDICT_FALSE (req->req_flags & HTTP_REQ_F_RX_CONTINUE_PENDING))
+    {
+      http3_send_continue (stream, req);
+      if (req->req_flags & HTTP_REQ_F_RX_CONTINUE_PENDING)
+	{
+	  http_req_deschedule (req, sp);
+	  return;
+	}
     }
   if (!http3_req_state_is_tx_valid (req))
     {
@@ -2635,6 +2753,7 @@ http3_app_tx_callback (http_ctx_t *stream, u32 req_index, transport_send_params_
 	  (stream->flags & HTTP_CONN_F_IS_SERVER))
 	{
 	  /* server app might send error earlier */
+	  req->req_flags &= ~HTTP_REQ_F_RX_EXPECT_CONTINUE;
 	  if (http3_stream_cancel_rx (stream, req))
 	    return;
 	  http_req_state_change (req, HTTP_REQ_STATE_WAIT_APP_REPLY);
@@ -2699,6 +2818,22 @@ http3_app_close_callback (http_ctx_t *stream, u32 req_index, clib_thread_index_t
     req->req_flags |= HTTP_REQ_F_APP_CLOSED;
   else
     http_req_app_close (req, is_shutdown);
+
+  if (http_req_waiting_continue (req))
+    {
+      if (!is_shutdown)
+	{
+	  http_req_stop_expect_timer (req);
+	  if (!http3_stream_cancel_rx (stream, req))
+	    http3_stream_close (stream, req);
+	  return;
+	}
+      if (http_io_as_max_read (req))
+	return;
+      http_req_stop_expect_timer (req);
+    }
+  if (is_shutdown && (req->req_flags & HTTP_REQ_F_TX_CANCELLED))
+    return;
 
   if (http_req_tx_streaming_pending (req))
     {
@@ -2917,6 +3052,8 @@ http3_transport_conn_reschedule_callback (http_ctx_t *stream)
   if (stream->http_req_index == SESSION_INVALID_INDEX || http3_stream_close_if_conn_closed (stream))
     return;
   req = http_ctx_get_w_thread (stream->http_req_index, stream->c_thread_index);
+  if (req->req_flags & HTTP_REQ_F_RX_CONTINUE_PENDING)
+    http3_send_continue (stream, req);
   if (transport_connection_is_descheduled (&req->connection))
     transport_connection_reschedule (&req->connection);
 }
@@ -3164,6 +3301,7 @@ http3_transport_stream_reset_callback (http_ctx_t *stream)
     }
   else
     {
+      http_req_stop_expect_timer (req);
       /* this might happen when client is doing multiplexing because we open quic stream for
        * next request in advance */
       if (http3_stream_reset_is_ignored (req, error_code))
@@ -3304,6 +3442,7 @@ const static http_engine_vft_t http3_engine = {
   .req_get_connection = http3_req_get_connection,
   .format_req = http3_format_req,
   .app_tx_callback = http3_app_tx_callback,
+  .send_continue = http3_send_continue,
   .app_rx_evt_callback = http3_app_rx_evt_callback,
   .app_close_callback = http3_app_close_callback,
   .app_reset_callback = http3_app_reset_callback,

@@ -39,7 +39,8 @@ typedef enum http_udp_tunnel_mode_ : u8
 
 #define foreach_http_endpt_cfg_flags                                                               \
   _ (HTTP2_PRIOR_KNOWLEDGE)	 /**< HTTP/2 connections over cleartext TCP */                     \
-  _ (ENABLE_CONNECT_UDP_DRAFT03) /**< enable masque-connect-udp-draft-03 */
+  _ (ENABLE_CONNECT_UDP_DRAFT03) /**< enable masque-connect-udp-draft-03 */                        \
+  _ (APP_EXPECT_CONTINUE)	 /**< let the app decide after reading the request headers */
 
 typedef enum http_endpt_cfg_flags_bit_
 {
@@ -63,6 +64,9 @@ typedef struct transport_endpt_cfg_http
   /** HTTP/3 port, in host byte order, zero if not set. */
   u16 h3_alt_svc_port;
 } transport_endpt_cfg_http_t;
+
+/** Allow the body of the current server request after validating its headers. */
+void http_accept_request_body (session_t *as);
 
 typedef struct
 {

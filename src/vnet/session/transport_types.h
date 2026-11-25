@@ -460,7 +460,9 @@ typedef struct transport_endpt_ext_cfgs_
   _ (u64, next_transport, NEXT_TRANSPORT)                                                          \
   _ (u64, app_proto_err_code, APP_PROTO_ERR_CODE)                                                  \
   _ (u8 *, tls_server_name, TLS_SERVER_NAME)                                                       \
-  _ (u64, app_proto_err_code_rx, APP_PROTO_ERR_CODE_RX)
+  _ (u64, app_proto_err_code_rx, APP_PROTO_ERR_CODE_RX)                                            \
+  _ (u64, app_proto_err_code_tx, APP_PROTO_ERR_CODE_TX)                                            \
+  _ (u8, stream_tx_stop, STREAM_TX_STOP)
 
 typedef enum transport_endpt_attr_type_
 {

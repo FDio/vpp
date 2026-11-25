@@ -182,6 +182,9 @@ typedef enum quic_ctx_flags_
   QUIC_F_STREAM_TX_CLOSED = (1 << 7),
   QUIC_F_APP_CLOSED_RX = (1 << 8),
   QUIC_F_STREAM_DELETING = (1 << 9),
+  QUIC_F_ALLOW_TX_STOP = (1 << 10),
+  QUIC_F_PEER_STOPPED_TX = (1 << 11),
+  QUIC_F_ABORT_TX = (1 << 12),
 } quic_ctx_flags_t;
 
 typedef enum quic_cc_type
@@ -258,6 +261,7 @@ typedef struct quic_ctx_
   void *peer_cert; /* X509 * stored as void * to avoid including openssl headers */
   quic_app_err_code_t app_err_code;
   quic_app_err_code_t app_err_code_rx;
+  quic_app_err_code_t app_err_code_tx;
   u64 opaque; /* engine can store something here */
   /* 8 bytes left to next cache line */
 } quic_ctx_t;

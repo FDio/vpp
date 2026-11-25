@@ -8,6 +8,7 @@
 #include <http/http.h>
 #include <http/http_header_names.h>
 #include <http/http_content_types.h>
+#include <vlib/unix/plugin.h>
 
 #define HCS_DEBUG 0
 
@@ -81,6 +82,7 @@ typedef struct
   hcs_session_t **sessions;
   u32 *free_http_cli_process_node_indices;
   u32 app_index;
+  void (*accept_request_body) (session_t *s);
 
   /* Cert key pair for tls */
   u32 ckpair_index;
@@ -585,6 +587,7 @@ hcs_ts_rx_callback (session_t *ts)
       hs->echo_rx = 1;
       hs->rx_left = msg.data.body_len;
       svm_fifo_dequeue_drop (ts->rx_fifo, control_len);
+      hcs_main.accept_request_body (ts);
       return hcs_echo_rx (ts, hs, control_len);
     }
 
@@ -609,6 +612,7 @@ hcs_ts_rx_callback (session_t *ts)
       hs->echo_rx = 1;
       hs->rx_left = msg.data.body_len;
       svm_fifo_dequeue_drop (ts->rx_fifo, control_len);
+      hcs_main.accept_request_body (ts);
       return hcs_echo_rx (ts, hs, control_len);
     }
 
@@ -646,6 +650,7 @@ hcs_ts_rx_callback (session_t *ts)
     {
       hs->pending_cli = clib_mem_alloc (sizeof (args));
       *hs->pending_cli = args;
+      hcs_main.accept_request_body (ts);
     }
   else
     hcs_schedule_cli (&args);
@@ -881,6 +886,11 @@ hcs_listen ()
   sep.transport_proto = TRANSPORT_PROTO_HTTP;
   clib_memcpy (&a->sep_ext, &sep, sizeof (sep));
 
+  transport_endpt_cfg_http_t http_cfg = { .flags = HTTP_ENDPT_CFG_F_APP_EXPECT_CONTINUE };
+  transport_endpt_ext_cfg_t *http_ext =
+    session_endpoint_add_ext_cfg (&a->sep_ext, TRANSPORT_ENDPT_EXT_CFG_HTTP, sizeof (http_cfg));
+  clib_memcpy (http_ext->data, &http_cfg, sizeof (http_cfg));
+
   if (sep.flags & SESSION_ENDPT_CFG_F_SECURE)
     {
       transport_endpt_ext_cfg_t *ext_cfg = session_endpoint_add_ext_cfg (
@@ -907,8 +917,7 @@ hcs_listen ()
       hash_set_mem (hcm->index_by_uri, map->uri, map - hcm->uri_map_pool);
     }
 
-  if (sep.flags & SESSION_ENDPT_CFG_F_SECURE)
-    session_endpoint_free_ext_cfgs (&a->sep_ext);
+  session_endpoint_free_ext_cfgs (&a->sep_ext);
 
   return rv;
 }
@@ -971,6 +980,10 @@ hcs_create (vlib_main_t *vm)
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
   vec_validate (hcm->sessions, num_threads - 1);
+
+  hcm->accept_request_body = vlib_get_plugin_symbol ("http_plugin.so", "http_accept_request_body");
+  if (!hcm->accept_request_body)
+    return -1;
 
   if (hcs_attach ())
     {

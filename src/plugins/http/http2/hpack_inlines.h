@@ -528,7 +528,7 @@ hpack_validate_request_pseudo_headers (hpack_request_control_data_t *cd, u8 enab
 }
 
 always_inline hpack_error_t
-hpack_parse_status_code (u8 *value, u32 value_len, http_status_code_t *sc)
+hpack_parse_status_code (u8 *value, u32 value_len, hpack_response_control_data_t *control_data)
 {
   u16 status_code = 0;
   u8 *p;
@@ -546,7 +546,8 @@ hpack_parse_status_code (u8 *value, u32 value_len, http_status_code_t *sc)
       return HPACK_ERROR_PROTOCOL;
     }
   HTTP_DBG (1, "status code: %d", status_code);
-  *sc = http_sc_by_u16 (status_code);
+  control_data->sc = http_sc_by_u16 (status_code);
+  control_data->status_is_continue = status_code == 100;
 
   return HPACK_ERROR_NONE;
 }
@@ -648,7 +649,7 @@ hpack_parse_resp_pseudo_header (u8 *name, u32 name_len, u8 *value,
 	  if (control_data->parsed_bitmap & HPACK_PSEUDO_HEADER_STATUS_PARSED)
 	    return HPACK_ERROR_PROTOCOL;
 	  control_data->parsed_bitmap |= HPACK_PSEUDO_HEADER_STATUS_PARSED;
-	  return hpack_parse_status_code (value, value_len, &control_data->sc);
+	  return hpack_parse_status_code (value, value_len, control_data);
 	}
       return HPACK_ERROR_PROTOCOL;
     default:

@@ -558,6 +558,11 @@ quic_quicly_on_stop_sending (quicly_stream_t *stream, quicly_error_t quicly_erro
    * cancelling that send side must not turn its response into a stream reset. */
   if (!(sctx->flags & (QUIC_F_APP_CLOSED | QUIC_F_APP_CLOSED_TX)))
     {
+      if (sctx->flags & QUIC_F_ALLOW_TX_STOP)
+	{
+	  sctx->flags |= QUIC_F_APP_CLOSED_TX | QUIC_F_STREAM_TX_CLOSED | QUIC_F_PEER_STOPPED_TX;
+	  return;
+	}
       sctx->app_err_code = QUICLY_ERROR_GET_ERROR_CODE (quicly_error);
       sctx->c_flags |= TRANSPORT_CONNECTION_F_ERROR;
       session_transport_reset_notify (&sctx->connection);
@@ -1317,6 +1322,14 @@ quic_quicly_on_app_half_closed (u32 ctx_index, clib_thread_index_t thread_index,
   QUIC_DBG (2, "App half-closing session 0x%lx ctx_index %u", session_handle (stream_session),
 	    ctx->c_c_index);
   ctx->flags |= QUIC_F_APP_CLOSED_TX;
+  if (ctx->flags & QUIC_F_ABORT_TX)
+    {
+      ctx->flags |= QUIC_F_STREAM_TX_CLOSED;
+      quicly_reset_stream (stream, QUICLY_ERROR_FROM_APPLICATION_ERROR_CODE (ctx->app_err_code_tx));
+      quic_quicly_reschedule_ctx (
+	quic_quicly_get_quic_ctx (ctx->quic_connection_ctx_id, ctx->c_thread_index));
+      return;
+    }
   quic_quicly_stream_shutdown_tx (ctx, stream_session);
 }
 

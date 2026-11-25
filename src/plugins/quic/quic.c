@@ -719,6 +719,20 @@ quic_session_attribute (u32 ctx_index, clib_thread_index_t thread_index,
 	    return -1;
 	  ctx->app_err_code_rx = (quic_app_err_code_t) attr->app_proto_err_code_rx;
 	  break;
+	case TRANSPORT_ENDPT_ATTR_APP_PROTO_ERR_CODE_TX:
+	  if (!quic_ctx_is_stream (ctx) || attr->app_proto_err_code_tx >= (1ULL << 62))
+	    return -1;
+	  ctx->app_err_code_tx = (quic_app_err_code_t) attr->app_proto_err_code_tx;
+	  ctx->flags |= QUIC_F_ABORT_TX;
+	  break;
+	case TRANSPORT_ENDPT_ATTR_STREAM_TX_STOP:
+	  if (!quic_ctx_is_stream (ctx))
+	    return -1;
+	  if (attr->stream_tx_stop)
+	    ctx->flags |= QUIC_F_ALLOW_TX_STOP;
+	  else
+	    ctx->flags &= ~QUIC_F_ALLOW_TX_STOP;
+	  break;
 	default:
 	  return -1;
 	}
@@ -735,6 +749,11 @@ quic_session_attribute (u32 ctx_index, clib_thread_index_t thread_index,
       break;
     case TRANSPORT_ENDPT_ATTR_APP_PROTO_ERR_CODE:
       attr->app_proto_err_code = (u64) ctx->app_err_code;
+      break;
+    case TRANSPORT_ENDPT_ATTR_STREAM_TX_STOP:
+      if (!quic_ctx_is_stream (ctx))
+	return -1;
+      attr->stream_tx_stop = !!(ctx->flags & QUIC_F_PEER_STOPPED_TX);
       break;
     case TRANSPORT_ENDPT_ATTR_TLS_PEER_CERT:
     case TRANSPORT_ENDPT_ATTR_TLS_PROFILE_INFO:

@@ -9,6 +9,7 @@
 
 #include <quic/quic.h>
 #include <http/http.h>
+#include <http/http_header_names.h>
 #include <http/http_private.h>
 #include <http/http_timer.h>
 
@@ -24,6 +25,7 @@ const http_buffer_type_t msg_to_buf_type[] = {
 
 #define HTTP_MAX_STREAMS_UNI  3 /* control + QPACK encoder and decoder */
 #define HTTP_MAX_STREAMS_BIDI 100
+#define HTTP_EXPECT_CONTINUE_TIMEOUT 1.0
 
 void
 http_register_engine (const http_engine_vft_t *vft, http_version_t version)
@@ -178,6 +180,7 @@ http_ctx_alloc_w_thread (clib_thread_index_t thread_index)
 
   pool_get_aligned_safe (wrk->ctx_pool, hc, CLIB_CACHE_LINE_BYTES);
   clib_memset (hc, 0, sizeof (*hc));
+  hc->expect_timer.next = hc->expect_timer.prev = CLIB_LLIST_INVALID_INDEX;
   HTTP_DBG (1, "alloc ctx index [%u]%x", thread_index, hc - wrk->ctx_pool);
   return (hc - wrk->ctx_pool);
 }
@@ -202,6 +205,8 @@ void
 http_ctx_free (http_ctx_t *hc)
 {
   http_worker_t *wrk = http_worker_get (hc->c_thread_index);
+  if (PREDICT_FALSE (clib_llist_elt_is_linked (hc, expect_timer)))
+    http_req_stop_expect_timer (hc);
   HTTP_DBG (1, "free ctx index [%u]%x", hc->c_thread_index, hc - wrk->ctx_pool);
   if (CLIB_DEBUG)
     memset (hc, 0xba, sizeof (*hc));
@@ -214,6 +219,8 @@ http_ctx_free_w_index (u32 hc_index, clib_thread_index_t thread_index)
   http_worker_t *wrk = http_worker_get (thread_index);
   HTTP_DBG (1, "free ctx index [%u]%x", thread_index, hc_index);
   http_ctx_t *hc = pool_elt_at_index (wrk->ctx_pool, hc_index);
+  if (PREDICT_FALSE (clib_llist_elt_is_linked (hc, expect_timer)))
+    http_req_stop_expect_timer (hc);
   if (CLIB_DEBUG)
     memset (hc, 0xba, sizeof (*hc));
   pool_put (wrk->ctx_pool, hc);
@@ -289,12 +296,13 @@ http_ho_conn_alloc (void)
 }
 
 static http_listener_metadata_t *
-http_listener_metadata_alloc (u8 *app_name, u8 *h3_alt_svc_port)
+http_listener_metadata_alloc (u8 *app_name, u8 *h3_alt_svc_port, u8 app_expect_continue)
 {
   http_listener_metadata_t *metadata;
 
   metadata = clib_mem_alloc_aligned (sizeof (*metadata), CLIB_CACHE_LINE_BYTES);
   metadata->refcnt = 1; /* listener reference */
+  metadata->app_expect_continue = app_expect_continue;
   metadata->app_name = vec_dup (app_name);
   metadata->h3_alt_svc_port = vec_dup (h3_alt_svc_port);
   return metadata;
@@ -340,7 +348,7 @@ http_listener_alloc (void)
   lhc->version = HTTP_VERSION_NA;
   lhc->hc_tl_handle_tcp = SESSION_INVALID_HANDLE;
   lhc->hc_tl_handle_quic = SESSION_INVALID_HANDLE;
-  vec_add1 (lhc->hl_metadata_by_thread, http_listener_metadata_alloc (0, 0));
+  vec_add1 (lhc->hl_metadata_by_thread, http_listener_metadata_alloc (0, 0, 0));
   return lhc->hc_hc_index;
 }
 
@@ -544,6 +552,145 @@ http_get_app_header_list (http_ctx_t *req, http_msg_t *msg)
     }
 
   return app_headers;
+}
+
+static http_expect_t
+http_parse_expect (const char *value, u32 len)
+{
+  const char *end = value + len;
+  http_expect_t result = HTTP_EXPECT_NONE;
+  while (value < end)
+    {
+      const char *next = memchr (value, ',', end - value);
+      const char *last = next ? next : end;
+      while (value < last && (*value == ' ' || *value == '\t'))
+	value++;
+      while (value < last && (last[-1] == ' ' || last[-1] == '\t'))
+	last--;
+      if (value < last)
+	result |= http_token_is_case (value, last - value, http_token_lit ("100-continue")) ?
+		    HTTP_EXPECT_CONTINUE :
+		    HTTP_EXPECT_UNSUPPORTED;
+      value = next ? next + 1 : end;
+    }
+  return result;
+}
+
+http_expect_t
+http_req_expect (const http_ctx_t *req, const u8 *headers)
+{
+  const http_field_line_t *field;
+  http_expect_t result = HTTP_EXPECT_NONE;
+  headers += req->headers_offset;
+  vec_foreach (field, req->headers)
+    if (http_token_is_case ((const char *) headers + field->name_offset, field->name_len,
+			    http_header_name_token (HTTP_HEADER_EXPECT)))
+      result |= http_parse_expect ((const char *) headers + field->value_offset, field->value_len);
+  return result;
+}
+
+void
+http_req_set_tx_expect (http_ctx_t *req, const http_msg_t *msg, const u8 *headers)
+{
+  req->req_flags &= ~HTTP_REQ_F_TX_EXPECT_CONTINUE;
+  if (!msg->data.headers_len || (req->req_flags & HTTP_REQ_F_IS_TUNNEL) ||
+      (!msg->data.body_len && msg->data.type != HTTP_MSG_DATA_STREAMING))
+    return;
+
+  const u8 *end = headers + msg->data.headers_len;
+  while (headers < end)
+    {
+      const http_app_header_t *field = (const http_app_header_t *) headers;
+      const http_custom_token_t *value = &field->value;
+      u8 expect;
+      if (field->name.flags & HTTP_FIELD_LINE_F_CUSTOM_NAME)
+	{
+	  expect = http_token_is_case ((const char *) field->name.token, field->name.len,
+				       http_header_name_token (HTTP_HEADER_EXPECT));
+	  value = (const http_custom_token_t *) (field->name.token + field->name.len);
+	}
+      else
+	expect = field->name.name == HTTP_HEADER_EXPECT;
+      if (expect &&
+	  (http_parse_expect ((const char *) value->token, value->len) & HTTP_EXPECT_CONTINUE))
+	{
+	  req->req_flags |= HTTP_REQ_F_TX_EXPECT_CONTINUE;
+	  return;
+	}
+      headers = value->token + value->len;
+    }
+}
+
+void
+http_req_start_expect_timer (http_ctx_t *req)
+{
+  http_worker_t *wrk = http_worker_get (req->c_thread_index);
+  http_ctx_t *head = clib_llist_elt (wrk->ctx_pool, wrk->sched_head);
+
+  ASSERT (!http_req_waiting_continue (req));
+  req->expect_deadline =
+    vlib_time_now (vlib_get_main_by_index (req->c_thread_index)) + HTTP_EXPECT_CONTINUE_TIMEOUT;
+  clib_llist_add_tail (wrk->ctx_pool, expect_timer, req, head);
+  wrk->expect_timers++;
+}
+
+void
+http_req_stop_expect_timer (http_ctx_t *req)
+{
+  if (!http_req_waiting_continue (req))
+    return;
+  http_worker_t *wrk = http_worker_get (req->c_thread_index);
+  clib_llist_remove (wrk->ctx_pool, expect_timer, req);
+  req->expect_deadline = 0;
+  wrk->expect_timers--;
+}
+
+void
+http_req_release_upload (http_ctx_t *req)
+{
+  if (!http_req_waiting_continue (req))
+    return;
+  http_req_stop_expect_timer (req);
+  transport_connection_reschedule (&req->connection);
+}
+
+static void
+http_expect_update_time (f64 now, u8 thread_index)
+{
+  http_worker_t *wrk = http_worker_get (thread_index);
+  if (PREDICT_TRUE (!wrk->expect_timers))
+    return;
+  http_ctx_t *head = clib_llist_elt (wrk->ctx_pool, wrk->sched_head);
+  while (!clib_llist_is_empty (wrk->ctx_pool, expect_timer, head))
+    {
+      http_ctx_t *req = clib_llist_next (wrk->ctx_pool, expect_timer, head);
+      if (req->expect_deadline > now)
+	break;
+      http_req_release_upload (req);
+    }
+}
+
+void
+http_req_send_continue (http_ctx_t *hc, http_ctx_t *req)
+{
+  if (!(req->req_flags & HTTP_REQ_F_RX_EXPECT_CONTINUE))
+    return;
+  req->req_flags &= ~HTTP_REQ_F_RX_EXPECT_CONTINUE;
+  if (!http_req_expect_has_body (req) || (req->req_flags & HTTP_REQ_F_PEER_CLOSED) ||
+      hc->state >= HTTP_CONN_STATE_TRANSPORT_CLOSED)
+    return;
+  req->req_flags |= HTTP_REQ_F_RX_CONTINUE_PENDING;
+  http_vfts[hc->version].send_continue (hc, req);
+}
+
+__clib_export void
+http_accept_request_body (session_t *as)
+{
+  ASSERT (session_get_transport_proto (as) == TRANSPORT_PROTO_HTTP);
+  http_req_handle_t handle = { .as_u32 = as->connection_index };
+  http_ctx_t *req = http_ctx_get_w_thread (handle.req_index, as->thread_index);
+  if (PREDICT_FALSE (req->req_flags & HTTP_REQ_F_RX_EXPECT_CONTINUE))
+    http_req_send_continue (http_ctx_get_w_thread (req->hr_hc_index, req->c_thread_index), req);
 }
 
 u8 *
@@ -1179,7 +1326,9 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
       head_index = http_ctx_alloc_w_thread (ti);
       head = http_ctx_get_w_thread (head_index, ti);
       memset (head, 0xff, sizeof (*head));
+      /* Both worker lists use the same pool entry with independent links. */
       clib_llist_anchor_init (wrk->ctx_pool, sched_list, head);
+      clib_llist_anchor_init (wrk->ctx_pool, expect_timer, head);
       wrk->sched_head = (clib_llist_index_t) (head_index);
       vec_validate (wrk->header_list, clib_max (hm->h2_settings.max_header_list_size,
 						hm->h3_settings.max_field_section_size) -
@@ -1417,15 +1566,17 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 	    app_listener_index, lhc_index);
 
   ext_cfg = session_endpoint_get_ext_cfg (sep, TRANSPORT_ENDPT_EXT_CFG_HTTP);
-  if (ext_cfg && ext_cfg->opaque)
+  if (ext_cfg)
     {
       transport_endpt_cfg_http_t *http_cfg = (transport_endpt_cfg_http_t *) ext_cfg->data;
       HTTP_DBG (1, "app set timeout %u", http_cfg->timeout);
-      lhc->hc_timeout = http_cfg->timeout;
+      if (http_cfg->timeout)
+	lhc->hc_timeout = http_cfg->timeout;
       if (http_cfg->h3_alt_svc_port)
 	metadata->h3_alt_svc_port = format (0, "h3=\":%u\"", http_cfg->h3_alt_svc_port);
       lhc->flags |=
 	http_cfg->udp_tunnel_mode == HTTP_UDP_TUNNEL_DGRAM ? HTTP_CONN_F_UDP_TUNNEL_DGRAM : 0;
+      metadata->app_expect_continue = !!(http_cfg->flags & HTTP_ENDPT_CFG_F_APP_EXPECT_CONTINUE);
       if (http_cfg->flags & HTTP_ENDPT_CFG_F_ENABLE_CONNECT_UDP_DRAFT03)
 	{
 	  HTTP_DBG (1, "app enabled masque-connect-udp-draft-03");
@@ -1558,7 +1709,8 @@ http_start_listen (u32 app_listener_index, transport_endpoint_cfg_t *tep)
 
   for (u32 i = 1; i < vec_len (hm->wrk); i++)
     vec_add1 (lhc->hl_metadata_by_thread,
-	      http_listener_metadata_alloc (metadata->app_name, metadata->h3_alt_svc_port));
+	      http_listener_metadata_alloc (metadata->app_name, metadata->h3_alt_svc_port,
+					    metadata->app_expect_continue));
 
   return lhc_index;
 }
@@ -1972,6 +2124,7 @@ static const transport_proto_vft_t http_proto = {
   .reset = http_transport_reset,
   .cleanup_ho = http_transport_cleanup_ho,
   .custom_tx = http_app_tx_callback,
+  .update_time = http_expect_update_time,
   .app_rx_evt = http_app_rx_evt_cb,
   .get_connection = http_transport_get_connection,
   .get_listener = http_transport_get_listener,

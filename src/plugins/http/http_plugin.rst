@@ -758,6 +758,18 @@ unknown representation lengths. Set ``body_len`` to zero for statuses 1xx,
 
 The plugin consumes valid informational replies internally, except for HTTP/1
 protocol switching. The request stays active while waiting for a final reply,
-and any active request upload can continue. Automatic Expect/100-continue
-upload negotiation and forwarding informational responses to proxy applications
-are not provided.
+and any active request upload can continue.
+
+When a client application includes ``Expect: 100-continue`` on a request with a
+body, the transport sends the request headers first. A valid 100 response
+releases the body, and the upload starts after one second if the peer stays
+silent. A final response can cancel the upload while leaving response reception
+open. The application receives a peer's 417 response and handles any retry
+that requires replaying the body.
+
+Servers handle the expectation after validating the method, target, and
+headers. A listener can set ``HTTP_ENDPT_CFG_F_APP_EXPECT_CONTINUE`` to let its
+application decide from the request headers. Call ``http_accept_request_body()``
+from the session's worker before waiting for the body, or send a final reply if
+the request can be answered from the headers. The CLI server uses this option.
+Informational replies stay internal to the transport.
