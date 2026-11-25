@@ -48,6 +48,14 @@ list(REMOVE_DUPLICATES _vpp_drivers_list)
 list(SORT _vpp_drivers_list)
 set(VPP_DRIVERS_LIST ${_vpp_drivers_list} PARENT_SCOPE)
 
+# ninja enable-driver-<name> and ninja disable-driver-<name> change the list of drivers to build.
+# The drivers which are not built on this platform are not in the list of all drivers.
+vpp_find_registered_names(_vpp_driver_names add_vpp_driver ${CMAKE_CURRENT_SOURCE_DIR})
+string(REPLACE ";" "," _vpp_drivers_built "${_vpp_drivers_list}")
+foreach(_name ${_vpp_driver_names})
+  vpp_add_select_targets(driver ${_name} ${_name} "${VPP_DRIVERS}" "" "${_vpp_drivers_built}")
+endforeach()
+
 # Fail if any requested drivers were not found/registered.
 get_property(_vpp_drivers_filter GLOBAL PROPERTY VPP_DRIVERS_FILTER)
 vpp_check_consumed_list(_vpp_drivers_filter "VPP_DRIVERS requested but not found")

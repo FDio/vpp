@@ -410,6 +410,17 @@ list(REMOVE_DUPLICATES _vpp_tests_list)
 list(SORT _vpp_tests_list)
 set(VPP_TESTS_LIST ${_vpp_tests_list})
 
+# ninja enable-tool-<name>, disable-tool-<name>, enable-test-<name> and disable-test-<name>
+foreach(_kind tool test)
+  string(TOUPPER ${_kind} _KIND)
+  get_property(_registered GLOBAL PROPERTY VPP_${_KIND}S_ALL_LIST)
+  list(REMOVE_DUPLICATES _registered)
+  string(REPLACE ";" "," _built "${VPP_${_KIND}S_LIST}")
+  foreach(_name ${_registered})
+    vpp_add_select_targets(${_kind} ${_name} ${_name} "${VPP_${_KIND}S}" "" "${_built}")
+  endforeach()
+endforeach()
+
 ##############################################################################
 # detect if we are inside git repo and add configure dependency
 ##############################################################################

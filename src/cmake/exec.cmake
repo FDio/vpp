@@ -44,6 +44,7 @@ function(vpp_add_filtered_executable type name)
   )
 
   string(TOUPPER ${type} TYPE)
+  set_property(GLOBAL APPEND PROPERTY VPP_${TYPE}S_ALL_LIST ${name})
   if(DEFINED VPP_${TYPE}S AND NOT VPP_${TYPE}S STREQUAL "")
     if(VPP_${TYPE}S STREQUAL "none")
       return()
