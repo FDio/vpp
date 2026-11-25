@@ -108,6 +108,7 @@ DEB_DEPENDS += libnl-3-dev libnl-route-3-dev libmnl-dev
 # DEB_DEPENDS += enchant  # for docs
 DEB_DEPENDS += python3-virtualenv
 DEB_DEPENDS += libssl-dev
+DEB_DEPENDS += libssh-dev # for the ssh plugin
 DEB_DEPENDS += libelf-dev libpcap-dev # for libxdp (af_xdp)
 DEB_DEPENDS += iperf3 # for 'make test TEST=vcl'
 DEB_DEPENDS += iperf ethtool  # for 'make test TEST=vm_vpp_interfaces'
@@ -178,6 +179,7 @@ RPM_DEPENDS += ccache
 RPM_DEPENDS += xmlto
 RPM_DEPENDS += elfutils-libelf-devel libpcap-devel
 RPM_DEPENDS += libnl3-devel libmnl-devel
+RPM_DEPENDS += libssh-devel
 RPM_DEPENDS += nasm
 RPM_DEPENDS += socat
 
@@ -275,6 +277,7 @@ RPM_SUSE_BUILDTOOLS_DEPS += clang cmake indent libtool make ninja python3-ply
 
 RPM_SUSE_DEVEL_DEPS = glibc-devel-static libnuma-devel libelf-devel
 RPM_SUSE_DEVEL_DEPS += libopenssl-devel lsb-release
+RPM_SUSE_DEVEL_DEPS += libssh-devel
 RPM_SUSE_DEVEL_DEPS += libpcap-devel llvm-devel
 RPM_SUSE_DEVEL_DEPS += curl libstdc++-devel bison gcc-c++ zlib-devel
 

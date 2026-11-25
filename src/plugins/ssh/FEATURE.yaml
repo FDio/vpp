@@ -1,0 +1,8 @@
+---
+name: SSH CLI
+maintainer: Damjan Marion <dmarion@0xa5.net>
+features:
+  - CLI access over SSH with public key authentication
+description: "Listens on a TCP port and gives an interactive CLI session to the users configured in the ssh section of the startup configuration."
+state: experimental
+properties: [CLI]

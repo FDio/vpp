@@ -81,6 +81,12 @@ For more details click on the links below or press next.
    drivers/index
 
 .. toctree::
+   :caption: Plugins
+   :maxdepth: 2
+
+   plugins/index
+
+.. toctree::
     :caption: Developer Documentation
     :maxdepth: 2
 

@@ -715,6 +715,11 @@ Y:	src/plugins/quic/FEATURE.yaml
 F:	src/plugins/quic/
 F:	src/plugins/quic_quicly/
 
+Plugin - ssh plugin
+I:	ssh
+M:	Damjan Marion <dmarion@0xa5.net>
+F:	src/plugins/ssh/
+
 Plugin - snort plugin
 I:	snort
 M:	Damjan Marion <dmarion@0xa5.net>
