@@ -115,6 +115,16 @@ u8 vlib_unix_cli_enable_disable_pager (u8 enable);
 
 /* Returns 1 when the current CLI session accepts ANSI escape sequences. */
 u8 vlib_unix_cli_ansi_capable (void);
+
+/* Adds an interactive CLI session which reads from and writes to fd, a socket
+ * for example, and takes the fd over. The session works the way a telnet
+ * session in character mode does, VPP does the echo and the line editing, but
+ * no telnet options are sent or expected, the caller knows the terminal.
+ * Returns the index of the session. */
+u32 vlib_unix_cli_add_session (char *name, int fd, u16 width, u16 height, u8 ansi_capable);
+
+/* Tells the session that its terminal has a new size. */
+void vlib_unix_cli_set_session_size (u32 session, u16 width, u16 height);
 /* True if the current session can't or must not get ANSI sequences: the
  * terminal is not ANSI capable (set terminal ansi) or unix { nocolor } is set */
 u8 vlib_unix_cli_plain_text_only (void);

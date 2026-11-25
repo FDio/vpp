@@ -3055,6 +3055,58 @@ unix_cli_listen_read_ready (clib_file_t * uf)
   return error;
 }
 
+static void
+unix_cli_set_size (unix_cli_file_t *cf, u16 width, u16 height)
+{
+  cf->width = clib_min (width, UNIX_CLI_MAX_TERMINAL_WIDTH);
+  if (cf->width == 0)
+    cf->width = UNIX_CLI_DEFAULT_TERMINAL_WIDTH;
+
+  cf->height = clib_min (height, UNIX_CLI_MAX_TERMINAL_HEIGHT);
+  if (cf->height == 0)
+    cf->height = UNIX_CLI_DEFAULT_TERMINAL_HEIGHT;
+}
+
+u32
+vlib_unix_cli_add_session (char *name, int fd, u16 width, u16 height, u8 ansi_capable)
+{
+  unix_main_t *um = &unix_main;
+  unix_cli_main_t *cm = &unix_cli_main;
+  unix_cli_file_t *cf;
+  u32 cf_index = unix_cli_file_add (cm, name, fd);
+
+  cf = pool_elt_at_index (cm->cli_file_pool, cf_index);
+  cf->is_socket = 1;
+  cf->is_interactive = 1;
+  cf->crlf_mode = 1;
+  cf->ansi_capable = ansi_capable;
+  cf->history_limit = um->cli_history_limit;
+  cf->has_history = cf->history_limit != 0;
+  cf->no_pager = um->cli_no_pager;
+  unix_cli_set_size (cf, width, height);
+
+  unix_cli_file_welcome (cm, cf);
+
+  return cf_index;
+}
+
+void
+vlib_unix_cli_set_session_size (u32 session, u16 width, u16 height)
+{
+  clib_file_main_t *fm = &file_main;
+  unix_cli_main_t *cm = &unix_cli_main;
+  unix_cli_file_t *cf;
+
+  if (pool_is_free_index (cm->cli_file_pool, session))
+    return;
+
+  cf = pool_elt_at_index (cm->cli_file_pool, session);
+  unix_cli_set_size (cf, width, height);
+
+  unix_cli_pager_reindex (cf);
+  unix_cli_pager_redraw (cf, clib_file_get (fm, cf->clib_file_index));
+}
+
 /** The system terminal has informed us that the window size
  * has changed.
  */
