@@ -151,7 +151,7 @@ jobs:
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/vpp/.github/workflows/vpp-verify-maketest.yml@79d9bb725f9e4deffebe0171b0ad48f8bb20df99
+    uses: fdio/vpp/.github/workflows/vpp-verify-maketest.yml@31358f687e1e5c3f3ebee44863bc256ecd8f16a9
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
@@ -234,7 +234,7 @@ jobs:
       - start-verify
       - verify-checkstyle
     if: ${{ needs.verify-checkstyle.result == 'success' }}
-    uses: fdio/vpp/.github/workflows/vpp-verify-hst.yml@79d9bb725f9e4deffebe0171b0ad48f8bb20df99
+    uses: fdio/vpp/.github/workflows/vpp-verify-hst.yml@31358f687e1e5c3f3ebee44863bc256ecd8f16a9
     with:
       FDIO_NAMESPACE: ${{ inputs.FDIO_NAMESPACE }}
       GERRIT_BRANCH: ${{ inputs.GERRIT_BRANCH }}
