@@ -660,17 +660,24 @@ class TestIPv4FibCrud(VppTestCase):
             to_verify.remove(x)
         self.assertListEqual(to_verify, [])
 
+    def get_fib_prefixes(self, table_id=0):
+        prefixes = set()
+        for entry in self.vapi.ip_route_dump(table_id, is_ip6=False):
+            route = entry.route
+            self.assertEqual(route.table_id, table_id, f"Table for {route.prefix}")
+            self.assertEqual(route.prefix.version, 4, f"IP version for {route.prefix}")
+            prefixes.add(route.prefix)
+        return prefixes
+
     def verify_route_dump(self, routes):
-        for r in routes:
-            self.assertTrue(
-                find_route(self, r.prefix.network_address, r.prefix.prefixlen)
-            )
+        prefixes = self.get_fib_prefixes()
+        for route in routes:
+            self.assertIn(route.prefix, prefixes)
 
     def verify_not_in_route_dump(self, routes):
-        for r in routes:
-            self.assertFalse(
-                find_route(self, r.prefix.network_address, r.prefix.prefixlen)
-            )
+        prefixes = self.get_fib_prefixes()
+        for route in routes:
+            self.assertNotIn(route.prefix, prefixes)
 
     @classmethod
     def setUpClass(cls):
