@@ -1,6 +1,7 @@
 package hst
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
@@ -418,44 +420,44 @@ func (c *Container) newVppInstance(cpus []int, additionalConfigs ...Stanza) (*Vp
 	return vpp, nil
 }
 
-func (c *Container) copy(sourceFileName string, targetFileName string) error {
-	cmd := exec.Command("docker", "cp", sourceFileName, c.Name+":"+targetFileName)
-	return cmd.Run()
+func (c *Container) CreateFile(destFileName string, content string) error {
+	return c.createFileWithMode(destFileName, content, 0644)
 }
 
-func (c *Container) CreateFile(destFileName string, content string) error {
-	f, err := os.CreateTemp("/tmp", "hst-config"+Ppid)
-	if err != nil {
+func (c *Container) createFileWithMode(destFileName, content string, mode os.FileMode) error {
+	var archive bytes.Buffer
+	writer := tar.NewWriter(&archive)
+	if err := writer.WriteHeader(&tar.Header{
+		Name:    path.Base(destFileName),
+		Mode:    int64(mode.Perm()),
+		Size:    int64(len(content)),
+		ModTime: time.Now().Truncate(time.Second),
+	}); err != nil {
 		return err
 	}
-	defer os.Remove(f.Name())
+	if _, err := io.WriteString(writer, content); err != nil {
+		return err
+	}
+	if err := writer.Close(); err != nil {
+		return err
+	}
 
-	if _, err := f.Write([]byte(content)); err != nil {
-		return err
+	if err := c.Suite.Docker.CopyToContainer(c.ctx, c.Name, path.Dir(destFileName), &archive, containerTypes.CopyToContainerOptions{}); err != nil {
+		return fmt.Errorf("copy %s to %s: %w", destFileName, c.Name, err)
 	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-
-	c.copy(f.Name(), destFileName)
-	if err = os.Chmod(f.Name(), 0666); err != nil {
-		return err
-	}
-
 	return nil
 }
 
 func (c *Container) CreateFileInWorkDir(fileName string, contents string) error {
-	file, err := os.Create(c.GetHostWorkDir() + "/" + fileName)
-	if err != nil {
+	hostWorkDir := c.GetHostWorkDir()
+	if hostWorkDir == "" {
+		return fmt.Errorf("container %s has no shared work directory", c.Name)
+	}
+	filePath := filepath.Join(hostWorkDir, fileName)
+	if err := os.WriteFile(filePath, []byte(contents), 0644); err != nil {
 		return err
 	}
-	defer file.Close()
-	_, err = file.Write([]byte(contents))
-	if err != nil {
-		return err
-	}
-	return nil
+	return os.Chmod(filePath, 0644)
 }
 
 func (c *Container) GetFile(sourceFileName, targetFileName string) error {
@@ -712,17 +714,9 @@ func (c *Container) stop() error {
 func (c *Container) CreateConfigFromTemplate(targetConfigName string, templateName string, values any) {
 	template := template.Must(template.ParseFiles(templateName))
 
-	f, err := os.CreateTemp(LogDir, "hst-config")
-	AssertNil(err, err)
-	defer os.Remove(f.Name())
-
-	err = template.Execute(f, values)
-	AssertNil(err, err)
-
-	err = f.Close()
-	AssertNil(err, err)
-
-	AssertNil(c.copy(f.Name(), targetConfigName))
+	var config strings.Builder
+	AssertNil(template.Execute(&config, values))
+	AssertNil(c.CreateFile(targetConfigName, config.String()))
 }
 
 func init() {
