@@ -7,7 +7,7 @@
 #include <vnet/hash/hash.h>
 
 static clib_error_t *
-show_hash (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+show_hash (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   clib_error_t *error = 0;
   vnet_hash_main_t *hm = &vnet_hash_main;
@@ -28,6 +28,6 @@ show_hash (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
 
 VLIB_CLI_COMMAND (cmd_show_hash, static) = {
   .path = "show hash",
-  .short_help = "show hash",
-  .function = show_hash,
+  .short_help = "Show the registered hash functions",
+  .handler = show_hash,
 };

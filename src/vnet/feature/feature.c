@@ -4,6 +4,7 @@
  */
 
 #include <vnet/feature/feature.h>
+#include <vnet/interface/cli_types.h>
 
 vnet_feature_main_t feature_main;
 
@@ -464,17 +465,13 @@ feature_cmp (void *a1, void *a2)
 */
 
 static clib_error_t *
-show_features_command_fn (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
+show_features_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_arc_registration_t *areg;
   vnet_feature_registration_t *freg;
   vnet_feature_registration_t *feature_regs = 0;
-  int verbose = 0;
-
-  if (unformat (input, "verbose"))
-    verbose = 1;
+  int verbose = cli_flag (ctx, "verbose");
 
   vlib_cli_output (vm, "Available feature paths");
 
@@ -524,8 +521,9 @@ show_features_command_fn (vlib_main_t * vm,
 ?*/
 VLIB_CLI_COMMAND (show_features_command, static) = {
   .path = "show features",
-  .short_help = "show features [verbose]",
-  .function = show_features_command_fn,
+  .short_help = "Show the feature arcs and their features",
+  .args = CLI_ARGS (CLI_FLAG ("verbose", .help = "show the indices")),
+  .handler = show_features_command_fn,
 };
 
 /** Display the set of driver features configured on a specific interface
@@ -594,48 +592,14 @@ vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index, int verbose)
 }
 
 static clib_error_t *
-set_interface_features_command_fn (vlib_main_t * vm,
-				   unformat_input_t * input,
-				   vlib_cli_command_t * cmd)
+set_interface_features_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  vnet_main_t *vnm = vnet_get_main ();
-  unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
 
-  u8 *arc_name = 0;
-  u8 *feature_name = 0;
-  u32 sw_if_index = ~0;
-  u8 enable = 1;
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat
-	  (line_input, "%U %s arc %s", unformat_vnet_sw_interface, vnm,
-	   &sw_if_index, &feature_name, &arc_name))
-	;
-      else if (unformat (line_input, "disable"))
-	enable = 0;
-      else
-	{
-	  error = unformat_parse_error (line_input);
-	  goto done;
-	}
-    }
-  if (!feature_name || !arc_name)
-    {
-      error = clib_error_return (0, "Both feature name and arc required...");
-      goto done;
-    }
-
-  if (sw_if_index == ~0)
-    {
-      error = clib_error_return (0, "Interface not specified...");
-      goto done;
-    }
+  u8 *arc_name = vec_dup (cli_get (ctx, "arc")->str);
+  u8 *feature_name = vec_dup (cli_get (ctx, "feature-name")->str);
+  u32 sw_if_index = cli_index (ctx, "interface");
+  u8 enable = !cli_flag (ctx, "disable");
 
   vec_add1 (arc_name, 0);
   vec_add1 (feature_name, 0);
@@ -674,7 +638,6 @@ set_interface_features_command_fn (vlib_main_t * vm,
 done:
   vec_free (feature_name);
   vec_free (arc_name);
-  unformat_free (line_input);
   return error;
 }
 
@@ -689,9 +652,13 @@ done:
 ?*/
 VLIB_CLI_COMMAND (set_interface_feature_command, static) = {
   .path = "set interface feature",
-  .short_help = "set interface feature <intfc> <feature_name> arc <arc_name> "
-      "[disable]",
-  .function = set_interface_features_command_fn,
+  .short_help = "Enable or disable a feature on an interface",
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_sw_interface),
+		    CLI_VALUE ("feature-name", cli_type_string, .help = "node name of the feature"),
+		    CLI_KEYWORD ("arc", cli_type_string,
+				 .help = "name of the arc, see 'show features'"),
+		    CLI_FLAG ("disable")),
+  .handler = set_interface_features_command_fn,
 };
 
 static clib_error_t *
