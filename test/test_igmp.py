@@ -178,6 +178,14 @@ class TestIgmp(VppTestCase):
     def test_igmp_host(self):
         """IGMP Host functions"""
 
+        max_resp_time = 10
+        max_resp_code = max_resp_time * 10
+
+        def send_query(packets):
+            self.send(self.pg0, packets)
+            # Run the full query response window on the VPP clock.
+            self.virtual_sleep(max_resp_time)
+
         #
         # Enable interface for host functions
         #
@@ -203,14 +211,14 @@ class TestIgmp(VppTestCase):
         p_g = (
             Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
             / IP(src=self.pg0.remote_ip4, dst="224.0.0.1", tos=0xC0)
-            / IGMPv3(type="Membership Query", mrcode=100)
+            / IGMPv3(type="Membership Query", mrcode=max_resp_code)
             / IGMPv3mq(gaddr="0.0.0.0")
             / Raw(b"\x00" * 10)
         )
 
-        self.send(self.pg0, p_g)
+        send_query(p_g)
 
-        capture = self.pg0.get_capture(1, timeout=10)
+        capture = self.pg0.get_capture(1)
         self.verify_report(capture[0], [IgmpRecord(h1.sg, "Mode Is Include")])
 
         #
@@ -228,13 +236,13 @@ class TestIgmp(VppTestCase):
                     )
                 ],
             )
-            / IGMPv3(type="Membership Query", mrcode=100)
+            / IGMPv3(type="Membership Query", mrcode=max_resp_code)
             / IGMPv3mq(gaddr="239.1.1.1")
         )
 
-        self.send(self.pg0, p_gs)
+        send_query(p_gs)
 
-        capture = self.pg0.get_capture(1, timeout=10)
+        capture = self.pg0.get_capture(1)
         self.verify_report(capture[0], [IgmpRecord(h1.sg, "Mode Is Include")])
 
         #
@@ -253,13 +261,13 @@ class TestIgmp(VppTestCase):
                     )
                 ],
             )
-            / IGMPv3(type="Membership Query", mrcode=100)
+            / IGMPv3(type="Membership Query", mrcode=max_resp_code)
             / IGMPv3mq(gaddr="239.1.1.1", srcaddrs=["1.1.1.1"])
         )
 
-        self.send(self.pg0, p_gs1)
+        send_query(p_gs1)
 
-        capture = self.pg0.get_capture(1, timeout=10)
+        capture = self.pg0.get_capture(1)
         self.verify_report(capture[0], [IgmpRecord(h1.sg, "Mode Is Include")])
 
         #
@@ -278,11 +286,16 @@ class TestIgmp(VppTestCase):
                     )
                 ],
             )
-            / IGMPv3(type="Membership Query", mrcode=100)
+            / IGMPv3(type="Membership Query", mrcode=max_resp_code)
             / IGMPv3mq(gaddr="239.1.1.1", numsrc=4, srcaddrs=["1.1.1.1"])
         )
 
-        self.send_and_assert_no_replies(self.pg0, p_gs2, timeout=10)
+        counter = "/err/igmp-parse-query/bad length"
+        expected = self.statistics.get_err_counter(counter) + 1
+        send_query(p_gs2)
+        self.assert_error_counter_equal(counter, expected)
+        for pg in self.pg_interfaces:
+            pg.assert_nothing_captured()
 
         #
         # A group and source specific query, with the source NOT matching
@@ -300,11 +313,13 @@ class TestIgmp(VppTestCase):
                     )
                 ],
             )
-            / IGMPv3(type="Membership Query", mrcode=100)
+            / IGMPv3(type="Membership Query", mrcode=max_resp_code)
             / IGMPv3mq(gaddr="239.1.1.1", srcaddrs=["1.1.1.2"])
         )
 
-        self.send_and_assert_no_replies(self.pg0, p_gs2, timeout=10)
+        send_query(p_gs2)
+        for pg in self.pg_interfaces:
+            pg.assert_nothing_captured()
 
         #
         # A group and source specific query, with the multiple sources
@@ -323,25 +338,25 @@ class TestIgmp(VppTestCase):
                     )
                 ],
             )
-            / IGMPv3(type="Membership Query", mrcode=100)
+            / IGMPv3(type="Membership Query", mrcode=max_resp_code)
             / IGMPv3mq(gaddr="239.1.1.1", srcaddrs=["1.1.1.1", "1.1.1.2", "1.1.1.3"])
         )
 
-        self.send(self.pg0, p_gs3)
+        send_query(p_gs3)
 
-        capture = self.pg0.get_capture(1, timeout=10)
+        capture = self.pg0.get_capture(1)
         self.verify_report(capture[0], [IgmpRecord(h1.sg, "Mode Is Include")])
 
         #
         # Two source and group specific queries in quick succession, the
         # first does not have VPPs source the second does. then vice-versa
         #
-        self.send(self.pg0, [p_gs2, p_gs1])
-        capture = self.pg0.get_capture(1, timeout=10)
+        send_query([p_gs2, p_gs1])
+        capture = self.pg0.get_capture(1)
         self.verify_report(capture[0], [IgmpRecord(h1.sg, "Mode Is Include")])
 
-        self.send(self.pg0, [p_gs1, p_gs2])
-        capture = self.pg0.get_capture(1, timeout=10)
+        send_query([p_gs1, p_gs2])
+        capture = self.pg0.get_capture(1)
         self.verify_report(capture[0], [IgmpRecord(h1.sg, "Mode Is Include")])
 
         #
@@ -368,9 +383,9 @@ class TestIgmp(VppTestCase):
         # Send a general query (to the all router's address)
         # expect VPP to respond with a membership report will all sources
         #
-        self.send(self.pg0, p_g)
+        send_query(p_g)
 
-        capture = self.pg0.get_capture(1, timeout=10)
+        capture = self.pg0.get_capture(1)
         self.verify_report(capture[0], [IgmpRecord(h2.sg, "Mode Is Include")])
 
         #
@@ -388,13 +403,13 @@ class TestIgmp(VppTestCase):
                     )
                 ],
             )
-            / IGMPv3(type="Membership Query", mrcode=100)
+            / IGMPv3(type="Membership Query", mrcode=max_resp_code)
             / IGMPv3mq(gaddr="239.1.1.1", srcaddrs=["1.1.1.1", "1.1.1.2", "1.1.1.4"])
         )
 
-        self.send(self.pg0, p_gs)
+        send_query(p_gs)
 
-        capture = self.pg0.get_capture(1, timeout=10)
+        capture = self.pg0.get_capture(1)
         self.verify_report(
             capture[0],
             [
@@ -449,9 +464,9 @@ class TestIgmp(VppTestCase):
         # the order the groups come in is not important, so what is
         # checked for is what VPP is sending today.
         #
-        self.send(self.pg0, p_g)
+        send_query(p_g)
 
-        capture = self.pg0.get_capture(1, timeout=10)
+        capture = self.pg0.get_capture(1)
 
         self.verify_report(
             capture[0],
@@ -521,9 +536,9 @@ class TestIgmp(VppTestCase):
         h8 = self.add_group(self.pg0, IgmpSG("238.1.1.1", src_list))
         h9 = self.add_group(self.pg0, IgmpSG("238.1.1.2", src_list))
 
-        self.send(self.pg0, p_g)
+        send_query(p_g)
 
-        capture = self.pg0.get_capture(4, timeout=10)
+        capture = self.pg0.get_capture(4)
 
         self.verify_report(
             capture[0],
