@@ -10,6 +10,7 @@ from vpp_qemu_utils import (
     disable_interface_gso,
     add_namespace_route,
     libmemif_test_app,
+    wait_for_ipv6_address,
 )
 from vpp_iperf import start_iperf, stop_iperf
 from framework import VppTestCase
@@ -127,7 +128,7 @@ def create_test(test_name, test, ip_version, mtu):
     )
     def test_func(self):
         self.logger.debug(f"Starting unittest:{test_name}")
-        self.setUpTestToplogy(test=test, ip_version=ip_version)
+        remaining_ipv6_wait = self.setUpTestTopology(test=test, ip_version=ip_version)
         self.set_interfaces_mtu(mtu)
         if "memif" in self.if_types:
             self.logger.debug("Starting libmemif test_app for memif test")
@@ -146,6 +147,11 @@ def create_test(test_name, test, ip_version, mtu):
             cpus=self.helper_affinity(),
         )
         self.addCleanup(stop_iperf, server)
+        # Restore the unused part of the two-second IPv6 wait before a retry.
+        if retry_not_before is not None:
+            retry_not_before += remaining_ipv6_wait
+        elif remaining_ipv6_wait:
+            time.sleep(remaining_ipv6_wait)
         # Send traffic between iperf client & server
         self.assertTrue(
             start_iperf(
@@ -236,13 +242,15 @@ class TestVPPInterfacesQemu:
     # The iperf client and server run concurrently with VPP.
     helper_count = 2
 
-    def setUpTestToplogy(self, test, ip_version):
+    def setUpTestTopology(self, test, ip_version) -> float:
         """Setup the test topology.
 
         1. Create Linux Namespaces for iPerf Client & Server.
         2. Create VPP iPerf client and server virtual interfaces.
         3. Enable desired vif features such as GSO & GRO.
-        3. Cross-Connect interfaces in VPP using L2 or L3.
+        4. Cross-connect interfaces in VPP using L2 or L3.
+
+        Return the unused part of the original two-second IPv6 wait.
         """
 
         # Initialize teardown state before any setup operation can fail.
@@ -564,9 +572,26 @@ class TestVPPInterfacesQemu:
             if x_connect_mode == "L2":
                 self.l2_connect_interfaces(1, *self.ingress_if_idxes)
                 self.l2_connect_interfaces(2, *self.egress_if_idxes)
-        # Wait for Linux IPv6 stack to become ready
-        if ip_version == 6:
-            time.sleep(2)
+        if ip_version != 6:
+            return 0.0
+
+        client_ip6_prefix = (
+            layer2["client_ip6_prefix"]
+            if x_connect_mode == "L2"
+            else layer3["client_ip6_prefix"]
+        )
+        deadline = time.monotonic() + 2
+        endpoints = (
+            (self.client_namespace, str(ip_interface(client_ip6_prefix).ip)),
+            (self.server_namespace, self.server_ip6_address),
+        )
+        for namespace, address in endpoints:
+            if not wait_for_ipv6_address(namespace, address, deadline):
+                self.logger.debug(
+                    "IPv6 readiness not confirmed for %s in %s", address, namespace
+                )
+                return 0.0
+        return max(0.0, deadline - time.monotonic())
 
     def tearDown(self):
         # Delete tap interfaces
