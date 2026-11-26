@@ -4,6 +4,7 @@
  */
 
 #include <vnet/devices/pipe/pipe.h>
+#include <vnet/interface/cli_types.h>
 
 #include <vppinfra/sparse_vec.h>
 
@@ -633,22 +634,13 @@ pipe_walk (pipe_cb_fn_t fn, void *ctx)
 }
 
 static clib_error_t *
-create_pipe_interfaces (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+create_pipe_interfaces (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   int rv;
   u32 sw_if_index;
   u32 pipe_sw_if_index[2];
-  u8 is_specified = 0;
-  u32 user_instance = 0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "instance %d", &user_instance))
-	is_specified = 1;
-      else
-	break;
-    }
+  u8 is_specified = cli_flag (ctx, "instance");
+  u32 user_instance = cli_u64 (ctx, "instance", 0);
 
   rv = vnet_create_pipe_interface (is_specified, user_instance,
 				   &sw_if_index, pipe_sw_if_index);
@@ -672,8 +664,9 @@ create_pipe_interfaces (vlib_main_t * vm,
  ?*/
 VLIB_CLI_COMMAND (pipe_create_interface_command, static) = {
   .path = "pipe create",
-  .short_help = "pipe create [instance <instance>]",
-  .function = create_pipe_interfaces,
+  .short_help = "Create a pipe interface",
+  .args = CLI_ARGS (CLI_OPT_KEYWORD ("instance", cli_type_u32)),
+  .handler = create_pipe_interfaces,
 };
 
 int
@@ -710,24 +703,10 @@ vnet_delete_pipe_interface (u32 sw_if_index)
 }
 
 static clib_error_t *
-delete_pipe_interfaces (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+delete_pipe_interfaces (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  vnet_main_t *vnm = vnet_get_main ();
-  u32 sw_if_index = ~0;
+  u32 sw_if_index = cli_index (ctx, "interface");
   int rv;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "%U",
-		    unformat_vnet_sw_interface, vnm, &sw_if_index))
-	;
-      else
-	break;
-    }
-
-  if (sw_if_index == ~0)
-    return clib_error_return (0, "interface not specified");
 
   rv = vnet_delete_pipe_interface (sw_if_index);
 
@@ -748,6 +727,7 @@ delete_pipe_interfaces (vlib_main_t * vm,
  ?*/
 VLIB_CLI_COMMAND (pipe_delete_interface_command, static) = {
   .path = "pipe delete",
-  .short_help = "pipe delete <interface>",
-  .function = delete_pipe_interfaces,
+  .short_help = "Delete a pipe interface",
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_sw_interface)),
+  .handler = delete_pipe_interfaces,
 };
