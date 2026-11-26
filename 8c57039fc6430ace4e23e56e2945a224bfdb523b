@@ -16,6 +16,24 @@
       "message": "Since you\u0027re already consuming system entropy here for some purposes, what\u0027s the advantage of doing whatever this patch is doing instead of using that randomness for seeding the pseudorandom generator? Why keep the old behaviour somewhere and add new behaviour here and only here?",
       "revId": "8c57039fc6430ace4e23e56e2945a224bfdb523b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "88d46fe4_0dc755d9",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-26T09:18:30Z",
+      "side": 1,
+      "message": "Each test class calls `random.seed(config.rnd_seed)`. Keeping that seed lets us replay the packet inputs. It also gives concurrent classes the same sequence. In the six-job pilot with a fixed seed, a namespace fixture exhausted all five attempts because the generated names collided.\n\nA private PRNG seeded independently in each worker would also work. I used `SystemRandom` for the namespace and veth suffixes so they get independent names even when workers replay the same seed or inherit state through `fork`. That keeps the logic local to the resources that have to be unique in the shared kernel.",
+      "parentUuid": "da6bb2f3_11f96731",
+      "revId": "8c57039fc6430ace4e23e56e2945a224bfdb523b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
