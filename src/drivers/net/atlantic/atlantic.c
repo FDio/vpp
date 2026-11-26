@@ -258,6 +258,17 @@ atl_init (vlib_main_t *vm, vnet_dev_t *dev)
 	  .change_max_rx_frame_size = 1,
 	  .interrupt_mode = interrupt_mode,
 	},
+	.rss_caps = {
+	  .classes = {
+	    [VNET_DEV_RSS_CLASS_IP4] = VNET_DEV_RSS_CLASS_CAPS_TUPLES,
+	    [VNET_DEV_RSS_CLASS_IP4_TCP] = VNET_DEV_RSS_CLASS_CAPS_TUPLES,
+	    [VNET_DEV_RSS_CLASS_IP4_UDP] = VNET_DEV_RSS_CLASS_CAPS_TUPLES,
+	    [VNET_DEV_RSS_CLASS_IP6] = VNET_DEV_RSS_CLASS_CAPS_TUPLES,
+	    [VNET_DEV_RSS_CLASS_IP6_TCP] = VNET_DEV_RSS_CLASS_CAPS_TUPLES,
+	    [VNET_DEV_RSS_CLASS_IP6_UDP] = VNET_DEV_RSS_CLASS_CAPS_TUPLES,
+	  },
+	  .functions = VNET_DEV_RSS_FUNCTION (TOEPLITZ),
+	},
 	.rx_offloads = {
 	  .ip4_cksum = 1,
 	  .l4_cksum = 1,
