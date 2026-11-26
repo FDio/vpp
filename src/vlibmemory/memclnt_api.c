@@ -175,13 +175,6 @@ vlib_api_init (void)
   vl_msg_api_msg_config_t cfg;
   vl_msg_api_msg_config_t *c = &cfg;
 
-  cJSON_Hooks cjson_hooks = {
-    .malloc_fn = clib_mem_alloc,
-    .free_fn = clib_mem_free,
-    .realloc_fn = clib_mem_realloc,
-  };
-  cJSON_InitHooks (&cjson_hooks);
-
   clib_memset (c, 0, sizeof (*c));
 
 #define _(N, n)                                                               \
