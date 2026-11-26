@@ -17,6 +17,7 @@ from copy import deepcopy
 from collections import UserDict
 
 import scapy.compat
+from scapy.config import conf as scapy_conf
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP
 from scapy.layers.inet6 import (
@@ -26,6 +27,7 @@ from scapy.layers.inet6 import (
     IPv6ExtHdrHopByHop,
 )
 from scapy.packet import Raw
+from scapy.themes import NoTheme
 from scapy.utils import hexdump
 from scapy.utils6 import in6_mactoifaceid
 
@@ -39,6 +41,24 @@ null_logger.addHandler(logging.NullHandler())
 
 def pr(packet):
     return packet.__repr__()
+
+
+_HEXDUMP_ASCII = bytes(value if 32 <= value < 127 else ord(".") for value in range(256))
+
+
+def packet_hexdump(packet):
+    """Render the Scapy hexdump using byte operations for uncolored logs."""
+    if type(scapy_conf.color_theme) is not NoTheme:
+        return hexdump(packet, dump=True)
+
+    data = scapy.compat.bytes_encode(packet)
+    lines = []
+    for offset in range(0, len(data), 16):
+        block = data[offset : offset + 16]
+        hex_bytes = block.hex(" ").upper()
+        printable = block.translate(_HEXDUMP_ASCII).decode("ascii")
+        lines.append(f"{offset:04x}  {hex_bytes:<47}  {printable}")
+    return "\n".join(lines)
 
 
 class PacketInfo:
@@ -65,7 +85,7 @@ class PacketInfo:
         """Full output — used by logger.error(), raise, str(), f-string, etc."""
         return "%s\n%s\n\n%s\n" % (
             self.headline,
-            hexdump(self.packet, dump=True),
+            packet_hexdump(self.packet),
             self.packet.show(dump=True),
         )
 

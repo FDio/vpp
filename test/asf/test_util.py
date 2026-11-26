@@ -5,6 +5,7 @@ import unittest
 from struct import pack
 from asfframework import VppTestRunner, CPUInterface
 from framework import VppTestCase
+from scapy.config import conf
 from scapy.contrib.wireguard import Wireguard
 from scapy.layers.inet import IP, TCP, UDP
 from scapy.layers.inet6 import ICMPv6EchoRequest, IPv6, IPv6ExtHdrSegmentRouting
@@ -12,6 +13,9 @@ from scapy.layers.isakmp import ISAKMP
 from scapy.layers.l2 import Dot1Q, Ether
 from scapy.layers.vxlan import VXLAN
 from scapy.packet import Raw
+from scapy.themes import BrightTheme, NoTheme
+from scapy.utils import hexdump
+from util import packet_hexdump
 from vpp_papi import mac_pton, mac_ntop
 
 
@@ -35,6 +39,22 @@ class TestUtil(CPUInterface, unittest.TestCase):
     @classmethod
     def get_cores_required(cls):
         return 0
+
+    def test_packet_hexdump_matches_scapy(self):
+        """Keep packet dumps identical to Scapy's formatting."""
+        self.addCleanup(setattr, conf, "color_theme", conf.color_theme)
+        payload = bytes(range(256))
+        packet = (
+            Ether(src="02:00:00:00:00:01", dst="02:00:00:00:00:02")
+            / IP(src="192.0.2.1", dst="192.0.2.2")
+            / UDP(sport=12000, dport=12001)
+            / Raw(payload)
+        )
+        for theme in (NoTheme, BrightTheme):
+            conf.color_theme = theme()
+            for sample in (b"", payload[:17], payload, packet):
+                with self.subTest(theme=theme.__name__, size=len(sample)):
+                    self.assertEqual(packet_hexdump(sample), hexdump(sample, dump=True))
 
     def test_mac_to_binary(self):
         """MAC to binary and back"""
