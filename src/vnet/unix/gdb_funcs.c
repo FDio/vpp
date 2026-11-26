@@ -286,8 +286,7 @@ gdb_show_traces ()
  * @return error - clib_error_t
  */
 static clib_error_t *
-show_gdb_command_fn (vlib_main_t * vm,
-		     unformat_input_t * input, vlib_cli_command_t * cmd)
+show_gdb_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_cli_output (vm, "vl(p) returns vec_len(p)");
   vlib_cli_output (vm, "vb(b) returns vnet_buffer(b) [opaque]");
@@ -312,7 +311,7 @@ show_gdb_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (show_gdb_funcs_command, static) = {
   .path = "show gdb",
   .short_help = "Describe functions which can be called from gdb",
-  .function = show_gdb_command_fn,
+  .handler = show_gdb_command_fn,
 };
 
 vlib_buffer_t *

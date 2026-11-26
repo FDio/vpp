@@ -8,6 +8,7 @@
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
 #include <vnet/srp/srp.h>
+#include <vnet/ethernet/cli_types.h>
 
 static u8*
 srp_build_rewrite (vnet_main_t * vnm,
@@ -286,17 +287,18 @@ VNET_DEVICE_CLASS (srp_simulated_device_class,static) = {
 };
 
 static clib_error_t *
-create_simulated_srp_interfaces (vlib_main_t * vm,
-				 unformat_input_t * input,
-				 vlib_cli_command_t * cmd)
+create_simulated_srp_interfaces (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vnet_main_t * vnm = vnet_get_main();
   u8 address[6];
   u32 hw_if_index;
   vnet_hw_interface_t * hi;
   static u32 instance;
+  cli_value_t *v;
 
-  if (! unformat_user (input, unformat_ethernet_address, &address))
+  if ((v = cli_get (ctx, "hw-addr")))
+    clib_memcpy (address, v->prefix.addr, sizeof (address));
+  else
     {
       clib_memset (address, 0, sizeof (address));
       address[0] = 0xde;
@@ -334,9 +336,11 @@ create_simulated_srp_interfaces (vlib_main_t * vm,
   return /* no error */ 0;
 }
 
-static VLIB_CLI_COMMAND (create_simulated_srp_interface_command) = {
+VLIB_CLI_COMMAND (create_simulated_srp_interface_command, static) = {
   .path = "srp create-interfaces",
   .short_help = "Create simulated srp interface",
-  .function = create_simulated_srp_interfaces,
+  .args = CLI_ARGS (CLI_VALUE ("hw-addr", cli_type_mac_address, .flags = CLI_F_OPTIONAL,
+			       .help = "MAC address")),
+  .handler = create_simulated_srp_interfaces,
 };
 #endif
