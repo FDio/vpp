@@ -962,6 +962,71 @@ test_time_range (void)
   return 0;
 }
 
+/* a group with a keyword of its own name */
+static const cli_arg_t same_name_args[] = {
+  CLI_GROUP ("list", "a group", CLI_OPT_KEYWORD_F ("list", cli_type_u32, CLI_F_REPEAT)),
+  {},
+};
+
+static clib_error_t *
+test_group_same_name (void)
+{
+  cli_ctx_t ctx = {};
+  u8 *line = format (0, "list list 1 list 2");
+  clib_error_t *e = cli_parse_line (same_name_args, line, &ctx);
+  cli_value_t *v;
+
+  TEST_ASSERT (e == 0 && vec_len (ctx.values) == 3);
+  v = ctx.values;
+  TEST_ASSERT (v[0].arg == same_name_args);
+  TEST_ASSERT (v[1].arg == same_name_args[0].children && v[1].u64 == 1);
+  TEST_ASSERT (v[2].arg == same_name_args[0].children && v[2].u64 == 2);
+  cli_ctx_free (&ctx);
+  vec_free (line);
+  return 0;
+}
+
+/* a name used by two groups and outside of them */
+static const cli_arg_t shared_name_args[] = {
+  CLI_OPT_KEYWORD ("weight", cli_type_u32),
+  CLI_GROUP ("match", "a group", CLI_OPT_KEYWORD ("weight", cli_type_u32), CLI_FLAG ("exact")),
+  CLI_GROUP ("rewrite", "a second group", CLI_OPT_KEYWORD ("weight", cli_type_u32)),
+  CLI_GROUP ("other", "a group without the name", CLI_FLAG ("fast")),
+  {},
+};
+
+static clib_error_t *
+test_group_shared_name (void)
+{
+  const cli_arg_t *outer = &shared_name_args[0];
+  const cli_arg_t *match = shared_name_args[1].children;
+  const cli_arg_t *rewrite = shared_name_args[2].children;
+  cli_ctx_t ctx = {};
+  u8 *line = format (0, "weight 1 match weight 2 rewrite weight 3 exact");
+  clib_error_t *e = cli_parse_line (shared_name_args, line, &ctx);
+  cli_value_t *v;
+
+  TEST_ASSERT (e == 0 && vec_len (ctx.values) == 6);
+  v = ctx.values;
+  TEST_ASSERT (v[0].arg == outer && v[0].u64 == 1);
+  TEST_ASSERT (v[2].arg == match && v[2].u64 == 2);
+  TEST_ASSERT (v[4].arg == rewrite && v[4].u64 == 3);
+  /* only an earlier group has it */
+  TEST_ASSERT (v[5].arg == &match[1]);
+  cli_ctx_free (&ctx);
+  vec_free (line);
+
+  /* the keyword outside comes before those of earlier groups */
+  line = format (0, "match other weight 4");
+  e = cli_parse_line (shared_name_args, line, &ctx);
+  TEST_ASSERT (e == 0 && vec_len (ctx.values) == 3);
+  v = ctx.values;
+  TEST_ASSERT (v[2].arg == outer && v[2].u64 == 4);
+  cli_ctx_free (&ctx);
+  vec_free (line);
+  return 0;
+}
+
 /* a name which selects the arguments which follow it */
 static const cli_arg_t alpha_args[] = {
   CLI_OPT_KEYWORD ("count", cli_type_u32, .def = "3"),
@@ -1097,8 +1162,8 @@ main (int argc, char *argv[])
   if ((err = test_parse ()) || (err = test_errors ()) || (err = test_completion ()) ||
       (err = test_filters ()) || (err = test_output ()) || (err = test_rest_and_pipeline ()) ||
       (err = test_help_and_schema ()) || (err = test_constraints ()) || (err = test_types ()) ||
-      (err = test_alt_keyword ()) || (err = test_next_args ()) || (err = test_time_range ()) ||
-      (err = test_leaks ()))
+      (err = test_alt_keyword ()) || (err = test_next_args ()) || (err = test_group_same_name ()) ||
+      (err = test_group_shared_name ()) || (err = test_time_range ()) || (err = test_leaks ()))
     {
       fformat (stdout, "%U\n", format_clib_error, err);
       clib_error_free (err);

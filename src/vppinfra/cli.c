@@ -679,6 +679,16 @@ tok_is_keyword (cli_tok_t *t, const cli_arg_t *a)
   return !t->quoted && (tok_eq (t, a->name) || (a->alias && tok_eq (t, a->alias)));
 }
 
+/* The keyword or flag of a group which token t names, if any */
+static const cli_arg_t *
+find_group_keyword (const cli_arg_t *group, cli_tok_t *t)
+{
+  for (const cli_arg_t *c = group->children; c->kind; c++)
+    if ((c->kind == CLI_K_KEYWORD || c->kind == CLI_K_FLAG) && tok_is_keyword (t, c))
+      return c;
+  return 0;
+}
+
 static int
 parse_oneof (cli_parse_t *p, const cli_arg_t *a)
 {
@@ -744,6 +754,7 @@ parse_seq (cli_parse_t *p, const cli_arg_t *seq, int top)
 {
   u32 n = 0, start = p->i, pos = 0;
   u64 done = 0, gactive = 0;
+  const cli_arg_t *last_group = 0;
 
   while (seq[n].kind)
     n++;
@@ -751,6 +762,7 @@ parse_seq (cli_parse_t *p, const cli_arg_t *seq, int top)
 
   while (1)
     {
+      const cli_arg_t *c;
       cli_tok_t *t;
       int r, found = 0;
 
@@ -763,6 +775,17 @@ parse_seq (cli_parse_t *p, const cli_arg_t *seq, int top)
 	break;
 
       t = &p->tok[p->i];
+
+      /* the keywords of the last group which was given come first, their names
+       * can be used by other groups and outside of the groups too */
+      if (last_group && (c = find_group_keyword (last_group, t)))
+	{
+	  r = parse_keyword (p, c);
+	  if (r != P_OK)
+	    return r;
+	  continue;
+	}
+
       for (u32 k = 0; k < n && !found; k++)
 	{
 	  const cli_arg_t *a = &seq[k];
@@ -782,20 +805,9 @@ parse_seq (cli_parse_t *p, const cli_arg_t *seq, int top)
 		  p->i++;
 		  done |= 1ULL << k;
 		  gactive |= 1ULL << k;
+		  last_group = a;
 		  found = 1;
 		}
-	      else if (gactive & (1ULL << k))
-		for (const cli_arg_t *c = a->children; c->kind; c++)
-		  {
-		    if ((c->kind != CLI_K_KEYWORD && c->kind != CLI_K_FLAG) ||
-			!tok_is_keyword (t, c))
-		      continue;
-		    r = parse_keyword (p, c);
-		    if (r != P_OK)
-		      return r;
-		    found = 1;
-		    break;
-		  }
 	      continue;
 	    }
 
@@ -812,6 +824,16 @@ parse_seq (cli_parse_t *p, const cli_arg_t *seq, int top)
 	  done |= 1ULL << k;
 	  found = 1;
 	}
+
+      /* then those of the groups which were given before */
+      for (u32 k = 0; k < n && !found; k++)
+	if ((gactive & (1ULL << k)) && (c = find_group_keyword (&seq[k], t)))
+	  {
+	    r = parse_keyword (p, c);
+	    if (r != P_OK)
+	      return r;
+	    found = 1;
+	  }
       if (found)
 	continue;
 
