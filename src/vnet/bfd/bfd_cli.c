@@ -16,31 +16,8 @@
 #include <vnet/ip/format.h>
 #include <vnet/bfd/bfd_api.h>
 #include <vnet/bfd/bfd_main.h>
-
-#define BFD_MULTIHOP_CLI_CHECK                                                \
-  do                                                                          \
-    {                                                                         \
-      multihop = have_multihop;                                               \
-      if (multihop)                                                           \
-	{                                                                     \
-	  sw_if_index = ~0;                                                   \
-	}                                                                     \
-      if (multihop && have_sw_if_index)                                       \
-	{                                                                     \
-	  ret = clib_error_return (                                           \
-	    0, "Incompatible parameter combination, "                         \
-	       "interface cannot be specified when multihop is enabled");     \
-	  goto out;                                                           \
-	}                                                                     \
-      if (!multihop && !have_sw_if_index)                                     \
-	{                                                                     \
-	  ret =                                                               \
-	    clib_error_return (0, "Incompatible parameter combination, "      \
-				  "interface must be set if not multihop");   \
-	  goto out;                                                           \
-	}                                                                     \
-    }                                                                         \
-  while (0);
+#include <vnet/interface/cli_types.h>
+#include <vnet/ip/cli_types.h>
 
 static u8 *
 format_bfd_session_cli (u8 * s, va_list * args)
@@ -132,19 +109,21 @@ format_bfd_session_cli (u8 * s, va_list * args)
   return s;
 }
 
+typedef enum
+{
+  BFD_CLI_SHOW_KEYS = 1,
+  BFD_CLI_SHOW_SESSIONS,
+  BFD_CLI_SHOW_ECHO_SOURCE,
+} bfd_cli_show_t;
+
 static clib_error_t *
-show_bfd (vlib_main_t * vm, unformat_input_t * input,
-	  CLIB_UNUSED (vlib_cli_command_t * lmd))
+show_bfd (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   bfd_main_t *bm = &bfd_main;
   bfd_session_t *bs = NULL;
-  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 what = cli_index (ctx, "what");
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  if (unformat (line_input, "keys"))
+  if (what == BFD_CLI_SHOW_KEYS)
     {
       bfd_auth_key_t *key = NULL;
       u8 *s = format (NULL, "%=10s %=25s %=10s\n", "Configuration Key ID",
@@ -158,7 +137,7 @@ show_bfd (vlib_main_t * vm, unformat_input_t * input,
       vlib_cli_output (vm, "Number of configured BFD keys: %lu\n",
 		       (u64) pool_elts (bm->auth_keys));
     }
-  else if (unformat (line_input, "sessions"))
+  else if (what == BFD_CLI_SHOW_SESSIONS)
     {
       u8 *s = format (NULL, "%=10s %=32s %=20s %=20s\n", "Index", "Property",
 		      "Local value", "Remote value");
@@ -170,7 +149,7 @@ show_bfd (vlib_main_t * vm, unformat_input_t * input,
       vlib_cli_output (vm, "Number of configured BFD sessions: %lu\n",
 		       (u64) pool_elts (bm->sessions));
     }
-  else if (unformat (line_input, "echo-source"))
+  else if (what == BFD_CLI_SHOW_ECHO_SOURCE)
     {
       int is_set;
       u32 sw_if_index;
@@ -225,756 +204,377 @@ show_bfd (vlib_main_t * vm, unformat_input_t * input,
 
 VLIB_CLI_COMMAND (show_bfd_command, static) = {
   .path = "show bfd",
-  .short_help = "show bfd [keys|sessions|echo-source]",
-  .function = show_bfd,
+  .short_help = "Show the BFD keys, sessions or echo source",
+  .args = CLI_ARGS (CLI_ENUM ("what", CLI_F_OPTIONAL,
+			      { "keys", "authentication keys", BFD_CLI_SHOW_KEYS },
+			      { "sessions", "sessions", BFD_CLI_SHOW_SESSIONS },
+			      { "echo-source", "UDP echo source", BFD_CLI_SHOW_ECHO_SOURCE })),
+  .handler = show_bfd,
+};
+
+static const cli_choice_t bfd_auth_type_choices[] = {
+  { "keyed-sha1", "keyed SHA1", BFD_AUTH_TYPE_keyed_sha1 },
+  { "meticulous-keyed-sha1", "meticulous keyed SHA1", BFD_AUTH_TYPE_meticulous_keyed_sha1 },
+  {},
 };
 
 static clib_error_t *
-bfd_cli_key_add (vlib_main_t * vm, unformat_input_t * input,
-		 CLIB_UNUSED (vlib_cli_command_t * lmd))
+bfd_cli_key_add (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  clib_error_t *ret = NULL;
-  int have_key_id = 0;
-  u32 key_id = 0;
-  u8 *vec_auth_type = NULL;
-  bfd_auth_type_e auth_type = BFD_AUTH_TYPE_reserved;
-  u8 *secret = NULL;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  static const u8 keyed_sha1[] = "keyed-sha1";
-  static const u8 meticulous_keyed_sha1[] = "meticulous-keyed-sha1";
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "conf-key-id %u", &key_id))
-	{
-	  have_key_id = 1;
-	}
-      else if (unformat (line_input, "type %U", unformat_token, "a-zA-Z0-9-",
-			 &vec_auth_type))
-	{
-	  if (vec_len (vec_auth_type) == sizeof (keyed_sha1) - 1 &&
-	      0 == memcmp (vec_auth_type, keyed_sha1,
-			   sizeof (keyed_sha1) - 1))
-	    {
-	      auth_type = BFD_AUTH_TYPE_keyed_sha1;
-	    }
-	  else if (vec_len (vec_auth_type) ==
-		   sizeof (meticulous_keyed_sha1) - 1 &&
-		   0 == memcmp (vec_auth_type, meticulous_keyed_sha1,
-				sizeof (meticulous_keyed_sha1) - 1))
-	    {
-	      auth_type = BFD_AUTH_TYPE_meticulous_keyed_sha1;
-	    }
-	  else
-	    {
-	      ret = clib_error_return (0, "invalid type `%v'", vec_auth_type);
-	      goto out;
-	    }
-	}
-      else
-	if (unformat (line_input, "secret %U", unformat_hex_string, &secret))
-	{
-	  /* nothing to do here */
-	}
-      else
-	{
-	  ret = clib_error_return (0, "Unknown input `%U'",
-				   format_unformat_error, line_input);
-	  goto out;
-	}
-    }
-
-  if (!have_key_id)
-    {
-      ret =
-	clib_error_return (0, "required parameter missing: `conf-key-id'");
-      goto out;
-    }
-  if (!vec_auth_type)
-    {
-      ret = clib_error_return (0, "required parameter missing: `type'");
-      goto out;
-    }
-  if (!secret)
-    {
-      ret = clib_error_return (0, "required parameter missing: `secret'");
-      goto out;
-    }
+  u32 key_id = cli_u64 (ctx, "conf-key-id", 0);
+  u8 *secret = cli_get (ctx, "secret")->str;
 
   vnet_api_error_t rv =
-    bfd_auth_set_key (key_id, auth_type, vec_len (secret), secret);
+    bfd_auth_set_key (key_id, cli_index (ctx, "type"), vec_len (secret), secret);
   if (rv)
-    {
-      ret =
-	clib_error_return (0, "`bfd_auth_set_key' API call failed, rv=%d:%U",
-			   (int) rv, format_vnet_api_errno, rv);
-    }
+    return clib_error_return (0, "`bfd_auth_set_key' API call failed, rv=%d:%U", (int) rv,
+			      format_vnet_api_errno, rv);
 
-out:
-  vec_free (vec_auth_type);
-  return ret;
+  return 0;
 }
 
 VLIB_CLI_COMMAND (bfd_cli_key_add_command, static) = {
   .path = "bfd key set",
-  .short_help = "bfd key set"
-                " conf-key-id <id>"
-                " type <keyed-sha1|meticulous-keyed-sha1> "
-                " secret <secret>",
-  .function = bfd_cli_key_add,
+  .short_help = "Add or change a BFD authentication key",
+  .args = CLI_ARGS (CLI_KEYWORD ("conf-key-id", cli_type_u32, .help = "id of the key"),
+		    CLI_KEYWORD ("type", cli_type_enum, .choices = bfd_auth_type_choices),
+		    CLI_KEYWORD ("secret", cli_type_hex, .help = "key in hex")),
+  .handler = bfd_cli_key_add,
 };
 
 static clib_error_t *
-bfd_cli_key_del (vlib_main_t * vm, unformat_input_t * input,
-		 CLIB_UNUSED (vlib_cli_command_t * lmd))
+bfd_cli_key_del (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  clib_error_t *ret = NULL;
-  u32 key_id = 0;
-  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_api_error_t rv = bfd_auth_del_key (cli_u64 (ctx, "conf-key-id", 0));
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (!unformat (line_input, "conf-key-id %u", &key_id))
-	{
-	  ret = clib_error_return (0, "Unknown input `%U'",
-				   format_unformat_error, line_input);
-	  goto out;
-	}
-    }
-
-  vnet_api_error_t rv = bfd_auth_del_key (key_id);
   if (rv)
-    {
-      ret =
-	clib_error_return (0, "`bfd_auth_del_key' API call failed, rv=%d:%U",
-			   (int) rv, format_vnet_api_errno, rv);
-    }
+    return clib_error_return (0, "`bfd_auth_del_key' API call failed, rv=%d:%U", (int) rv,
+			      format_vnet_api_errno, rv);
 
-out:
-  return ret;
+  return 0;
 }
 
 VLIB_CLI_COMMAND (bfd_cli_key_del_command, static) = {
   .path = "bfd key del",
-  .short_help = "bfd key del conf-key-id <id>",
-  .function = bfd_cli_key_del,
+  .short_help = "Delete a BFD authentication key",
+  .args = CLI_ARGS (CLI_KEYWORD ("conf-key-id", cli_type_u32, .help = "id of the key")),
+  .handler = bfd_cli_key_del,
 };
 
-#define INTERFACE_STR "interface"
-#define LOCAL_ADDR_STR "local-addr"
-#define PEER_ADDR_STR "peer-addr"
-#define CONF_KEY_ID_STR "conf-key-id"
-#define BFD_KEY_ID_STR "bfd-key-id"
-#define DESIRED_MIN_TX_STR "desired-min-tx"
-#define REQUIRED_MIN_RX_STR "required-min-rx"
-#define DETECT_MULT_STR "detect-mult"
-#define ADMIN_STR "admin"
-#define DELAYED_STR "delayed"
-#define MULTIHOP_STR	    "multihop"
-
-static const unsigned mandatory = 1;
-static const unsigned optional = 0;
-
-#define DECLARE(t, n, s, r, ...) \
-  int have_##n = 0;              \
-  t n;
-
-#define UNFORMAT(t, n, s, r, ...)              \
-  if (unformat (line_input, s " " __VA_ARGS__, &n)) \
-    {                                          \
-      something_parsed = 1;                    \
-      have_##n = 1;                            \
-    }
-
-#define CHECK_MANDATORY(t, n, s, r, ...)                                  \
-WARN_OFF(tautological-compare)                                            \
-  if (mandatory == r && !have_##n)                                        \
-    {                                                                     \
-      WARN_ON(tautological-compare)                                       \
-      ret = clib_error_return (0, "Required parameter `%s' missing.", s); \
-      goto out;                                                           \
-    }
-
-static uword
-bfd_cli_unformat_ip46_address (unformat_input_t *input, va_list *args)
+/* the arguments which identify a session */
+typedef struct
 {
-  ip46_address_t *ip46 = va_arg (*args, ip46_address_t *);
-  return unformat_user (input, unformat_ip46_address, ip46, IP46_TYPE_ANY);
+  bool multihop;
+  u32 sw_if_index;
+  ip46_address_t local_addr, peer_addr;
+} bfd_cli_session_t;
+
+static void
+bfd_cli_get_address (cli_ctx_t *ctx, const char *name, ip46_address_t *addr)
+{
+  cli_value_t *v = cli_get (ctx, name);
+
+  ip46_address_reset (addr);
+
+  if (v->prefix.is_ip6)
+    clib_memcpy (&addr->ip6, v->prefix.addr, sizeof (addr->ip6));
+  else
+    clib_memcpy (&addr->ip4, v->prefix.addr, sizeof (addr->ip4));
 }
 
 static clib_error_t *
-bfd_cli_udp_session_add (vlib_main_t * vm, unformat_input_t * input,
-			 CLIB_UNUSED (vlib_cli_command_t * lmd))
+bfd_cli_get_session (cli_ctx_t *ctx, bfd_cli_session_t *s)
 {
-  clib_error_t *ret = NULL;
-  unformat_input_t _line_input, *line_input = &_line_input;
-#define foreach_bfd_cli_udp_session_add_cli_param(F)                          \
-  F (bool, multihop, MULTIHOP_STR, optional, "%_")                            \
-  F (u32, sw_if_index, INTERFACE_STR, optional, "%U",                         \
-     unformat_vnet_sw_interface, &vnet_main)                                  \
-  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U",             \
-     bfd_cli_unformat_ip46_address)                                           \
-  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",               \
-     bfd_cli_unformat_ip46_address)                                           \
-  F (u32, desired_min_tx, DESIRED_MIN_TX_STR, mandatory, "%u")                \
-  F (u32, required_min_rx, REQUIRED_MIN_RX_STR, mandatory, "%u")              \
-  F (u32, detect_mult, DETECT_MULT_STR, mandatory, "%u")                      \
-  F (u32, conf_key_id, CONF_KEY_ID_STR, optional, "%u")                       \
-  F (u32, bfd_key_id, BFD_KEY_ID_STR, optional, "%u")
+  int have_sw_if_index = cli_flag (ctx, "interface");
 
-  foreach_bfd_cli_udp_session_add_cli_param (DECLARE);
+  s->multihop = cli_flag (ctx, "multihop");
+  s->sw_if_index = cli_index (ctx, "interface");
+  bfd_cli_get_address (ctx, "local-addr", &s->local_addr);
+  bfd_cli_get_address (ctx, "peer-addr", &s->peer_addr);
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+  if (s->multihop && have_sw_if_index)
+    return clib_error_return (0, "Incompatible parameter combination, "
+				 "interface cannot be specified when multihop is enabled");
 
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      int something_parsed = 0;
-      foreach_bfd_cli_udp_session_add_cli_param (UNFORMAT);
+  if (!s->multihop && !have_sw_if_index)
+    return clib_error_return (0, "Incompatible parameter combination, "
+				 "interface must be set if not multihop");
 
-      if (!something_parsed)
-	{
-	  ret = clib_error_return (0, "Unknown input `%U'",
-				   format_unformat_error, line_input);
-	  goto out;
-	}
-    }
+  return 0;
+}
 
-  foreach_bfd_cli_udp_session_add_cli_param (CHECK_MANDATORY);
-  BFD_MULTIHOP_CLI_CHECK
-
-  if (1 == have_conf_key_id + have_bfd_key_id)
-    {
-      ret = clib_error_return (0, "Incompatible parameter combination, `%s' "
-			       "and `%s' must be either both specified or none",
-			       CONF_KEY_ID_STR, BFD_KEY_ID_STR);
-      goto out;
-    }
-
+static clib_error_t *
+bfd_cli_check_detect_mult (u32 detect_mult)
+{
   if (detect_mult > 255)
-    {
-      ret = clib_error_return (0, "%s value `%u' out of range <1,255>",
-			       DETECT_MULT_STR, detect_mult);
-      goto out;
-    }
+    return clib_error_return (0, "detect-mult value `%u' out of range <1,255>", detect_mult);
 
-  if (have_bfd_key_id && bfd_key_id > 255)
-    {
-      ret = clib_error_return (0, "%s value `%u' out of range <1,255>",
-			       BFD_KEY_ID_STR, bfd_key_id);
-      goto out;
-    }
+  return 0;
+}
 
-  vnet_api_error_t rv = bfd_udp_add_session (
-    multihop, sw_if_index, &local_addr, &peer_addr, desired_min_tx,
-    required_min_rx, detect_mult, have_conf_key_id, conf_key_id, bfd_key_id);
+static clib_error_t *
+bfd_cli_check_bfd_key_id (u32 bfd_key_id)
+{
+  if (bfd_key_id > 255)
+    return clib_error_return (0, "bfd-key-id value `%u' out of range <1,255>", bfd_key_id);
+
+  return 0;
+}
+
+static clib_error_t *
+bfd_cli_udp_session_add (vlib_main_t *vm, cli_ctx_t *ctx)
+{
+  u32 desired_min_tx = cli_u64 (ctx, "desired-min-tx", 0);
+  u32 required_min_rx = cli_u64 (ctx, "required-min-rx", 0);
+  u32 detect_mult = cli_u64 (ctx, "detect-mult", 0);
+  u32 conf_key_id = cli_u64 (ctx, "conf-key-id", 0);
+  u32 bfd_key_id = cli_u64 (ctx, "bfd-key-id", 0);
+  int have_conf_key_id = cli_flag (ctx, "conf-key-id");
+  int have_bfd_key_id = cli_flag (ctx, "bfd-key-id");
+  bfd_cli_session_t s;
+  clib_error_t *err;
+
+  if ((err = bfd_cli_get_session (ctx, &s)))
+    return err;
+
+  if (have_conf_key_id != have_bfd_key_id)
+    return clib_error_return (0, "Incompatible parameter combination, `conf-key-id' "
+				 "and `bfd-key-id' must be either both specified or none");
+
+  if ((err = bfd_cli_check_detect_mult (detect_mult)))
+    return err;
+
+  if ((err = bfd_cli_check_bfd_key_id (bfd_key_id)))
+    return err;
+
+  vnet_api_error_t rv =
+    bfd_udp_add_session (s.multihop, s.sw_if_index, &s.local_addr, &s.peer_addr, desired_min_tx,
+			 required_min_rx, detect_mult, have_conf_key_id, conf_key_id, bfd_key_id);
   if (rv)
-    {
-      ret =
-	clib_error_return (0,
-			   "`bfd_add_add_session' API call failed, rv=%d:%U",
-			   (int) rv, format_vnet_api_errno, rv);
-      goto out;
-    }
+    return clib_error_return (0, "`bfd_add_add_session' API call failed, rv=%d:%U", (int) rv,
+			      format_vnet_api_errno, rv);
 
-out:
-  return ret;
+  return 0;
 }
 
 VLIB_CLI_COMMAND (bfd_cli_udp_session_add_command, static) = {
   .path = "bfd udp session add",
-  .short_help = "bfd udp session add"
-		" <multihop | interface <interface>>"
-		" local-addr <local-address>"
-		" peer-addr <peer-address>"
-		" desired-min-tx <desired min tx interval>"
-		" required-min-rx <required min rx interval>"
-		" detect-mult <detect multiplier> "
-		"["
-		" conf-key-id <config key ID>"
-		" bfd-key-id <BFD key ID>"
-		"]",
-  .function = bfd_cli_udp_session_add,
+  .short_help = "Add a BFD session",
+  .args = CLI_ARGS (CLI_FLAG ("multihop", .help = "multihop session, without an interface"),
+		    CLI_OPT_KEYWORD ("interface", cli_type_sw_interface),
+		    CLI_KEYWORD ("local-addr", cli_type_ip_address),
+		    CLI_KEYWORD ("peer-addr", cli_type_ip_address),
+		    CLI_KEYWORD ("desired-min-tx", cli_type_u32, .help = "microseconds"),
+		    CLI_KEYWORD ("required-min-rx", cli_type_u32, .help = "microseconds"),
+		    CLI_KEYWORD ("detect-mult", cli_type_u32, .help = "detect multiplier, 1 - 255"),
+		    CLI_OPT_KEYWORD ("conf-key-id", cli_type_u32, .help = "authentication key"),
+		    CLI_OPT_KEYWORD ("bfd-key-id", cli_type_u32,
+				     .help = "key id sent in the packets, 1 - 255")),
+  .handler = bfd_cli_udp_session_add,
 };
 
 static clib_error_t *
-bfd_cli_udp_session_mod (vlib_main_t * vm, unformat_input_t * input,
-			 CLIB_UNUSED (vlib_cli_command_t * lmd))
+bfd_cli_udp_session_mod (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  clib_error_t *ret = NULL;
-  unformat_input_t _line_input, *line_input = &_line_input;
-#define foreach_bfd_cli_udp_session_mod_cli_param(F)                          \
-  F (bool, multihop, MULTIHOP_STR, optional, "%_")                            \
-  F (u32, sw_if_index, INTERFACE_STR, optional, "%U",                         \
-     unformat_vnet_sw_interface, &vnet_main)                                  \
-  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U",             \
-     bfd_cli_unformat_ip46_address)                                           \
-  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",               \
-     bfd_cli_unformat_ip46_address)                                           \
-  F (u32, desired_min_tx, DESIRED_MIN_TX_STR, mandatory, "%u")                \
-  F (u32, required_min_rx, REQUIRED_MIN_RX_STR, mandatory, "%u")              \
-  F (u32, detect_mult, DETECT_MULT_STR, mandatory, "%u")
+  u32 desired_min_tx = cli_u64 (ctx, "desired-min-tx", 0);
+  u32 required_min_rx = cli_u64 (ctx, "required-min-rx", 0);
+  u32 detect_mult = cli_u64 (ctx, "detect-mult", 0);
+  bfd_cli_session_t s;
+  clib_error_t *err;
 
-  foreach_bfd_cli_udp_session_mod_cli_param (DECLARE);
+  if ((err = bfd_cli_get_session (ctx, &s)))
+    return err;
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+  if ((err = bfd_cli_check_detect_mult (detect_mult)))
+    return err;
 
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      int something_parsed = 0;
-      foreach_bfd_cli_udp_session_mod_cli_param (UNFORMAT);
-
-      if (!something_parsed)
-	{
-	  ret = clib_error_return (0, "Unknown input `%U'",
-				   format_unformat_error, line_input);
-	  goto out;
-	}
-    }
-
-  foreach_bfd_cli_udp_session_mod_cli_param (CHECK_MANDATORY);
-  BFD_MULTIHOP_CLI_CHECK
-
-  if (detect_mult > 255)
-    {
-      ret = clib_error_return (0, "%s value `%u' out of range <1,255>",
-			       DETECT_MULT_STR, detect_mult);
-      goto out;
-    }
-
-  vnet_api_error_t rv =
-    bfd_udp_mod_session (multihop, sw_if_index, &local_addr, &peer_addr,
-			 desired_min_tx, required_min_rx, detect_mult);
+  vnet_api_error_t rv = bfd_udp_mod_session (s.multihop, s.sw_if_index, &s.local_addr, &s.peer_addr,
+					     desired_min_tx, required_min_rx, detect_mult);
   if (rv)
-    {
-      ret =
-	clib_error_return (0,
-			   "`bfd_udp_mod_session' API call failed, rv=%d:%U",
-			   (int) rv, format_vnet_api_errno, rv);
-      goto out;
-    }
+    return clib_error_return (0, "`bfd_udp_mod_session' API call failed, rv=%d:%U", (int) rv,
+			      format_vnet_api_errno, rv);
 
-out:
-  return ret;
+  return 0;
 }
 
 VLIB_CLI_COMMAND (bfd_cli_udp_session_mod_command, static) = {
   .path = "bfd udp session mod",
-  .short_help = "bfd udp session mod "
-		" <multihop | interface <interface>>"
-		" <local-address> peer-addr"
-		" <peer-address> desired-min-tx"
-		" <desired min tx interval> required-min-rx"
-		" <required min rx interval> detect-mult"
-		" <detect multiplier> ",
-  .function = bfd_cli_udp_session_mod,
+  .short_help = "Change the parameters of a BFD session",
+  .args = CLI_ARGS (CLI_FLAG ("multihop", .help = "multihop session, without an interface"),
+		    CLI_OPT_KEYWORD ("interface", cli_type_sw_interface),
+		    CLI_KEYWORD ("local-addr", cli_type_ip_address),
+		    CLI_KEYWORD ("peer-addr", cli_type_ip_address),
+		    CLI_KEYWORD ("desired-min-tx", cli_type_u32, .help = "microseconds"),
+		    CLI_KEYWORD ("required-min-rx", cli_type_u32, .help = "microseconds"),
+		    CLI_KEYWORD ("detect-mult", cli_type_u32,
+				 .help = "detect multiplier, 1 - 255")),
+  .handler = bfd_cli_udp_session_mod,
 };
 
 static clib_error_t *
-bfd_cli_udp_session_del (vlib_main_t * vm, unformat_input_t * input,
-			 CLIB_UNUSED (vlib_cli_command_t * lmd))
+bfd_cli_udp_session_del (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  clib_error_t *ret = NULL;
-  unformat_input_t _line_input, *line_input = &_line_input;
-#define foreach_bfd_cli_udp_session_del_cli_param(F)                          \
-  F (bool, multihop, MULTIHOP_STR, optional, "%_")                            \
-  F (u32, sw_if_index, INTERFACE_STR, optional, "%U",                         \
-     unformat_vnet_sw_interface, &vnet_main)                                  \
-  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U",             \
-     bfd_cli_unformat_ip46_address)                                           \
-  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",               \
-     bfd_cli_unformat_ip46_address)
+  bfd_cli_session_t s;
+  clib_error_t *err;
 
-  foreach_bfd_cli_udp_session_del_cli_param (DECLARE);
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      int something_parsed = 0;
-      foreach_bfd_cli_udp_session_del_cli_param (UNFORMAT);
-
-      if (!something_parsed)
-	{
-	  ret = clib_error_return (0, "Unknown input `%U'",
-				   format_unformat_error, line_input);
-	  goto out;
-	}
-    }
-
-  foreach_bfd_cli_udp_session_del_cli_param (CHECK_MANDATORY);
-  BFD_MULTIHOP_CLI_CHECK
+  if ((err = bfd_cli_get_session (ctx, &s)))
+    return err;
 
   vnet_api_error_t rv =
-    bfd_udp_del_session (multihop, sw_if_index, &local_addr, &peer_addr);
+    bfd_udp_del_session (s.multihop, s.sw_if_index, &s.local_addr, &s.peer_addr);
   if (rv)
-    {
-      ret =
-	clib_error_return (0,
-			   "`bfd_udp_del_session' API call failed, rv=%d:%U",
-			   (int) rv, format_vnet_api_errno, rv);
-      goto out;
-    }
+    return clib_error_return (0, "`bfd_udp_del_session' API call failed, rv=%d:%U", (int) rv,
+			      format_vnet_api_errno, rv);
 
-out:
-  return ret;
+  return 0;
 }
 
 VLIB_CLI_COMMAND (bfd_cli_udp_session_del_command, static) = {
   .path = "bfd udp session del",
-  .short_help = "bfd udp session del <multihop |"
-		" interface <interface>> local-addr"
-		" <local-address> peer-addr"
-		"<peer-address> ",
-  .function = bfd_cli_udp_session_del,
+  .short_help = "Delete a BFD session",
+  .args = CLI_ARGS (CLI_FLAG ("multihop", .help = "multihop session, without an interface"),
+		    CLI_OPT_KEYWORD ("interface", cli_type_sw_interface),
+		    CLI_KEYWORD ("local-addr", cli_type_ip_address),
+		    CLI_KEYWORD ("peer-addr", cli_type_ip_address)),
+  .handler = bfd_cli_udp_session_del,
+};
+
+static const cli_choice_t bfd_admin_choices[] = {
+  { "up", "administratively up", 1 },
+  { "down", "administratively down", 0 },
+  {},
 };
 
 static clib_error_t *
-bfd_cli_udp_session_set_flags (vlib_main_t * vm, unformat_input_t * input,
-			       CLIB_UNUSED (vlib_cli_command_t * lmd))
+bfd_cli_udp_session_set_flags (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  clib_error_t *ret = NULL;
-  unformat_input_t _line_input, *line_input = &_line_input;
-#define foreach_bfd_cli_udp_session_set_flags_cli_param(F)                    \
-  F (bool, multihop, MULTIHOP_STR, optional, "%_")                            \
-  F (u32, sw_if_index, INTERFACE_STR, optional, "%U",                         \
-     unformat_vnet_sw_interface, &vnet_main)                                  \
-  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U",             \
-     bfd_cli_unformat_ip46_address)                                           \
-  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",               \
-     bfd_cli_unformat_ip46_address)                                           \
-  F (u8 *, admin_up_down_token, ADMIN_STR, mandatory, "%v",                   \
-     &admin_up_down_token)
+  bfd_cli_session_t s;
+  clib_error_t *err;
 
-  foreach_bfd_cli_udp_session_set_flags_cli_param (DECLARE);
+  if ((err = bfd_cli_get_session (ctx, &s)))
+    return err;
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      int something_parsed = 0;
-      foreach_bfd_cli_udp_session_set_flags_cli_param (UNFORMAT);
-
-      if (!something_parsed)
-	{
-	  ret = clib_error_return (0, "Unknown input `%U'",
-				   format_unformat_error, line_input);
-	  goto out;
-	}
-    }
-
-  foreach_bfd_cli_udp_session_set_flags_cli_param (CHECK_MANDATORY);
-  BFD_MULTIHOP_CLI_CHECK
-
-  u8 admin_up_down;
-  static const char up[] = "up";
-  static const char down[] = "down";
-  if (!memcmp (admin_up_down_token, up, sizeof (up) - 1))
-    {
-      admin_up_down = 1;
-    }
-  else if (!memcmp (admin_up_down_token, down, sizeof (down) - 1))
-    {
-      admin_up_down = 0;
-    }
-  else
-    {
-      ret =
-	clib_error_return (0, "Unrecognized value for `%s' parameter: `%v'",
-			   ADMIN_STR, admin_up_down_token);
-      goto out;
-    }
-  vnet_api_error_t rv = bfd_udp_session_set_flags (
-    vm, multihop, sw_if_index, &local_addr, &peer_addr, admin_up_down);
+  vnet_api_error_t rv = bfd_udp_session_set_flags (vm, s.multihop, s.sw_if_index, &s.local_addr,
+						   &s.peer_addr, cli_index (ctx, "admin"));
   if (rv)
-    {
-      ret =
-	clib_error_return (0,
-			   "`bfd_udp_session_set_flags' API call failed, rv=%d:%U",
-			   (int) rv, format_vnet_api_errno, rv);
-      goto out;
-    }
+    return clib_error_return (0, "`bfd_udp_session_set_flags' API call failed, rv=%d:%U", (int) rv,
+			      format_vnet_api_errno, rv);
 
-out:
-  return ret;
+  return 0;
 }
 
 VLIB_CLI_COMMAND (bfd_cli_udp_session_set_flags_command, static) = {
   .path = "bfd udp session set-flags",
-  .short_help = "bfd udp session set-flags"
-		" <multihop | interface <interface>>"
-		" local-addr <local-address>"
-		" peer-addr <peer-address>"
-		" admin <up|down>",
-  .function = bfd_cli_udp_session_set_flags,
+  .short_help = "Set a BFD session administratively up or down",
+  .args = CLI_ARGS (CLI_FLAG ("multihop", .help = "multihop session, without an interface"),
+		    CLI_OPT_KEYWORD ("interface", cli_type_sw_interface),
+		    CLI_KEYWORD ("local-addr", cli_type_ip_address),
+		    CLI_KEYWORD ("peer-addr", cli_type_ip_address),
+		    CLI_KEYWORD ("admin", cli_type_enum, .choices = bfd_admin_choices)),
+  .handler = bfd_cli_udp_session_set_flags,
 };
 
 static clib_error_t *
-bfd_cli_udp_session_auth_activate (vlib_main_t * vm,
-				   unformat_input_t * input,
-				   CLIB_UNUSED (vlib_cli_command_t * lmd))
+bfd_cli_udp_session_auth_activate (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  clib_error_t *ret = NULL;
-  unformat_input_t _line_input, *line_input = &_line_input;
-#define foreach_bfd_cli_udp_session_auth_activate_cli_param(F)                \
-  F (bool, multihop, MULTIHOP_STR, optional, "%_")                            \
-  F (u32, sw_if_index, INTERFACE_STR, optional, "%U",                         \
-     unformat_vnet_sw_interface, &vnet_main)                                  \
-  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U",             \
-     bfd_cli_unformat_ip46_address)                                           \
-  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",               \
-     bfd_cli_unformat_ip46_address)                                           \
-  F (u8 *, delayed_token, DELAYED_STR, optional, "%v")                        \
-  F (u32, conf_key_id, CONF_KEY_ID_STR, mandatory, "%u")                      \
-  F (u32, bfd_key_id, BFD_KEY_ID_STR, mandatory, "%u")
+  u32 conf_key_id = cli_u64 (ctx, "conf-key-id", 0);
+  u32 bfd_key_id = cli_u64 (ctx, "bfd-key-id", 0);
+  u8 is_delayed = cli_flag (ctx, "delayed") && cli_index (ctx, "delayed");
+  bfd_cli_session_t s;
+  clib_error_t *err;
 
-  foreach_bfd_cli_udp_session_auth_activate_cli_param (DECLARE);
+  if ((err = bfd_cli_get_session (ctx, &s)))
+    return err;
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+  if ((err = bfd_cli_check_bfd_key_id (bfd_key_id)))
+    return err;
 
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      int something_parsed = 0;
-      foreach_bfd_cli_udp_session_auth_activate_cli_param (UNFORMAT);
-
-      if (!something_parsed)
-	{
-	  ret = clib_error_return (0, "Unknown input `%U'",
-				   format_unformat_error, line_input);
-	  goto out;
-	}
-    }
-
-  foreach_bfd_cli_udp_session_auth_activate_cli_param (CHECK_MANDATORY);
-  BFD_MULTIHOP_CLI_CHECK
-
-  u8 is_delayed = 0;
-  if (have_delayed_token)
-    {
-      static const char yes[] = "yes";
-      static const char no[] = "no";
-      if (!memcmp (delayed_token, yes, sizeof (yes) - 1))
-	{
-	  is_delayed = 1;
-	}
-      else if (!memcmp (delayed_token, no, sizeof (no) - 1))
-	{
-	  is_delayed = 0;
-	}
-      else
-	{
-	  ret =
-	    clib_error_return (0,
-			       "Unrecognized value for `%s' parameter: `%v'",
-			       DELAYED_STR, delayed_token);
-	  goto out;
-	}
-    }
-
-  if (have_bfd_key_id && bfd_key_id > 255)
-    {
-      ret = clib_error_return (0, "%s value `%u' out of range <1,255>",
-			       BFD_KEY_ID_STR, bfd_key_id);
-      goto out;
-    }
-
-  vnet_api_error_t rv =
-    bfd_udp_auth_activate (multihop, sw_if_index, &local_addr, &peer_addr,
-			   conf_key_id, bfd_key_id, is_delayed);
+  vnet_api_error_t rv = bfd_udp_auth_activate (s.multihop, s.sw_if_index, &s.local_addr,
+					       &s.peer_addr, conf_key_id, bfd_key_id, is_delayed);
   if (rv)
-    {
-      ret =
-	clib_error_return (0,
-			   "`bfd_udp_auth_activate' API call failed, rv=%d:%U",
-			   (int) rv, format_vnet_api_errno, rv);
-      goto out;
-    }
+    return clib_error_return (0, "`bfd_udp_auth_activate' API call failed, rv=%d:%U", (int) rv,
+			      format_vnet_api_errno, rv);
 
-out:
-  return ret;
+  return 0;
 }
 
 VLIB_CLI_COMMAND (bfd_cli_udp_session_auth_activate_command, static) = {
   .path = "bfd udp session auth activate",
-  .short_help = "bfd udp session auth activate"
-		" <multihop | interface <interface>>"
-		" local-addr <local-address>"
-		" peer-addr <peer-address>"
-		" conf-key-id <config key ID>"
-		" bfd-key-id <BFD key ID>"
-		" [ delayed <yes|no> ]",
-  .function = bfd_cli_udp_session_auth_activate,
+  .short_help = "Turn the authentication of a BFD session on",
+  .args = CLI_ARGS (CLI_FLAG ("multihop", .help = "multihop session, without an interface"),
+		    CLI_OPT_KEYWORD ("interface", cli_type_sw_interface),
+		    CLI_KEYWORD ("local-addr", cli_type_ip_address),
+		    CLI_KEYWORD ("peer-addr", cli_type_ip_address),
+		    CLI_KEYWORD ("conf-key-id", cli_type_u32, .help = "authentication key"),
+		    CLI_KEYWORD ("bfd-key-id", cli_type_u32,
+				 .help = "key id sent in the packets, 1 - 255"),
+		    CLI_OPT_KEYWORD ("delayed", cli_type_bool, .help = "yes to wait for the peer")),
+  .handler = bfd_cli_udp_session_auth_activate,
 };
 
 static clib_error_t *
-bfd_cli_udp_session_auth_deactivate (vlib_main_t *vm, unformat_input_t *input,
-                                     CLIB_UNUSED (vlib_cli_command_t *lmd))
+bfd_cli_udp_session_auth_deactivate (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  clib_error_t *ret = NULL;
-  unformat_input_t _line_input, *line_input = &_line_input;
-#define foreach_bfd_cli_udp_session_auth_deactivate_cli_param(F)              \
-  F (bool, multihop, MULTIHOP_STR, optional, "%_")                            \
-  F (u32, sw_if_index, INTERFACE_STR, optional, "%U",                         \
-     unformat_vnet_sw_interface, &vnet_main)                                  \
-  F (ip46_address_t, local_addr, LOCAL_ADDR_STR, mandatory, "%U",             \
-     bfd_cli_unformat_ip46_address)                                           \
-  F (ip46_address_t, peer_addr, PEER_ADDR_STR, mandatory, "%U",               \
-     bfd_cli_unformat_ip46_address)                                           \
-  F (u8 *, delayed_token, DELAYED_STR, optional, "%v")
+  u8 is_delayed = cli_flag (ctx, "delayed") && cli_index (ctx, "delayed");
+  bfd_cli_session_t s;
+  clib_error_t *err;
 
-  foreach_bfd_cli_udp_session_auth_deactivate_cli_param (DECLARE);
+  if ((err = bfd_cli_get_session (ctx, &s)))
+    return err;
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      int something_parsed = 0;
-      foreach_bfd_cli_udp_session_auth_deactivate_cli_param (UNFORMAT);
-
-      if (!something_parsed)
-        {
-          ret = clib_error_return (0, "Unknown input `%U'",
-                                   format_unformat_error, input);
-          goto out;
-        }
-    }
-
-  foreach_bfd_cli_udp_session_auth_deactivate_cli_param (CHECK_MANDATORY);
-  BFD_MULTIHOP_CLI_CHECK
-
-  u8 is_delayed = 0;
-  if (have_delayed_token)
-    {
-      static const char yes[] = "yes";
-      static const char no[] = "no";
-      if (!memcmp (delayed_token, yes, sizeof (yes) - 1))
-        {
-          is_delayed = 1;
-        }
-      else if (!memcmp (delayed_token, no, sizeof (no) - 1))
-        {
-          is_delayed = 0;
-        }
-      else
-        {
-          ret = clib_error_return (
-              0, "Unrecognized value for `%s' parameter: `%v'", DELAYED_STR,
-              delayed_token);
-          goto out;
-        }
-    }
-
-  vnet_api_error_t rv = bfd_udp_auth_deactivate (
-    multihop, sw_if_index, &local_addr, &peer_addr, is_delayed);
+  vnet_api_error_t rv =
+    bfd_udp_auth_deactivate (s.multihop, s.sw_if_index, &s.local_addr, &s.peer_addr, is_delayed);
   if (rv)
-    {
-      ret = clib_error_return (
-          0, "`bfd_udp_auth_deactivate' API call failed, rv=%d:%U", (int)rv,
-          format_vnet_api_errno, rv);
-      goto out;
-    }
+    return clib_error_return (0, "`bfd_udp_auth_deactivate' API call failed, rv=%d:%U", (int) rv,
+			      format_vnet_api_errno, rv);
 
-out:
-  return ret;
+  return 0;
 }
 
 VLIB_CLI_COMMAND (bfd_cli_udp_session_auth_deactivate_command, static) = {
   .path = "bfd udp session auth deactivate",
-  .short_help = "bfd udp session auth deactivate"
-		" <multihop | interface <interface>>"
-		" local-addr <local-address>"
-		" peer-addr <peer-address>"
-		"[ delayed <yes|no> ]",
-  .function = bfd_cli_udp_session_auth_deactivate,
+  .short_help = "Turn the authentication of a BFD session off",
+  .args = CLI_ARGS (CLI_FLAG ("multihop", .help = "multihop session, without an interface"),
+		    CLI_OPT_KEYWORD ("interface", cli_type_sw_interface),
+		    CLI_KEYWORD ("local-addr", cli_type_ip_address),
+		    CLI_KEYWORD ("peer-addr", cli_type_ip_address),
+		    CLI_OPT_KEYWORD ("delayed", cli_type_bool, .help = "yes to wait for the peer")),
+  .handler = bfd_cli_udp_session_auth_deactivate,
 };
 
 static clib_error_t *
-bfd_cli_udp_set_echo_source (vlib_main_t * vm, unformat_input_t * input,
-			     CLIB_UNUSED (vlib_cli_command_t * lmd))
+bfd_cli_udp_set_echo_source (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  clib_error_t *ret = NULL;
-  unformat_input_t _line_input, *line_input = &_line_input;
-#define foreach_bfd_cli_udp_set_echo_source_cli_param(F) \
-  F (u32, sw_if_index, INTERFACE_STR, mandatory, "%U",   \
-     unformat_vnet_sw_interface, &vnet_main)
+  vnet_api_error_t rv = bfd_udp_set_echo_source (cli_index (ctx, "interface"));
 
-  foreach_bfd_cli_udp_set_echo_source_cli_param (DECLARE);
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      int something_parsed = 0;
-      foreach_bfd_cli_udp_set_echo_source_cli_param (UNFORMAT);
-
-      if (!something_parsed)
-	{
-	  ret = clib_error_return (0, "Unknown input `%U'",
-				   format_unformat_error, line_input);
-	  goto out;
-	}
-    }
-
-  foreach_bfd_cli_udp_set_echo_source_cli_param (CHECK_MANDATORY);
-
-  vnet_api_error_t rv = bfd_udp_set_echo_source (sw_if_index);
   if (rv)
-    {
-      ret =
-	clib_error_return (0,
-			   "`bfd_udp_set_echo_source' API call failed, rv=%d:%U",
-			   (int) rv, format_vnet_api_errno, rv);
-      goto out;
-    }
+    return clib_error_return (0, "`bfd_udp_set_echo_source' API call failed, rv=%d:%U", (int) rv,
+			      format_vnet_api_errno, rv);
 
-out:
-  return ret;
+  return 0;
 }
 
 VLIB_CLI_COMMAND (bfd_cli_udp_set_echo_source_cmd, static) = {
   .path = "bfd udp echo-source set",
-  .short_help = "bfd udp echo-source set interface <interface>",
-  .function = bfd_cli_udp_set_echo_source,
+  .short_help = "Set the interface which gives the source address of echo packets",
+  .args = CLI_ARGS (CLI_KEYWORD ("interface", cli_type_sw_interface)),
+  .handler = bfd_cli_udp_set_echo_source,
 };
 
 static clib_error_t *
-bfd_cli_udp_del_echo_source (vlib_main_t * vm, unformat_input_t * input,
-			     CLIB_UNUSED (vlib_cli_command_t * lmd))
+bfd_cli_udp_del_echo_source (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vnet_api_error_t rv = bfd_udp_del_echo_source ();
+
   if (rv)
-    {
-      return clib_error_return (0,
-				"`bfd_udp_del_echo_source' API call failed, rv=%d:%U",
-				(int) rv, format_vnet_api_errno, rv);
-    }
+    return clib_error_return (0, "`bfd_udp_del_echo_source' API call failed, rv=%d:%U", (int) rv,
+			      format_vnet_api_errno, rv);
 
   return 0;
 }
 
 VLIB_CLI_COMMAND (bfd_cli_udp_del_echo_source_cmd, static) = {
   .path = "bfd udp echo-source del",
-  .short_help = "bfd udp echo-source del",
-  .function = bfd_cli_udp_del_echo_source,
+  .short_help = "Unset the interface of the echo source",
+  .handler = bfd_cli_udp_del_echo_source,
 };
