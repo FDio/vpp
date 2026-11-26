@@ -517,7 +517,10 @@ vl_api_sockclnt_create_t_handler (vl_api_sockclnt_create_t * mp)
     clib_file_t *cf = vl_api_registration_file (regp);
 
     if (cf)
-      getsockopt (cf->file_descriptor, SOL_SOCKET, SO_PEERCRED, &cred, &cl);
+      {
+	/* coverity[check_return] - cred keeps the -1 values on failure */
+	getsockopt (cf->file_descriptor, SOL_SOCKET, SO_PEERCRED, &cred, &cl);
+      }
     log_debug ("socket client '%s' connected, index %u, pid %d uid %u, "
 	       "%u messages",
 	       regp->name, regp->vl_api_registration_pool_index, cred.pid, cred.uid, nmsg);
