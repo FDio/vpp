@@ -7,6 +7,11 @@ from vpp_papi import VPPIOError
 
 from asfframework import VppAsfTestCase, VppTestRunner
 
+DEFAULT_API_TIMEOUT = 5
+TIMED_OUT_REPLY_DELAY = DEFAULT_API_TIMEOUT + 5
+EXTENDED_TEST_REPLY_DELAY = DEFAULT_API_TIMEOUT + 2
+EXTENDED_API_TIMEOUT = EXTENDED_TEST_REPLY_DELAY + 8
+
 
 class TestCLI(VppAsfTestCase):
     """CLI Test Case"""
@@ -15,8 +20,7 @@ class TestCLI(VppAsfTestCase):
 
     @classmethod
     def setUpClass(cls):
-        # using the framework default
-        cls.vapi_response_timeout = 5
+        cls.vapi_response_timeout = DEFAULT_API_TIMEOUT
         super(TestCLI, cls).setUpClass()
 
     @classmethod
@@ -39,12 +43,14 @@ class TestCLI(VppAsfTestCase):
 
     def test_long_cli_delay(self):
         """Test that VppApiClient raises VppIOError if timeout."""  # noqa
-        with self.assertRaises(VPPIOError) as ctx:
-            rv = self.vapi.papi.cli_inband(cmd="wait 10")
+        with self.assertRaisesRegex(VPPIOError, "VPP API client: read failed"):
+            self.vapi.papi.cli_inband(cmd=f"wait {TIMED_OUT_REPLY_DELAY}")
 
     def test_long_cli_delay_override(self):
         """Test per-command _timeout option."""  # noqa
-        rv = self.vapi.papi.cli_inband(cmd="wait 10", _timeout=15)
+        rv = self.vapi.papi.cli_inband(
+            cmd=f"wait {EXTENDED_TEST_REPLY_DELAY}", _timeout=EXTENDED_API_TIMEOUT
+        )
         self.assertEqual(rv.retval, 0)
 
 
@@ -53,7 +59,7 @@ class TestCLIExtendedVapiTimeout(VppAsfTestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.vapi_response_timeout = 15
+        cls.vapi_response_timeout = EXTENDED_API_TIMEOUT
         cls.__doc__ = (
             " CLI Test Case w/ Extended (%ssec) Vapi Timeout "
             % cls.vapi_response_timeout
@@ -72,19 +78,18 @@ class TestCLIExtendedVapiTimeout(VppAsfTestCase):
 
     def test_long_cli_delay(self):
         """Test that delayed result returns with extended timeout."""
-        wait_secs = self.vapi_response_timeout - 1
-
         # get vpp time as float
         start = self.vapi.papi.show_vpe_system_time(
             _no_type_conversion=True
         ).vpe_system_time
-        rv = self.vapi.papi.cli_inband(cmd="wait %s" % wait_secs)
+        rv = self.vapi.papi.cli_inband(cmd=f"wait {EXTENDED_TEST_REPLY_DELAY}")
+        self.assertEqual(rv.retval, 0)
         now = self.vapi.papi.show_vpe_system_time(
             _no_type_conversion=True
         ).vpe_system_time
 
         # assume that the overhead of the measurement is not more that .5 sec.
-        self.assertEqual(round(now - start), wait_secs)
+        self.assertEqual(round(now - start), EXTENDED_TEST_REPLY_DELAY)
 
 
 if __name__ == "__main__":
