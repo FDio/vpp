@@ -71,7 +71,7 @@ if(NOT DEFINED CMAKE_INSTALL_LIBDIR AND EXISTS "/etc/debian_version")
 endif()
 
 include(CheckCCompilerFlag)
-include(CheckLinkerFlag)
+include(CheckCSourceCompiles)
 include(CheckIPOSupported)
 include(GNUInstallDirs)
 include(cmake/misc.cmake)
@@ -244,7 +244,11 @@ set(VPP_LINK_PACK_RELR)
 execute_process(COMMAND getconf GNU_LIBC_VERSION
   OUTPUT_VARIABLE glibc_version OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
 string(REGEX REPLACE "^glibc " "" glibc_version "${glibc_version}")
-check_linker_flag(C "-Wl,-z,pack-relative-relocs" linker_flag_pack_relative_relocs)
+# ld from binutils older than 2.43 accepts the flag on aarch64 but ignores it
+set(CMAKE_REQUIRED_LINK_OPTIONS "-Wl,-z,pack-relative-relocs")
+check_c_source_compiles("int main (void) { return 0; }" linker_flag_pack_relative_relocs
+  FAIL_REGEX "pack-relative-relocs ignored")
+unset(CMAKE_REQUIRED_LINK_OPTIONS)
 if(linker_flag_pack_relative_relocs AND glibc_version VERSION_GREATER_EQUAL 2.36)
   set(VPP_LINK_PACK_RELR "-Wl,-z,pack-relative-relocs")
 endif()
