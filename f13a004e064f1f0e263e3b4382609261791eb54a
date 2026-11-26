@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "40475bfc_1fa65860",
+        "filename": "src/vppinfra/vector_sse42.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 509,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-26T18:45:29Z",
+      "side": 1,
+      "message": "Done in PS3 (PS2 had a checkstyle failure, fixed): plain C and vector literals instead of _mm_*. One part I could not take literally: \u003e\u003e on a vector with a count equal to the element width is undefined (GCC manual: \"undefined if any bi is greater than or equal to B\"), and that is what Clang miscompiles for a constant n \u003d\u003d 2. So the tail is shifted as a scalar and is zero for n equal to the element size. The test fails on the old code and passes on this one with release Clang for default, x86-64-v3 and x86-64-v4.",
+      "parentUuid": "2b4e84ec_07d92b84",
+      "revId": "f13a004e064f1f0e263e3b4382609261791eb54a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
