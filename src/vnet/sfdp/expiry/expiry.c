@@ -27,10 +27,10 @@ sfdp_enable_disable_expiry_node (u8 is_disable, int skip_main)
 {
   expiry_is_enabled = !is_disable;
   u32 n_vms = vlib_num_workers () + 1;
+  vlib_node_t *node = vlib_get_node_by_name (vlib_get_main (), (u8 *) "sfdp-expire");
   for (int i = !!skip_main; i < n_vms; i++)
     {
       vlib_main_t *vm = vlib_get_main_by_index (i);
-      vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "sfdp-expire");
       vlib_node_set_state (vm, node->index,
 			   is_disable ? VLIB_NODE_STATE_DISABLED :
 					VLIB_NODE_STATE_POLLING);
