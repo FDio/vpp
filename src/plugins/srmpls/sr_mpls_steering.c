@@ -59,11 +59,15 @@ find_or_create_internal_label (ip46_address_t endpoint, u32 color)
   color_table = mhash_get (&sm->sr_policies_c2e2eclabel_hash, &color);
   if (!color_table)
     {
-      mhash_t color_t;
-      clib_memset (&color_t, 0, sizeof (mhash_t));
-      mhash_init (&color_t, sizeof (u32), sizeof (ip46_address_t));
-      mhash_set_mem (&sm->sr_policies_c2e2eclabel_hash, &color,
-		     (uword *) & color_t, NULL);
+      /* the hash copies a value of mhash_value_bytes (), more than an mhash_t */
+      uword n_bytes = mhash_value_bytes (&sm->sr_policies_c2e2eclabel_hash);
+      uword *value = 0;
+
+      vec_validate (value, n_bytes / sizeof (uword) - 1);
+      mhash_init ((mhash_t *) value, sizeof (u32), sizeof (ip46_address_t));
+      mhash_set_mem (&sm->sr_policies_c2e2eclabel_hash, &color, value, NULL);
+      vec_free (value);
+
       color_table = mhash_get (&sm->sr_policies_c2e2eclabel_hash, &color);
     }
 
