@@ -138,6 +138,11 @@ Supported features
   (``device set-rss-config``). The key must be exactly 40 bytes long and the
   table exactly 64 entries long, entries must refer to enabled RX queues. If
   no table is given, the queues are spread round robin.
+  The ``ipv4``, ``ipv6`` and their TCP and UDP classes hash on ``2-tuple`` or
+  ``4-tuple`` (or ``no-hash``), the default is ``4-tuple``. A TCP or UDP class
+  can only differ from its ``ipv4`` or ``ipv6`` class with ``4-tuple``,
+  otherwise the hardware falls back to the IP hash. SCTP traffic is hashed
+  like the IP class. See :ref:`dev_rss`.
 * **Interrupt mode** for RX queues, available when the device has at least one
   MSI-X vector more than the number of VPP threads. Otherwise the capability is
   disabled and a notice is logged.

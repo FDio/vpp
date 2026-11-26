@@ -119,12 +119,28 @@ aq2_filter_art_set (vnet_dev_t *dev, u32 idx, atl_aq2_art_tag_t tag, atl_aq2_art
   return VNET_DEV_OK;
 }
 
+static const vnet_dev_rss_tuple_types_t atl_rss_supported_types = {
+  .ip4 = 1,
+  .ip4_tcp = 1,
+  .ip4_udp = 1,
+  .ip6 = 1,
+  .ip6_tcp = 1,
+  .ip6_udp = 1,
+};
+
 static vnet_dev_rv_t
 atl_rss_validate (vnet_dev_port_t *port, const vnet_dev_rss_config_t *config)
 {
+  vnet_dev_rss_config_t merged = port->rss_config;
+  vnet_dev_rss_tuple_types_t types;
+
   if ((config->set_key && config->key_len != ATL_RSS_KEY_SIZE) ||
       (config->set_lut && config->lut_len != ATL_RSS_LUT_SIZE))
     return VNET_DEV_ERR_INVALID_DATA;
+
+  vnet_dev_rss_config_merge (&merged, config);
+  if (!vnet_dev_rss_tuple_types (&merged, atl_rss_supported_types, &types))
+    return VNET_DEV_ERR_UNSUPPORTED_CONFIG;
 
   if (config->set_lut)
     for (u32 i = 0; i < ATL_RSS_LUT_SIZE; i++)
@@ -305,23 +321,23 @@ atl_change_primary_hw_addr (vnet_dev_port_t *port, const vnet_dev_hw_addr_t *hw_
 }
 
 static vnet_dev_rv_t
-atl_rss_hash_set (vnet_dev_port_t *port)
+atl_rss_hash_set (vnet_dev_port_t *port, const vnet_dev_rss_config_t *config)
 {
-  vnet_dev_t *dev = port->dev;
+  vnet_dev_rss_tuple_types_t t;
 
-  atl_reg_wr (dev, ATL_REG_AQ2_RPF_REDIR2,
+  if (!vnet_dev_rss_tuple_types (config, atl_rss_supported_types, &t))
+    return VNET_DEV_ERR_UNSUPPORTED_CONFIG;
+
+  atl_reg_wr (port->dev, ATL_REG_AQ2_RPF_REDIR2,
 	      (atl_reg_t){
 		.aq2_rpf_redir2 = {
-                  .hashtype_ip = 1,
-                  .hashtype_tcp4 = 1,
-                  .hashtype_udp4 = 1,
-                  .hashtype_ip6 = 1,
-                  .hashtype_tcp6 = 1,
-                  .hashtype_udp6 = 1,
-                  .hashtype_ip6ex = 1,
-                  .hashtype_tcp6ex = 1,
-                  .hashtype_udp6ex = 1,
-                },
+		  .hashtype_ip = t.ip4,
+		  .hashtype_tcp4 = t.ip4_tcp,
+		  .hashtype_udp4 = t.ip4_udp,
+		  .hashtype_ip6 = t.ip6,
+		  .hashtype_tcp6 = t.ip6_tcp,
+		  .hashtype_udp6 = t.ip6_udp,
+		},
 	      });
 
   return VNET_DEV_OK;
@@ -338,7 +354,7 @@ atl_rx_path_init (vnet_dev_port_t *port)
   atl_aq2_art_action_t action;
   int i;
 
-  rv = atl_rss_hash_set (port);
+  rv = atl_rss_hash_set (port, &port->rss_config);
   if (rv != VNET_DEV_OK)
     return rv;
 
@@ -1274,7 +1290,14 @@ atl_port_cfg_change (vlib_main_t *vm __clib_unused, vnet_dev_port_t *port,
       break;
     case VNET_DEV_PORT_CFG_SET_RSS_CONFIG:
       if (port->started)
-	rv = atl_rss_apply (port, &req->rss_config);
+	{
+	  vnet_dev_rss_config_t config = port->rss_config;
+
+	  vnet_dev_rss_config_merge (&config, &req->rss_config);
+	  rv = atl_rss_apply (port, &req->rss_config);
+	  if (rv == VNET_DEV_OK)
+	    rv = atl_rss_hash_set (port, &config);
+	}
       break;
     case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_ENABLE:
     case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_DISABLE:
