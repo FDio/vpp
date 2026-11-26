@@ -14,6 +14,7 @@
 #include <vppinfra/linux/sysfs.c>
 
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/interface/cli_types.h>
 #include <dpdk/buffer.h>
 #include <dpdk/device/dpdk.h>
 #include <vnet/classify/vnet_classify.h>
@@ -31,10 +32,8 @@
  * Abstraction Layer and pcap Tx Trace.
  */
 
-
 static clib_error_t *
-show_dpdk_buffer (vlib_main_t * vm, unformat_input_t * input,
-		  vlib_cli_command_t * cmd)
+show_dpdk_buffer (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_pool_t *bp;
@@ -69,16 +68,15 @@ show_dpdk_buffer (vlib_main_t * vm, unformat_input_t * input,
  * name="mbuf_pool_socket0"  available =   15104 allocated =    1280 total =   16384
  * @cliexend
 ?*/
-VLIB_CLI_COMMAND (cmd_show_dpdk_buffer,static) = {
-    .path = "show dpdk buffer",
-    .short_help = "show dpdk buffer",
-    .function = show_dpdk_buffer,
-    .is_mp_safe = 1,
+VLIB_CLI_COMMAND (cmd_show_dpdk_buffer, static) = {
+  .path = "show dpdk buffer",
+  .short_help = "Show the DPDK buffer pools",
+  .handler = show_dpdk_buffer,
+  .is_mp_safe = 1,
 };
 
 static clib_error_t *
-show_dpdk_physmem (vlib_main_t * vm, unformat_input_t * input,
-		   vlib_cli_command_t * cmd)
+show_dpdk_physmem (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   clib_error_t *err = 0;
   int fds[2];
@@ -159,31 +157,20 @@ error:
  * @cliexstart{show dpdk physmem}
  * @cliexend
 ?*/
-VLIB_CLI_COMMAND (cmd_show_dpdk_physmem,static) = {
-    .path = "show dpdk physmem",
-    .short_help = "show dpdk physmem",
-    .function = show_dpdk_physmem,
-    .is_mp_safe = 1,
+VLIB_CLI_COMMAND (cmd_show_dpdk_physmem, static) = {
+  .path = "show dpdk physmem",
+  .short_help = "Show the DPDK physical memory layout",
+  .handler = show_dpdk_physmem,
+  .is_mp_safe = 1,
 };
 
 static clib_error_t *
-test_dpdk_buffer (vlib_main_t * vm, unformat_input_t * input,
-		  vlib_cli_command_t * cmd)
+test_dpdk_buffer (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   static u32 *allocated_buffers;
-  u32 n_alloc = 0;
-  u32 n_free = 0;
+  u32 n_alloc = cli_u64 (ctx, "allocate", 0);
+  u32 n_free = cli_u64 (ctx, "free", 0);
   u32 first, actual_alloc;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "allocate %d", &n_alloc))
-	;
-      else if (unformat (input, "free %d", &n_free))
-	;
-      else
-	break;
-    }
 
   if (n_free)
     {
@@ -245,61 +232,39 @@ test_dpdk_buffer (vlib_main_t * vm, unformat_input_t * input,
  * @cliexend
  * @endparblock
 ?*/
-VLIB_CLI_COMMAND (cmd_test_dpdk_buffer,static) = {
-    .path = "test dpdk buffer",
-    .short_help = "test dpdk buffer [allocate <nn>] [free <nn>]",
-    .function = test_dpdk_buffer,
-    .is_mp_safe = 1,
+VLIB_CLI_COMMAND (cmd_test_dpdk_buffer, static) = {
+  .path = "test dpdk buffer",
+  .short_help = "Allocate and free DPDK buffers",
+  .args = CLI_ARGS (
+    CLI_OPT_KEYWORD ("allocate", cli_type_u32, .help = "number of buffers to allocate"),
+    CLI_OPT_KEYWORD ("free", cli_type_u32, .help = "number of buffers to free, done first")),
+  .handler = test_dpdk_buffer,
+  .is_mp_safe = 1,
 };
 
 static clib_error_t *
-set_dpdk_if_desc (vlib_main_t * vm, unformat_input_t * input,
-		  vlib_cli_command_t * cmd)
+set_dpdk_if_desc (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
   dpdk_main_t *dm = &dpdk_main;
   vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hw;
   dpdk_device_t *xd;
-  u32 hw_if_index = (u32) ~ 0;
-  u32 nb_rx_desc = (u32) ~ 0;
-  u32 nb_tx_desc = (u32) ~ 0;
+  u32 hw_if_index = cli_index (ctx, "interface");
+  u32 nb_rx_desc = cli_u64 (ctx, "rx", ~0);
+  u32 nb_tx_desc = cli_u64 (ctx, "tx", ~0);
   clib_error_t *error = NULL;
 
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "%U", unformat_vnet_hw_interface, vnm,
-		    &hw_if_index))
-	;
-      else if (unformat (line_input, "tx %d", &nb_tx_desc))
-	;
-      else if (unformat (line_input, "rx %d", &nb_rx_desc))
-	;
-      else
-	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
-    }
-
-  if (hw_if_index == (u32) ~ 0)
-    {
-      error = clib_error_return (0, "please specify valid interface name");
-      goto done;
-    }
-
   hw = vnet_get_hw_interface (vnm, hw_if_index);
+
+  if (hw->dev_class_index != dpdk_device_class.index)
+    return clib_error_return (0, "not a DPDK interface");
+
   xd = vec_elt_at_index (dm->devices, hw->dev_instance);
 
   if ((nb_rx_desc == (u32) ~0 || nb_rx_desc == xd->conf.n_rx_desc) &&
       (nb_tx_desc == (u32) ~0 || nb_tx_desc == xd->conf.n_tx_desc))
     {
-      error = clib_error_return (0, "nothing changed");
-      goto done;
+      return clib_error_return (0, "nothing changed");
     }
 
   if (nb_rx_desc != (u32) ~ 0)
@@ -318,10 +283,7 @@ set_dpdk_if_desc (vlib_main_t * vm, unformat_input_t * input,
     ethernet_set_flags (vnm, xd->hw_if_index, ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
 
   if (vec_len (xd->errors))
-    return clib_error_return (0, "%U", format_dpdk_device_errors, xd);
-
-done:
-  unformat_free (line_input);
+    error = clib_error_return (0, "%U", format_dpdk_device_errors, xd);
 
   return error;
 }
@@ -336,16 +298,17 @@ done:
  * Example of how to set the DPDK interface descriptors:
  * @cliexcmd{set dpdk interface descriptors GigabitEthernet0/8/0 rx 512 tx 512}
 ?*/
-VLIB_CLI_COMMAND (cmd_set_dpdk_if_desc,static) = {
-    .path = "set dpdk interface descriptors",
-    .short_help = "set dpdk interface descriptors <interface> [rx <nn>] [tx <nn>]",
-    .function = set_dpdk_if_desc,
+VLIB_CLI_COMMAND (cmd_set_dpdk_if_desc, static) = {
+  .path = "set dpdk interface descriptors",
+  .short_help = "Set the number of descriptors of a DPDK interface",
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_hw_interface),
+		    CLI_OPT_KEYWORD ("rx", cli_type_u32, .help = "number of RX descriptors"),
+		    CLI_OPT_KEYWORD ("tx", cli_type_u32, .help = "number of TX descriptors")),
+  .handler = set_dpdk_if_desc,
 };
 
 static clib_error_t *
-show_dpdk_version_command_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+show_dpdk_version_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
 #define _(a,b,c) vlib_cli_output (vm, "%-25s " b, a ":", c);
   _("DPDK Version", "%s", rte_version ());
@@ -368,12 +331,12 @@ show_dpdk_version_command_fn (vlib_main_t * vm,
 ?*/
 VLIB_CLI_COMMAND (show_vpe_version_command, static) = {
   .path = "show dpdk version",
-  .short_help = "show dpdk version",
-  .function = show_dpdk_version_command_fn,
+  .short_help = "Show the DPDK version and EAL arguments",
+  .handler = show_dpdk_version_command_fn,
 };
 
 static clib_error_t *
-dpdk_trace_save_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+dpdk_trace_save_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
 #ifdef RTE_ENABLE_TRACE_FP
   int rv = rte_trace_save ();
@@ -389,8 +352,8 @@ dpdk_trace_save_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_c
 
 VLIB_CLI_COMMAND (dpdk_trace_save_command, static) = {
   .path = "dpdk trace save",
-  .short_help = "dpdk trace save",
-  .function = dpdk_trace_save_command_fn,
+  .short_help = "Save the DPDK trace buffers",
+  .handler = dpdk_trace_save_command_fn,
 };
 
 /* Dummy function to get us linked in. */
