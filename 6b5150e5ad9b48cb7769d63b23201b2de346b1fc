@@ -16,6 +16,24 @@
       "message": "I believe we could reflow this comment.",
       "revId": "6b5150e5ad9b48cb7769d63b23201b2de346b1fc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "16bd61eb_b4b80fcc",
+        "filename": "test/vm_vpp_interfaces.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-26T09:18:27Z",
+      "side": 1,
+      "message": "Reflowed this in PS2 to describe starting the server and saving its command line for teardown.",
+      "parentUuid": "0e60faed_628e1f02",
+      "revId": "6b5150e5ad9b48cb7769d63b23201b2de346b1fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
