@@ -302,6 +302,8 @@ mlx5_add_port (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_port_id_t port_id)
   port.tx_node = &mlx5_tx_node;
   port.port.attr.caps.interrupt_mode = 1;
   port.port.attr.caps.rss = rd->rss;
+  if (rd->rss)
+    port.port.attr.rss_caps = rdma_rss_dev_caps (rd->rss_hash_fields_mask, rd->rss_hash_function);
   port.port.attr.caps.mac_filter = 1;
   port.port.attr.rx_offloads.ip4_cksum = 1;
   port.port.attr.tx_offloads.ip4_cksum = rd->tx_cksum_offload;

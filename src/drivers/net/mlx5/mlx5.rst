@@ -144,6 +144,16 @@ Supported features
   and the indirection table can be set at start (``rss-key``, ``rss-lut``) and
   at runtime (``device set-rss-config``). The table size is limited by the
   device.
+  Hash fields can be set for the ``ipv4``, ``ipv6`` and the IPv4 and IPv6 TCP
+  and UDP classes, any combination of addresses and ports, with
+  the ``toeplitz`` function. The default is ``4-tuple``. SCTP, ESP and AH
+  traffic uses the fields of the ``ipv4`` or ``ipv6`` class. The tunnel
+  classes ``ipv4-ipip``, ``ipv4-gre``, ``ipv4-vxlan`` (VXLAN on UDP port 4789),
+  their IPv6 versions and ``ipv4-ipip-gre`` / ``ipv6-ipip-gre`` take the outer
+  fields or, with ``inner``, the inner addresses and ports; inner hashing uses
+  queue pairs with tunnel offloads. Each tunnel, inner IP version and inner
+  transport gets its own queue pair and flow rules, only when its hash differs
+  from the one the traffic would otherwise get. See :ref:`dev_rss`.
 * **Interrupt mode** for RX queues.
 * **MAC filtering** with flow steering rules: the primary MAC address is
   programmed through the hardware flow table, additional unicast addresses,
