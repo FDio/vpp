@@ -3042,14 +3042,19 @@ class TestResponderDpd(TestResponderPsk):
         self.assertEqual(ih.exch_type, 37)  # INFORMATIONAL
         plain = self.sa.hmac_and_decrypt(ih)
         self.assertEqual(plain, b"")
-        # wait for SA expiration
-        time.sleep(3)
-        ike_sas = self.vapi.ikev2_sa_dump()
-        self.assertEqual(len(ike_sas), 0)
-        ike_sas = self.vapi.ikev2_sa_v2_dump()
-        self.assertEqual(len(ike_sas), 0)
-        ipsec_sas = self.vapi.ipsec_sa_dump()
-        self.assertEqual(len(ipsec_sas), 0)
+        deadline = time.monotonic() + 3
+        while True:
+            ike_sas = self.vapi.ikev2_sa_dump()
+            ike_sas_v2 = self.vapi.ikev2_sa_v2_dump()
+            ipsec_sas = self.vapi.ipsec_sa_dump()
+            remaining = deadline - time.monotonic()
+            if not (ike_sas or ike_sas_v2 or ipsec_sas) or remaining <= 0:
+                break
+            time.sleep(min(0.1, remaining))
+
+        self.assertEqual(len(ike_sas), 0, "IKE SA remains after DPD")
+        self.assertEqual(len(ike_sas_v2), 0, "IKE SA remains in the v2 dump after DPD")
+        self.assertEqual(len(ipsec_sas), 0, "IPsec SA remains after DPD")
 
 
 class TestResponderRekey(TestResponderPsk):
