@@ -14,11 +14,12 @@ from vpp_acl import AclRule, VppAcl
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP
+from scapy.layers.inet import IP, TCP, UDP
 from scapy.layers.inet6 import IPv6
 from ipaddress import IPv4Network, IPv6Network
 
 from vpp_object import VppObject
+from vpp_papi import VppEnum
 
 NUM_PKTS = 67
 
@@ -345,6 +346,65 @@ class TestAbf(VppTestCase):
         # now expect packets forwarded.
         #
         self.send_and_expect(self.pg0, p * NUM_PKTS, self.pg1)
+
+    def test_abf4_multipath_flow_hash(self):
+        """IPv4 ABF multipath hashes the full 5-tuple, not reassembly ports"""
+
+        #
+        # ABF runs after ip4-sv-reassembly-feature, which stores the L4
+        # ports in the buffer overlay shared with ip.flow_hash. ABF
+        # bypasses ip4-lookup, which normally clears the hash before a
+        # load-balance node reuses it. Packets that differ only in their
+        # addresses must therefore still load-balance across both paths.
+        #
+        rule = AclRule(
+            is_permit=1,
+            proto=6,
+            src_prefix=IPv4Network("20.0.0.0/24"),
+            dst_prefix=IPv4Network("30.0.0.0/24"),
+        )
+        acl = VppAcl(self, rules=[rule])
+        acl.add_vpp_config()
+
+        abf = VppAbfPolicy(
+            self,
+            30,
+            acl,
+            [
+                VppRoutePath(self.pg1.remote_ip4, self.pg1.sw_if_index),
+                VppRoutePath(self.pg2.remote_ip4, self.pg2.sw_if_index),
+            ],
+        )
+        abf.add_vpp_config()
+
+        attach = VppAbfAttach(self, 30, self.pg0.sw_if_index, 10)
+        attach.add_vpp_config()
+
+        self.vapi.ip_reassembly_enable_disable(
+            sw_if_index=self.pg0.sw_if_index,
+            enable_ip4=True,
+            type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_SHALLOW_VIRTUAL,
+        )
+        self.addCleanup(
+            self.vapi.ip_reassembly_enable_disable,
+            sw_if_index=self.pg0.sw_if_index,
+            enable_ip4=False,
+            type=VppEnum.vl_api_ip_reass_type_t.IP_REASS_TYPE_SHALLOW_VIRTUAL,
+        )
+
+        #
+        # Same ports, different source addresses. Without the fix every
+        # packet has the same reassembly-derived hash and only one path
+        # is used.
+        #
+        pkts = [
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+            / IP(src="20.0.0.%d" % (i + 1), dst="30.0.0.1")
+            / TCP(sport=443, dport=40000)
+            / Raw(b"\xa5" * 100)
+            for i in range(NUM_PKTS)
+        ]
+        self.send_and_expect_load_balancing(self.pg0, pkts, [self.pg1, self.pg2])
 
     def test_abf4_deny(self):
         """IPv4 ACL Deny Rule"""

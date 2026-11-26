@@ -566,6 +566,14 @@ abf_input_inline (vlib_main_t * vm,
 	       */
 	      aia0 = abf_itf_attach_get (attachments0[match_acl_pos]);
 
+	      /*
+	       * ABF runs after the reassembly features, which store the L4
+	       * ports in the buffer overlay shared with ip.flow_hash.
+	       * ip[46]-lookup, which normally clears the hash before a
+	       * load-balance node reuses it, is bypassed on this path.
+	       */
+	      vnet_buffer (b0)->ip.flow_hash = 0;
+
 	      next0 = aia0->aia_dpo.dpoi_next_node;
 	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] =
 		aia0->aia_dpo.dpoi_index;
