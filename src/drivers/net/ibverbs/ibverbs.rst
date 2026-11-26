@@ -109,6 +109,15 @@ Supported features
 * **RSS** when the device supports RSS for raw packet queues. The key and the
   indirection table can be set at start and at runtime (``device
   set-rss-config``).
+  Hash fields can be set for the ``ipv4``, ``ipv6`` and the IPv4 and IPv6 TCP
+  and UDP classes, any combination of addresses and ports as far
+  as the device supports them, with the ``toeplitz`` function. The default is
+  ``4-tuple``. SCTP, ESP and AH traffic uses the fields of the ``ipv4`` or
+  ``ipv6`` class. ``ipv4-gre``, ``ipv4-vxlan``, their IPv6 versions and the
+  ``ipv4-ipip-gre`` / ``ipv6-ipip-gre`` classes take the outer fields;
+  hashing on inner headers needs device specific queue pair flags and is not
+  offered.
+  See :ref:`dev_rss`.
 * **Interrupt mode** for RX queues.
 * **MAC filtering** with flow steering rules: primary MAC address, additional
   unicast addresses, promiscuous mode and multicast reception.

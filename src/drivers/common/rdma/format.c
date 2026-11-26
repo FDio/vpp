@@ -96,6 +96,11 @@ styled_format_rdma_port_status (styled_text_t *st, va_list *args)
 void
 styled_format_rdma_rss_flows (styled_text_t *st, va_list *args)
 {
+  static char *qp_names[] = {
+#define _(n, s, c, e, l4, pr, t, ie, il4, p) [RDMA_RSS_##n] = s,
+    foreach_rdma_rss_qp
+#undef _
+  };
   vnet_dev_format_args_t __clib_unused *a = va_arg (*args, vnet_dev_format_args_t *);
   rdma_rss_t *rss = va_arg (*args, rdma_rss_t *);
   u32 row = 0, idx;
@@ -117,7 +122,7 @@ styled_format_rdma_rss_flows (styled_text_t *st, va_list *args)
 	unknown = f->attr.flags & ~IBV_FLOW_ATTR_FLAGS_DONT_TRAP;
 	action = (f->attr.flags & IBV_FLOW_ATTR_FLAGS_DONT_TRAP) ? "pass" : "trap";
 	table_format_cell (&t, row, -1, "%u", f->pool_index);
-	table_format_cell (&t, row, 0, "%s", i == RDMA_RSS_IP6 ? "ip6" : "default");
+	table_format_cell (&t, row, 0, "%s", qp_names[i]);
 	table_format_cell (&t, row, 1, "%u", f->attr.priority);
 	table_format_cell (&t, row, 2, "%U", format_ethernet_address, f->spec.eth.val.dst_mac);
 	table_format_cell (&t, row, 3, "%U", format_ethernet_address, f->spec.eth.mask.dst_mac);

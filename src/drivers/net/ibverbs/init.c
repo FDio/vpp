@@ -99,7 +99,8 @@ ibv_init (vlib_main_t *vm, vnet_dev_t *dev)
     {
       rd->rss = 1;
       rd->rss_max_ind_tbl_size = dev_attr_ex.rss_caps.max_rwq_indirection_table_size;
-      rd->rss_hash_fields_mask = dev_attr_ex.rss_caps.rx_hash_fields_mask;
+      /* inner hashing needs device specific qp flags */
+      rd->rss_hash_fields_mask = dev_attr_ex.rss_caps.rx_hash_fields_mask & ~IBV_RX_HASH_INNER;
       rd->rss_hash_function = dev_attr_ex.rss_caps.rx_hash_function;
     }
   if (dev_attr_ex.raw_packet_caps & IBV_RAW_PACKET_CAP_IP_CSUM)
@@ -263,6 +264,10 @@ ibv_init (vlib_main_t *vm, vnet_dev_t *dev)
 
       if (!rdma_port_mac (rd->ctx, ibv_port, port_attr.gid_tbl_len, &port.port.attr.hw_addr))
 	ethernet_mac_address_generate (port.port.attr.hw_addr.eth_mac);
+
+      if (rd->rss)
+	port.port.attr.rss_caps =
+	  rdma_rss_dev_caps (rd->rss_hash_fields_mask, rd->rss_hash_function);
 
       rv = vnet_dev_port_add (vm, dev, port_id, &port);
       if (rv != VNET_DEV_OK)

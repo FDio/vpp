@@ -19,6 +19,21 @@ mlx5_port_init (vlib_main_t *vm, vnet_dev_port_t *port)
   return mlx5_port_init_counters (vm, port);
 }
 
+/* hashing on inner headers needs a qp with tunnel offloads */
+static struct ibv_qp *
+mlx5_rss_create_qp (struct ibv_context *ctx, struct ibv_qp_init_attr_ex *attr)
+{
+  struct mlx5dv_qp_init_attr dv = {
+    .comp_mask = MLX5DV_QP_INIT_ATTR_MASK_QP_CREATE_FLAGS,
+    .create_flags = MLX5DV_QP_CREATE_TUNNEL_OFFLOADS,
+  };
+
+  if ((attr->rx_hash_conf.rx_hash_fields_mask & IBV_RX_HASH_INNER) == 0)
+    return ibv_create_qp_ex (ctx, attr);
+
+  return mlx5dv_create_qp (ctx, attr, &dv);
+}
+
 static rdma_rss_caps_t
 mlx5_rss_caps (vnet_dev_port_t *port)
 {
@@ -30,6 +45,7 @@ mlx5_rss_caps (vnet_dev_port_t *port)
     .max_ind_tbl_size = rd->rss_max_ind_tbl_size,
     .hash_function = rd->rss_hash_function,
     .hash_fields_mask = rd->rss_hash_fields_mask,
+    .create_qp = mlx5_rss_create_qp,
   };
 }
 
@@ -356,11 +372,13 @@ mlx5_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port, vnet_dev_port_cfg_
 	{
 	  vnet_dev_rss_config_t cfg = port->rss_config;
 
-	  rdma_rss_cfg_merge (&cfg, &req->rss_config);
+	  vnet_dev_rss_config_merge (&cfg, &req->rss_config);
 	  mlx5_port_rss_disable (port);
 	  rv = mlx5_port_rss_enable (port, &cfg);
 	  if (rv == VNET_DEV_OK)
 	    rv = mlx5_port_program_flows (port, 0);
+	  else if (mlx5_port_rss_enable (port, &port->rss_config) == VNET_DEV_OK)
+	    mlx5_port_program_flows (port, 0);
 	}
       break;
 

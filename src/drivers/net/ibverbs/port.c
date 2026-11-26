@@ -449,11 +449,13 @@ ibv_port_cfg_change (vlib_main_t *vm __clib_unused, vnet_dev_port_t *port,
 	  ibv_port_t *ip = vnet_dev_get_port_data (port);
 	  vnet_dev_rss_config_t cfg = port->rss_config;
 
-	  rdma_rss_cfg_merge (&cfg, &req->rss_config);
+	  vnet_dev_rss_config_merge (&cfg, &req->rss_config);
 	  rdma_rss_disable (&ip->rss);
 	  rv = ibv_port_rss_enable (port, &cfg);
 	  if (rv == VNET_DEV_OK)
 	    rv = ibv_port_program_flows (port, 0);
+	  else if (ibv_port_rss_enable (port, &port->rss_config) == VNET_DEV_OK)
+	    ibv_port_program_flows (port, 0);
 	}
       break;
 

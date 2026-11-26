@@ -10,6 +10,7 @@
 #include <infiniband/verbs.h>
 #include <vlib/pci/pci.h>
 #include <vnet/ethernet/packet.h>
+#include <vnet/ip/ip_packet.h>
 
 struct ibv_qp;
 struct ibv_flow;
@@ -48,12 +49,33 @@ typedef struct
   const char *name;
 } rdma_cap_name_t;
 
+typedef enum
+{
+  RDMA_TUNNEL_NONE,
+  RDMA_TUNNEL_GRE,
+  RDMA_TUNNEL_VXLAN,
+} __clib_packed rdma_tunnel_t;
+
+/* what a flow matches after the destination mac: ether_type 0 matches anything, l4_spec_type
+ * IBV_FLOW_SPEC_TCP or IBV_FLOW_SPEC_UDP, ip_proto an outer ip protocol, a tunnel and the inner
+ * ip version and transport */
+typedef struct
+{
+  u16 ether_type;
+  u8 l4_spec_type;
+  u8 ip_proto;
+  rdma_tunnel_t tunnel;
+  u16 inner_ether_type;
+  u8 inner_l4_spec_type;
+} rdma_flow_match_t;
+
 typedef struct
 {
   u32 pool_index;
   struct ibv_flow *handle;
   struct ibv_flow_attr attr;
   struct ibv_flow_spec spec;
+  rdma_flow_match_t match;
 } rdma_rx_flow_t;
 
 typedef struct
@@ -93,18 +115,80 @@ typedef struct
   u32 mcast_flow_index;
 } rdma_rss_qp_t;
 
+/* rss qps: name, string, class, ether type, transport, ip protocol, tunnel, inner ether type and
+ * transport, priority. ip4 also takes all traffic which no other qp matches, a qp only exists
+ * when it hashes differently than the qp which would take its traffic otherwise */
+#define RDMA_E4	 ETHERNET_TYPE_IP4
+#define RDMA_E6	 ETHERNET_TYPE_IP6
+#define RDMA_TCP IBV_FLOW_SPEC_TCP
+#define RDMA_UDP IBV_FLOW_SPEC_UDP
+#define foreach_rdma_rss_tunnel_qp(o)                                                              \
+  _ (IP##o##_GRE, "ip" #o "-gre", IP##o##_GRE, RDMA_E##o, 0, 0, GRE, 0, 0, 2)                      \
+  _ (IP##o##_GRE_IP4, "ip" #o "-gre-ip4", IP##o##_GRE, RDMA_E##o, 0, 0, GRE, RDMA_E4, 0, 1)        \
+  _ (IP##o##_GRE_IP4_TCP, "ip" #o "-gre-ip4-tcp", IP##o##_GRE, RDMA_E##o, 0, 0, GRE, RDMA_E4,      \
+     RDMA_TCP, 0)                                                                                  \
+  _ (IP##o##_GRE_IP4_UDP, "ip" #o "-gre-ip4-udp", IP##o##_GRE, RDMA_E##o, 0, 0, GRE, RDMA_E4,      \
+     RDMA_UDP, 0)                                                                                  \
+  _ (IP##o##_GRE_IP6, "ip" #o "-gre-ip6", IP##o##_GRE, RDMA_E##o, 0, 0, GRE, RDMA_E6, 0, 1)        \
+  _ (IP##o##_GRE_IP6_TCP, "ip" #o "-gre-ip6-tcp", IP##o##_GRE, RDMA_E##o, 0, 0, GRE, RDMA_E6,      \
+     RDMA_TCP, 0)                                                                                  \
+  _ (IP##o##_GRE_IP6_UDP, "ip" #o "-gre-ip6-udp", IP##o##_GRE, RDMA_E##o, 0, 0, GRE, RDMA_E6,      \
+     RDMA_UDP, 0)                                                                                  \
+  _ (IP##o##_IPIP_IP4, "ip" #o "-ipip-ip4", IP##o##_IPIP, RDMA_E##o, 0, IP_PROTOCOL_IP_IN_IP,      \
+     NONE, RDMA_E4, 0, 1)                                                                          \
+  _ (IP##o##_IPIP_IP4_TCP, "ip" #o "-ipip-ip4-tcp", IP##o##_IPIP, RDMA_E##o, 0,                    \
+     IP_PROTOCOL_IP_IN_IP, NONE, RDMA_E4, RDMA_TCP, 0)                                             \
+  _ (IP##o##_IPIP_IP4_UDP, "ip" #o "-ipip-ip4-udp", IP##o##_IPIP, RDMA_E##o, 0,                    \
+     IP_PROTOCOL_IP_IN_IP, NONE, RDMA_E4, RDMA_UDP, 0)                                             \
+  _ (IP##o##_IPIP_IP6, "ip" #o "-ipip-ip6", IP##o##_IPIP, RDMA_E##o, 0, IP_PROTOCOL_IPV6, NONE,    \
+     RDMA_E6, 0, 1)                                                                                \
+  _ (IP##o##_IPIP_IP6_TCP, "ip" #o "-ipip-ip6-tcp", IP##o##_IPIP, RDMA_E##o, 0, IP_PROTOCOL_IPV6,  \
+     NONE, RDMA_E6, RDMA_TCP, 0)                                                                   \
+  _ (IP##o##_IPIP_IP6_UDP, "ip" #o "-ipip-ip6-udp", IP##o##_IPIP, RDMA_E##o, 0, IP_PROTOCOL_IPV6,  \
+     NONE, RDMA_E6, RDMA_UDP, 0)                                                                   \
+  _ (IP##o##_VXLAN, "ip" #o "-vxlan", IP##o##_VXLAN, RDMA_E##o, RDMA_UDP, 0, VXLAN, 0, 0, 2)       \
+  _ (IP##o##_VXLAN_IP4, "ip" #o "-vxlan-ip4", IP##o##_VXLAN, RDMA_E##o, RDMA_UDP, 0, VXLAN,        \
+     RDMA_E4, 0, 1)                                                                                \
+  _ (IP##o##_VXLAN_IP4_TCP, "ip" #o "-vxlan-ip4-tcp", IP##o##_VXLAN, RDMA_E##o, RDMA_UDP, 0,       \
+     VXLAN, RDMA_E4, RDMA_TCP, 0)                                                                  \
+  _ (IP##o##_VXLAN_IP4_UDP, "ip" #o "-vxlan-ip4-udp", IP##o##_VXLAN, RDMA_E##o, RDMA_UDP, 0,       \
+     VXLAN, RDMA_E4, RDMA_UDP, 0)                                                                  \
+  _ (IP##o##_VXLAN_IP6, "ip" #o "-vxlan-ip6", IP##o##_VXLAN, RDMA_E##o, RDMA_UDP, 0, VXLAN,        \
+     RDMA_E6, 0, 1)                                                                                \
+  _ (IP##o##_VXLAN_IP6_TCP, "ip" #o "-vxlan-ip6-tcp", IP##o##_VXLAN, RDMA_E##o, RDMA_UDP, 0,       \
+     VXLAN, RDMA_E6, RDMA_TCP, 0)                                                                  \
+  _ (IP##o##_VXLAN_IP6_UDP, "ip" #o "-vxlan-ip6-udp", IP##o##_VXLAN, RDMA_E##o, RDMA_UDP, 0,       \
+     VXLAN, RDMA_E6, RDMA_UDP, 0)
+
+#define foreach_rdma_rss_qp                                                                        \
+  _ (IP4, "ip4", IP4, 0, 0, 0, NONE, 0, 0, 5)                                                      \
+  _ (IP6, "ip6", IP6, RDMA_E6, 0, 0, NONE, 0, 0, 4)                                                \
+  _ (IP4_TCP, "ip4-tcp", IP4_TCP, RDMA_E4, RDMA_TCP, 0, NONE, 0, 0, 3)                             \
+  _ (IP4_UDP, "ip4-udp", IP4_UDP, RDMA_E4, RDMA_UDP, 0, NONE, 0, 0, 3)                             \
+  _ (IP6_TCP, "ip6-tcp", IP6_TCP, RDMA_E6, RDMA_TCP, 0, NONE, 0, 0, 3)                             \
+  _ (IP6_UDP, "ip6-udp", IP6_UDP, RDMA_E6, RDMA_UDP, 0, NONE, 0, 0, 3)                             \
+  foreach_rdma_rss_tunnel_qp (4) foreach_rdma_rss_tunnel_qp (6)
+
 enum
 {
-  RDMA_RSS_DEFAULT,
-  RDMA_RSS_IP6,
+#define _(n, s, c, e, l4, pr, t, ie, il4, p) RDMA_RSS_##n,
+  foreach_rdma_rss_qp
+#undef _
+    RDMA_RSS_N_QP,
 };
 
 typedef struct
 {
   struct ibv_rwq_ind_table *rwq_ind_tbl;
-  rdma_rss_qp_t qp[2];
+  /* first lut entry only, for qps which hash nothing */
+  struct ibv_rwq_ind_table *rwq_ind_tbl_first;
+  rdma_rss_qp_t qp[RDMA_RSS_N_QP];
 } rdma_rss_t;
 
+typedef struct ibv_qp *(rdma_rss_create_qp_fn_t) (struct ibv_context *,
+						  struct ibv_qp_init_attr_ex *);
+
+/* create_qp, if set, creates the rss qps, e.g. with device specific flags */
 typedef struct
 {
   struct ibv_context *ctx;
@@ -112,6 +196,7 @@ typedef struct
   u32 max_ind_tbl_size;
   u32 hash_function;
   u64 hash_fields_mask;
+  rdma_rss_create_qp_fn_t *create_qp;
 } rdma_rss_caps_t;
 
 #define RDMA_RSS_KEY_SIZE 40
@@ -125,7 +210,7 @@ vnet_dev_rv_t rdma_rss_enable (rdma_rss_t *rss, const rdma_rss_caps_t *caps, str
 vnet_dev_rv_t rdma_rss_program_flows (rdma_rss_t *rss, vnet_dev_port_t *port,
 				      vnet_dev_port_cfg_change_req_t *req);
 vnet_dev_rv_t rdma_rss_cfg_validate (const rdma_rss_caps_t *caps, const vnet_dev_rss_config_t *req);
-void rdma_rss_cfg_merge (vnet_dev_rss_config_t *cfg, const vnet_dev_rss_config_t *req);
+vnet_dev_rss_caps_t rdma_rss_dev_caps (u64 hash_fields_mask, u32 hash_function);
 styled_format_fn_t styled_format_rdma_rss_flows;
 vnet_dev_rv_t rdma_netdev_set_mtu (u32 ifindex, u32 max_rx_frame_size, clib_error_t **errp);
 
@@ -151,14 +236,15 @@ vnet_dev_rv_t rdma_port_cfg_rxq_intr_mode_change (vlib_main_t *vm, vnet_dev_port
 vnet_dev_rv_t rdma_rxq_irq_enable (vlib_main_t *vm, rdma_rxq_irq_t *ri);
 void rdma_rxq_irq_disable (vlib_main_t *vm, rdma_rxq_irq_t *ri);
 vnet_dev_rv_t rdma_rxq_add_eth_flow (struct ibv_qp *qp, rdma_rx_flow_t ***flows, u8 ibv_port,
-				     const u8 *mac, const u8 *mask, u16 ether_type, u16 priority,
-				     u32 flags, u32 *flow_index);
+				     const u8 *mac, const u8 *mask, const rdma_flow_match_t *match,
+				     u16 priority, u32 flags, u32 *flow_index);
 u8 rdma_mac_in_addrs (vnet_dev_hw_addr_t *addrs, const u8 *mac);
 i32 rdma_find_ucast_flow (rdma_rx_mac_flow_t *ucast_flows, const u8 *mac);
 vnet_dev_rv_t rdma_program_flow_state (struct ibv_qp *qp, rdma_rx_flow_t ***flows,
 				       rdma_rx_mac_flow_t **ucast_flows, u32 *promisc_flow_index,
 				       u32 *mcast_flow_index, vnet_dev_hw_addr_t *addrs, u8 promisc,
-				       u8 ibv_port, u16 ether_type, u16 priority, u8 with_mcast);
+				       u8 ibv_port, const rdma_flow_match_t *match, u16 priority,
+				       u8 with_mcast);
 void rdma_rxq_remove_flow_index (rdma_rx_flow_t ***flows, u32 idx);
 void rdma_rxq_destroy_flows (rdma_rx_flow_t ***flows);
 
