@@ -10,167 +10,82 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/ethernet/cli_types.h>
+#include <vnet/interface/cli_types.h>
 
 #include <memif/memif.h>
 #include <memif/private.h>
 
-
 static clib_error_t *
-memif_socket_filename_create_command_fn (vlib_main_t * vm,
-					 unformat_input_t * input,
-					 vlib_cli_command_t * cmd)
+memif_socket_filename_create_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  clib_error_t *err;
-  u32 socket_id;
-  u8 *socket_filename;
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  socket_id = ~0;
-  socket_filename = 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "id %u", &socket_id))
-	;
-      else if (unformat (line_input, "filename %s", &socket_filename))
-	;
-      else
-	{
-	  vec_free (socket_filename);
-	  unformat_free (line_input);
-	  return clib_error_return (0, "unknown input `%U'",
-				    format_unformat_error, input);
-	}
-    }
-
-  unformat_free (line_input);
+  u32 socket_id = cli_u64 (ctx, "id", ~0);
+  u8 *socket_filename = cli_get (ctx, "filename")->str;
 
   if (socket_id == 0 || socket_id == ~0)
-    {
-      vec_free (socket_filename);
-      return clib_error_return (0, "Invalid socket id");
-    }
+    return clib_error_return (0, "Invalid socket id");
 
-  if (!socket_filename || *socket_filename == 0)
-    {
-      vec_free (socket_filename);
-      return clib_error_return (0, "Invalid socket filename");
-    }
-
-  err = memif_socket_filename_add_del (1, socket_id, (char *) socket_filename);
-
-  vec_free (socket_filename);
-
-  return err;
+  return memif_socket_filename_add_del (1, socket_id, (char *) socket_filename);
 }
 
 VLIB_CLI_COMMAND (memif_socket_filename_create_command, static) = {
   .path = "create memif socket",
-  .short_help = "create memif socket [id <id>] [filename <path>]",
-  .function = memif_socket_filename_create_command_fn,
+  .short_help = "Create a memif socket",
+  .args = CLI_ARGS (
+    CLI_KEYWORD ("id", cli_type_u32, .help = "id of the socket"),
+    CLI_KEYWORD ("filename", cli_type_string,
+		 .help = "path of the socket file, 'abstract:<name>' for an abstract socket")),
+  .handler = memif_socket_filename_create_command_fn,
 };
 
 static clib_error_t *
-memif_socket_filename_delete_command_fn (vlib_main_t * vm,
-					 unformat_input_t * input,
-					 vlib_cli_command_t * cmd)
+memif_socket_filename_delete_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  u32 socket_id;
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  socket_id = ~0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "id %u", &socket_id))
-	;
-      else
-	{
-	  unformat_free (line_input);
-	  return clib_error_return (0, "unknown input `%U'",
-				    format_unformat_error, input);
-	}
-    }
-
-  unformat_free (line_input);
+  u32 socket_id = cli_u64 (ctx, "id", ~0);
 
   if (socket_id == 0 || socket_id == ~0)
-    {
-      return clib_error_return (0, "Invalid socket id");
-    }
+    return clib_error_return (0, "Invalid socket id");
 
   return memif_socket_filename_add_del (0, socket_id, 0);
 }
 
 VLIB_CLI_COMMAND (memif_socket_filename_delete_command, static) = {
   .path = "delete memif socket",
-  .short_help = "delete memif socket [id <id>]",
-  .function = memif_socket_filename_delete_command_fn,
+  .short_help = "Delete a memif socket",
+  .args = CLI_ARGS (CLI_KEYWORD ("id", cli_type_u32, .help = "id of the socket")),
+  .handler = memif_socket_filename_delete_command_fn,
+};
+
+static const cli_choice_t memif_mode_choices[] = {
+  { "ip", "carry IP packets instead of Ethernet frames", MEMIF_INTERFACE_MODE_IP },
+  {},
 };
 
 static clib_error_t *
-memif_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			 vlib_cli_command_t * cmd)
+memif_create_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 ring_size = cli_u64 (ctx, "ring-size", MEMIF_DEFAULT_RING_SIZE);
+  u32 rx_queues = cli_u64 (ctx, "rx-queues", MEMIF_DEFAULT_RX_QUEUES);
+  u32 tx_queues = cli_u64 (ctx, "tx-queues", MEMIF_DEFAULT_TX_QUEUES);
+  memif_create_if_args_t args = {
+    .id = cli_u64 (ctx, "id", 0),
+    .socket_id = cli_u64 (ctx, "socket-id", 0),
+    .buffer_size = cli_u64 (ctx, "buffer-size", MEMIF_DEFAULT_BUFFER_SIZE),
+    .is_master = cli_flag (ctx, "master"),
+    .is_zero_copy = !cli_flag (ctx, "no-zero-copy"),
+    .use_dma = cli_flag (ctx, "use-dma"),
+  };
+  cli_value_t *v;
   clib_error_t *err;
-  u32 ring_size = MEMIF_DEFAULT_RING_SIZE;
-  memif_create_if_args_t args = { 0 };
-  args.buffer_size = MEMIF_DEFAULT_BUFFER_SIZE;
-  u32 rx_queues = MEMIF_DEFAULT_RX_QUEUES;
-  u32 tx_queues = MEMIF_DEFAULT_TX_QUEUES;
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+  if (cli_flag (ctx, "mode"))
+    args.mode = cli_index (ctx, "mode");
 
-  args.is_zero_copy = 1;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+  if ((v = cli_get (ctx, "hw-addr")))
     {
-      if (unformat (line_input, "id %u", &args.id))
-	;
-      else if (unformat (line_input, "socket-id %u", &args.socket_id))
-	;
-      else if (unformat (line_input, "secret %s", &args.secret))
-	;
-      else if (unformat (line_input, "ring-size %u", &ring_size))
-	;
-      else if (unformat (line_input, "rx-queues %u", &rx_queues))
-	;
-      else if (unformat (line_input, "tx-queues %u", &tx_queues))
-	;
-      else if (unformat (line_input, "buffer-size %u", &args.buffer_size))
-	;
-      else if (unformat (line_input, "master"))
-	args.is_master = 1;
-      else if (unformat (line_input, "slave"))
-	args.is_master = 0;
-      else if (unformat (line_input, "no-zero-copy"))
-	args.is_zero_copy = 0;
-      else if (unformat (line_input, "use-dma"))
-	args.use_dma = 1;
-      else if (unformat (line_input, "mode ip"))
-	args.mode = MEMIF_INTERFACE_MODE_IP;
-      else if (unformat (line_input, "hw-addr %U",
-			 unformat_ethernet_address, args.hw_addr))
-	args.hw_addr_set = 1;
-      else
-	{
-	  unformat_free (line_input);
-	  return clib_error_return (0, "unknown input `%U'",
-				    format_unformat_error, input);
-	}
+      clib_memcpy (args.hw_addr, v->prefix.addr, 6);
+      args.hw_addr_set = 1;
     }
-  unformat_free (line_input);
 
   if (!is_pow2 (ring_size))
     return clib_error_return (0, "ring size must be power of 2");
@@ -188,6 +103,9 @@ memif_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   args.rx_queues = rx_queues;
   args.tx_queues = tx_queues;
 
+  if ((v = cli_get (ctx, "secret")))
+    args.secret = vec_dup (v->str);
+
   err = memif_create_if (vm, &args);
 
   vec_free (args.secret);
@@ -197,48 +115,32 @@ memif_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 VLIB_CLI_COMMAND (memif_create_command, static) = {
   .path = "create interface memif",
-  .short_help = "create interface memif [id <id>] [socket-id <socket-id>] "
-                "[ring-size <size>] [buffer-size <size>] "
-		"[hw-addr <mac-address>] "
-		"<master|slave> [rx-queues <number>] [tx-queues <number>] "
-		"[mode ip] [secret <string>]",
-  .function = memif_create_command_fn,
+  .short_help = "Create a memif interface",
+  .args = CLI_ARGS (
+    CLI_OPT_KEYWORD ("id", cli_type_u32, .help = "id of the interface on the socket, default 0"),
+    CLI_OPT_KEYWORD ("socket-id", cli_type_u32, .help = "id of the socket, default 0"),
+    CLI_FLAG ("master", .excludes = "slave", .help = "listen on the socket"),
+    CLI_FLAG ("slave", .help = "connect to the socket, default"),
+    CLI_OPT_KEYWORD ("ring-size", cli_type_u32, .help = "power of 2, up to 32768"),
+    CLI_OPT_KEYWORD ("buffer-size", cli_type_u32, .max = 0xffff, .help = "size of a buffer"),
+    CLI_OPT_KEYWORD ("rx-queues", cli_type_u32, .help = "1 - 255"),
+    CLI_OPT_KEYWORD ("tx-queues", cli_type_u32, .help = "1 - 255"),
+    CLI_OPT_KEYWORD ("hw-addr", cli_type_mac_address, .help = "MAC address"),
+    CLI_OPT_KEYWORD ("mode", cli_type_enum, .choices = memif_mode_choices),
+    CLI_OPT_KEYWORD ("secret", cli_type_string, .help = "shared secret"),
+    CLI_FLAG ("no-zero-copy", .help = "copy packet data"),
+    CLI_FLAG ("use-dma", .help = "copy with a DMA engine")),
+  .handler = memif_create_command_fn,
 };
 
 static clib_error_t *
-memif_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			 vlib_cli_command_t * cmd)
+memif_delete_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  u32 sw_if_index = ~0;
+  u32 sw_if_index = cli_index (ctx, "interface");
   vnet_hw_interface_t *hw;
   memif_main_t *mm = &memif_main;
   memif_if_t *mif;
   vnet_main_t *vnm = vnet_get_main ();
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "sw_if_index %d", &sw_if_index))
-	;
-      else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
-			 vnm, &sw_if_index))
-	;
-      else
-	{
-	  unformat_free (line_input);
-	  return clib_error_return (0, "unknown input `%U'",
-				    format_unformat_error, input);
-	}
-    }
-  unformat_free (line_input);
-
-  if (sw_if_index == ~0)
-    return clib_error_return (0,
-			      "please specify interface name or sw_if_index");
 
   hw = vnet_get_sup_hw_interface_api_visible_or_null (vnm, sw_if_index);
   if (hw == NULL || memif_device_class.index != hw->dev_class_index)
@@ -252,8 +154,9 @@ memif_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 VLIB_CLI_COMMAND (memif_delete_command, static) = {
   .path = "delete interface memif",
-  .short_help = "delete interface memif {<interface> | sw_if_index <sw_idx>}",
-  .function = memif_delete_command_fn,
+  .short_help = "Delete a memif interface",
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_sw_interface, .alt_keyword = "sw_if_index")),
+  .handler = memif_delete_command_fn,
 };
 
 static u8 *
@@ -342,8 +245,7 @@ format_memif_descriptor (u8 * s, va_list * args)
 }
 
 static clib_error_t *
-memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
-		       vlib_cli_command_t * cmd)
+memif_show_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   memif_main_t *mm = &memif_main;
   memif_if_t *mif;
@@ -351,27 +253,23 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
   memif_region_t *mr;
   memif_queue_t *mq;
   uword i;
-  int show_descr = 0;
+  int show_descr = cli_flag (ctx, "descriptors");
   clib_error_t *error = 0;
   u32 hw_if_index, *hw_if_indices = 0;
   u32 sock_id;
   u32 msf_idx;
+  cli_value_t *v;
   u8 *s = 0;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat
-	  (input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
-	vec_add1 (hw_if_indices, hw_if_index);
-      else if (unformat (input, "descriptors"))
-	show_descr = 1;
-      else
-	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, input);
-	  goto done;
-	}
-    }
+  cli_foreach (v, ctx, "interface")
+  {
+    if (vnet_get_hw_interface (vnm, v->index)->dev_class_index != memif_device_class.index)
+      {
+	error = clib_error_return (0, "not a memif interface");
+	goto done;
+      }
+    vec_add1 (hw_if_indices, v->index);
+  }
 
   vlib_cli_output (vm, "sockets\n");
   vlib_cli_output (vm, "  %-3s %-11s %s\n", "id", "listener", "filename");
@@ -461,8 +359,11 @@ done:
 
 VLIB_CLI_COMMAND (memif_show_command, static) = {
   .path = "show memif",
-  .short_help = "show memif [<interface>] [descriptors]",
-  .function = memif_show_command_fn,
+  .short_help = "Show memif sockets and interfaces",
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_hw_interface,
+			       .flags = CLI_F_OPTIONAL | CLI_F_REPEAT),
+		    CLI_FLAG ("descriptors", .help = "show the descriptor tables")),
+  .handler = memif_show_command_fn,
 };
 
 clib_error_t *
