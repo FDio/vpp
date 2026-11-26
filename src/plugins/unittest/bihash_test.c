@@ -33,9 +33,7 @@ typedef struct
 
 typedef struct
 {
-  volatile u32 thread_barrier;
-  volatile u32 threads_running;
-  volatile u64 sequence_number;
+  u32 thread_barrier;
   u64 seed;
   u32 nbuckets;
   u32 nitems;
@@ -152,8 +150,8 @@ test_bihash_thread_fn (void *arg)
   u32 my_thread_index = (uword) arg;
   u32 seed = (u32) my_thread_index;
 
-  while (tm->thread_barrier)
-    ;
+  while (__atomic_load_n (&tm->thread_barrier, __ATOMIC_ACQUIRE))
+    CLIB_PAUSE ();
 
   h = &tm->hash;
 
@@ -163,16 +161,12 @@ test_bihash_thread_fn (void *arg)
 	{
 	  kv.key = ((u64) my_thread_index << 32) | (u64) j;
 	  kv.value = ((u64) my_thread_index << 32) | (u64) j;
-	  (void) __atomic_add_fetch (&tm->sequence_number, 1,
-				     __ATOMIC_ACQUIRE);
 	  BV (clib_bihash_add_del) (h, &kv, 1 /* is_add */ );
 	}
       for (j = 0; j < tm->nitems; j++)
 	{
 	  kv.key = ((u64) my_thread_index << 32) | (u64) j;
 	  kv.value = ((u64) my_thread_index << 32) | (u64) j;
-	  (void) __atomic_add_fetch (&tm->sequence_number, 1,
-				     __ATOMIC_ACQUIRE);
 	  BV (clib_bihash_add_del) (h, &kv, 0 /* is_add */ );
 	}
 
@@ -199,16 +193,15 @@ test_bihash_thread_fn (void *arg)
 	}
     }
 
-  (void) __atomic_sub_fetch (&tm->threads_running, 1, __ATOMIC_ACQUIRE);
-  pthread_exit (0);
-  return (0);			/* not so much */
+  return 0;
 }
 
 static clib_error_t *
 test_bihash_threads (bihash_test_main_t * tm)
 {
   int i;
-  pthread_t handle;
+  pthread_t *threads = 0, *thread;
+  clib_error_t *error = 0;
   BVT (clib_bihash) * h;
   int rv;
   f64 before, after, delta;
@@ -218,28 +211,33 @@ test_bihash_threads (bihash_test_main_t * tm)
   BV (clib_bihash_init) (h, "test", tm->nbuckets, tm->hash_memory_size);
   BV (clib_bihash_set_stats_callback) (h, inc_stats_callback, &tm->stats);
 
-  tm->thread_barrier = 1;
+  __atomic_store_n (&tm->thread_barrier, 1, __ATOMIC_RELAXED);
 
   /* Start the worker threads */
-  tm->threads_running = 0;
   for (i = 0; i < tm->nthreads; i++)
     {
+      pthread_t handle;
       rv = pthread_create (&handle, NULL, test_bihash_thread_fn,
 			   (void *) (uword) i);
       if (rv)
-	clib_unix_warning ("pthread_create returned %d", rv);
-      else
-	tm->threads_running++;
+	{
+	  error = clib_error_return (0, "pthread_create returned %d", rv);
+	  break;
+	}
+      vec_add1 (threads, handle);
     }
-  tm->sequence_number = 0;
-  CLIB_MEMORY_BARRIER ();
 
   /* start the workers */
   before = vlib_time_now (tm->vlib_main);
-  tm->thread_barrier = 0;
+  __atomic_store_n (&tm->thread_barrier, 0, __ATOMIC_RELEASE);
 
-  while (tm->threads_running > 0)
-    CLIB_PAUSE ();
+  vec_foreach (thread, threads)
+    {
+      rv = pthread_join (*thread, 0);
+      if (rv)
+	clib_panic ("pthread_join returned %d", rv);
+    }
+  vec_free (threads);
 
   after = vlib_time_now (tm->vlib_main);
   delta = after - before;
@@ -252,7 +250,7 @@ test_bihash_threads (bihash_test_main_t * tm)
 
   fformat (stdout, "Stats:\n%U", format_bihash_stats, h, 1 /* verbose */ );
   BV (clib_bihash_free) (h);
-  return 0;
+  return error;
 }
 
 /*
