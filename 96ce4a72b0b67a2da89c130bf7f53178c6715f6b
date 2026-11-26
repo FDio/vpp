@@ -16,6 +16,24 @@
       "message": "While the previous test was obviously bad, the current one is just a tad better. VPP\u0027s main purpose is shipping packets and bumping counters is nice, but arguably less important. The test now verifies the counter, but doesn\u0027t verify the packet at all. `send_and_assert_nothing_captured` feels like the obvious helper to be used here, with one time error counter assertion afterwards.",
       "revId": "96ce4a72b0b67a2da89c130bf7f53178c6715f6b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "323a42e9_f6d69b17",
+        "filename": "test/test_ip6.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 403,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-26T12:53:57Z",
+      "side": 1,
+      "message": "Addressed in PS2. The test uses send_and_assert_no_replies to check for unexpected packets on all PG interfaces, with an exact +1 delta for the local-reassembly error counter. I checked both failure paths with incorrect Ethernet addresses and with an extra packet forwarded to pg1.",
+      "parentUuid": "087ed81f_84c21959",
+      "revId": "96ce4a72b0b67a2da89c130bf7f53178c6715f6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
