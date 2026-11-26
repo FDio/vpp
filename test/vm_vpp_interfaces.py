@@ -3,6 +3,7 @@ import unittest
 from ipaddress import ip_address, ip_interface
 from vpp_qemu_utils import (
     create_namespace,
+    wait_for_ipv6_address,
     delete_all_namespaces,
     create_host_interface,
     delete_all_host_interfaces,
@@ -127,7 +128,7 @@ def create_test(test_name, test, ip_version, mtu):
     )
     def test_func(self):
         self.logger.debug(f"Starting unittest:{test_name}")
-        self.setUpTestToplogy(test=test, ip_version=ip_version)
+        ipv6_wait_saved = self.setUpTestToplogy(test=test, ip_version=ip_version)
         self.set_interfaces_mtu(mtu)
         if "memif" in self.if_types:
             self.logger.debug("Starting libmemif test_app for memif test")
@@ -146,6 +147,11 @@ def create_test(test_name, test, ip_version, mtu):
             cpus=self.helper_affinity(),
         )
         self.addCleanup(stop_iperf, server)
+        # Retain the original retry window if an early connection fails.
+        if retry_not_before is not None:
+            retry_not_before += ipv6_wait_saved
+        elif ipv6_wait_saved:
+            time.sleep(ipv6_wait_saved)
         # Send traffic between iperf client & server
         self.assertTrue(
             start_iperf(
@@ -265,6 +271,11 @@ class TestVPPInterfacesQemu:
         client_if_version = test["client_if_version"]
         server_if_version = test["server_if_version"]
         x_connect_mode = test["x_connect_mode"]
+        client_ip6_prefix = (
+            layer2["client_ip6_prefix"]
+            if x_connect_mode == "L2"
+            else layer3["client_ip6_prefix"]
+        )
         # server ip4/ip6 addresses required by iperf client
         server_ip4_prefix = (
             layer2["server_ip4_prefix"]
@@ -336,11 +347,7 @@ class TestVPPInterfacesQemu:
                         if x_connect_mode == "L2"
                         else layer3["client_ip4_prefix"]
                     ),
-                    (
-                        layer2["client_ip6_prefix"]
-                        if x_connect_mode == "L2"
-                        else layer3["client_ip6_prefix"]
-                    ),
+                    client_ip6_prefix,
                 )
                 self.ingress_if_idx = self.create_af_packet(
                     version=client_if_version,
@@ -374,11 +381,7 @@ class TestVPPInterfacesQemu:
                         if x_connect_mode == "L2"
                         else layer3["client_ip4_prefix"]
                     ),
-                    host_ip6_prefix=(
-                        layer2["client_ip6_prefix"]
-                        if x_connect_mode == "L2"
-                        else layer3["client_ip6_prefix"]
-                    ),
+                    host_ip6_prefix=client_ip6_prefix,
                     host_ip4_gw=(
                         vpp_client_nexthop
                         if x_connect_mode == "L3" and ip_version == 4
@@ -420,11 +423,7 @@ class TestVPPInterfacesQemu:
                         if x_connect_mode == "L2"
                         else layer3["client_ip4_prefix"]
                     ),
-                    ip6_prefix=(
-                        layer2["client_ip6_prefix"]
-                        if x_connect_mode == "L2"
-                        else layer3["client_ip6_prefix"]
-                    ),
+                    ip6_prefix=client_ip6_prefix,
                     version=client_if_version,
                     multi_buffer=enable_client_if_multi_buffer,
                     busy_poll_usecs=client_if_busy_poll_usecs,
@@ -564,9 +563,21 @@ class TestVPPInterfacesQemu:
             if x_connect_mode == "L2":
                 self.l2_connect_interfaces(1, *self.ingress_if_idxes)
                 self.l2_connect_interfaces(2, *self.egress_if_idxes)
-        # Wait for Linux IPv6 stack to become ready
-        if ip_version == 6:
-            time.sleep(2)
+        if ip_version != 6:
+            return 0.0
+
+        deadline = time.monotonic() + 2
+        endpoints = (
+            (self.client_namespace, ip_interface(client_ip6_prefix).ip),
+            (self.server_namespace, self.server_ip6_address),
+        )
+        for namespace, address in endpoints:
+            if not wait_for_ipv6_address(namespace, address, deadline):
+                self.logger.debug(
+                    "IPv6 readiness not confirmed for %s in %s", address, namespace
+                )
+                return 0.0
+        return max(0.0, deadline - time.monotonic())
 
     def tearDown(self):
         # Delete tap interfaces

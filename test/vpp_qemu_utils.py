@@ -704,6 +704,38 @@ def get_interface_addresses(ns, ifname, family=None):
     return addresses
 
 
+def wait_for_ipv6_address(namespace, address, deadline):
+    """Return early on a usable IPv6 address, otherwise wait until the deadline."""
+    address = str(address)
+    args = ["ip", "-n", namespace, "-j", "-6", "addr", "show", "to", f"{address}/128"]
+    while (remaining := deadline - time.monotonic()) > 0:
+        try:
+            interfaces = json.loads(
+                subprocess.check_output(
+                    args, stderr=subprocess.DEVNULL, timeout=remaining
+                )
+            )
+            if any(
+                info.get("local") == address
+                and not info.get("tentative")
+                and not info.get("dadfailed")
+                for interface in interfaces
+                for info in interface.get("addr_info", ())
+            ):
+                return True
+        except (
+            OSError,
+            subprocess.SubprocessError,
+            ValueError,
+            TypeError,
+            AttributeError,
+        ):
+            break
+        time.sleep(min(0.05, max(0, deadline - time.monotonic())))
+    time.sleep(max(0, deadline - time.monotonic()))
+    return False
+
+
 def is_interface_up(ns, ifname):
     """Check if interface has UP flag set in a namespace."""
     info = get_interface_info(ns, ifname)
