@@ -903,6 +903,131 @@ test_alt_keyword (void)
   return 0;
 }
 
+/* a name which selects the arguments which follow it */
+static const cli_arg_t alpha_args[] = {
+  CLI_OPT_KEYWORD ("count", cli_type_u32, .def = "3"),
+  CLI_FLAG ("verbose"),
+  {},
+};
+
+static const cli_arg_t beta_args[] = {
+  CLI_KEYWORD ("size", cli_type_u32),
+  {},
+};
+
+static const cli_arg_t *
+next_args_of_name (const cli_arg_t *a, const cli_value_t *v, const char **help)
+{
+  if (help && v->index == 0)
+    *help = "the first name";
+
+  return v->index == 0 ? alpha_args : v->index == 1 ? beta_args : 0;
+}
+
+CLIB_CLI_TYPE (test_type_selector) = {
+  .name = "selector",
+  .help = "one of the test names",
+  .parse = parse_name,
+  .complete = complete_name,
+  .next_args = next_args_of_name,
+};
+
+static const cli_arg_t selector_args[] = {
+  CLI_VALUE ("target", test_type_selector),
+  {},
+};
+
+static const cli_arg_t keyword_selector_args[] = {
+  CLI_KEYWORD ("target", test_type_selector),
+  {},
+};
+
+/* whether the only candidate is name, the text of a candidate is a vector */
+static int
+is_only_candidate (cli_candidate_t *c, const char *name)
+{
+  return vec_len (c) == 1 && vec_len (c->text) == strlen (name) &&
+	 memcmp (c->text, name, vec_len (c->text)) == 0;
+}
+
+static clib_error_t *
+test_next_args (void)
+{
+  cli_candidate_t *cands = 0;
+  cli_ctx_t ctx = {};
+  clib_error_t *e;
+  u8 *line = 0;
+
+#define LINE(args, text)                                                                           \
+  vec_reset_length (line);                                                                         \
+  line = format (line, "%s", text);                                                                \
+  e = cli_parse_line (args, line, &ctx)
+#define FAILS(text, msg)                                                                           \
+  LINE (selector_args, text);                                                                      \
+  TEST_ASSERT (contains (e, msg));                                                                 \
+  clib_error_free (e);                                                                             \
+  cli_ctx_free (&ctx)
+#define COMPLETE(text)                                                                             \
+  cli_candidates_free (cands);                                                                     \
+  cands = 0;                                                                                       \
+  vec_reset_length (line);                                                                         \
+  line = format (line, "%s", text);                                                                \
+  cli_complete_args (selector_args, line, &cands)
+
+  LINE (selector_args, "alpha count 5 verbose");
+  TEST_ASSERT (e == 0 && cli_index (&ctx, "target") == 0 && cli_u64 (&ctx, "count", 0) == 5);
+  TEST_ASSERT (cli_flag (&ctx, "verbose"));
+  cli_ctx_free (&ctx);
+
+  /* the selected arguments have their defaults */
+  LINE (selector_args, "alpha");
+  TEST_ASSERT (e == 0 && cli_u64 (&ctx, "count", 0) == 3);
+  cli_ctx_free (&ctx);
+
+  LINE (selector_args, "gamma");
+  TEST_ASSERT (e == 0 && cli_index (&ctx, "target") == 2 && !cli_get (&ctx, "count"));
+  cli_ctx_free (&ctx);
+
+  /* the keyword is at the right token after a value which selects arguments */
+  LINE (keyword_selector_args, "target beta size 2");
+  TEST_ASSERT (e == 0 && cli_get (&ctx, "target")->tok == 0 && cli_u64 (&ctx, "size", 0) == 2);
+  cli_ctx_free (&ctx);
+
+  FAILS ("beta", "missing argument size <size>");
+  FAILS ("beta size 2 count 2", "unexpected argument 'count'");
+  FAILS ("gamma size 2", "unexpected argument 'size'");
+  FAILS ("alpha cout 2", "did you mean 'count'");
+
+  COMPLETE ("al");
+  TEST_ASSERT (is_only_candidate (cands, "alpha"));
+  COMPLETE ("beta ");
+  TEST_ASSERT (is_only_candidate (cands, "size"));
+  COMPLETE ("alpha v");
+  TEST_ASSERT (is_only_candidate (cands, "verbose"));
+  cli_candidates_free (cands);
+
+  LINE (selector_args, "alpha ?");
+  TEST_ASSERT (e == 0 && ctx.help && ctx.help_args == alpha_args);
+  TEST_ASSERT (strcmp (ctx.help_text, "the first name") == 0);
+  TEST_ASSERT (vec_len (ctx.help_words) == 5 && memcmp (ctx.help_words, "alpha", 5) == 0);
+  cli_ctx_free (&ctx);
+
+  /* help of an incomplete line */
+  LINE (selector_args, "beta size ?");
+  TEST_ASSERT (e == 0 && ctx.help && ctx.help_args == beta_args && !ctx.help_text);
+  cli_ctx_free (&ctx);
+
+  LINE (selector_args, "nobody ?");
+  TEST_ASSERT (e == 0 && ctx.help && !ctx.help_args);
+  cli_ctx_free (&ctx);
+
+#undef LINE
+#undef FAILS
+#undef COMPLETE
+  vec_free (line);
+  return 0;
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -913,7 +1038,7 @@ main (int argc, char *argv[])
   if ((err = test_parse ()) || (err = test_errors ()) || (err = test_completion ()) ||
       (err = test_filters ()) || (err = test_output ()) || (err = test_rest_and_pipeline ()) ||
       (err = test_help_and_schema ()) || (err = test_constraints ()) || (err = test_types ()) ||
-      (err = test_alt_keyword ()) || (err = test_leaks ()))
+      (err = test_alt_keyword ()) || (err = test_next_args ()) || (err = test_leaks ()))
     {
       fformat (stdout, "%U\n", format_clib_error, err);
       clib_error_free (err);

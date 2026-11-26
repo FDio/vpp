@@ -546,6 +546,8 @@ collect (cli_parse_t *p, const cli_arg_t *seq, u32 n, u64 done, u32 pos, u64 gac
     }
 }
 
+static int parse_seq (cli_parse_t *p, const cli_arg_t *seq, int top);
+
 static int
 parse_value (cli_parse_t *p, const cli_arg_t *a)
 {
@@ -635,15 +637,22 @@ parse_value (cli_parse_t *p, const cli_arg_t *a)
   v.tok = p->i;
   vec_add1 (p->values, v);
   p->i++;
+
+  if (a->type->next_args)
+    {
+      const cli_arg_t *next = a->type->next_args (a, &v, 0);
+
+      if (next)
+	return parse_seq (p, next, 1);
+    }
+
   return P_OK;
 }
-
-static int parse_seq (cli_parse_t *p, const cli_arg_t *seq, int top);
 
 static int
 parse_keyword (cli_parse_t *p, const cli_arg_t *a)
 {
-  u32 kw = p->i;
+  u32 kw = p->i, n;
   int r;
 
   p->i++;
@@ -655,11 +664,12 @@ parse_keyword (cli_parse_t *p, const cli_arg_t *a)
       return P_OK;
     }
 
+  n = vec_len (p->values);
   r = parse_value (p, a);
   if (r == P_NOMATCH)
     return P_ERR;
   if (r == P_OK)
-    vec_elt (p->values, vec_len (p->values) - 1).tok = kw;
+    vec_elt (p->values, n).tok = kw;
   return r;
 }
 
@@ -958,6 +968,7 @@ cli_ctx_free (cli_ctx_t *ctx)
   vec_free (ctx->filters);
   vec_free (ctx->out);
   vec_free (ctx->warnings);
+  vec_free (ctx->help_words);
   *ctx = (cli_ctx_t) {};
 }
 
@@ -1030,16 +1041,32 @@ find_value_by_name (cli_value_t *values, const char *name, u32 len)
   return 0;
 }
 
+/* the arguments which the value of a selects, 0 if it does not select any */
+static const cli_arg_t *
+find_next_args (const cli_arg_t *a, cli_value_t *values)
+{
+  cli_value_t *v;
+
+  if (!a->type || !a->type->next_args || !(v = find_value (values, a)))
+    return 0;
+
+  return a->type->next_args (a, v, 0);
+}
+
 /* returns the error, err_tok is the token to mark */
 static u8 *
 check_constraints (const cli_arg_t *args, cli_value_t *values, u32 *err_tok)
 {
   for (const cli_arg_t *a = args; a->kind; a++)
     {
+      const cli_arg_t *next;
       cli_value_t *v;
       u8 *err;
 
       if (a->children && (err = check_constraints (a->children, values, err_tok)))
+	return err;
+
+      if ((next = find_next_args (a, values)) && (err = check_constraints (next, values, err_tok)))
 	return err;
 
       if (!a->name || !(v = find_value (values, a)) || v->is_default)
@@ -1082,7 +1109,11 @@ apply_defaults (const cli_arg_t *args, cli_value_t **values)
   for (const cli_arg_t *a = args; a->kind; a++)
     {
       cli_value_t v = { .arg = a, .is_default = 1, .tok = ~0 };
+      const cli_arg_t *next;
       u8 *def, *err;
+
+      if ((next = find_next_args (a, *values)) && (err = apply_defaults (next, values)))
+	return err;
 
       if (a->kind == CLI_K_SEQ)
 	{
@@ -1123,6 +1154,39 @@ apply_defaults (const cli_arg_t *args, cli_value_t **values)
 
 /* Parsing of a command line */
 
+/* What the words of a line which ends with '?' select, see next_args. The line
+ * can be incomplete or wrong, only the values which could be parsed count. */
+static void
+find_help_args (cli_ctx_t *ctx, const cli_arg_t *args, u8 *line, cli_tok_t *toks, u32 n_tok)
+{
+  cli_parse_t p = { .line = line, .tok = toks, .n_tok = n_tok };
+  cli_value_t *v;
+
+  parse_seq (&p, args, 1);
+
+  vec_foreach (v, p.values)
+    {
+      const cli_arg_t *next;
+      const char *help = 0;
+
+      if (!v->arg->type || !v->arg->type->next_args)
+	continue;
+
+      next = v->arg->type->next_args (v->arg, v, &help);
+
+      if (!next)
+	continue;
+
+      ctx->help_args = next;
+      ctx->help_text = help;
+      ctx->help_words =
+	format (ctx->help_words, "%s%v", vec_len (ctx->help_words) ? " " : "", toks[v->tok].s);
+    }
+
+  vec_free (p.err);
+  cli_values_free (p.values);
+}
+
 clib_error_t *
 cli_parse_line (const cli_arg_t *args, u8 *line, cli_ctx_t *ctx)
 {
@@ -1145,6 +1209,7 @@ cli_parse_line (const cli_arg_t *args, u8 *line, cli_ctx_t *ctx)
   if (n_all && !toks[n_all - 1].quoted && tok_eq (&toks[n_all - 1], "?"))
     {
       ctx->help = 1;
+      find_help_args (ctx, args, line, toks, n_all - 1);
       goto done;
     }
 
@@ -1169,6 +1234,16 @@ cli_parse_line (const cli_arg_t *args, u8 *line, cli_ctx_t *ctx)
       u8 *best;
 
       collect_keywords (args, &kw);
+
+      vec_foreach (v, p.values)
+	if (v->arg->type && v->arg->type->next_args)
+	  {
+	    const cli_arg_t *next = v->arg->type->next_args (v->arg, v, 0);
+
+	    if (next)
+	      collect_keywords (next, &kw);
+	  }
+
       best = cli_suggest (toks[p.i].s, kw);
       err_msg = format (0, "unexpected argument '%v'", toks[p.i].s);
       if (group)
