@@ -37,7 +37,7 @@ from scapy.utils6 import (
 
 from framework import VppTestCase
 from asfframework import VppTestRunner, tag_run_solo
-from util import ppp, ip6_normalize, mk_ll_addr
+from util import ppp, ip6_normalize, mk_ll_addr, StatsDiff
 from vpp_papi import VppEnum
 from vpp_ip import VppIpPuntPolicer, VppIpPuntRedirect, VppIpPathMtu
 from vpp_ip_route import (
@@ -388,24 +388,16 @@ class TestIPv6(TestIPv6ND):
             )
 
     def test_next_header_anomaly(self):
-        """IPv6 next header anomaly test
-
-        Test scenario:
-            - ipv6 next header field = Fragment Header (44)
-            - next header is ICMPv6 Echo Request
-            - wait for reassembly
-        """
+        """Reject an invalid fragment length on the IPv6 local reassembly path."""
         pkt = (
-            Ether(src=self.pg0.local_mac, dst=self.pg0.remote_mac)
+            Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
             / IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6, nh=44)
             / ICMPv6EchoRequest()
         )
-
-        self.pg0.add_stream(pkt)
-        self.pg_start()
-
-        # wait for reassembly
-        self.sleep(10)
+        counter = "/err/ip6-local-full-reassembly/reass_invalid_frag_len"
+        self.send_and_assert_no_replies(
+            self.pg0, pkt, stats_diff=StatsDiff({"err": {counter: 1}})
+        )
 
     def test_fib(self):
         """IPv6 FIB test
