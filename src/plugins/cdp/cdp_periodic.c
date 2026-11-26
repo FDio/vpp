@@ -6,10 +6,8 @@
 #include <cdp/cdp.h>
 #include <vppinfra/hash.h>
 #include <vppinfra/pcap.h>
-#include <vnet/srp/srp.h>
 #include <plugins/ppp/ppp.h>
 #include <vnet/hdlc/hdlc.h>
-#include <vnet/srp/packet.h>
 
 /*
  * Generate a set of specific CDP TLVs.
@@ -218,69 +216,6 @@ send_hdlc_hello (cdp_main_t * cm, cdp_neighbor_t * n, int count)
 }
 
 /*
- * send a cdp pkt on an srp interface
- */
-static void
-send_srp_hello (cdp_main_t * cm, cdp_neighbor_t * n, int count)
-{
-  u32 *to_next;
-  srp_and_cdp_header_t *h0;
-  vnet_hw_interface_t *hw;
-  u32 bi0;
-  vlib_buffer_t *b0;
-  u8 *t0;
-  u16 checksum;
-  int nbytes_to_checksum;
-  int i;
-  vlib_frame_t *f;
-  vlib_main_t *vm = cm->vlib_main;
-  vnet_main_t *vnm = cm->vnet_main;
-
-  for (i = 0; i < count; i++)
-    {
-      /*
-       * see cdp_periodic_init() to understand what's already painted
-       * into the buffer by the packet template mechanism
-       */
-      h0 = vlib_packet_template_get_packet
-	(vm, &cm->packet_templates[n->packet_template_index], &bi0);
-
-      if (!h0)
-	break;
-
-      hw = vnet_get_sup_hw_interface (vnm, n->sw_if_index);
-
-      t0 = (u8 *) & h0->cdp.data;
-
-      /* add TLVs */
-      add_tlvs (cm, hw, &t0);
-
-      /* Add the interface's ethernet source address */
-      clib_memcpy (h0->ethernet.src_address, hw->hw_address,
-		   vec_len (hw->hw_address));
-
-      /* add the cdp packet checksum */
-      nbytes_to_checksum = t0 - (u8 *) & h0->cdp;
-      checksum = cdp_checksum (&h0->cdp, nbytes_to_checksum);
-      h0->cdp.checksum = htons (checksum);
-
-      /* Set the outbound packet length */
-      b0 = vlib_get_buffer (vm, bi0);
-      b0->current_length = nbytes_to_checksum + sizeof (*h0)
-	- sizeof (cdp_hdr_t);
-
-      /* And output the packet on the correct interface */
-      f = vlib_get_frame_to_node (vm, hw->output_node_index);
-      to_next = vlib_frame_vector_args (f);
-      to_next[0] = bi0;
-      f->n_vectors = 1;
-
-      vlib_put_frame_to_node (vm, hw->output_node_index, f);
-      n->last_sent = vlib_time_now (vm);
-    }
-}
-
-/*
  * Decide which cdp packet template to use
  */
 static int
@@ -313,10 +248,6 @@ send_hello (cdp_main_t * cm, cdp_neighbor_t * n, int count)
 
     case CDP_PACKET_TEMPLATE_HDLC:
       send_hdlc_hello (cm, n, count);
-      break;
-
-    case CDP_PACKET_TEMPLATE_SRP:
-      send_srp_hello (cm, n, count);
       break;
 
     default:
@@ -457,43 +388,6 @@ cdp_periodic_init (vlib_main_t * vm)
        "cdp-hdlc");
   }
 
-  /* Create the srp cdp hello packet template */
-  {
-    srp_and_cdp_header_t h;
-
-    clib_memset (&h, 0, sizeof (h));
-
-    /* Send to 01:00:0c:cc:cc */
-    h.ethernet.dst_address[0] = 0x01;
-    /* h.ethernet.dst_address[1] = 0x00; (clib_memset) */
-    h.ethernet.dst_address[2] = 0x0C;
-    h.ethernet.dst_address[3] = 0xCC;
-    h.ethernet.dst_address[4] = 0xCC;
-    h.ethernet.dst_address[5] = 0xCC;
-
-    /* leave src address blank (fill in at send time) */
-
-    /* The srp header is filled in at xmt */
-    h.srp.ttl = 1;
-    h.srp.priority = 7;
-    h.srp.mode = SRP_MODE_data;
-    srp_header_compute_parity (&h.srp);
-
-    /* Inner ring and parity will be set at send time */
-
-    h.ethernet.type = htons (0x2000);	/* CDP = 0x2000 */
-
-    /* CDP */
-    h.cdp.version = 2;
-    h.cdp.ttl = 180;
-
-    vlib_packet_template_init
-      (vm, &cm->packet_templates[CDP_PACKET_TEMPLATE_SRP],
-       /* data */ &h,
-       sizeof (h),
-       /* alloc chunk size */ 8,
-       "cdp-srp");
-  }
 #endif
 
   return 0;

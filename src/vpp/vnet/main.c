@@ -407,9 +407,6 @@ main (int argc, char *argv[])
   else
     vlib_unix_cli_set_prompt ("vpp# ");
 
-  /* Turn off network stack components which we don't want */
-  vlib_mark_init_function_complete (vm, srp_init);
-
   /*
    * Create the binary api plugin hashes before loading plugins
    */

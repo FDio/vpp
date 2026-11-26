@@ -9,7 +9,6 @@
 #include <vnet/ethernet/ethernet.h>	/* for ethernet_header_t */
 #include <vnet/llc/llc.h>
 #include <vnet/snap/snap.h>
-#include <vnet/srp/packet.h>
 
 typedef CLIB_PACKED (struct
 		     {
@@ -36,12 +35,6 @@ typedef CLIB_PACKED (struct
 		     {
 		     hdlc_header_t hdlc; cdp_hdr_t cdp;
 		     }) hdlc_and_cdp_header_t;
-
-typedef CLIB_PACKED (struct
-		     {
-		     srp_header_t srp;
-		     ethernet_header_t ethernet; cdp_hdr_t cdp;
-		     }) srp_and_cdp_header_t;
 
 typedef CLIB_PACKED (struct
 		     {

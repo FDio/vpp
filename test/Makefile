@@ -437,8 +437,7 @@ COV_REM_DRIVERS="*rdma*" "*/plugins/af_packet/*" "*/plugins/af_xdp/*" \
 				"*/plugins/perfmon/intel/*" "*/vlib/vmbus/*" \
 				"*/vnet/dev/*" "*/plugins/dev_ena/*" "*/plugins/dev_iavf/*"
 
-COV_REM_UNUSED_FEAT="*/vnet/srp/*" \
-					"*/lawful-intercept/*" "*/lisp/*" "*/plugins/osi/*" \
+COV_REM_UNUSED_FEAT="*/lawful-intercept/*" "*/lisp/*" "*/plugins/osi/*" \
 					"*/plugins/nsh/*"
 
 COV_REM_TODO_NO_TEST="*/vpp-api/client/*" \
