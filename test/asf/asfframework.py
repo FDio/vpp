@@ -1028,7 +1028,6 @@ class VppAsfTestCase(CPUInterface, unittest.TestCase):
                 testcase=self.__class__.__name__,
                 method_name=self._testMethodName,
             )
-        self.sleep(0.1, "during setUp")
         self.vpp_stdout_deque.append(
             "--- test setUp() for %s.%s(%s) starts here ---\n"
             % (self.__class__.__name__, self._testMethodName, self._testMethodDoc)
