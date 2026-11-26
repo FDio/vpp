@@ -8,31 +8,16 @@
 #include <qat.h>
 
 static clib_error_t *
-qat_show_ring_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+qat_show_ring_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  vnet_dev_t *dev = 0;
-  u8 *dev_id = 0;
-  u32 queue = 0, count = 4;
+  vnet_dev_t *dev;
+  u8 *dev_id = vec_dup (cli_get (ctx, "device-id")->str);
+  u32 queue = cli_u64 (ctx, "queue", 0), count = cli_u64 (ctx, "count", 4);
   clib_error_t *err = 0;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "queue %u", &queue))
-	;
-      else if (unformat (input, "count %u", &count))
-	;
-      else if (unformat (input, "%s", &dev_id))
-	;
-      else
-	return clib_error_return (0, "unknown input '%U'", format_unformat_error, input);
-    }
-
-  if (dev_id)
-    {
-      vec_add1 (dev_id, 0);
-      dev = vnet_dev_by_id ((char *) dev_id);
-      vec_free (dev_id);
-    }
+  vec_add1 (dev_id, 0);
+  dev = vnet_dev_by_id ((char *) dev_id);
+  vec_free (dev_id);
 
   if (dev == 0 || strcmp (vnet_dev_main.drivers[dev->driver_index].registration->name, "qat"))
     return clib_error_return (0, "please specify a qat device id");
@@ -50,17 +35,21 @@ qat_show_ring_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *
 
 VLIB_CLI_COMMAND (qat_show_ring_cmd, static) = {
   .path = "show device driver qat ring",
-  .short_help = "show device driver qat ring <device-id> [queue <n>] [count <n>]",
-  .function = qat_show_ring_fn,
+  .short_help = "Dump the descriptor ring of a qat crypto queue",
+  .args = CLI_ARGS (
+    CLI_VALUE ("device-id", cli_type_string, .help = "id of the device, e.g. pci/0000:3d:01.0"),
+    CLI_OPT_KEYWORD ("queue", cli_type_u32, .help = "crypto queue, default 0"),
+    CLI_OPT_KEYWORD ("count", cli_type_u32, .help = "number of descriptors, default 4")),
+  .handler = qat_show_ring_fn,
 };
 
 static clib_error_t *
-qat_show_session_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *cmd)
+qat_show_session_fn (vlib_main_t *vm, cli_ctx_t *cli)
 {
   vnet_crypto_main_t *cm = &crypto_main;
-  u32 index = ~0;
+  u32 index = cli_u64 (cli, "crypto-context-index", ~0);
 
-  if (!unformat (input, "%u", &index) || pool_is_free_index (cm->ctxs, index))
+  if (pool_is_free_index (cm->ctxs, index))
     return clib_error_return (0, "please specify a valid crypto context index");
 
   vnet_crypto_ctx_t *ctx = cm->ctxs[index];
@@ -80,6 +69,7 @@ qat_show_session_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_
 
 VLIB_CLI_COMMAND (qat_show_session_cmd, static) = {
   .path = "show device driver qat session",
-  .short_help = "show device driver qat session <crypto-context-index>",
-  .function = qat_show_session_fn,
+  .short_help = "Show the qat session of a crypto context",
+  .args = CLI_ARGS (CLI_VALUE ("crypto-context-index", cli_type_u32)),
+  .handler = qat_show_session_fn,
 };
