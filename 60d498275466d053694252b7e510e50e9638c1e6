@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "df0ca1ae_0f719150",
+        "filename": "src/vnet/sfdp/format.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 306,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-11-26T11:25:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d870ac7c_48ffb481",
+      "revId": "60d498275466d053694252b7e510e50e9638c1e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "94e84db9_68a53ba4",
@@ -31,6 +49,24 @@
       "writtenOn": "2026-11-25T16:31:52Z",
       "side": 1,
       "message": "It is currently not possible to specify the sp_node used for pre-filtering through the API (it is supported in CLI).\n\nTo maintain backwards compatibility, could you propose a new API `sfdp_set_sp_node_v2` / `vl_api_sfdp_sp_node_v2_t` which would follow the updated \u0027foreach_sfdp_sp_node\u0027 define and allow specifying the pre-filtering sp nodes ?",
+      "revId": "60d498275466d053694252b7e510e50e9638c1e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e149f524_a01c832a",
+        "filename": "src/vnet/sfdp/sfdp.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 166,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-11-26T11:25:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "94e84db9_68a53ba4",
       "revId": "60d498275466d053694252b7e510e50e9638c1e6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -52,6 +88,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "ef87065e_927c2a43",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 331,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-11-26T11:25:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "322cf35c_51a736cb",
+      "revId": "60d498275466d053694252b7e510e50e9638c1e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "5beff5c2_6684d83e",
@@ -69,6 +123,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "68379664_9f34ce91",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 410,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-11-26T11:25:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5beff5c2_6684d83e",
+      "revId": "60d498275466d053694252b7e510e50e9638c1e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "4f1644dc_7fe972e2",
@@ -82,6 +154,24 @@
       "writtenOn": "2026-11-25T16:31:52Z",
       "side": 1,
       "message": "Same comment, could we use vec_elt(...) ?",
+      "revId": "60d498275466d053694252b7e510e50e9638c1e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "20111118_5ef0b20d",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 421,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-11-26T11:25:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4f1644dc_7fe972e2",
       "revId": "60d498275466d053694252b7e510e50e9638c1e6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -116,6 +206,42 @@
       "writtenOn": "2026-11-25T16:31:52Z",
       "side": 1,
       "message": "For SFDP services, we detect if services were registered with a duplicate name and return an error at init (see `sfdp_service_init()`), would it be possible to also check for pre-filter duplicate registration at init time ?",
+      "revId": "60d498275466d053694252b7e510e50e9638c1e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a0ffd5ec_23dcca1c",
+        "filename": "src/vnet/sfdp/sfdp.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 418,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-11-26T11:25:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d6f4589b_27939139",
+      "revId": "60d498275466d053694252b7e510e50e9638c1e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "50e72a4a_a0bfa93f",
+        "filename": "src/vnet/sfdp/sfdp.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 418,
+      "author": {
+        "id": 3059
+      },
+      "writtenOn": "2026-11-26T11:25:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8db9a13d_a5cc456b",
       "revId": "60d498275466d053694252b7e510e50e9638c1e6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
