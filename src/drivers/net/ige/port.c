@@ -135,12 +135,28 @@ ige_rx_irq_map (vnet_dev_port_t *port)
     ige_reg_wr (port->dev, IGE_REG_IVAR (i), ivar[i]);
 }
 
+static const vnet_dev_rss_tuple_types_t ige_rss_supported_types = {
+  .ip4 = 1,
+  .ip4_tcp = 1,
+  .ip4_udp = 1,
+  .ip6 = 1,
+  .ip6_tcp = 1,
+  .ip6_udp = 1,
+};
+
 static vnet_dev_rv_t
 ige_rss_validate (vnet_dev_port_t *port, const vnet_dev_rss_config_t *config)
 {
+  vnet_dev_rss_config_t merged = port->rss_config;
+  vnet_dev_rss_tuple_types_t types;
+
   if ((config->set_key && config->key_len != IGE_RSS_KEY_SIZE) ||
       (config->set_lut && config->lut_len != IGE_RSS_LUT_SIZE))
     return VNET_DEV_ERR_INVALID_DATA;
+
+  vnet_dev_rss_config_merge (&merged, config);
+  if (!vnet_dev_rss_tuple_types (&merged, ige_rss_supported_types, &types))
+    return VNET_DEV_ERR_UNSUPPORTED_CONFIG;
 
   if (config->set_lut)
     for (u32 i = 0; i < IGE_RSS_LUT_SIZE; i++)
@@ -152,6 +168,25 @@ ige_rss_validate (vnet_dev_port_t *port, const vnet_dev_rss_config_t *config)
       }
 
   return VNET_DEV_OK;
+}
+
+static ige_reg_mrqc_t
+ige_rss_mrqc (const vnet_dev_rss_config_t *config)
+{
+  vnet_dev_rss_tuple_types_t t;
+
+  if (!vnet_dev_rss_tuple_types (config, ige_rss_supported_types, &t))
+    t = ige_rss_supported_types;
+
+  return (ige_reg_mrqc_t) {
+    .mq_enable = 2,
+    .ipv4 = t.ip4,
+    .ipv4_tcp = t.ip4_tcp,
+    .ipv4_udp = t.ip4_udp,
+    .ipv6 = t.ip6,
+    .ipv6_tcp = t.ip6_tcp,
+    .ipv6_udp = t.ip6_udp,
+  };
 }
 
 static void
@@ -182,15 +217,7 @@ ige_rss_start (vnet_dev_port_t *port)
   vnet_dev_rss_config_t config = port->rss_config;
   u16 queue_ids[IGE_RSS_LUT_SIZE];
   u32 n_queues = 0;
-  ige_reg_mrqc_t mrqc = {
-    .mq_enable = 2,
-    .ipv4_tcp = 1,
-    .ipv4 = 1,
-    .ipv6 = 1,
-    .ipv6_tcp = 1,
-    .ipv4_udp = 1,
-    .ipv6_udp = 1,
-  };
+  ige_reg_mrqc_t mrqc = ige_rss_mrqc (&config);
   ige_reg_rxcsum_t rxcsum;
 
   foreach_vnet_dev_port_rx_queue (q, port)
@@ -734,7 +761,13 @@ ige_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
       break;
     case VNET_DEV_PORT_CFG_SET_RSS_CONFIG:
       if (port->started)
-	ige_rss_apply (port, &req->rss_config);
+	{
+	  vnet_dev_rss_config_t config = port->rss_config;
+
+	  vnet_dev_rss_config_merge (&config, &req->rss_config);
+	  ige_rss_apply (port, &req->rss_config);
+	  ige_reg_wr (port->dev, IGE_REG_MRQC, ige_rss_mrqc (&config).as_u32);
+	}
       break;
     case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_ENABLE:
     case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_DISABLE:
