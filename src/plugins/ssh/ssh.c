@@ -376,6 +376,7 @@ ssh_channel_data (ssh_session session, ssh_channel channel, void *data, uint32_t
 
   if (n < len)
     {
+      /* coverity[overflow_sink] - len - n is positive as n is below len */
       vec_add (s->to_cli, (u8 *) data + n, len - n);
       if (vec_len (s->to_cli) > SSH_MAX_PENDING_TO_CLI)
 	s->closing = 1;

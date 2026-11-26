@@ -85,7 +85,10 @@ ssh_config (vlib_main_t *vm, unformat_input_t *input)
     }
 
   if (err == 0)
-    err = ssh_listen (address, port, host_key);
+    {
+      /* coverity[var_deref_model] - host_key is set when err is 0 */
+      err = ssh_listen (address, port, host_key);
+    }
 
   vec_free (address);
   vec_free (host_key);
