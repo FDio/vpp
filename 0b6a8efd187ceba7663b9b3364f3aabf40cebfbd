@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2b4e84ec_07d92b84",
+        "filename": "src/vppinfra/vector_sse42.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 501,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-11-26T14:57:22Z",
+      "side": 1,
+      "message": "can you use C or vpp helpers if they already exist?\n\nie\n\nu64x2_interleave_lo instead of _mm_unpacklo_epi64\n\u003e\u003e instead of _mm_srl_epi64\n(u64x2) {x, 0} instead of _mm_cvtsi64_si128",
+      "revId": "0b6a8efd187ceba7663b9b3364f3aabf40cebfbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
