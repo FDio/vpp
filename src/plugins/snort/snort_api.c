@@ -243,9 +243,16 @@ vl_api_snort_interface_v2_get_t_handler (vl_api_snort_interface_v2_get_t *mp)
     }
   else
     {
-      index = vec_elt_at_index (sm->input_instance_by_interface, sw_if_index);
-      outdex = vec_elt_at_index (sm->output_instance_by_interface, sw_if_index);
-      if (snort_get_instance_by_index (*index) || snort_get_instance_by_index (*outdex))
+      index = 0;
+      outdex = 0;
+      if (sw_if_index < vec_len (sm->input_instance_by_interface) &&
+	  sw_if_index < vec_len (sm->output_instance_by_interface))
+	{
+	  index = vec_elt_at_index (sm->input_instance_by_interface, sw_if_index);
+	  outdex = vec_elt_at_index (sm->output_instance_by_interface, sw_if_index);
+	}
+
+      if (index && (snort_get_instance_by_index (*index) || snort_get_instance_by_index (*outdex)))
 	{
 	  vl_api_registration_t *rp = vl_api_client_index_to_registration (mp->client_index);
 
@@ -298,7 +305,7 @@ vl_api_snort_client_v2_get_t_handler (vl_api_snort_client_v2_get_t *mp)
     {
       /* clang-format off */
       REPLY_AND_DETAILS_MACRO (
-        VL_API_SNORT_CLIENT_GET_REPLY, sm->clients, ({
+        VL_API_SNORT_CLIENT_V2_GET_REPLY, sm->clients, ({
           client = pool_elt_at_index (sm->clients, cursor);
           send_snort_client_v2_details (client, rp, mp->context);
         }));
@@ -306,7 +313,9 @@ vl_api_snort_client_v2_get_t_handler (vl_api_snort_client_v2_get_t *mp)
     }
   else
     {
-      client = pool_elt_at_index (sm->clients, client_index);
+      client = 0;
+      if (!pool_is_free_index (sm->clients, client_index))
+	client = pool_elt_at_index (sm->clients, client_index);
 
       if (client)
 	{
@@ -533,7 +542,9 @@ vl_api_snort_client_get_t_handler (vl_api_snort_client_get_t *mp)
     }
   else
     {
-      client = pool_elt_at_index (sm->clients, client_index);
+      client = 0;
+      if (!pool_is_free_index (sm->clients, client_index))
+	client = pool_elt_at_index (sm->clients, client_index);
 
       if (client)
 	{
