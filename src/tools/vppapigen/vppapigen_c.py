@@ -1424,6 +1424,9 @@ class DescBuilder:
             ew("    .size = %d,\n" % elem)
             ew("    .length = %d,\n" % length)
             if default is not None:
+                # the parser gives the booleans as words
+                if b.fieldtype == "bool" and default in ("true", "false"):
+                    default = default == "true"
                 kind_name, value = self.default_c(default)
                 ew("    .default_kind = %s,\n" % kind_name)
                 ew("    .default_value = { %s },\n" % value)
