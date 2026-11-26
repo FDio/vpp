@@ -1252,6 +1252,10 @@ vl_api_nat44_ei_user_session_dump_t_handler (
   if (!reg)
     return;
 
+  /* the users are kept only when the plugin is enabled */
+  if (!nm->enabled)
+    return;
+
   clib_memcpy (&ukey.addr, mp->ip_address, 4);
   ip.src_address.as_u32 = ukey.addr.as_u32;
   ukey.fib_index = fib_table_find (FIB_PROTOCOL_IP4, ntohl (mp->vrf_id));
@@ -1303,6 +1307,10 @@ vl_api_nat44_ei_user_session_v2_dump_t_handler (
 
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
+    return;
+
+  /* the users are kept only when the plugin is enabled */
+  if (!nm->enabled)
     return;
 
   clib_memcpy (&ukey.addr, mp->ip_address, 4);
