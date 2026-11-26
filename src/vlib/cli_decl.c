@@ -199,8 +199,17 @@ cli_dispatch (vlib_main_t *vm, unformat_input_t *input, vlib_cli_command_t *c)
 
   if (ctx.help)
     {
-      vlib_cli_output (vm, "%U", format_cli_help, cmd->path, cmd->short_help, cmd->long_help,
-		       cmd->args);
+      if (ctx.help_args)
+	{
+	  u8 *path = format (0, "%s %v%c", cmd->path, ctx.help_words, 0);
+
+	  vlib_cli_output (vm, "%U", format_cli_help, path, 0, ctx.help_text, ctx.help_args);
+	  vec_free (path);
+	}
+      else
+	vlib_cli_output (vm, "%U", format_cli_help, cmd->path, cmd->short_help, cmd->long_help,
+			 cmd->args);
+
       goto done;
     }
 
