@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "90db919c_f5019810",
+        "filename": "src/vnet/ethernet/mac_address.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-26T18:45:25Z",
+      "side": 1,
+      "message": "Done in PS3: the two halves are read through u32u and u16u. On GCC 16.2 and Clang 23 at -O2 this compiles to the same two loads and compares as the memcmp form; the original *(u32 *) cast is what UBSan reports as a misaligned load.",
+      "parentUuid": "e8b2b223_6a353865",
+      "revId": "afe7e6b9c89b1b7668868b517adf51b82b3536fb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
