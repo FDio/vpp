@@ -475,6 +475,10 @@ class VPPApiClient:
         self.id_names = []
         self.id_msgdef = []
         self.header = VPPType("header", [["u16", "msgid"], ["u32", "client_index"]])
+        self._header_with_context = VPPType(
+            "header_with_context",
+            [["u16", "msgid"], ["u32", "client_index"], ["u32", "context"]],
+        )
         self.apifiles = []
         self.apidir = apidir
         self.event_callback = None
@@ -699,12 +703,7 @@ class VPPApiClient:
         if len(msg) < 10:
             return False
 
-        header = VPPType(
-            "header_with_context",
-            [["u16", "msgid"], ["u32", "client_index"], ["u32", "context"]],
-        )
-
-        (i, ci, context), size = header.unpack(msg, 0)
+        (i, ci, context), size = self._header_with_context.unpack(msg, 0)
 
         if self.id_names[i] == "rx_thread_exit":
             return
