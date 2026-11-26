@@ -8,6 +8,8 @@
 #include <vnet/arp/arp_packet.h>
 
 #include <vnet/fib/ip4_fib.h>
+#include <vnet/interface/cli_types.h>
+#include <vnet/ip/cli_types.h>
 
 typedef struct
 {
@@ -158,34 +160,11 @@ proxy_arp_intfc_walk (proxy_arp_intf_walk_t cb, void *data)
 }
 
 static clib_error_t *
-set_int_proxy_arp_command_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+set_int_proxy_arp_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  vnet_main_t *vnm = vnet_get_main ();
-  u32 sw_if_index;
-  int enable = 0;
+  u32 sw_if_index = cli_index (ctx, "interface");
 
-  sw_if_index = ~0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "%U", unformat_vnet_sw_interface,
-		    vnm, &sw_if_index))
-	;
-      else if (unformat (input, "enable") || unformat (input, "on"))
-	enable = 1;
-      else if (unformat (input, "disable") || unformat (input, "off"))
-	enable = 0;
-      else
-	break;
-    }
-
-  if (~0 == sw_if_index)
-    return clib_error_return (0, "unknown input '%U'",
-			      format_unformat_error, input);
-
-  if (enable)
+  if (cli_flag (ctx, "enable"))
     arp_proxy_enable (sw_if_index);
   else
     arp_proxy_disable (sw_if_index);
@@ -194,38 +173,28 @@ set_int_proxy_arp_command_fn (vlib_main_t * vm,
 }
 
 static clib_error_t *
-set_arp_proxy (vlib_main_t * vm,
-	       unformat_input_t * input, vlib_cli_command_t * cmd)
+set_arp_proxy (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  ip4_address_t start = {.as_u32 = ~0 }, end =
-  {
-  .as_u32 = ~0};
-  u32 fib_index, table_id = 0;
-  int add = 1;
+  cli_value_t *start = cli_get (ctx, "start");
+  cli_value_t *end = cli_get (ctx, "end");
+  ip4_address_t lo, hi;
+  u32 fib_index, table_id = cli_u64 (ctx, "table-id", 0);
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "table-id %d", &table_id))
-	;
-      else if (unformat (input, "start %U", unformat_ip4_address, &start))
-	;
-      else if (unformat (input, "end %U", unformat_ip4_address, &end))
-	;
-      else if (unformat (input, "del") || unformat (input, "delete"))
-	add = 0;
-      else
-	break;
-    }
+  if (start->prefix.is_ip6 || end->prefix.is_ip6)
+    return clib_error_return (0, "proxy ARP needs IPv4 addresses");
+
+  clib_memcpy (&lo, start->prefix.addr, sizeof (lo));
+  clib_memcpy (&hi, end->prefix.addr, sizeof (hi));
 
   fib_index = fib_table_find (FIB_PROTOCOL_IP4, table_id);
 
   if (~0 == fib_index)
     return (clib_error_return (0, "no such table: %d", table_id));
 
-  if (add)
-    arp_proxy_add (fib_index, &start, &end);
+  if (cli_flag (ctx, "del"))
+    arp_proxy_del (fib_index, &lo, &hi);
   else
-    arp_proxy_del (fib_index, &start, &end);
+    arp_proxy_add (fib_index, &lo, &hi);
 
   return (NULL);
 }
@@ -251,16 +220,22 @@ set_arp_proxy (vlib_main_t * vm,
  ?*/
 VLIB_CLI_COMMAND (set_int_proxy_enable_command, static) = {
   .path = "set interface proxy-arp",
-  .short_help =
-  "set interface proxy-arp <intfc> [enable|disable]",
-  .function = set_int_proxy_arp_command_fn,
+  .short_help = "Enable or disable proxy ARP on an interface",
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_sw_interface),
+		    CLI_FLAG ("enable", .alias = "on", .excludes = "disable"),
+		    CLI_FLAG ("disable", .alias = "off", .help = "default")),
+  .handler = set_int_proxy_arp_command_fn,
 };
 
 VLIB_CLI_COMMAND (set_arp_proxy_command, static) = {
   .path = "set arp proxy",
-  .short_help = "set arp proxy [del] table-id <table-id> start "
-		"<start-address> end <end-addres>",
-  .function = set_arp_proxy,
+  .short_help = "Add or delete a proxy ARP address range",
+  .args = CLI_ARGS (CLI_OPT_KEYWORD ("table-id", cli_type_u32, .help = "IP table, default 0"),
+		    CLI_KEYWORD ("start", cli_type_ip_address,
+				 .help = "first address of the range"),
+		    CLI_KEYWORD ("end", cli_type_ip_address, .help = "last address of the range"),
+		    CLI_FLAG ("del", .alias = "delete")),
+  .handler = set_arp_proxy,
 };
 
 typedef struct
@@ -404,8 +379,7 @@ VLIB_REGISTER_NODE (arp_proxy_node, static) =
 };
 
 static clib_error_t *
-show_ip4_arp (vlib_main_t * vm,
-	      unformat_input_t * input, vlib_cli_command_t * cmd)
+show_ip4_arp (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   arp_proxy_main_t *am = &arp_proxy_main;
   ethernet_proxy_arp_t *pa;
@@ -441,6 +415,6 @@ show_ip4_arp (vlib_main_t * vm,
  ?*/
 VLIB_CLI_COMMAND (show_ip4_arp_command, static) = {
   .path = "show arp proxy",
-  .function = show_ip4_arp,
-  .short_help = "show ip arp",
+  .short_help = "Show the proxy ARP address ranges",
+  .handler = show_ip4_arp,
 };
