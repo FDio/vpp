@@ -129,6 +129,9 @@ vl_api_selog_event_type_string_dump_t_handler (
     return;
 
   eti = clib_net_to_host_u32 (mp->event_type_index);
+  if (eti >= vec_len (em->event_types))
+    return;
+
   event_type = vec_elt_at_index (em->event_types, eti);
   vec_foreach (s, event_type->enum_strings_vector)
     {
