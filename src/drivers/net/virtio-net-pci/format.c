@@ -71,9 +71,9 @@ format_vnp_status (u8 *s, va_list *args)
 }
 
 void
-styled_format_vnp_dev_info (styled_text_t *st, va_list *args)
+styled_format_vnp_dev_caps (styled_text_t *st, va_list *args)
 {
-  vnet_dev_format_args_t __clib_unused *a = va_arg (*args, vnet_dev_format_args_t *);
+  va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
   vnp_dev_t *vd = vnet_dev_get_data (dev);
 
@@ -81,7 +81,16 @@ styled_format_vnp_dev_info (styled_text_t *st, va_list *args)
 			  format_vnp_features, vd->offered & ~vd->features);
   styled_text_add_marked (st, ST_R_VALUE, "\nFeatures offered and negotiated: %{%U%}",
 			  format_vnp_features, vd->offered & vd->features);
-  styled_text_add_marked (st, ST_R_VALUE, "\ndevice status %{%U%}", format_vnp_status,
+}
+
+void
+styled_format_vnp_dev_info (styled_text_t *st, va_list *args)
+{
+  vnet_dev_format_args_t __clib_unused *a = va_arg (*args, vnet_dev_format_args_t *);
+  vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
+  vnp_dev_t *vd = vnet_dev_get_data (dev);
+
+  styled_text_add_marked (st, ST_R_VALUE, "device status %{%U%}", format_vnp_status,
 			  vnp_reg_rd8 (&vd->common->status));
   styled_text_add_marked (st, ST_R_VALUE, ", %{%u%}", vnp_reg_rd16 (&vd->common->num_queues));
   styled_text_add_marked (
@@ -99,7 +108,6 @@ styled_format_vnp_port_status (styled_text_t *st, va_list *args)
 {
   va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
-  vnp_dev_t *vd = vnet_dev_get_data (port->dev);
   vnp_port_t *vp = vnet_dev_get_port_data (port);
 
   styled_text_add (st, "interrupts ");
@@ -122,13 +130,21 @@ styled_format_vnp_port_status (styled_text_t *st, va_list *args)
       styled_text_add_marked (st, ST_R_VALUE,
 			      "\nRX filter: %{none%}, destination MAC checked by VPP");
     }
+}
+
+void
+styled_format_vnp_port_rss (styled_text_t *st, va_list *args)
+{
+  va_arg (*args, vnet_dev_format_args_t *);
+  vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
+  vnp_dev_t *vd = vnet_dev_get_data (port->dev);
 
   if (vd->features & VIRTIO_NET_F_RSS_BIT)
-    {
-      styled_text_add_marked (
-	st, ST_R_VALUE, "\nRSS hash types %{0x%x%}, max indirection table length %{%u%}",
-	vd->config->supported_hash_types, vd->config->rss_max_indirection_table_length);
-    }
+    styled_text_add_marked (
+      st, ST_R_VALUE, "hash types %{0x%x%}, max indirection table length %{%u%}",
+      vd->config->supported_hash_types, vd->config->rss_max_indirection_table_length);
+  else
+    styled_text_add (st, "not negotiated");
 }
 
 void

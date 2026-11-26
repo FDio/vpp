@@ -91,16 +91,26 @@ format_ibv_tx_trace (u8 *s, va_list *args)
 void
 styled_format_ibv_port_status (styled_text_t *st, va_list *args)
 {
-  vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
+  vnet_dev_format_args_t __clib_unused *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
   ibv_dev_t *rd = vnet_dev_get_data (port->dev);
   ibv_port_t *ip = vnet_dev_get_port_data (port);
 
   styled_text_add (st, "%T", styled_format_rdma_port_status, rd->ctx, port->port_id,
 		   ip->netdev_ifindex);
+}
+
+void
+styled_format_ibv_port_rss (styled_text_t *st, va_list *args)
+{
+  vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
+  vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
+  ibv_port_t *ip = vnet_dev_get_port_data (port);
 
   if (ip->rss.rwq_ind_tbl)
-    styled_text_add (st, "\n%T", styled_format_rdma_rss_flows, a, &ip->rss);
+    styled_text_add (st, "%T", styled_format_rdma_rss_flows, a, &ip->rss);
+  else
+    styled_text_add (st, "no RSS queue pairs or RX flows, the port is not started");
 }
 
 void
@@ -111,4 +121,14 @@ styled_format_ibv_dev_info (styled_text_t *st, va_list *args)
   ibv_dev_t *rd = vnet_dev_get_data (dev);
 
   styled_text_add (st, "%T", styled_format_rdma_ibv_dev_info, a, rd->ctx);
+}
+
+void
+styled_format_ibv_dev_caps (styled_text_t *st, va_list *args)
+{
+  vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
+  vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
+  ibv_dev_t *rd = vnet_dev_get_data (dev);
+
+  styled_text_add (st, "%T", styled_format_rdma_ibv_dev_caps, a, rd->ctx);
 }

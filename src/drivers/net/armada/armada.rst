@@ -256,7 +256,7 @@ Debugging
 
 * ``show device platform/f2000000.ethernet`` shows the PP2 device, the ports,
   queues and buffer state.
-* ``show device counters all platform/f2000000.ethernet`` shows all counters.
+* ``show device zero-counters platform/f2000000.ethernet`` shows all counters.
 * Raise the log level with ``logging { class armada { level debug } class dev {
   level debug } }``. The ``armada`` log class has subclasses for the port,
   counters, RSS, netdev and more.

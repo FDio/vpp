@@ -143,6 +143,29 @@ format_qat_capabilities (u8 *s, va_list *args)
 }
 
 void
+styled_format_qat_dev_caps (styled_text_t *st, va_list *args)
+{
+  vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
+  vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
+  qat_device_t *qd = vnet_dev_get_data (dev);
+  qat_blkmsg_caps_t *caps = &qd->caps;
+
+  if (caps->len < QAT_BLKMSG_CAPS_V2_LEN)
+    styled_text_add_marked (st, ST_R_VALUE, "%{not provided by PF%}");
+  else
+    styled_text_add_marked (st, ST_R_VALUE, "%{%U%}", format_qat_capabilities, caps->capabilities);
+
+  if (a->debug == 0)
+    return;
+
+  styled_text_add_marked (st, ST_R_VALUE,
+			  "\nsummary: version %{%u%} length %{%u%} capabilities %{0x%08x%}",
+			  caps->version, caps->len, caps->capabilities);
+  styled_text_add_marked (st, ST_R_VALUE, " ext-dc %{0x%08x%} frequency %{%u%}", caps->ext_dc_caps,
+			  caps->frequency);
+}
+
+void
 styled_format_qat_dev_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
@@ -154,12 +177,6 @@ styled_format_qat_dev_info (styled_text_t *st, va_list *args)
   clib_error_t *err;
 
   styled_text_add_marked (st, ST_R_VALUE, "PF/VF protocol version %{%u%}", qd->pf_version);
-
-  if (caps->len < QAT_BLKMSG_CAPS_V2_LEN)
-    styled_text_add_marked (st, ST_R_VALUE, "\ncapabilities: %{not provided by PF%}");
-  else
-    styled_text_add_marked (st, ST_R_VALUE, "\ncapabilities: %{%U%}", format_qat_capabilities,
-			    caps->capabilities);
 
   if (caps->len >= QAT_BLKMSG_CAPS_V3_LEN)
     styled_text_add_marked (st, ST_R_VALUE, "\nengine clock: %{%u MHz%}",
@@ -197,12 +214,6 @@ styled_format_qat_dev_info (styled_text_t *st, va_list *args)
   if (qd->gen != QAT_GEN2)
     styled_text_add_marked (st, ST_R_VALUE, "\nring to service map %{0x%04x%}",
 			    qd->ring_to_svc_map.as_u16);
-
-  styled_text_add_marked (
-    st, ST_R_VALUE, "\ncapability summary: version %{%u%} length %{%u%} capabilities %{0x%08x%}",
-    caps->version, caps->len, caps->capabilities);
-  styled_text_add_marked (st, ST_R_VALUE, " ext-dc %{0x%08x%} frequency %{%u%}", caps->ext_dc_caps,
-			  caps->frequency);
 
   if (qd->gen == QAT_GEN2)
     {

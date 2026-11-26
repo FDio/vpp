@@ -513,6 +513,7 @@ VNET_DEV_REGISTER_DRIVER (ice) = {
       .free = ice_aq_free,
       .probe = ice_probe,
       .styled_format_info = styled_format_ice_dev_info,
+      .styled_format_capabilities = styled_format_ice_dev_caps,
     },
   },
 };

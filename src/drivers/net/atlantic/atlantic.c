@@ -332,6 +332,7 @@ VNET_DEV_REGISTER_DRIVER (atl) = {
       .init = atl_init,
       .probe = atl_probe,
       .styled_format_info = styled_format_atl_dev_info,
+      .styled_format_capabilities = styled_format_atl_dev_caps,
     },
   },
 };

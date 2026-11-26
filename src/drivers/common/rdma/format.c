@@ -75,7 +75,8 @@ styled_format_rdma_port_status (styled_text_t *st, va_list *args)
   if (port_attr.active_width)
     styled_text_add_marked (st, ST_R_VALUE, ", active-width %{%u%}", port_attr.active_width);
   if (speed)
-    styled_text_add_marked (st, ST_R_VALUE, ", speed %{%u Mbps%}", speed / 1000);
+    styled_text_add_marked (st, ST_R_VALUE, ", speed %{%U%}", format_vnet_hw_interface_link_speed,
+			    speed);
   else if (port_attr.active_speed || port_attr.active_speed_ex)
     styled_text_add_marked (st, ST_R_VALUE, ", active-speed %{%u/%u%}", port_attr.active_speed,
 			    port_attr.active_speed_ex);
@@ -280,7 +281,7 @@ format_rdma_ibv_odp_transport_caps (u8 *s, va_list *args)
 void
 styled_format_rdma_ibv_dev_info (styled_text_t *st, va_list *args)
 {
-  vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
+  vnet_dev_format_args_t __clib_unused *a = va_arg (*args, vnet_dev_format_args_t *);
   struct ibv_context *ctx = va_arg (*args, struct ibv_context *);
   struct ibv_device_attr_ex dev_attr_ex = {};
   struct ibv_device_attr *oa;
@@ -294,12 +295,30 @@ styled_format_rdma_ibv_dev_info (styled_text_t *st, va_list *args)
 
   oa = &dev_attr_ex.orig_attr;
   styled_text_add_marked (st, ST_R_VALUE, "hw_ver %{%u%}, fw_ver %{%s%}", oa->hw_ver, oa->fw_ver);
+}
+
+void
+styled_format_rdma_ibv_dev_caps (styled_text_t *st, va_list *args)
+{
+  vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
+  struct ibv_context *ctx = va_arg (*args, struct ibv_context *);
+  struct ibv_device_attr_ex dev_attr_ex = {};
+  struct ibv_device_attr *oa;
+  int rv_ibv = ibv_query_device_ex (ctx, 0, &dev_attr_ex);
+
+  if (rv_ibv)
+    {
+      styled_text_add_marked (st, ST_R_ERROR, "ibv_query_device_ex failed rv %{%d%}", rv_ibv);
+      return;
+    }
+
+  oa = &dev_attr_ex.orig_attr;
+  styled_text_add_marked (st, ST_R_VALUE,
+			  "max_qp %{%u%}, max_qp_wr %{%u%}, max_sge %{%u%}, max_sge_rd %{%u%}",
+			  oa->max_qp, oa->max_qp_wr, oa->max_sge, oa->max_sge_rd);
 
   if (a->debug > 0)
     {
-      styled_text_add_marked (
-	st, ST_R_VALUE, "\nmax_qp %{%u%}, max_qp_wr %{%u%}, max_sge %{%u%}, max_sge_rd %{%u%}",
-	oa->max_qp, oa->max_qp_wr, oa->max_sge, oa->max_sge_rd);
       styled_text_add_marked (st, ST_R_VALUE,
 			      "\nmax_cq %{%u%}, max_cqe %{%u%}, max_mr %{%u%}, max_pd %{%u%}",
 			      oa->max_cq, oa->max_cqe, oa->max_mr, oa->max_pd);

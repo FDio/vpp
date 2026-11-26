@@ -275,6 +275,7 @@ typedef struct
   u8 *(*probe) (vlib_main_t *, vnet_dev_probe_args_t *);
   format_function_t *format_info;
   styled_format_fn_t *styled_format_info; /* preferred over format_info */
+  styled_format_fn_t *styled_format_capabilities;
 } vnet_dev_ops_t;
 
 typedef struct
@@ -295,6 +296,7 @@ typedef struct
   format_function_t *format_flow;
   styled_format_fn_t *styled_format_status; /* preferred over format_status */
   styled_format_fn_t *styled_format_flow;   /* preferred over format_flow */
+  styled_format_fn_t *styled_format_rss;
 } vnet_dev_port_ops_t;
 
 typedef vnet_dev_rv_t (vnet_dev_crypto_queue_op_t) (vlib_main_t *, vnet_dev_crypto_queue_t *);
@@ -978,6 +980,13 @@ typedef struct
   u8 clear : 1;
   u8 plain_text : 1;
   u8 debug : 3;
+  u8 rss : 1;
+  u8 capabilities : 1;
+  u8 arguments : 1;
+  u8 module : 1;
+  u8 info : 1;
+  u8 status : 1;
+  u8 queues : 1;
   u16 width;
 } vnet_dev_format_args_t;
 

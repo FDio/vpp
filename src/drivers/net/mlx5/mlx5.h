@@ -265,6 +265,8 @@ void mlx5_txq_free (vlib_main_t *vm, vnet_dev_tx_queue_t *txq);
 format_function_t format_mlx5_tx_trace;
 format_function_t format_mlx5_cqe64;
 styled_format_fn_t styled_format_mlx5_port_status;
+styled_format_fn_t styled_format_mlx5_dev_caps;
+styled_format_fn_t styled_format_mlx5_port_rss;
 styled_format_fn_t styled_format_mlx5_rxq_info;
 format_function_t format_mlx5_rx_legacy_trace;
 format_function_t format_mlx5_rx_striding_trace;

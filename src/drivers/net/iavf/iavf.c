@@ -357,6 +357,7 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
         .config_change = iavf_port_cfg_change,
         .config_change_validate = iavf_port_cfg_change_validate,
         .styled_format_status = styled_format_iavf_port_status,
+        .styled_format_rss = styled_format_iavf_port_rss,
       },
       .data_size = sizeof (iavf_port_t),
       .initial_data = &iavf_port,
@@ -460,6 +461,7 @@ VNET_DEV_REGISTER_DRIVER (avf) = {
       .deinit = iavf_deinit,
       .free = iavf_free,
       .probe = iavf_probe,
+      .styled_format_capabilities = styled_format_iavf_dev_caps,
     },
   },
 };

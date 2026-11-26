@@ -153,8 +153,12 @@ The device operations (``vnet_dev_ops_t``) are:
    Optional, called when the ``driver`` startup configuration is parsed.
 
 ``styled_format_info`` / ``format_info``
-   Used by ``show device`` for device specific information, see
+   Used by ``show device info`` for device specific information, see
    :ref:`dev_format`.
+
+``styled_format_capabilities``
+   Used by ``show device capabilities`` for what the device supports, kept
+   out of ``styled_format_info``.
 
 .. _dev_format:
 
@@ -178,8 +182,14 @@ one is called.
    * - device
      - ``styled_format_info``
      - ``vnet_dev_format_args_t *``, ``vnet_dev_t *``
+   * - device
+     - ``styled_format_capabilities``
+     - ``vnet_dev_format_args_t *``, ``vnet_dev_t *``
    * - port
      - ``styled_format_status``
+     - ``vnet_dev_format_args_t *``, ``vnet_dev_port_t *``
+   * - port
+     - ``styled_format_rss``
      - ``vnet_dev_format_args_t *``, ``vnet_dev_port_t *``
    * - port
      - ``styled_format_flow``
@@ -195,9 +205,12 @@ one is called.
      - ``vnet_dev_format_args_t *``, ``vnet_dev_crypto_queue_t *``
 
 The plain hook has the same name without ``styled_`` and gets the same
-arguments. Both are called from the device process, so they can access the
-hardware. ``styled_text_add_marked ()`` adds text with values marked in the
-format string with ``%{`` and ``%}``, see :ref:`styled_text`.
+arguments, ``styled_format_capabilities`` and ``styled_format_rss`` have only
+the styled one. Capabilities are shown with ``show device capabilities`` and
+the RSS details with ``show device rss``, under their own headings. Both are
+called from the device process, so they can access the hardware.
+``styled_text_add_marked ()`` adds text with values marked in the format string
+with ``%{`` and ``%}``, see :ref:`styled_text`.
 
 .. code-block:: c
 
@@ -423,12 +436,28 @@ The framework registers the following commands:
 ``device set-rss-config [<intf>] [port <port-id>] [dev <device-id>] [key <rss-key>] [lut <queue-id,...>]``
    Change the RSS key and lookup table at runtime.
 
-``show device [debug] [debug-level <n>] [<device-id> ...]``
-   Show devices, ports, queues and their driver specific information.
+``show device [info] [status] [rss] [capabilities] [queues] [arguments|args] [module] [counters] [zero-counters] [clear] [all] [debug] [debug-level <n>] [<device-id> ...]``
+   Show devices, ports and queues. Each flag selects a part of the output:
 
-``show device counters [all] [clear] [<device-id> ...]``
-   Show or clear device, port and queue counters. Zero counters are only shown
-   with ``all``.
+   * ``info``: driver, bus and device information, the driver device info,
+     and per port the addresses, the queue counts, the link, the frame size
+     and the interfaces. Shown when no other part is selected.
+   * ``status``: the driver port status.
+   * ``rss``: the RSS configuration and the driver RSS details.
+   * ``capabilities``: the port capabilities and offloads and the driver device
+     capabilities.
+   * ``queues``: the RX, TX and crypto queues.
+   * ``arguments`` (or ``args``): the device, port and secondary interface
+     arguments.
+   * ``module``: the transceiver module information.
+   * ``counters``: the port and queue counters which are not zero,
+     ``zero-counters`` also the ones which are zero, ``clear`` clears them
+     after showing them.
+   * ``all``: all of the above except debug.
+
+   ``debug`` and ``debug-level <n>`` add debug details to the selected parts.
+   ``show hardware-interfaces`` shows the info, status, rss, capabilities,
+   arguments, module and queues of the port of an interface.
 
 ``show device drivers``
    List the loaded drivers with bus, priority, shared object and description.
@@ -707,7 +736,7 @@ the node functions:
 
 Queue counters (``enq_req``, ``enq_bytes``, ``enq_full``, ``enq_err``, ``deq_req``,
 ``deq_err`` and ``deq_auth_fail``) are kept by the framework and shown with
-``show device``.
+``show device counters``.
 
 Configuration
 -------------
@@ -761,9 +790,11 @@ checks at attach that the DMA address range of the device fits the memory in use
 Debugging
 =========
 
-* ``show device`` shows device, port and queue state. With ``debug`` and
+* ``show device`` shows device and port state, ``status``, ``rss``,
+  ``capabilities``, ``queues``, ``arguments``, ``module`` and ``counters``
+  select other parts and ``all`` shows everything. With ``debug`` and
   ``debug-level <n>`` it adds driver specific details.
-* ``show device counters all`` shows all counters including zero ones.
+* ``show device zero-counters`` shows all counters including zero ones.
 * ``show hardware-interfaces`` and ``show interface`` show the interface level
   view and ``show errors`` the node error counters of the driver nodes.
 * ``trace add <interface-name>-rx 10`` captures packets in the RX node of a port.

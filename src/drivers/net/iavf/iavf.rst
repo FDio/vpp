@@ -204,7 +204,7 @@ Debugging
 
 * ``show device <device-id>`` shows the VF state, the capabilities negotiated
   with the PF and the queue state.
-* ``show device counters all <device-id>`` shows all counters.
+* ``show device zero-counters <device-id>`` shows all counters.
 * Raise the log level, ``logging { class iavf { level debug } class dev { level
   debug } }``, to see the virtchnl exchange with the PF (opcodes and return
   values).

@@ -170,6 +170,8 @@ void ibv_txq_recover (vlib_main_t *vm, vnet_dev_tx_queue_t *txq, int status);
 
 /* format.c */
 styled_format_fn_t styled_format_ibv_port_status;
+styled_format_fn_t styled_format_ibv_dev_caps;
+styled_format_fn_t styled_format_ibv_port_rss;
 styled_format_fn_t styled_format_ibv_rxq_info;
 format_function_t format_ibv_rx_trace;
 format_function_t format_ibv_tx_trace;

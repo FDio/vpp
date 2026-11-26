@@ -190,6 +190,7 @@ ibv_init (vlib_main_t *vm, vnet_dev_t *dev)
 	    .start = ibv_port_start,
 	    .stop = ibv_port_stop,
 	    .styled_format_status = styled_format_ibv_port_status,
+	    .styled_format_rss = styled_format_ibv_port_rss,
 	    .config_change_validate = ibv_port_cfg_change_validate,
 	    .config_change = ibv_port_cfg_change,
 	    .get_module_eeprom = ibv_port_get_module_eeprom,
@@ -318,6 +319,7 @@ VNET_DEV_REGISTER_DRIVER (ibv_generic) = {
       .free = ibv_free,
       .probe = ibv_probe,
       .styled_format_info = styled_format_ibv_dev_info,
+      .styled_format_capabilities = styled_format_ibv_dev_caps,
     },
   },
 };

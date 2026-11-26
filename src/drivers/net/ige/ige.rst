@@ -195,7 +195,7 @@ Debugging
 
 * ``show device <device-id>`` shows the device type, the PHY and the port and
   queue state.
-* ``show device counters all <device-id>`` shows all counters.
+* ``show device zero-counters <device-id>`` shows all counters.
 * Raise the log level with ``logging { class ige { level debug } class dev {
   level debug } }`` to trace the PHY and reset sequence.
 * Typical errors: ``reset timeout`` (the controller did not come out of reset,

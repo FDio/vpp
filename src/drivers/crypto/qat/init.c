@@ -329,6 +329,7 @@ VNET_DEV_REGISTER_DRIVER (qat) = {
       .deinit = qat_deinit,
       .probe = qat_probe,
       .styled_format_info = styled_format_qat_dev_info,
+      .styled_format_capabilities = styled_format_qat_dev_caps,
     },
   },
   .driver = {

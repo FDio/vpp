@@ -339,6 +339,7 @@ vnet_dev_rv_t atl_fw_mbox_read (vnet_dev_t *dev, u32 offset, u32 *val);
 styled_format_fn_t styled_format_atl_port_status;
 format_function_t format_atl_l2uc;
 styled_format_fn_t styled_format_atl_dev_info;
+styled_format_fn_t styled_format_atl_dev_caps;
 format_function_t format_atl_fw_version;
 format_function_t format_atl_iface_version;
 format_function_t format_atl_regs;
