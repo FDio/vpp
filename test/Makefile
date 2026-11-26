@@ -351,8 +351,22 @@ EXTRA_ARGS=$(ARG0) $(ARG1) $(ARG2) $(ARG3) $(ARG4) $(ARG5) $(ARG6) $(ARG7) $(ARG
 RUN_TESTS_ARGS=--failed-dir=$(FAILED_DIR) --verbose=$(V) --jobs=$(TEST_JOBS) --filter=$(TEST) --skip-filter=$(SKIP_TESTS) --retries=$(RETRIES) --venv-dir=$(VENV_PATH) --vpp-ws-dir=$(WS_ROOT) --vpp-tag=$(TAG) --rnd-seed=$(RND_SEED) --vpp-worker-count="$(VPP_WORKER_COUNT)" --keep-pcaps $(PLUGIN_PATH_ARGS) $(EXC_PLUGINS_ARG) $(TEST_PLUGIN_PATH_ARGS) $(EXTRA_ARGS)
 RUN_SCRIPT_ARGS=--python-opts=$(PYTHON_OPTS)
 
+# CI archives logs for failed attempts, including failures retried successfully.
 define retest-func
-@rc=0; scripts/run.sh $(RUN_SCRIPT_ARGS) $(RUN_TESTS_ARGS) || rc=$$?; $(VENV_PATH)/bin/python scripts/expand_ppp.py --quiet --discover --basedir=/tmp; if [ $$rc -ne 0 ]; then env FAILED_DIR=$(FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh; fi; exit $$rc
+@rc=0; \
+scripts/run.sh $(RUN_SCRIPT_ARGS) $(RUN_TESTS_ARGS) || rc=$$?; \
+if [ "$(CI)" = true ]; then \
+    set -- "$(FAILED_DIR)"/vpp-unittest-*/log.txt; \
+    if [ -f "$$1" ]; then \
+        $(VENV_PATH)/bin/python scripts/expand_ppp.py --quiet "$$@" || :; \
+    fi; \
+else \
+    $(VENV_PATH)/bin/python scripts/expand_ppp.py --quiet --discover --basedir=/tmp || :; \
+fi; \
+if [ "$$rc" -ne 0 ]; then \
+    env FAILED_DIR=$(FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh; \
+fi; \
+exit "$$rc"
 endef
 
 sanity: test-dep
