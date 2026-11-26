@@ -274,7 +274,7 @@ vnp_rss (vlib_main_t *vm, vnet_dev_port_t *port, const vnet_dev_rss_config_t *co
   virtio_net_rss_config_t *rss = (void *) payload;
   u16 *lut = rss->indirection_table;
   vnp_rss_tail_t *tail;
-  u32 supported;
+  vnet_dev_rss_tuple_types_t types;
 
   foreach_vnet_dev_port_rx_queue (rxq, port)
     n_rx++;
@@ -294,12 +294,17 @@ vnp_rss (vlib_main_t *vm, vnet_dev_port_t *port, const vnet_dev_rss_config_t *co
   if (config->set_lut)
     lut_size = config->lut_len;
 
-  supported = vd->config->supported_hash_types;
-  rss->hash_types = (supported & 0x3ff);
+  if (!vnet_dev_rss_caps_has_fields (&port->attr.rss_caps))
+    types = vnp_rss_supported_types (vd);
+  else if (!vnet_dev_rss_tuple_types (config, vnp_rss_supported_types (vd), &types))
+    return VNET_DEV_ERR_UNSUPPORTED_CONFIG;
+  /* the bits of vnet_dev_rss_tuple_types_t are the virtio hash types */
+  rss->hash_types = types.as_u8;
   rss->indirection_table_mask = (lut_size - 1);
 
   for (u32 i = 0; i < lut_size; i++)
     lut[i] = (config->set_lut ? config->lut[i] : i % n_rx);
+  rss->unclassified_queue = lut[0];
 
   tail = (void *) (lut + lut_size);
   tail->max_tx_vq = pairs;

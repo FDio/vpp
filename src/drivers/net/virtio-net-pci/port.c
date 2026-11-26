@@ -320,6 +320,16 @@ vnp_port_cfg_validate (vlib_main_t *vm __clib_unused, vnet_dev_port_t *port,
 	  if (!vnet_dev_get_port_rx_queue_by_id (port, req->rss_config.lut[i]))
 	    return VNET_DEV_ERR_INVALID_VALUE;
 
+      {
+	vnet_dev_rss_config_t config = port->rss_config;
+	vnet_dev_rss_tuple_types_t types;
+
+	vnet_dev_rss_config_merge (&config, &req->rss_config);
+	if (vnet_dev_rss_caps_has_fields (&port->attr.rss_caps) &&
+	    !vnet_dev_rss_tuple_types (&config, vnp_rss_supported_types (vd), &types))
+	  return VNET_DEV_ERR_UNSUPPORTED_CONFIG;
+      }
+
       return VNET_DEV_OK;
     default:
       return VNET_DEV_ERR_NOT_SUPPORTED;
@@ -364,20 +374,7 @@ vnp_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port, vnet_dev_port_cfg_c
 	{
 	  vnet_dev_rss_config_t config = port->rss_config;
 
-	  if (req->rss_config.set_key)
-	    {
-	      clib_memcpy_fast (config.key, req->rss_config.key, 40);
-	      config.set_key = 1;
-	    }
-
-	  if (req->rss_config.set_lut)
-	    {
-	      config.lut_len = req->rss_config.lut_len;
-	      clib_memcpy_fast (config.lut, req->rss_config.lut,
-				config.lut_len * sizeof (config.lut[0]));
-	      config.set_lut = 1;
-	    }
-
+	  vnet_dev_rss_config_merge (&config, &req->rss_config);
 	  rv = vnp_rss (vm, port, &config);
 	}
 
