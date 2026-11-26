@@ -283,8 +283,42 @@ class VCLTestCase(VppAsfTestCase):
 
         self.vapi.session_enable_disable(is_enable=0)
 
+    @staticmethod
+    def vperf_data_listener_ready(rows, data_transport, app_name, endpoint):
+        data_kind, transport_kind, transport_app = data_transport
+        transport_ids = {
+            row[0].partition("]")[0][1:]
+            for row in rows
+            if len(row) == 4
+            and row[0].endswith(transport_kind)
+            and row[1].partition("->")[0] == endpoint
+            and row[2] == transport_app
+        }
+        # The data listener references the underlying socket by session ID.
+        return any(
+            len(row) >= 5
+            and row[0].endswith(data_kind)
+            and row[-2] == app_name
+            and row[-4] == "ts"
+            and row[-3] in transport_ids
+            for row in rows
+        )
+
     def wait_for_server(self, worker, server_app, server_args, *, local_scope=False):
-        if server_app != "vperf_server" or server_args not in (
+        if server_app != "vperf_server":
+            self.sleep(self.pre_test_sleep)
+            return
+
+        data_transport = None
+        if not local_scope:
+            # The control listener always uses TCP. TLS, DTLS and HTTP
+            # register a VCL listener backed by a transport-specific socket.
+            data_transport = {
+                ("-L", self.server_port): ("[TLS]", "[T]", "tls"),
+                ("-p", "dtls", self.server_port): ("[DTLS]", "[U]", "tls"),
+                ("-p", "http", self.server_port): ("[H]", "[T]", "http"),
+            }.get(tuple(server_args))
+        if data_transport is None and server_args not in (
             self.server_args,
             self.server_ipv6_args,
         ):
@@ -302,12 +336,15 @@ class VCLTestCase(VppAsfTestCase):
                 app_name = "vperf_srv_vcl-wrk-0[shm]"
         else:
             address = self.loop0.local_ip6 if is_ip6 else self.loop0.local_ip4
-            command = "show session listeners tcp"
+            command = (
+                "show app listeners" if data_transport else "show session listeners tcp"
+            )
             listener_kind = "[T]"
 
         port = int(self.server_port)
         # vperf_make_data_port() uses the port after the control port.
-        endpoints = {f"{address}:{port}", f"{address}:{port + 1}"}
+        control_endpoint = f"{address}:{port}"
+        data_endpoint = f"{address}:{port + 1}"
         deadline = time.monotonic() + self.pre_test_sleep
         while (remaining := deadline - time.monotonic()) > 0:
             process = worker.process
@@ -319,27 +356,34 @@ class VCLTestCase(VppAsfTestCase):
                         cmd=f"{command}\n", _timeout=remaining
                     )
                 except OSError as error:
-                    self.logger.debug("vperf TCP listener query failed: %s", error)
+                    self.logger.debug("vperf listener query failed: %s", error)
                     break
                 if reply.retval != 0:
                     break
-                listeners = set()
-                for line in reply.reply.splitlines():
-                    fields = line.split()
-                    if (
-                        len(fields) >= 3
-                        and fields[0].endswith(listener_kind)
-                        and fields[2] == app_name
-                    ):
-                        listeners.add(fields[1].partition("->")[0])
-                if endpoints <= listeners:
-                    self.logger.debug(
-                        "vperf TCP listeners ready on %s and %s", port, port + 1
+                rows = [line.split() for line in reply.reply.splitlines()]
+                listeners = {
+                    row[1].partition("->")[0]
+                    for row in rows
+                    if len(row) >= 3
+                    and row[0].endswith(listener_kind)
+                    and row[2] == app_name
+                }
+                if control_endpoint in listeners:
+                    data_ready = (
+                        self.vperf_data_listener_ready(
+                            rows, data_transport, app_name, data_endpoint
+                        )
+                        if data_transport
+                        else data_endpoint in listeners
                     )
-                    return
+                    if data_ready:
+                        self.logger.debug(
+                            "vperf listeners ready on %s and %s", port, port + 1
+                        )
+                        return
             self.sleep(min(0.05, max(0, deadline - time.monotonic())))
 
-        self.logger.debug("vperf TCP listener readiness not confirmed")
+        self.logger.debug("vperf listener readiness not confirmed")
         self.sleep(max(0, deadline - time.monotonic()))
 
     @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
