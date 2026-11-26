@@ -34,6 +34,24 @@
       "parentUuid": "da6bb2f3_11f96731",
       "revId": "8c57039fc6430ace4e23e56e2945a224bfdb523b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3afc5f58_840ebe7d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-26T12:14:46Z",
+      "side": 1,
+      "message": "Ack. Apologies for the noise, I misremembered SystemRandom semantics.",
+      "parentUuid": "88d46fe4_0dc755d9",
+      "revId": "8c57039fc6430ace4e23e56e2945a224bfdb523b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
