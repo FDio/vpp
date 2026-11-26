@@ -6,6 +6,7 @@ import os
 import subprocess
 import signal
 import glob
+import time
 from config import config
 from asfframework import (
     VppAsfTestCase,
@@ -282,6 +283,41 @@ class VCLTestCase(VppAsfTestCase):
 
         self.vapi.session_enable_disable(is_enable=0)
 
+    def wait_for_vperf_tcp_listeners(self, worker, is_ip6):
+        address = self.loop0.local_ip6 if is_ip6 else self.loop0.local_ip4
+        port = int(self.server_port)
+        # vperf_make_data_port() uses the port after the control port.
+        endpoints = {f"{address}:{port}", f"{address}:{port + 1}"}
+        deadline = time.monotonic() + self.pre_test_sleep
+        while (remaining := deadline - time.monotonic()) > 0:
+            process = worker.process
+            if process is not None:
+                if process.poll() is not None:
+                    break
+                try:
+                    reply = self.vapi.papi.cli_inband(
+                        cmd="show session listeners tcp\n", _timeout=remaining
+                    )
+                except OSError as error:
+                    self.logger.debug("vperf TCP listener query failed: %s", error)
+                    break
+                if reply.retval != 0:
+                    break
+                listeners = set()
+                for line in reply.reply.splitlines():
+                    fields = line.split()
+                    if len(fields) == 3 and fields[2] == "vperf_srv_vcl":
+                        listeners.add(fields[1].partition("->")[0])
+                if endpoints <= listeners:
+                    self.logger.debug(
+                        "vperf TCP listeners ready on %s and %s", port, port + 1
+                    )
+                    return
+            self.sleep(min(0.05, max(0, deadline - time.monotonic())))
+
+        self.logger.debug("vperf TCP listener readiness not confirmed")
+        self.sleep(max(0, deadline - time.monotonic()))
+
     @unittest.skipUnless(_have_iperf3, "'%s' not found, Skipping.")
     def thru_host_stack_test(self, server_app, server_args, client_app, client_args):
         self.vcl_app_env = {"VCL_APP_SCOPE_GLOBAL": "true"}
@@ -296,7 +332,15 @@ class VCLTestCase(VppAsfTestCase):
             cpus=self.helper_affinity(),
         )
         worker_server.start()
-        self.sleep(self.pre_test_sleep)
+        if server_app == "vperf_server" and server_args in (
+            self.server_args,
+            self.server_ipv6_args,
+        ):
+            self.wait_for_vperf_tcp_listeners(
+                worker_server, server_args == self.server_ipv6_args
+            )
+        else:
+            self.sleep(self.pre_test_sleep)
 
         self.update_vcl_app_env("2", "5678", self.sapi_client_sock)
         worker_client = VCLAppWorker(
