@@ -9,15 +9,16 @@
 #include <vppinfra/elog.h>
 
 static_always_inline void *
-map_guest_mem (vhost_user_intf_t * vui, uword addr, u32 * hint)
+map_guest_mem (vhost_user_intf_t *vui, uword addr, u32 len, u32 *hint)
 {
   int i = *hint;
-  if (PREDICT_TRUE ((vui->regions[i].guest_phys_addr <= addr) &&
-		    ((vui->regions[i].guest_phys_addr +
-		      vui->regions[i].memory_size) > addr)))
+  ASSERT (i < vui->nregions);
+  u64 lo = vui->region_guest_addr_lo[i];
+  u64 hi = vui->region_guest_addr_hi[i];
+
+  if (PREDICT_TRUE (lo <= addr && addr < hi && len <= hi - addr))
     {
-      return (void *) (vui->region_mmap_addr[i] + addr -
-		       vui->regions[i].guest_phys_addr);
+      return (void *) (vui->region_mmap_addr[i] + addr - lo);
     }
 #if __SSE4_2__
   __m128i rl, rh, al, ah, r;
@@ -54,9 +55,11 @@ map_guest_mem (vhost_user_intf_t * vui, uword addr, u32 * hint)
 
   if (i < vui->nregions)
     {
-      *hint = i;
-      return (void *) (vui->region_mmap_addr[i] + addr -
-		       vui->regions[i].guest_phys_addr);
+      if (PREDICT_TRUE (len <= vui->region_guest_addr_hi[i] - addr))
+	{
+	  *hint = i;
+	  return (void *) (vui->region_mmap_addr[i] + addr - vui->region_guest_addr_lo[i]);
+	}
     }
 #elif __aarch64__ && __ARM_NEON
   uint64x2_t al, ah, rl, rh, r;
@@ -109,34 +112,37 @@ map_guest_mem (vhost_user_intf_t * vui, uword addr, u32 * hint)
 vhost_map_guest_mem_done:
   if (i < vui->nregions)
     {
-      *hint = i;
-      return (void *) (vui->region_mmap_addr[i] + addr -
-		       vui->regions[i].guest_phys_addr);
+      if (PREDICT_TRUE (len <= vui->region_guest_addr_hi[i] - addr))
+	{
+	  *hint = i;
+	  return (void *) (vui->region_mmap_addr[i] + addr - vui->region_guest_addr_lo[i]);
+	}
     }
 #else
   for (i = 0; i < vui->nregions; i++)
     {
-      if ((vui->regions[i].guest_phys_addr <= addr) &&
-	  ((vui->regions[i].guest_phys_addr + vui->regions[i].memory_size) >
-	   addr))
+      lo = vui->region_guest_addr_lo[i];
+      hi = vui->region_guest_addr_hi[i];
+
+      if (lo <= addr && addr < hi && len <= hi - addr)
 	{
 	  *hint = i;
-	  return (void *) (vui->region_mmap_addr[i] + addr -
-			   vui->regions[i].guest_phys_addr);
+	  return (void *) (vui->region_mmap_addr[i] + addr - lo);
 	}
     }
 #endif
-  ELOG_TYPE_DECLARE (el) =
-  {
-    .format = "failed to map guest mem addr %lx",
-    .format_args = "i8",
+  ELOG_TYPE_DECLARE (el) = {
+    .format = "failed to map guest mem addr %lx len %u",
+    .format_args = "i8i4",
   };
   struct
   {
     uword addr;
+    u32 len;
   } *ed;
   ed = ELOG_DATA (vlib_get_elog_main (), el);
   ed->addr = addr;
+  ed->len = len;
   *hint = 0;
   return 0;
 }

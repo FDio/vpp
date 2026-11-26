@@ -1910,10 +1910,9 @@ format_vhost_user_desc (u8 * s, va_list * args)
   int idx = va_arg (*args, int);
   u32 *mem_hint = va_arg (*args, u32 *);
 
-  s = format (s, fmt, idx, desc_table[idx].addr, desc_table[idx].len,
-	      desc_table[idx].flags, desc_table[idx].next,
-	      pointer_to_uword (map_guest_mem (vui, desc_table[idx].addr,
-					       mem_hint)));
+  s = format (s, fmt, idx, desc_table[idx].addr, desc_table[idx].len, desc_table[idx].flags,
+	      desc_table[idx].next,
+	      pointer_to_uword (map_guest_mem (vui, desc_table[idx].addr, 0 /* len */, mem_hint)));
   return s;
 }
 
@@ -1967,7 +1966,7 @@ vhost_user_show_desc (vlib_main_t * vm, vhost_user_intf_t * vui, int q,
 	    {
 	      n_entries =
 		desc_table[j].len / sizeof (vnet_virtio_vring_desc_t);
-	      desc_table = map_guest_mem (vui, desc_table[j].addr, &mem_hint);
+	      desc_table = map_guest_mem (vui, desc_table[j].addr, desc_table[j].len, &mem_hint);
 	      if (desc_table)
 		{
 		  for (idx = 0; idx < clib_min (20, n_entries); idx++)
@@ -1996,15 +1995,14 @@ format_vhost_user_packed_desc (u8 * s, va_list * args)
   int idx = va_arg (*args, int);
   u32 *mem_hint = va_arg (*args, u32 *);
 
-  s = format (s, fmt, idx, desc_table[idx].addr, desc_table[idx].len,
-	      desc_table[idx].flags, desc_table[idx].id,
-	      pointer_to_uword (map_guest_mem (vui, desc_table[idx].addr,
-					       mem_hint)));
+  s = format (s, fmt, idx, desc_table[idx].addr, desc_table[idx].len, desc_table[idx].flags,
+	      desc_table[idx].id,
+	      pointer_to_uword (map_guest_mem (vui, desc_table[idx].addr, 0 /* len */, mem_hint)));
   return s;
 }
 
 static u8 *
-format_vhost_user_event_idx_flags (u8 * s, va_list * args)
+format_vhost_user_event_idx_flags (u8 *s, va_list *args)
 {
   u32 flags = va_arg (*args, u32);
   typedef struct
@@ -2073,15 +2071,14 @@ vhost_user_show_desc_packed (vlib_main_t * vm, vhost_user_intf_t * vui, int q,
 	  if (show_verbose && (desc_table[j].flags & VRING_DESC_F_INDIRECT))
 	    {
 	      n_entries = desc_table[j].len >> 4;
-	      desc_table = map_guest_mem (vui, desc_table[j].addr, &mem_hint);
+	      desc_table = map_guest_mem (vui, desc_table[j].addr, desc_table[j].len, &mem_hint);
 	      if (desc_table)
 		{
 		  for (idx = 0; idx < clib_min (20, n_entries); idx++)
 		    {
-		      vlib_cli_output
-			(vm, "%U", format_vhost_user_packed_desc,
-			 ">  %-4u 0x%016lx %-5u 0x%04x %-5u 0x%016lx\n", vui,
-			 desc_table, idx, &mem_hint);
+		      vlib_cli_output (vm, "%U", format_vhost_user_packed_desc,
+				       ">  %-4u 0x%016lx %-5u 0x%04x %-5u 0x%016lx\n", vui,
+				       desc_table, idx, &mem_hint);
 		    }
 		  if (n_entries >= 20)
 		    vlib_cli_output (vm, "Skip displaying entries 20...%u\n",
