@@ -210,6 +210,46 @@ typedef struct
   u8 *data;
 } vnet_dev_port_module_eeprom_req_t;
 
+#define VNET_DEV_RSS_MAX_FIELD_SETS 4
+
+/* rss hash fields a class can use: any non-empty combination of fields, or only
+ * the listed sets, and no_hash if the class can be set to no-hash. A class without
+ * fields and without no-hash can't be set. */
+typedef struct
+{
+  vnet_dev_rss_fields_t fields;
+  u8 any : 1;
+  u8 no_hash : 1;
+  u8 n_sets;
+  vnet_dev_rss_fields_t sets[VNET_DEV_RSS_MAX_FIELD_SETS];
+} vnet_dev_rss_class_caps_t;
+
+typedef struct
+{
+  vnet_dev_rss_class_caps_t classes[VNET_DEV_RSS_N_CLASSES];
+  u8 functions;
+} vnet_dev_rss_caps_t;
+
+/* class caps for any non-empty combination of fields f */
+#define VNET_DEV_RSS_CLASS_CAPS_ANY(f, nh)                                                         \
+  {                                                                                                \
+    .fields.as_u32 = (f),                                                                          \
+    .any = 1,                                                                                      \
+    .no_hash = (nh),                                                                               \
+  }
+/* class caps of devices which switch hashing per type on addresses or addresses and ports */
+#define VNET_DEV_RSS_CLASS_CAPS_TUPLES                                                             \
+  {                                                                                                \
+    .fields.as_u32 = VNET_DEV_RSS_FIELDS_4_TUPLE,                                                  \
+    .no_hash = 1,                                                                                  \
+    .n_sets = 2,                                                                                   \
+    .sets = {                                                                                      \
+      { .as_u32 = VNET_DEV_RSS_FIELDS_2_TUPLE },                                                   \
+      { .as_u32 = VNET_DEV_RSS_FIELDS_4_TUPLE },                                                   \
+    },                                                                                             \
+  }
+#define VNET_DEV_RSS_FUNCTION(f) (1 << VNET_DEV_RSS_FUNCTION_##f)
+
 typedef struct
 {
   vnet_dev_hw_addr_t hw_addr;
@@ -221,6 +261,7 @@ typedef struct
   vnet_dev_port_rx_offloads_t rx_offloads;
   vnet_dev_port_tx_offloads_t tx_offloads;
   u32 speed_caps;
+  vnet_dev_rss_caps_t rss_caps;
 } vnet_dev_port_attr_t;
 
 typedef enum
@@ -1017,6 +1058,26 @@ unformat_function_t unformat_vnet_dev_port_flags;
 unformat_function_t unformat_vnet_dev_rx_queue_assignment;
 unformat_function_t unformat_vnet_dev_rss_key;
 unformat_function_t unformat_vnet_dev_rss_lut;
+
+/* rss.c */
+/* not a field, the class goes back to the fields of its parent */
+#define VNET_DEV_RSS_FIELDS_INHERIT (1U << 31)
+__clib_export void vnet_dev_rss_config_merge (vnet_dev_rss_config_t *cfg,
+					      const vnet_dev_rss_config_t *req);
+void vnet_dev_rss_config_set_class (vnet_dev_rss_config_t *cfg, vnet_dev_rss_class_t class,
+				    u32 fields);
+vnet_dev_rv_t vnet_dev_rss_config_validate (vnet_dev_port_t *port, const vnet_dev_rss_config_t *req,
+					    u8 **errp);
+void vnet_dev_rss_config_set_defaults (vnet_dev_port_t *port);
+__clib_export int vnet_dev_rss_tuple_types (const vnet_dev_rss_config_t *cfg,
+					    vnet_dev_rss_tuple_types_t supported,
+					    vnet_dev_rss_tuple_types_t *types);
+__clib_export format_function_t format_vnet_dev_rss_class;
+__clib_export format_function_t format_vnet_dev_rss_fields;
+__clib_export format_function_t format_vnet_dev_rss_function;
+unformat_function_t unformat_vnet_dev_rss_class;
+unformat_function_t unformat_vnet_dev_rss_fields;
+unformat_function_t unformat_vnet_dev_rss_function;
 
 typedef struct
 {

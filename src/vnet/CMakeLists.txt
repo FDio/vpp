@@ -40,6 +40,7 @@ list(APPEND VNET_SOURCES
   dev/port.c
   dev/process.c
   dev/queue.c
+  dev/rss.c
   dev/runtime.c
   dev/slab.c
   error.c

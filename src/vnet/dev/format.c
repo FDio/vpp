@@ -349,14 +349,164 @@ format_vnet_dev_hw_addr (u8 *s, va_list *args)
   return format (s, "%U", format_ethernet_address, addr->eth_mac);
 }
 
+static u8 *
+format_rss_functions (u8 *s, va_list *args)
+{
+  u32 functions = va_arg (*args, u32);
+  char *sep = "";
+
+  for (u32 i = 0; i < VNET_DEV_RSS_N_FUNCTIONS; i++)
+    if (functions & (1 << i))
+      {
+	s = format (s, "%s%U", sep, format_vnet_dev_rss_function, i);
+	sep = " ";
+      }
+  return s;
+}
+
+static u32
+vnet_dev_rss_class_depth (vnet_dev_rss_class_t class)
+{
+  u32 depth = 0;
+
+  for (; class != VNET_DEV_RSS_CLASS_DEFAULT; class = vnet_dev_rss_class_parent (class))
+    depth++;
+  return depth;
+}
+
+/* classes in tree order, each followed by its children */
+static u32
+vnet_dev_rss_class_tree_order (vnet_dev_rss_class_t class, vnet_dev_rss_class_t *order, u32 n)
+{
+  order[n++] = class;
+  for (u32 i = 0; i < VNET_DEV_RSS_N_CLASSES; i++)
+    if (i != VNET_DEV_RSS_CLASS_DEFAULT && vnet_dev_rss_class_parent (i) == class)
+      n = vnet_dev_rss_class_tree_order (i, order, n);
+  return n;
+}
+
+/* what the port can be configured with, one row per class in config syntax */
+static void
+vnet_dev_styled_add_rss_caps (styled_text_t *st, vnet_dev_port_t *port)
+{
+  static const struct
+  {
+    char *name;
+    u32 bit;
+  } field_names[] = {
+#define _(v, n, str, h) { str, v },
+    foreach_vnet_dev_rss_field
+#undef _
+  };
+  const vnet_dev_rss_caps_t *caps = &port->attr.rss_caps;
+  vnet_dev_rss_class_t order[VNET_DEV_RSS_N_CLASSES];
+  u32 row = 0;
+  table_t table = {};
+
+  if (caps->functions == 0 && !vnet_dev_rss_caps_has_fields (caps))
+    return;
+
+  vnet_dev_styled_new_line (st);
+  styled_text_add (st, "RSS capabilities:");
+
+  if (caps->functions)
+    styled_text_add_marked (st, ST_R_VALUE, "\n  Functions: %{%U%}", format_rss_functions,
+			    caps->functions);
+
+  if (!vnet_dev_rss_caps_has_fields (caps))
+    return;
+
+  table_add_hdr_row (&table, 2, "class", "fields");
+  for (u32 col = 0; col < 2; col++)
+    table_set_cell_align (&table, -1, col, TTAA_LEFT);
+
+  vnet_dev_rss_class_tree_order (VNET_DEV_RSS_CLASS_DEFAULT, order, 0);
+
+  for (u32 k = 0; k < VNET_DEV_RSS_N_CLASSES; k++)
+    {
+      vnet_dev_rss_class_t i = order[k];
+      const vnet_dev_rss_class_caps_t *c = caps->classes + i;
+      u8 *v = 0;
+
+      if (c->fields.as_u32 == 0 && c->no_hash == 0)
+	continue;
+
+      if (c->any)
+	{
+	  char *sep = "any of ";
+
+	  for (u32 f = 0; f < ARRAY_LEN (field_names); f++)
+	    if (c->fields.as_u32 & field_names[f].bit)
+	      {
+		v = format (v, "%s%s", sep, field_names[f].name);
+		sep = ",";
+	      }
+	}
+
+      for (u32 j = 0; j < c->n_sets; j++)
+	v = format (v, "%s%U", vec_len (v) ? " or " : "", format_vnet_dev_rss_fields,
+		    c->sets[j].as_u32);
+
+      if (c->no_hash)
+	v = format (v, "%sno-hash", vec_len (v) ? " or " : "");
+
+      table_format_cell (&table, row, 0, "%*s%U", 2 * vnet_dev_rss_class_depth (i), "",
+			 format_vnet_dev_rss_class, i);
+      table_format_cell (&table, row, 1, "%v", v);
+      for (u32 col = 0; col < 2; col++)
+	table_set_cell_align (&table, row, col, TTAA_LEFT);
+      vec_free (v);
+      row++;
+    }
+
+  styled_text_add (st, "\n  Hash fields:\n    %T", format_styled_table, &table);
+  table_free (&table);
+}
+
+/* what the port is configured with, the classes which are set, most specific first */
 static void
 vnet_dev_styled_add_rss (styled_text_t *st, vnet_dev_port_t *port)
 {
-  if (port->rss_config.set_key)
+  const vnet_dev_rss_config_t *c = &port->rss_config;
+
+  if (port->attr.rss_caps.functions)
     {
       vnet_dev_styled_new_line (st);
-      styled_text_add_marked (st, ST_R_VALUE, "RSS Key is %{%U%}", format_hex_bytes_no_wrap,
-			      port->rss_config.key, port->rss_config.key_len);
+      styled_text_add_marked (st, ST_R_VALUE, "RSS function is %{%U%}",
+			      format_vnet_dev_rss_function, c->function);
+    }
+
+  if (c->set_key)
+    {
+      vnet_dev_styled_new_line (st);
+      styled_text_add_marked (st, ST_R_VALUE, "RSS Key is %{%U%}", format_hex_bytes_no_wrap, c->key,
+			      c->key_len);
+    }
+
+  if (vnet_dev_rss_caps_has_fields (&port->attr.rss_caps))
+    {
+      table_t table = {};
+      u32 row = 0, max_depth = 0;
+
+      for (u32 i = 0; i < VNET_DEV_RSS_N_CLASSES; i++)
+	max_depth = clib_max (max_depth, vnet_dev_rss_class_depth (i));
+
+      for (i32 depth = max_depth; depth >= 0; depth--)
+	for (u32 i = 0; i < VNET_DEV_RSS_N_CLASSES; i++)
+	  if ((c->fields[i].is_set || i == VNET_DEV_RSS_CLASS_DEFAULT) &&
+	      vnet_dev_rss_class_depth (i) == depth)
+	    {
+	      table_format_cell (&table, row, 0, "%U", format_vnet_dev_rss_class, i);
+	      table_format_cell (&table, row, 1, "%U", format_vnet_dev_rss_fields,
+				 c->fields[i].as_u32);
+	      table_set_cell_align (&table, row, 0, TTAA_LEFT);
+	      table_set_cell_align (&table, row, 1, TTAA_LEFT);
+	      row++;
+	    }
+
+      vnet_dev_styled_new_line (st);
+      styled_text_add (st, "RSS hash fields:\n  %T", format_styled_table, &table);
+      table_free (&table);
     }
 
   if (port->rss_config.set_lut)
@@ -458,6 +608,7 @@ format_vnet_dev_port_info (u8 *s, va_list *args)
 			      format_vnet_dev_port_rx_offloads, &port->attr.rx_offloads);
       styled_text_add_marked (&st, ST_R_VALUE, "\nTX Offloads: %{%U%}",
 			      format_vnet_dev_port_tx_offloads, &port->attr.tx_offloads);
+      vnet_dev_styled_add_rss_caps (&st, port);
     }
 
   if (a->module && port->port_ops.get_module_eeprom)

@@ -352,7 +352,10 @@ vnet_dev_port_add (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_port_id_t id,
   port->tx_node = *args->tx_node;
 
   if (port->attr.caps.rss)
-    port->rss_config = args->port.default_rss_config;
+    {
+      port->rss_config = args->port.default_rss_config;
+      vnet_dev_rss_config_set_defaults (port);
+    }
 
   if (args->port.args)
     port->args = clib_args_init (args->port.args);
@@ -434,8 +437,11 @@ vnet_dev_port_cfg_change_req_validate (vlib_main_t *vm, vnet_dev_port_t *port,
     case VNET_DEV_PORT_CFG_SET_RSS_CONFIG:
       if (!port->attr.caps.rss)
 	return VNET_DEV_ERR_NOT_SUPPORTED;
-      if (req->rss_config.set_key == 0 && req->rss_config.set_lut == 0)
+      if (vnet_dev_rss_config_is_set (&req->rss_config) == 0)
 	return VNET_DEV_ERR_INVALID_DATA;
+      rv = vnet_dev_rss_config_validate (port, &req->rss_config, 0);
+      if (rv != VNET_DEV_OK)
+	return rv;
       if ((req->rss_config.set_key &&
 	   (req->rss_config.key_len == 0 ||
 	    req->rss_config.key_len > ARRAY_LEN (req->rss_config.key))) ||
@@ -575,18 +581,7 @@ vnet_dev_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
       break;
 
     case VNET_DEV_PORT_CFG_SET_RSS_CONFIG:
-      if (req->rss_config.set_key)
-	{
-	  clib_memcpy (port->rss_config.key, req->rss_config.key, sizeof (port->rss_config.key));
-	  port->rss_config.key_len = req->rss_config.key_len;
-	  port->rss_config.set_key = 1;
-	}
-      if (req->rss_config.set_lut)
-	{
-	  clib_memcpy (port->rss_config.lut, req->rss_config.lut, sizeof (port->rss_config.lut));
-	  port->rss_config.lut_len = req->rss_config.lut_len;
-	  port->rss_config.set_lut = 1;
-	}
+      vnet_dev_rss_config_merge (&port->rss_config, &req->rss_config);
       break;
 
     default:

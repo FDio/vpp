@@ -395,6 +395,15 @@ vnet_dev_api_port_set_rss_config (vlib_main_t *vm, vnet_dev_api_port_set_rss_con
 	       args->rss_config.key, args->rss_config.key_len);
   if (args->rss_config.set_lut)
     log_debug (dev, "port %u RSS LUT with %u entries", args->port_id, args->rss_config.lut_len);
+  if (args->rss_config.set_function)
+    log_debug (dev, "port %u RSS function %U", args->port_id, format_vnet_dev_rss_function,
+	       args->rss_config.function);
+  for (u32 i = 0; i < VNET_DEV_RSS_N_CLASSES; i++)
+    if (args->rss_config.fields[i].is_set)
+      log_debug (dev, "port %u RSS class %U fields %U", args->port_id, format_vnet_dev_rss_class, i,
+		 format_vnet_dev_rss_fields, args->rss_config.fields[i].as_u32);
+    else if (args->rss_config.reset_classes & (1 << i))
+      log_debug (dev, "port %u RSS class %U inherits", args->port_id, format_vnet_dev_rss_class, i);
 
   port = vnet_dev_get_port_by_id (dev, args->port_id);
   if (!port)

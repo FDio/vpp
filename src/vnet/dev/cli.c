@@ -695,34 +695,59 @@ VLIB_CLI_COMMAND (show_device_dma_slabs_cmd, static) = {
   .is_mp_safe = 1,
 };
 
+static const cli_choice_t rss_fields_choices[] = {
+#define _(n, v, h) { .name = n, .help = h, .value = (v) },
+  foreach_vnet_dev_rss_fields_alias
+#undef _
+#define _(v, n, s, h) { .name = s, .help = h, .value = (v) },
+    foreach_vnet_dev_rss_field
+#undef _
+  { .name = "inherit", .help = "fields of the parent class", .value = VNET_DEV_RSS_FIELDS_INHERIT },
+  {},
+};
+
+static const cli_choice_t rss_function_choices[] = {
+#define _(n, s) { .name = s, .value = VNET_DEV_RSS_FUNCTION_##n },
+  foreach_vnet_dev_rss_function
+#undef _
+  {},
+};
+
+static const char *rss_class_names[] = {
+#define _(n, s, p) [VNET_DEV_RSS_CLASS_##n] = s,
+  foreach_vnet_dev_rss_class
+#undef _
+};
+
+/* arguments of the rss commands, the class keywords start with ',' so they go last */
+#define RSS_CLASS_ARG(n, s, p)                                                                     \
+  , CLI_OPT_KEYWORD (s, cli_type_flags, .choices = rss_fields_choices,                             \
+		     .help = "hash fields of the " s " class")
+#define RSS_ARGS                                                                                   \
+  CLI_OPT_KEYWORD ("function", cli_type_enum, .choices = rss_function_choices,                     \
+		   .help = "hash function"),                                                       \
+    CLI_OPT_KEYWORD ("key", cli_type_hex, .max = VNET_DEV_RSS_KEY_MAX_SIZE,                        \
+		     .help = "RSS key, hex string"),                                               \
+    CLI_OPT_KEYWORD ("lut", cli_type_u32_list, .max = VNET_DEV_RSS_LUT_MAX_SIZE,                   \
+		     .help = "queue ids, e.g. 0,1,2,3") foreach_vnet_dev_rss_class
+
 static clib_error_t *
-device_set_rss_config_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
+rss_config_set (vlib_main_t *vm, cli_ctx_t *ctx, vnet_dev_port_t *port)
 {
-  vnet_dev_api_port_set_rss_config_args_t a = {};
+  vnet_dev_api_port_set_rss_config_args_t a = {
+    .port_id = port->port_id,
+    .dev_index = port->dev->index,
+  };
+  vnet_dev_rss_config_t *cfg = &a.rss_config;
   cli_value_t *v;
   vnet_dev_rv_t rv;
-  u32 sw_if_index = cli_index (ctx, "interface");
-
-  if (sw_if_index != ~0)
-    {
-      vnet_dev_port_t *port = vnet_dev_get_port_from_sw_if_index (sw_if_index);
-
-      if (port == 0)
-	return clib_error_return (0, "unsupported interface");
-      a.port_id = port->port_id;
-      a.dev_index = port->dev->index;
-    }
-  else
-    {
-      a.port_id = cli_u64 (ctx, "port", 0);
-      a.dev_index = cli_index (ctx, "dev");
-    }
+  u8 *err = 0;
 
   if ((v = cli_get (ctx, "key")))
     {
-      clib_memcpy (a.rss_config.key, v->str, vec_len (v->str));
-      a.rss_config.key_len = vec_len (v->str);
-      a.rss_config.set_key = 1;
+      clib_memcpy (cfg->key, v->str, vec_len (v->str));
+      cfg->key_len = vec_len (v->str);
+      cfg->set_key = 1;
     }
 
   if ((v = cli_get (ctx, "lut")))
@@ -733,11 +758,31 @@ device_set_rss_config_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 	{
 	  if (lut[i] > CLIB_U16_MAX)
 	    return clib_error_return (0, "queue id %u is too big", lut[i]);
-	  a.rss_config.lut[i] = lut[i];
+	  cfg->lut[i] = lut[i];
 	}
-      a.rss_config.lut_len = vec_len (lut);
-      a.rss_config.set_lut = 1;
+      cfg->lut_len = vec_len (lut);
+      cfg->set_lut = 1;
     }
+
+  if ((v = cli_get (ctx, "function")))
+    {
+      cfg->function = v->index;
+      cfg->set_function = 1;
+    }
+
+  for (u32 i = 0; i < VNET_DEV_RSS_N_CLASSES; i++)
+    if ((v = cli_get (ctx, rss_class_names[i])))
+      {
+	if ((v->u64 & VNET_DEV_RSS_FIELDS_INHERIT) && v->u64 != VNET_DEV_RSS_FIELDS_INHERIT)
+	  return clib_error_return (0, "'inherit' can't be combined with fields");
+	vnet_dev_rss_config_set_class (cfg, i, v->u64);
+      }
+
+  if (port->attr.caps.rss == 0)
+    return clib_error_return (0, "port doesn't support RSS");
+
+  if (vnet_dev_rss_config_validate (port, cfg, &err) != VNET_DEV_OK)
+    return clib_error_return (0, "%v", err);
 
   rv = vnet_dev_api_port_set_rss_config (vm, &a);
 
@@ -747,18 +792,57 @@ device_set_rss_config_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
   return 0;
 }
 
+static clib_error_t *
+device_set_rss_config_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
+{
+  u32 sw_if_index = cli_index (ctx, "interface");
+  vnet_dev_port_t *port;
+
+  if (sw_if_index != ~0)
+    port = vnet_dev_get_port_from_sw_if_index (sw_if_index);
+  else
+    {
+      vnet_dev_t *dev = vnet_dev_by_index (cli_index (ctx, "dev"));
+
+      port = dev ? vnet_dev_get_port_by_id (dev, cli_u64 (ctx, "port", 0)) : 0;
+    }
+
+  if (port == 0)
+    return clib_error_return (0, "unknown port");
+
+  return rss_config_set (vm, ctx, port);
+}
+
+#define _ RSS_CLASS_ARG
 VLIB_CLI_COMMAND (device_set_rss_config_cmd, static) = {
   .path = "device set-rss-config",
-  .short_help = "Set the RSS key and the lookup table of a port",
+  .short_help = "Set the RSS hash fields, hash function, key and lookup table of a port",
   .args = CLI_ARGS (
     CLI_ONEOF ("target", 0,
 	       CLI_VALUE ("interface", cli_type_sw_interface, .help = "interface of the port"),
 	       CLI_SEQ (CLI_KEYWORD ("dev", cli_type_dev, .help = "device of the port"),
 			CLI_OPT_KEYWORD ("port", cli_type_u32, .help = "port id, default 0"))),
-    CLI_OPT_KEYWORD ("key", cli_type_hex, .max = VNET_DEV_RSS_KEY_MAX_SIZE,
-		     .help = "RSS key, hex string"),
-    CLI_OPT_KEYWORD ("lut", cli_type_u32_list, .max = VNET_DEV_RSS_LUT_MAX_SIZE,
-		     .help = "queue ids, e.g. 0,1,2,3")),
+    RSS_ARGS),
   .handler = device_set_rss_config_cmd_fn,
   .is_mp_safe = 1,
 };
+
+static clib_error_t *
+set_interface_rss_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
+{
+  vnet_dev_port_t *port = vnet_dev_get_port_from_sw_if_index (cli_index (ctx, "interface"));
+
+  if (port == 0)
+    return clib_error_return (0, "not a device interface");
+
+  return rss_config_set (vm, ctx, port);
+}
+
+VLIB_CLI_COMMAND (set_interface_rss_cmd, static) = {
+  .path = "set interface rss",
+  .short_help = "Set the RSS hash fields, hash function, key and lookup table of an interface",
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_sw_interface), RSS_ARGS),
+  .handler = set_interface_rss_cmd_fn,
+  .is_mp_safe = 1,
+};
+#undef _

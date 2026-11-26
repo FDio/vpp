@@ -329,6 +329,10 @@ Devices are normally attached from the ``devices`` section of ``startup.conf``:
          rx-queue-assignment queue-per-thread
          flags interrupt-mode
          args 'name=value'
+         rss {
+           ipv4 2-tuple
+           ipv4-udp src-ip,src-port
+         }
        }
      }
      driver ice {
@@ -374,8 +378,22 @@ Devices are normally attached from the ``devices`` section of ``startup.conf``:
       the RX queues, with the main thread last) and ``queue-per-thread`` (one RX
       and one TX queue per thread, including the main thread).
 
+   ``rss { ... }``
+      RSS configuration of the port, see :ref:`dev_rss`:
+
+      ``function <function>``
+         Hash function: ``toeplitz``, ``symmetric-toeplitz`` or ``xor``.
+         ``unknown`` is the fixed function of a device which doesn't
+         document it.
+      ``key <hex>``
+         Hash key.
+      ``lut <queue-id>,...``
+         Lookup table, queue ids.
+      ``<class> <fields>``
+         Hash fields of a traffic class, each class at most once.
+
    ``rss-key`` and ``rss-lut``
-      RSS hash key and lookup table, see :ref:`dev_net`.
+      Same as ``key`` and ``lut`` in the ``rss`` section.
 
    ``args '<interface-args>'``
       Interface level arguments of the driver.
@@ -433,8 +451,11 @@ The framework registers the following commands:
 ``device create-secondary-interface`` and ``device remove-secondary-interface``
    Create and remove secondary interfaces of a port.
 
-``device set-rss-config [<intf>] [port <port-id>] [dev <device-id>] [key <rss-key>] [lut <queue-id,...>]``
-   Change the RSS key and lookup table at runtime.
+``device set-rss-config [<intf>] [port <port-id>] [dev <device-id>] [function <function>] [<class> <fields>] ... [key <rss-key>] [lut <queue-id,...>]``
+   Change the RSS configuration of a port at runtime, see :ref:`dev_rss`.
+
+``set interface rss <intf> [function <function>] [<class> <fields>] ... [key <rss-key>] [lut <queue-id,...>]``
+   Same as ``device set-rss-config``, for the port of an interface.
 
 ``show device [info] [status] [rss] [capabilities] [queues] [arguments|args] [module] [counters] [zero-counters] [clear] [all] [debug] [debug-level <n>] [<device-id> ...]``
    Show devices, ports and queues. Each flag selects a part of the output:
@@ -444,8 +465,8 @@ The framework registers the following commands:
      and the interfaces. Shown when no other part is selected.
    * ``status``: the driver port status.
    * ``rss``: the RSS configuration and the driver RSS details.
-   * ``capabilities``: the port capabilities and offloads and the driver device
-     capabilities.
+   * ``capabilities``: the port capabilities, offloads and RSS capabilities and
+     the driver device capabilities.
    * ``queues``: the RX, TX and crypto queues.
    * ``arguments`` (or ``args``): the device, port and secondary interface
      arguments.
@@ -530,6 +551,7 @@ The driver passes the attributes in ``vnet_dev_port_add_args_t``:
   ``ip4_cksum``, ``tcp_cksum``, ``udp_cksum``, ``tcp_gso`` and ``udp_gso`` on
   TX. A driver must only advertise what it has tested.
 * ``speed_caps``: supported link speeds.
+* ``rss_caps``: RSS hash fields and functions, see :ref:`dev_rss`.
 
 Queues
 ------
@@ -625,13 +647,142 @@ with the ``interrupt-mode`` port flag or changed at runtime
 (``set interface rx-mode``). The driver switches the hardware queue interrupt
 on request and must keep the mode working across stop and start.
 
+.. _dev_rss:
+
 RSS
 ---
 
-Ports with the ``rss`` capability take a hash key and an indirection table.
-``rss-key`` and ``rss-lut`` in the configuration and ``device set-rss-config`` at
-runtime end in a ``SET_RSS_CONFIG`` configuration change request. The driver can
-supply a default key.
+Ports with the ``rss`` capability take a hash key and an indirection table
+(LUT). Ports which also fill ``rss_caps`` let the user choose the hashed header
+fields per traffic class and the hash function. The ``rss`` section of the port
+configuration, ``device set-rss-config`` and ``set interface rss`` end in a
+``SET_RSS_CONFIG`` configuration change request.
+
+**Traffic classes.** A class which is not set uses the fields of its parent:
+
+=================  =============  ============================================
+Class              Parent         Traffic
+=================  =============  ============================================
+``default``                       traffic the device doesn't hash as IP
+``ipv4``           default        IPv4, including fragments
+``ipv4-tcp``       ipv4           IPv4 TCP
+``ipv4-udp``       ipv4           IPv4 UDP
+``ipv4-sctp``      ipv4           IPv4 SCTP
+``ipv4-esp``       ipv4           IPv4 ESP
+``ipv4-ah``        ipv4           IPv4 AH
+``ipv4-ipip-gre``  ipv4           IPv4 IP-in-IP or GRE with an inner IP header
+``ipv4-ipip``      ipv4-ipip-gre  IPv4 IP-in-IP
+``ipv4-gre``       ipv4-ipip-gre  IPv4 GRE
+``ipv4-vxlan``     ipv4-udp       IPv4 VXLAN
+``ipv4-geneve``    ipv4-udp       IPv4 GENEVE
+``ipv4-gtpu``      ipv4-udp       IPv4 GTP-U
+``ipv6``           default        IPv6, including fragments
+``ipv6-tcp``       ipv6           IPv6 TCP
+``ipv6-udp``       ipv6           IPv6 UDP
+``ipv6-sctp``      ipv6           IPv6 SCTP
+``ipv6-esp``       ipv6           IPv6 ESP
+``ipv6-ah``        ipv6           IPv6 AH
+``ipv6-ipip-gre``  ipv6           IPv6 IP-in-IP or GRE with an inner IP header
+``ipv6-ipip``      ipv6-ipip-gre  IPv6 IP-in-IP
+``ipv6-gre``       ipv6-ipip-gre  IPv6 GRE
+``ipv6-vxlan``     ipv6-udp       IPv6 VXLAN
+``ipv6-geneve``    ipv6-udp       IPv6 GENEVE
+``ipv6-gtpu``      ipv6-udp       IPv6 GTP-U
+=================  =============  ============================================
+
+``default`` is ``no-hash`` on devices which hash only IP traffic: non-IP traffic
+and IP behind headers the device doesn't parse, e.g. PPPoE or MPLS, go to the
+first LUT entry. ``ipv4`` and ``ipv6`` are ``4-tuple`` unless set otherwise (or
+``2-tuple`` if the device can't hash ports for them). Tunnel classes are hashed
+on the outer header unless their fields include ``inner``. IP fragments, the
+first one included, hash with the ``ipv4`` or ``ipv6`` class, so the
+fragments of a packet stay on one queue; drivers must keep it that way.
+
+**Fields.** A comma separated list of ``src-ip``, ``dst-ip``, ``src-port``,
+``dst-port``, ``spi`` (ESP and AH) and ``inner`` (tunnel classes: the other
+fields come from the innermost IP and transport headers, e.g.
+``inner,4-tuple``), or one of:
+
+``no-hash``
+   Not hashed, the traffic of the class goes to the first LUT entry.
+``2-tuple``
+   ``src-ip,dst-ip``.
+``4-tuple`` (or ``5-tuple``)
+   ``src-ip,dst-ip,src-port,dst-port``. The protocol is given by the class.
+``inherit``
+   Back to the fields of the parent class, not for ``default``.
+
+Fields a packet doesn't have are not used, so ``ipv4 4-tuple`` hashes IPv4 TCP,
+UDP and SCTP on addresses and ports and other IPv4 traffic on addresses. For
+example, to spread UDP sessions between two hosts and keep the rest of IPv4
+traffic on the source address:
+
+.. code-block:: text
+
+   set interface rss eth0 ipv4 src-ip ipv4-udp 4-tuple
+
+``show device rss`` shows the function, the key, the LUT and the classes
+which are set, and ``default``, most specific first, the order in which they
+apply to a packet. Classes not listed inherit from their parent:
+
+.. code-block:: text
+
+   RSS hash fields:
+     ipv4-udp src-ip,src-port
+     ipv4     4-tuple
+     ipv6     2-tuple
+     default  no-hash
+
+``show device capabilities`` shows what can be configured: the supported
+functions and, per class, the values it takes in the syntax of the startup
+configuration. ``any of`` takes any combination of the listed fields, ``inner``
+together with at least one other field, otherwise only the listed values are
+accepted:
+
+.. code-block:: text
+
+   RSS capabilities:
+     Functions: toeplitz
+     Hash fields:
+       class          fields
+       default        no-hash
+         ipv4         any of src-ip,dst-ip,src-port,dst-port or no-hash
+           ipv4-udp   any of src-ip,dst-ip,src-port,dst-port or no-hash
+
+   RSS capabilities:
+     Functions: toeplitz
+     Hash fields:
+       class          fields
+       default        no-hash
+         ipv4         2-tuple or 4-tuple or no-hash
+           ipv4-tcp   2-tuple or 4-tuple or no-hash
+
+**Driver side.** ``rss_caps.classes[class]`` describes a class: ``fields`` the
+fields it can hash, ``any`` if any non-empty combination of them is accepted,
+otherwise ``sets`` (up to ``VNET_DEV_RSS_MAX_FIELD_SETS``) lists the accepted
+combinations, and ``no_hash`` if the class can be set to ``no-hash``. A class
+with neither fields nor ``no_hash`` can't be set on its own.
+``VNET_DEV_RSS_CLASS_CAPS_ANY (fields, no_hash)`` covers the common case.
+``rss_caps.functions`` is a bitmap of ``vnet_dev_rss_function_t``. The framework
+checks requests against these, the driver checks combinations of classes it
+can't do in ``config_change_validate``. The framework lets ``default`` be
+``no-hash``, a driver gives it fields only if the device hashes non-IP traffic.
+If the driver doesn't set ``ipv4`` or ``ipv6`` in
+``default_rss_config``, they are ``4-tuple`` when accepted, otherwise
+``2-tuple``, and the function is ``toeplitz``, or the first one in
+``rss_caps.functions`` if the device has no ``toeplitz``. A device which hashes
+with a fixed function it doesn't document reports ``unknown``. The driver gets
+the fields of a class with ``vnet_dev_rss_class_fields()``, which follows the
+parents, and builds the complete configuration of a change request with
+``vnet_dev_rss_config_merge()``. A driver without ``rss_caps`` keeps its own
+hash fields and only takes the key and the LUT.
+
+Many devices only switch hashing on addresses or on addresses and ports per
+IPv4, IPv6 and their TCP and UDP traffic, and fall back to the IP hash when TCP
+or UDP is off. ``VNET_DEV_RSS_CLASS_CAPS_TUPLES`` describes such a class
+(``2-tuple`` or ``4-tuple``, or ``no-hash``) and ``vnet_dev_rss_tuple_types()``
+gives the types to enable for a configuration, or fails if the configuration
+can't be expressed.
 
 Secondary interfaces
 --------------------

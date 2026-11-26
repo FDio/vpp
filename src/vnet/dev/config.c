@@ -22,9 +22,45 @@ typedef struct
 } port_config_t;
 
 static clib_error_t *
+vnet_dev_config_rss (unformat_input_t *input, vnet_dev_rss_config_t *cfg)
+{
+  u32 seen = 0, class, fields, function;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "function %U", unformat_vnet_dev_rss_function, &function))
+	{
+	  cfg->function = function;
+	  cfg->set_function = 1;
+	}
+      else if (unformat (input, "key %U", unformat_vnet_dev_rss_key, cfg))
+	;
+      else if (unformat (input, "lut %U", unformat_vnet_dev_rss_lut, cfg))
+	;
+      else if (unformat (input, "%U", unformat_vnet_dev_rss_class, &class))
+	{
+	  if (seen & (1 << class))
+	    return clib_error_return (0, "rss class '%U' given more than once",
+				      format_vnet_dev_rss_class, class);
+	  if (!unformat (input, "%U", unformat_vnet_dev_rss_fields, &fields))
+	    return clib_error_return (0, "invalid fields of rss class '%U': '%U'",
+				      format_vnet_dev_rss_class, class, format_unformat_error,
+				      input);
+	  seen |= 1 << class;
+	  vnet_dev_rss_config_set_class (cfg, class, fields);
+	}
+      else
+	return clib_error_return (0, "unknown rss input '%U'", format_unformat_error, input);
+    }
+
+  return 0;
+}
+
+static clib_error_t *
 vnet_dev_config_one_interface (vlib_main_t *vm, unformat_input_t *input,
 			       port_config_t *args)
 {
+  unformat_input_t sub_input;
   clib_error_t *err = 0;
 
   log_debug (0, "port %u %U", args->intf.port_id, format_unformat_input,
@@ -45,6 +81,13 @@ vnet_dev_config_one_interface (vlib_main_t *vm, unformat_input_t *input,
 	args->intf.rx_queue_size = n;
       else if (unformat (input, "tx-queue-size %u", &n))
 	args->intf.tx_queue_size = n;
+      else if (unformat (input, "rss %U", unformat_vlib_cli_sub_input, &sub_input))
+	{
+	  err = vnet_dev_config_rss (&sub_input, &args->rss_config_args.rss_config);
+	  unformat_free (&sub_input);
+	  if (err)
+	    break;
+	}
       else if (unformat (input, "rss-key %U", unformat_vnet_dev_rss_key,
 			 &args->rss_config_args.rss_config))
 	;
@@ -194,7 +237,7 @@ vnet_dev_config_one_device (vlib_main_t *vm, unformat_input_t *input,
 	      rv = vnet_dev_api_create_port_if (vm, &p->intf);
 	      if (rv != VNET_DEV_OK)
 		break;
-	      if (p->rss_config_args.rss_config.set_key || p->rss_config_args.rss_config.set_lut)
+	      if (vnet_dev_rss_config_is_set (&p->rss_config_args.rss_config))
 		{
 		  vnet_dev_api_port_set_rss_config_args_t *rca = &p->rss_config_args;
 		  rca->port_id = p->intf.port_id;

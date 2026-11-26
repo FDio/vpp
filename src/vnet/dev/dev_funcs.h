@@ -481,4 +481,48 @@ vnet_dev_queue_size_is_valid (u32 size, vnet_dev_queue_config_t *c)
   return 1;
 }
 
+/* 1 if the device takes hash fields for any class */
+static_always_inline int
+vnet_dev_rss_caps_has_fields (const vnet_dev_rss_caps_t *caps)
+{
+  for (u32 i = 0; i < VNET_DEV_RSS_N_CLASSES; i++)
+    if (caps->classes[i].fields.as_u32)
+      return 1;
+  return 0;
+}
+
+static_always_inline vnet_dev_rss_class_t
+vnet_dev_rss_class_parent (vnet_dev_rss_class_t class)
+{
+  switch (class)
+    {
+#define _(n, s, p)                                                                                 \
+  case VNET_DEV_RSS_CLASS_##n:                                                                     \
+    return VNET_DEV_RSS_CLASS_##p;
+      foreach_vnet_dev_rss_class
+#undef _
+	default : return VNET_DEV_RSS_CLASS_DEFAULT;
+    }
+}
+
+/* fields used for the class, the ones of the closest parent which is set */
+static_always_inline vnet_dev_rss_fields_t
+vnet_dev_rss_class_fields (const vnet_dev_rss_config_t *c, vnet_dev_rss_class_t class)
+{
+  while (c->fields[class].is_set == 0 && class != VNET_DEV_RSS_CLASS_DEFAULT)
+    class = vnet_dev_rss_class_parent (class);
+  return c->fields[class];
+}
+
+static_always_inline int
+vnet_dev_rss_config_is_set (const vnet_dev_rss_config_t *c)
+{
+  if (c->set_key || c->set_lut || c->set_function || c->reset_classes)
+    return 1;
+  for (u32 i = 0; i < VNET_DEV_RSS_N_CLASSES; i++)
+    if (c->fields[i].is_set)
+      return 1;
+  return 0;
+}
+
 #endif /* _VNET_DEV_FUNCS_H_ */
