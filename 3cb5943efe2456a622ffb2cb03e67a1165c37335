@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "be76bea6_cabf86ba",
+        "filename": "src/vnet/sfdp/sfdp.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 239,
+      "author": {
+        "id": 3027
+      },
+      "writtenOn": "2026-11-26T16:35:11Z",
+      "side": 1,
+      "message": "Tried adding duplicate pre-filters manually, and it seems like VPP crashed.\n\nTook a further look and it seems like SFDP\u0027s main init function `sfdp_init()` is actually called beforehand by `sfdp_parser_init()` i.e. VPP\u0027s `show init-function init` reports the following:\n\n```\n[162]: sfdp_parser_init\n[163]: sfdp_init\n[164]: sfdp_service_init\n```\n\nSince sfdp_init() exits early when the pre-filter duplicate error occurs, then it doesn\u0027t initialize timeout entries and `sfdp_parser_init()` that calls it doesn\u0027t catch any error it returns. Therefore when later attempting to access sfdp timeout entries we crash with a segfault.\n\nCould you do those two changes: (1) sfdp_parser_init should catch errors returned by  \"vlib_call_init_function (vm, sfdp_init);\" and exit (i.e. with clib_panic), (2) could you move `sfdp_pre_filter_check_duplicates` call to after timeout registration in `sfdp_init` (more a personal preference than hard enforcement) ?",
+      "revId": "3cb5943efe2456a622ffb2cb03e67a1165c37335",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
