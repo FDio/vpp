@@ -18,7 +18,6 @@ import (
 
 	"go.fd.io/govpp/binapi/ethernet_types"
 
-	"github.com/edwarnicke/exechelper"
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/sirupsen/logrus"
 
@@ -292,22 +291,14 @@ func (vpp *VppInstance) Stop() {
 func (vpp *VppInstance) Vppctl(command any, arguments ...any) string {
 	defer GinkgoRecover()
 
-	var vppCliCommand string
-	if len(arguments) > 0 {
-		vppCliCommand = fmt.Sprintf(fmt.Sprint(command), arguments...)
-	} else {
-		vppCliCommand = fmt.Sprint(command)
-	}
+	vppCliCommand := formatExecCommand(command, arguments)
 
 	if *DryRun {
 		vpp.AppendToCliConfig(vppCliCommand)
 		return fmt.Sprintf("Command added to '%s/cli-config.conf': %s", vpp.Container.GetContainerWorkDir(), vppCliCommand)
 	}
 
-	containerExecCommand := fmt.Sprintf("docker exec --detach=false %[1]s vppctl -s %[2]s %[3]s",
-		vpp.Container.Name, vpp.getCliSocket(), vppCliCommand)
-	Log(containerExecCommand)
-	output, err := exechelper.CombinedOutput(containerExecCommand)
+	output, err := vpp.Container.Exec(false, "vppctl -s %q %s", vpp.getCliSocket(), vppCliCommand)
 
 	// If an error occurs, retrieve the caller function's name.
 	// If retrieving the caller name fails, fail without any extra steps.
@@ -328,7 +319,7 @@ func (vpp *VppInstance) Vppctl(command any, arguments ...any) string {
 		}
 	}
 
-	return string(output)
+	return output
 }
 
 func (vpp *VppInstance) GetSessionStat(stat string) int {
