@@ -9,13 +9,9 @@
 #include <ice.h>
 
 static clib_error_t *
-show_ice_phy_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
-		     __clib_unused vlib_cli_command_t *cmd)
+show_ice_phy_cmd_fn (vlib_main_t *vm, __clib_unused cli_ctx_t *ctx)
 {
   vnet_dev_main_t *dm = &vnet_dev_main;
-
-  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
 
   pool_foreach_pointer (dev, dm->devices)
     {
@@ -36,18 +32,15 @@ show_ice_phy_cmd_fn (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (show_ice_phy_cmd, static) = {
   .path = "show device driver ice phy",
-  .short_help = "show device driver ice phy",
-  .function = show_ice_phy_cmd_fn,
+  .short_help = "Show the PHY status of ice ports",
+  .handler = show_ice_phy_cmd_fn,
   .is_mp_safe = 1,
 };
 
 static clib_error_t *
-ice_cli_show (vlib_main_t *vm, unformat_input_t *input, vnet_dev_op_with_ptr_t *dump)
+ice_cli_show (vlib_main_t *vm, vnet_dev_op_with_ptr_t *dump)
 {
   vnet_dev_main_t *dm = &vnet_dev_main;
-
-  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    return clib_error_return (0, "unknown input `%U'", format_unformat_error, input);
 
   pool_foreach_pointer (dev, dm->devices)
     {
@@ -73,21 +66,20 @@ ice_cli_show (vlib_main_t *vm, unformat_input_t *input, vnet_dev_op_with_ptr_t *
 }
 
 #define foreach_ice_show_subsystem                                                                 \
-  _ (aq)                                                                                           \
-  _ (capabilities)                                                                                 \
-  _ (vsi)                                                                                          \
-  _ (rss)
+  _ (aq, "Show the admin queues of ice devices")                                                   \
+  _ (capabilities, "Show the capabilities of ice devices")                                         \
+  _ (vsi, "Show the VSIs of ice devices")                                                          \
+  _ (rss, "Show the RSS configuration of ice devices")
 
-#define _(name)                                                                                    \
-  static clib_error_t *show_ice_##name##_cmd_fn (vlib_main_t *vm, unformat_input_t *input,         \
-						 __clib_unused vlib_cli_command_t *cmd)            \
+#define _(name, help)                                                                              \
+  static clib_error_t *show_ice_##name##_cmd_fn (vlib_main_t *vm, __clib_unused cli_ctx_t *ctx)    \
   {                                                                                                \
-    return ice_cli_show (vm, input, ice_dump_##name);                                              \
+    return ice_cli_show (vm, ice_dump_##name);                                                     \
   }                                                                                                \
   VLIB_CLI_COMMAND (show_ice_##name##_cmd, static) = {                                             \
     .path = "show device driver ice " #name,                                                       \
-    .short_help = "show device driver ice " #name,                                                 \
-    .function = show_ice_##name##_cmd_fn,                                                          \
+    .short_help = help,                                                                            \
+    .handler = show_ice_##name##_cmd_fn,                                                           \
     .is_mp_safe = 1,                                                                               \
   };
 foreach_ice_show_subsystem
