@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "58065d88_5a57553b",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-26T13:59:48Z",
+      "side": 1,
+      "message": "This is just noise, can you really tell what the change is about by reading these paragraphs?",
+      "revId": "4efa864b6487a445d1c4c8eb67cce48034349d87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "36905223_1abfecc4",
+        "filename": "test/asf/test_cli.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-26T13:59:48Z",
+      "side": 1,
+      "message": "And how does this comment assure that?",
+      "revId": "4efa864b6487a445d1c4c8eb67cce48034349d87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "54ae2f00_9e51a6a2",
+        "filename": "test/asf/test_cli.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-26T13:59:48Z",
+      "side": 1,
+      "message": "Why is this an absolute bound instead of a delta? Delta would make sure the comment \"invariant\" holds. Making all the values used in test delta-calculated seems like a better design.",
+      "revId": "4efa864b6487a445d1c4c8eb67cce48034349d87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0290ce62_4719c717",
+        "filename": "test/asf/test_cli.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-26T13:59:48Z",
+      "side": 1,
+      "message": "Why replace the other magic numbers, but keep this one?",
+      "revId": "4efa864b6487a445d1c4c8eb67cce48034349d87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
