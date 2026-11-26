@@ -20,6 +20,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "45f7caa1_bee82a0f",
+        "filename": "test/test_ip4.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 667,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-26T20:45:11Z",
+      "side": 1,
+      "message": "PS2 defaults table_id to 0 and checks that every returned route belongs to the requested table and has an IPv4 prefix. A wrong-table or IPv6 entry now fails the test.",
+      "parentUuid": "fd1ead6a_82793e0b",
+      "revId": "b7d8aabd64468f8f29149f1bc9dad3bebb8b04a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "2bb1495d_46af0331",
         "filename": "test/test_ip4.py",
         "patchSetId": 1
@@ -31,6 +49,24 @@
       "writtenOn": "2026-11-26T19:37:57Z",
       "side": 1,
       "message": "How does this comment make sense outside of this gerrit change? \"as before\" means nothing if not looking at this diff. Please consider whether a comment makes sense before writing one and/or cleanup after your agent.\n\nAlso, I see no point having this fallback, in which scenario are the routes not all present at verify_route_[not_in_]dump invocation time?",
+      "revId": "b7d8aabd64468f8f29149f1bc9dad3bebb8b04a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1dcd25f3_cf4dd4d3",
+        "filename": "test/test_ip4.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 674,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-26T20:45:11Z",
+      "side": 1,
+      "message": "The add/delete API calls complete before either assertion helper runs, so the route changes should already be visible in the first dump. PS2 checks that dump directly and removes the fallback and its comment.",
+      "parentUuid": "2bb1495d_46af0331",
       "revId": "b7d8aabd64468f8f29149f1bc9dad3bebb8b04a2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
