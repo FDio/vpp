@@ -128,7 +128,8 @@ vhost_user_tx_trace (vhost_trace_t * t,
     {
       t->virtio_ring_flags |= 1 << VIRTIO_TRACE_F_INDIRECT;
       /* Header is the first here */
-      hdr_desc = map_guest_mem (vui, rxvq->desc[desc_current].addr, &hint);
+      hdr_desc = map_guest_mem (vui, rxvq->desc[desc_current].addr,
+				sizeof (vnet_virtio_vring_desc_t), &hint);
     }
   if (rxvq->desc[desc_current].flags & VRING_DESC_F_NEXT)
     {
@@ -150,20 +151,18 @@ vhost_user_tx_copy (vhost_user_intf_t * vui, vhost_copy_t * cpy,
   void *dst0, *dst1, *dst2, *dst3;
   if (PREDICT_TRUE (copy_len >= 4))
     {
-      if (PREDICT_FALSE (!(dst2 = map_guest_mem (vui, cpy[0].dst, map_hint))))
+      if (PREDICT_FALSE (!(dst2 = map_guest_mem (vui, cpy[0].dst, cpy[0].len, map_hint))))
 	return 1;
-      if (PREDICT_FALSE (!(dst3 = map_guest_mem (vui, cpy[1].dst, map_hint))))
+      if (PREDICT_FALSE (!(dst3 = map_guest_mem (vui, cpy[1].dst, cpy[1].len, map_hint))))
 	return 1;
       while (PREDICT_TRUE (copy_len >= 4))
 	{
 	  dst0 = dst2;
 	  dst1 = dst3;
 
-	  if (PREDICT_FALSE
-	      (!(dst2 = map_guest_mem (vui, cpy[2].dst, map_hint))))
+	  if (PREDICT_FALSE (!(dst2 = map_guest_mem (vui, cpy[2].dst, cpy[2].len, map_hint))))
 	    return 1;
-	  if (PREDICT_FALSE
-	      (!(dst3 = map_guest_mem (vui, cpy[3].dst, map_hint))))
+	  if (PREDICT_FALSE (!(dst3 = map_guest_mem (vui, cpy[3].dst, cpy[3].len, map_hint))))
 	    return 1;
 
 	  clib_prefetch_load ((void *) cpy[2].src);
@@ -180,7 +179,7 @@ vhost_user_tx_copy (vhost_user_intf_t * vui, vhost_copy_t * cpy,
     }
   while (copy_len)
     {
-      if (PREDICT_FALSE (!(dst0 = map_guest_mem (vui, cpy->dst, map_hint))))
+      if (PREDICT_FALSE (!(dst0 = map_guest_mem (vui, cpy->dst, cpy->len, map_hint))))
 	return 1;
       clib_memcpy_fast (dst0, (void *) cpy->src, cpy->len);
       vhost_user_log_dirty_pages_2 (vui, cpy->dst, cpy->len, 1);
@@ -346,7 +345,7 @@ vhost_user_tx_trace_packed (vhost_trace_t * t, vhost_user_intf_t * vui,
       t->virtio_ring_flags |= 1 << VIRTIO_TRACE_F_INDIRECT;
       /* Header is the first here */
       hdr_desc = map_guest_mem (vui, rxvq->packed_desc[desc_current].addr,
-				&hint);
+				sizeof (vnet_virtio_vring_packed_desc_t), &hint);
     }
   if (rxvq->packed_desc[desc_current].flags & VRING_DESC_F_NEXT)
     {
@@ -433,8 +432,8 @@ retry:
 	      goto done;
 	    }
 	  n_entries = desc_table[desc_head].len >> 4;
-	  desc_table = map_guest_mem (vui, desc_table[desc_index].addr,
-				      &map_hint);
+	  desc_table =
+	    map_guest_mem (vui, desc_table[desc_index].addr, desc_table[desc_index].len, &map_hint);
 	  if (PREDICT_FALSE (desc_table == 0))
 	    {
 	      error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
@@ -768,10 +767,8 @@ retry:
 	      error = VHOST_USER_TX_FUNC_ERROR_INDIRECT_OVERFLOW;
 	      goto done;
 	    }
-	  if (PREDICT_FALSE
-	      (!(desc_table =
-		 map_guest_mem (vui, rxvq->desc[desc_index].addr,
-				&map_hint))))
+	  if (PREDICT_FALSE (!(desc_table = map_guest_mem (vui, rxvq->desc[desc_index].addr,
+							   rxvq->desc[desc_index].len, &map_hint))))
 	    {
 	      error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
 	      goto done;
@@ -866,11 +863,9 @@ retry:
 			  error = VHOST_USER_TX_FUNC_ERROR_INDIRECT_OVERFLOW;
 			  goto done;
 			}
-		      if (PREDICT_FALSE
-			  (!(desc_table =
-			     map_guest_mem (vui,
-					    rxvq->desc[desc_index].addr,
-					    &map_hint))))
+		      if (PREDICT_FALSE (
+			    !(desc_table = map_guest_mem (vui, rxvq->desc[desc_index].addr,
+							  rxvq->desc[desc_index].len, &map_hint))))
 			{
 			  error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
 			  goto done;
