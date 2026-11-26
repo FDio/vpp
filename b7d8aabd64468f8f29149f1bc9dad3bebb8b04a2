@@ -36,6 +36,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "5f446b5a_0ff47de4",
+        "filename": "test/test_ip4.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 667,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-26T21:01:21Z",
+      "side": 1,
+      "message": "Resolved in PS2.",
+      "parentUuid": "45f7caa1_bee82a0f",
+      "revId": "b7d8aabd64468f8f29149f1bc9dad3bebb8b04a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "2bb1495d_46af0331",
@@ -67,6 +85,24 @@
       "side": 1,
       "message": "The add/delete API calls complete before either assertion helper runs, so the route changes should already be visible in the first dump. PS2 checks that dump directly and removes the fallback and its comment.",
       "parentUuid": "2bb1495d_46af0331",
+      "revId": "b7d8aabd64468f8f29149f1bc9dad3bebb8b04a2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "ddd8c386_d3360528",
+        "filename": "test/test_ip4.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 674,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-26T21:01:21Z",
+      "side": 1,
+      "message": "Resolved in PS2.",
+      "parentUuid": "1dcd25f3_cf4dd4d3",
       "revId": "b7d8aabd64468f8f29149f1bc9dad3bebb8b04a2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
