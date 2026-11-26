@@ -1926,39 +1926,19 @@ collect_detailed_interface_stats_flag_clear (void)
 }
 
 static clib_error_t *
-collect_detailed_interface_stats_cli (vlib_main_t * vm,
-				      unformat_input_t * input,
-				      vlib_cli_command_t * cmd)
+collect_detailed_interface_stats_cli (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  clib_error_t *error = NULL;
+  if (cli_index (ctx, "state"))
+    collect_detailed_interface_stats_flag_set ();
+  else
+    collect_detailed_interface_stats_flag_clear ();
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, "expected enable | disable");
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "enable") || unformat (line_input, "on"))
-	collect_detailed_interface_stats_flag_set ();
-      else if (unformat (line_input, "disable")
-	       || unformat (line_input, "off"))
-	collect_detailed_interface_stats_flag_clear ();
-      else
-	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
-    }
-
-done:
-  unformat_free (line_input);
-  return error;
+  return 0;
 }
 
 VLIB_CLI_COMMAND (collect_detailed_interface_stats_command, static) = {
   .path = "interface collect detailed-stats",
-  .short_help = "interface collect detailed-stats <enable|disable>",
-  .function = collect_detailed_interface_stats_cli,
+  .short_help = "Enable or disable the detailed interface counters",
+  .args = CLI_ARGS (CLI_VALUE ("state", cli_type_bool, .help = "enable or disable")),
+  .handler = collect_detailed_interface_stats_cli,
 };
