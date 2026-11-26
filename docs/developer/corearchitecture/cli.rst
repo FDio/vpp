@@ -309,6 +309,10 @@ Generic types for values which are not tied to a component:
    * - ``cli_type_bitmap``
      - ``v->str``, a bitmap
      - ``0-3,5``
+   * - ``cli_type_time_range``
+     - ``v->str``, vector of ``clib_timebase_range_t``
+     - ``mon-fri/09:00-17:00``, one range per day, in seconds since Sunday
+       midnight
    * - ``cli_type_dash``
      - nothing
      - the word ``-``, between the first and the last value of a range which is

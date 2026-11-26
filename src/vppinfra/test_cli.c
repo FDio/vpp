@@ -4,6 +4,7 @@
 
 #include <vppinfra/cli.h>
 #include <vppinfra/pool.h>
+#include <vppinfra/time_range.h>
 
 #define TEST_ASSERT(c)                                                                             \
   if (!(c))                                                                                        \
@@ -903,6 +904,64 @@ test_alt_keyword (void)
   return 0;
 }
 
+static const cli_arg_t time_range_args[] = {
+  CLI_OPT_KEYWORD_F ("range", cli_type_time_range, CLI_F_REPEAT),
+  {},
+};
+
+static clib_error_t *
+test_time_range (void)
+{
+  static const char *bad[][2] = {
+    { "mon", "is not days and hours" },
+    { "mon/", "is not days and hours" },
+    { "mox/09:00-10:00", "is not days and hours" },
+    { "mo/09:00-10:00", "is not days and hours" },
+    { "mon-/09:00-10:00", "is not days and hours" },
+    { "/09:00-10:00", "is not days and hours" },
+    { "mon/09:00", "is not days and hours" },
+    { "mon/09:00-10:00x", "is not days and hours" },
+    { "mon/25:00-26:00", "is not days and hours" },
+    { "mon/09:60-10:00", "is not days and hours" },
+    { "mon/09:00:60-10:00", "is not days and hours" },
+    { "mon/09:00-24:01", "is not days and hours" },
+    { "fri-mon/09:00-10:00", "the last day is before the first" },
+    { "mon/10:00-10:00", "the end time is not after the start time" },
+  };
+  clib_timebase_range_t *r;
+  cli_ctx_t ctx = {};
+  clib_error_t *e;
+  cli_value_t *v;
+  u8 *line = format (0, "range Monday-tue/7:59-18:01 range sat/22:00:30-24:00");
+
+  e = cli_parse_line (time_range_args, line, &ctx);
+  TEST_ASSERT (e == 0);
+  v = cli_get (&ctx, "range");
+  r = (clib_timebase_range_t *) v->str;
+  TEST_ASSERT (vec_len (r) == 2);
+  TEST_ASSERT (r[0].start == 86400 + 28740 && r[0].end == 86400 + 64860);
+  TEST_ASSERT (r[1].start == 2 * 86400 + 28740 && r[1].end == 2 * 86400 + 64860);
+  v = cli_get_next (&ctx, v);
+  r = (clib_timebase_range_t *) v->str;
+  TEST_ASSERT (vec_len (r) == 1);
+  TEST_ASSERT (r[0].start == 6 * 86400 + 79230 && r[0].end == 7 * 86400);
+  TEST_ASSERT (cli_get_next (&ctx, v) == 0);
+  cli_ctx_free (&ctx);
+
+  for (u32 i = 0; i < ARRAY_LEN (bad); i++)
+    {
+      vec_reset_length (line);
+      line = format (line, "range %s", bad[i][0]);
+      e = cli_parse_line (time_range_args, line, &ctx);
+      TEST_ASSERT (contains (e, (char *) bad[i][1]));
+      clib_error_free (e);
+      cli_ctx_free (&ctx);
+    }
+
+  vec_free (line);
+  return 0;
+}
+
 /* a name which selects the arguments which follow it */
 static const cli_arg_t alpha_args[] = {
   CLI_OPT_KEYWORD ("count", cli_type_u32, .def = "3"),
@@ -1038,7 +1097,8 @@ main (int argc, char *argv[])
   if ((err = test_parse ()) || (err = test_errors ()) || (err = test_completion ()) ||
       (err = test_filters ()) || (err = test_output ()) || (err = test_rest_and_pipeline ()) ||
       (err = test_help_and_schema ()) || (err = test_constraints ()) || (err = test_types ()) ||
-      (err = test_alt_keyword ()) || (err = test_next_args ()) || (err = test_leaks ()))
+      (err = test_alt_keyword ()) || (err = test_next_args ()) || (err = test_time_range ()) ||
+      (err = test_leaks ()))
     {
       fformat (stdout, "%U\n", format_clib_error, err);
       clib_error_free (err);
