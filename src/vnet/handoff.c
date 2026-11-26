@@ -4,6 +4,7 @@
  */
 
 #include <vnet/vnet.h>
+#include <vnet/interface/cli_types.h>
 #include <vnet/hash/hash.h>
 #include <vlib/threads.h>
 #include <vnet/feature/feature.h>
@@ -237,44 +238,20 @@ interface_handoff_enable_disable (vlib_main_t *vm, u32 sw_if_index,
 }
 
 static clib_error_t *
-set_interface_handoff_command_fn (vlib_main_t * vm,
-				  unformat_input_t * input,
-				  vlib_cli_command_t * cmd)
+set_interface_handoff_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  u32 sw_if_index = ~0, is_sym = 0, is_l4 = 0, fq_nelts = 0;
-  int enable_disable = 1;
-  uword *bitmap = 0;
-  int rv = 0;
+  u32 sw_if_index = cli_index (ctx, "interface");
+  int enable_disable = !cli_flag (ctx, "disable");
+  uword *bitmap = clib_bitmap_dup ((uword *) cli_get (ctx, "workers")->str);
+  int rv;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "disable"))
-	enable_disable = 0;
-      else if (unformat (input, "workers %U", unformat_bitmap_list, &bitmap))
-	;
-      else if (unformat (input, "%U", unformat_vnet_sw_interface,
-			 vnet_get_main (), &sw_if_index))
-	;
-      else if (unformat (input, "symmetrical"))
-	is_sym = 1;
-      else if (unformat (input, "asymmetrical"))
-	is_sym = 0;
-      else if (unformat (input, "l4"))
-	is_l4 = 1;
-      else if (unformat (input, "fq-nelts %u", &fq_nelts))
-	;
-      else
-	break;
-    }
+  rv = interface_handoff_enable_disable (vm, sw_if_index, bitmap, cli_flag (ctx, "symmetrical"),
+					 cli_flag (ctx, "l4"), cli_u64 (ctx, "fq-nelts", 0),
+					 enable_disable);
 
-  if (sw_if_index == ~0)
-    return clib_error_return (0, "Please specify an interface...");
-
-  if (bitmap == 0)
-    return clib_error_return (0, "Please specify list of workers...");
-
-  rv = interface_handoff_enable_disable (vm, sw_if_index, bitmap, is_sym,
-					 is_l4, fq_nelts, enable_disable);
+  /* the bitmap is kept only when the handoff was enabled */
+  if (rv || !enable_disable)
+    clib_bitmap_free (bitmap);
 
   switch (rv)
     {
@@ -303,9 +280,16 @@ set_interface_handoff_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (set_interface_handoff_command, static) = {
   .path = "set interface handoff",
-  .short_help = "set interface handoff <interface-name> workers <workers-list>"
-		" [symmetrical|asymmetrical] [l4] [fq-nelts <n>] [disable]",
-  .function = set_interface_handoff_command_fn,
+  .short_help = "Hand off received packets of an interface to worker threads",
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_sw_interface),
+		    CLI_KEYWORD ("workers", cli_type_bitmap, .help = "workers, 0-3,5"),
+		    CLI_FLAG ("symmetrical", .excludes = "asymmetrical",
+			      .help = "hash both directions of a flow to the same worker"),
+		    CLI_FLAG ("asymmetrical", .help = "default"),
+		    CLI_FLAG ("l4", .help = "hash the L4 ports too"),
+		    CLI_OPT_KEYWORD ("fq-nelts", cli_type_u32, .help = "size of the frame queues"),
+		    CLI_FLAG ("disable")),
+  .handler = set_interface_handoff_command_fn,
 };
 
 clib_error_t *
