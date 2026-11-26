@@ -7,6 +7,8 @@
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/bonding/node.h>
+#include <vnet/ethernet/cli_types.h>
+#include <vnet/interface/cli_types.h>
 #include <vlib/stats/stats.h>
 
 typedef struct
@@ -574,59 +576,49 @@ bond_create_if (vlib_main_t * vm, bond_create_if_args_t * args)
   args->rv = 0;
 }
 
+static const cli_choice_t bond_mode_choices[] = {
+#define _(v, f, s) { s, 0, v },
+  foreach_bond_mode
+#undef _
+  {},
+};
+
+static const cli_choice_t bond_lb_choices[] = {
+#define _(v, f, s, p) { s, 0, v },
+  foreach_bond_lb
+#undef _
+  {},
+};
+
 static clib_error_t *
-bond_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			vlib_cli_command_t * cmd)
+bond_create_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  bond_create_if_args_t args = { 0 };
-  u8 mode_is_set = 0;
+  bond_create_if_args_t args = {
+    .id = cli_u64 (ctx, "id", ~0),
+    .mode = cli_index (ctx, "mode"),
+    .lb = BOND_LB_L2,
+    .gso = cli_flag (ctx, "gso"),
+    .numa_only = cli_flag (ctx, "numa-only"),
+    .rv = -1,
+  };
+  cli_value_t *v;
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, "Missing required arguments.");
-
-  args.id = ~0;
-  args.mode = -1;
-  args.lb = BOND_LB_L2;
-  args.rv = -1;
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+  if ((v = cli_get (ctx, "load-balance")))
     {
-      if (unformat (line_input, "mode %U", unformat_bond_mode, &args.mode))
-	mode_is_set = 1;
-      else if (((args.mode == BOND_MODE_LACP) || (args.mode == BOND_MODE_XOR))
-	       && unformat (line_input, "load-balance %U",
-			    unformat_bond_load_balance, &args.lb))
-	;
-      else if (unformat (line_input, "hw-addr %U",
-			 unformat_ethernet_address, args.hw_addr))
-	args.hw_addr_set = 1;
-      else if (unformat (line_input, "id %u", &args.id))
-	;
-      else if (unformat (line_input, "gso"))
-	args.gso = 1;
-      else if (unformat (line_input, "numa-only"))
-	{
-	  if (args.mode == BOND_MODE_LACP)
-	    args.numa_only = 1;
-	  else
-	    {
-	      unformat_free (line_input);
-	      return clib_error_return (
-		0, "Only lacp mode supports numa-only so far!");
-	    }
-	}
-      else
-	{
-	  unformat_free (line_input);
-	  return clib_error_return (0, "unknown input `%U'",
-				    format_unformat_error, input);
-	}
-    }
-  unformat_free (line_input);
+      if (args.mode != BOND_MODE_LACP && args.mode != BOND_MODE_XOR)
+	return clib_error_return (0, "load-balance is valid for lacp and xor only");
 
-  if (mode_is_set == 0)
-    return clib_error_return (0, "Missing bond mode");
+      args.lb = v->index;
+    }
+
+  if (args.numa_only && args.mode != BOND_MODE_LACP)
+    return clib_error_return (0, "Only lacp mode supports numa-only so far!");
+
+  if ((v = cli_get (ctx, "hw-addr")))
+    {
+      clib_memcpy (args.hw_addr, v->prefix.addr, 6);
+      args.hw_addr_set = 1;
+    }
 
   bond_create_if (vm, &args);
 
@@ -639,41 +631,23 @@ bond_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 VLIB_CLI_COMMAND (bond_create_command, static) = {
   .path = "create bond",
-  .short_help = "create bond mode {round-robin | active-backup | broadcast | "
-    "{lacp | xor} [load-balance { l2 | l23 | l34 } [numa-only]]} "
-    "[hw-addr <mac-address>] [id <if-id>] [gso]",
-  .function = bond_create_command_fn,
+  .short_help = "Create a bond interface",
+  .args = CLI_ARGS (
+    CLI_KEYWORD ("mode", cli_type_enum, .choices = bond_mode_choices),
+    CLI_OPT_KEYWORD ("load-balance", cli_type_enum, .choices = bond_lb_choices,
+		     .help = "for lacp and xor, default l2"),
+    CLI_FLAG ("numa-only", .help = "for lacp, use the members on the local NUMA node only"),
+    CLI_OPT_KEYWORD ("hw-addr", cli_type_mac_address, .help = "MAC address"),
+    CLI_OPT_KEYWORD ("id", cli_type_u32, .help = "instance number of the interface"),
+    CLI_FLAG ("gso", .help = "enable segmentation offload")),
+  .handler = bond_create_command_fn,
 };
 
 static clib_error_t *
-bond_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			vlib_cli_command_t * cmd)
+bond_delete_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  unformat_input_t _line_input, *line_input = &_line_input;
-  u32 sw_if_index = ~0;
-  vnet_main_t *vnm = vnet_get_main ();
+  u32 sw_if_index = cli_index (ctx, "interface");
   int rv;
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, "Missing <interface>");
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "sw_if_index %d", &sw_if_index))
-	;
-      else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
-			 vnm, &sw_if_index))
-	;
-      else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
-    }
-  unformat_free (line_input);
-
-  if (sw_if_index == ~0)
-    return clib_error_return (0,
-			      "please specify interface name or sw_if_index");
 
   rv = bond_delete_if (vm, sw_if_index);
   if (rv == VNET_API_ERROR_INVALID_SW_IF_INDEX)
@@ -684,11 +658,11 @@ bond_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-VLIB_CLI_COMMAND (bond_delete__command, static) =
-{
+VLIB_CLI_COMMAND (bond_delete__command, static) = {
   .path = "delete bond",
-  .short_help = "delete bond {<interface> | sw_if_index <sw_idx>}",
-  .function = bond_delete_command_fn,
+  .short_help = "Delete a bond interface",
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_sw_interface, .alt_keyword = "sw_if_index")),
+  .handler = bond_delete_command_fn,
 };
 
 void
@@ -871,45 +845,14 @@ bond_add_member (vlib_main_t * vm, bond_add_member_args_t * args)
 }
 
 static clib_error_t *
-add_member_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
-				 vlib_cli_command_t * cmd)
+add_member_interface_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  bond_add_member_args_t args = { 0 };
-  unformat_input_t _line_input, *line_input = &_line_input;
-  vnet_main_t *vnm = vnet_get_main ();
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, "Missing required arguments.");
-
-  args.member = ~0;
-  args.group = ~0;
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "%U %U",
-		    unformat_vnet_sw_interface, vnm, &args.group,
-		    unformat_vnet_sw_interface, vnm, &args.member))
-	;
-      else if (unformat (line_input, "passive"))
-	args.is_passive = 1;
-      else if (unformat (line_input, "long-timeout"))
-	args.is_long_timeout = 1;
-      else
-	{
-	  args.error = clib_error_return (0, "unknown input `%U'",
-					  format_unformat_error, input);
-	  break;
-	}
-    }
-  unformat_free (line_input);
-
-  if (args.error)
-    return args.error;
-  if (args.group == ~0)
-    return clib_error_return (0, "Missing bond interface");
-  if (args.member == ~0)
-    return clib_error_return (0,
-			      "please specify valid member interface name");
+  bond_add_member_args_t args = {
+    .group = cli_index (ctx, "bond-interface"),
+    .member = cli_index (ctx, "member-interface"),
+    .is_passive = cli_flag (ctx, "passive"),
+    .is_long_timeout = cli_flag (ctx, "long-timeout"),
+  };
 
   bond_add_member (vm, &args);
 
@@ -918,9 +861,12 @@ add_member_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 VLIB_CLI_COMMAND (add_member_interface_command, static) = {
   .path = "bond add",
-  .short_help = "bond add <BondEthernetx> <member-interface> "
-                "[passive] [long-timeout]",
-  .function = add_member_interface_command_fn,
+  .short_help = "Add a member interface to a bond",
+  .args = CLI_ARGS (CLI_VALUE ("bond-interface", cli_type_sw_interface),
+		    CLI_VALUE ("member-interface", cli_type_sw_interface),
+		    CLI_FLAG ("passive", .help = "do not start the LACP exchange"),
+		    CLI_FLAG ("long-timeout", .help = "use the long LACP timeout")),
+  .handler = add_member_interface_command_fn,
 };
 
 void
@@ -941,37 +887,11 @@ bond_detach_member (vlib_main_t * vm, bond_detach_member_args_t * args)
 }
 
 static clib_error_t *
-detach_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+detach_interface_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  bond_detach_member_args_t args = { 0 };
-  unformat_input_t _line_input, *line_input = &_line_input;
-  vnet_main_t *vnm = vnet_get_main ();
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, "Missing required arguments.");
-
-  args.member = ~0;
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "%U",
-		    unformat_vnet_sw_interface, vnm, &args.member))
-	;
-      else
-	{
-	  args.error = clib_error_return (0, "unknown input `%U'",
-					  format_unformat_error, input);
-	  break;
-	}
-    }
-  unformat_free (line_input);
-
-  if (args.error)
-    return args.error;
-  if (args.member == ~0)
-    return clib_error_return (0,
-			      "please specify valid member interface name");
+  bond_detach_member_args_t args = {
+    .member = cli_index (ctx, "member-interface"),
+  };
 
   bond_detach_member (vm, &args);
 
@@ -980,8 +900,9 @@ detach_interface_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 VLIB_CLI_COMMAND (detach_interface_command, static) = {
   .path = "bond del",
-  .short_help = "bond del <member-interface>",
-  .function = detach_interface_command_fn,
+  .short_help = "Remove a member interface from its bond",
+  .args = CLI_ARGS (CLI_VALUE ("member-interface", cli_type_sw_interface)),
+  .handler = detach_interface_command_fn,
 };
 
 static void
@@ -1052,23 +973,9 @@ show_bond_details (vlib_main_t * vm)
 }
 
 static clib_error_t *
-show_bond_fn (vlib_main_t * vm, unformat_input_t * input,
-	      vlib_cli_command_t * cmd)
+show_bond_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  u8 details = 0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "details"))
-	details = 1;
-      else
-	{
-	  return clib_error_return (0, "unknown input `%U'",
-				    format_unformat_error, input);
-	}
-    }
-
-  if (details)
+  if (cli_flag (ctx, "details"))
     show_bond_details (vm);
   else
     show_bond (vm);
@@ -1078,8 +985,9 @@ show_bond_fn (vlib_main_t * vm, unformat_input_t * input,
 
 VLIB_CLI_COMMAND (show_bond_command, static) = {
   .path = "show bond",
-  .short_help = "show bond [details]",
-  .function = show_bond_fn,
+  .short_help = "Show the bond interfaces",
+  .args = CLI_ARGS (CLI_FLAG ("details")),
+  .handler = show_bond_fn,
 };
 
 void
@@ -1130,61 +1038,25 @@ bond_set_intf_weight (vlib_main_t * vm, bond_set_intf_weight_args_t * args)
 }
 
 static clib_error_t *
-bond_set_intf_cmd (vlib_main_t * vm, unformat_input_t * input,
-		   vlib_cli_command_t * cmd)
+bond_set_intf_cmd (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  bond_set_intf_weight_args_t args = { 0 };
-  u32 sw_if_index = (u32) ~ 0;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  vnet_main_t *vnm = vnet_get_main ();
-  u8 weight_enter = 0;
-  u32 weight = 0;
+  bond_set_intf_weight_args_t args = {
+    .sw_if_index = cli_index (ctx, "interface"),
+    .weight = cli_u64 (ctx, "weight", 0),
+  };
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, "Missing required arguments.");
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "sw_if_index %d", &sw_if_index))
-	;
-      else if (unformat (line_input, "%U", unformat_vnet_sw_interface, vnm,
-			 &sw_if_index))
-	;
-      else if (unformat (line_input, "weight %u", &weight))
-	weight_enter = 1;
-      else
-	{
-	  clib_error_return (0, "unknown input `%U'", format_unformat_error,
-			     input);
-	  break;
-	}
-    }
-
-  unformat_free (line_input);
-  if (sw_if_index == (u32) ~ 0)
-    {
-      args.rv = VNET_API_ERROR_INVALID_INTERFACE;
-      clib_error_return (0, "Interface name is invalid!");
-    }
-  if (weight_enter == 0)
-    {
-      args.rv = VNET_API_ERROR_INVALID_ARGUMENT;
-      clib_error_return (0, "weight missing");
-    }
-
-  args.sw_if_index = sw_if_index;
-  args.weight = weight;
   bond_set_intf_weight (vm, &args);
 
   return args.error;
 }
 
-VLIB_CLI_COMMAND(set_interface_bond_cmd, static) = {
+VLIB_CLI_COMMAND (set_interface_bond_cmd, static) = {
   .path = "set interface bond",
-  .short_help = "set interface bond <interface> | sw_if_index <idx>"
-                " weight <value>",
-  .function = bond_set_intf_cmd,
+  .short_help = "Set the weight of a bond member interface",
+  .args = CLI_ARGS (CLI_VALUE ("interface", cli_type_sw_interface, .alt_keyword = "sw_if_index"),
+		    CLI_KEYWORD ("weight", cli_type_u32,
+				 .help = "for active-backup, the highest is primary")),
+  .handler = bond_set_intf_cmd,
 };
 
 clib_error_t *
