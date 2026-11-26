@@ -33,6 +33,40 @@ mpls_sr_main_t sr_mpls_main;
 
 /***************************  SR LB helper functions **************************/
 /**
+ * @brief The label stack of the FIB path of a segment list: the labels after
+ * the first one, which is the local label of the path. The FIB takes it over
+ * when the path is added.
+ */
+static fib_mpls_label_t *
+sr_mpls_label_stack (mpls_label_t *sl)
+{
+  fib_mpls_label_t *stack = 0;
+
+  for (u32 i = 1; i < vec_len (sl); i++)
+    {
+      fib_mpls_label_t lbl = {
+	.fml_value = sl[i],
+      };
+
+      vec_add1 (stack, lbl);
+    }
+
+  if (!stack)
+    {
+      /*
+       * add an impliciet NULL label to allow non-eos recursion
+       */
+      fib_mpls_label_t lbl = {
+	.fml_value = MPLS_IETF_IMPLICIT_NULL_LABEL,
+      };
+
+      vec_add1 (stack, lbl);
+    }
+
+  return stack;
+}
+
+/**
  * @brief Creates a Segment List and adds it to an SR policy
  *
  * Creates a Segment List and adds it to the SR policy. Notice that the SL are
@@ -51,7 +85,6 @@ create_sl (mpls_sr_policy_t * sr_policy, mpls_label_t * sl, u32 weight)
 {
   mpls_sr_main_t *sm = &sr_mpls_main;
   mpls_sr_sl_t *segment_list;
-  u32 ii;
 
   pool_get (sm->sid_lists, segment_list);
   clib_memset (segment_list, 0, sizeof (*segment_list));
@@ -72,28 +105,9 @@ create_sl (mpls_sr_policy_t * sr_policy, mpls_label_t * sl, u32 weight)
       .frp_fib_index = 0,
       .frp_weight = segment_list->weight,
       .frp_flags = FIB_ROUTE_PATH_FLAG_NONE,
-      .frp_label_stack = NULL,
+      .frp_label_stack = sr_mpls_label_stack (sl),
       .frp_local_label = sl[0],
     };
-
-    if (vec_len (sl) > 1)
-      {
-	vec_validate (path.frp_label_stack, vec_len (sl) - 2);
-	for (ii = 1; ii < vec_len (sl); ii++)
-	  {
-	    path.frp_label_stack[ii - 1].fml_value = sl[ii];
-	  }
-      }
-    else
-      {
-	/*
-	 * add an impliciet NULL label to allow non-eos recursion
-	 */
-	fib_mpls_label_t lbl = {
-	  .fml_value = MPLS_IETF_IMPLICIT_NULL_LABEL,
-	};
-	vec_add1 (path.frp_label_stack, lbl);
-      }
 
     fib_route_path_t *paths = NULL;
     vec_add1 (paths, path);
@@ -224,8 +238,7 @@ sr_mpls_policy_del (mpls_label_t bsid)
       .frp_local_label = segment_list->segments[0],
     };
 
-    vec_add (path.frp_label_stack, segment_list + 1,
-	     vec_len (segment_list) - 1);
+    path.frp_label_stack = sr_mpls_label_stack (segment_list->segments);
 
     fib_route_path_t *paths = NULL;
     vec_add1 (paths, path);
@@ -244,6 +257,7 @@ sr_mpls_policy_del (mpls_label_t bsid)
       fib_table_entry_path_remove2 (0, &pfx, FIB_SOURCE_SR, paths);
     }
     vec_free (paths);
+    vec_free (path.frp_label_stack);
     vec_free (segment_list->segments);
     pool_put_index (sm->sid_lists, *sl_index);
   }
@@ -337,8 +351,7 @@ sr_mpls_policy_mod (mpls_label_t bsid, u8 operation,
 	.frp_local_label = segment_list->segments[0],
       };
 
-      vec_add (path.frp_label_stack, segment_list + 1,
-	       vec_len (segment_list) - 1);
+      path.frp_label_stack = sr_mpls_label_stack (segment_list->segments);
 
       fib_route_path_t *paths = NULL;
       vec_add1 (paths, path);
@@ -357,6 +370,7 @@ sr_mpls_policy_mod (mpls_label_t bsid, u8 operation,
       }
 
       vec_free (paths);
+      vec_free (path.frp_label_stack);
       vec_free (segment_list->segments);
       pool_put_index (sm->sid_lists, sl_index);
       vec_del1 (sr_policy->segments_lists,
@@ -387,8 +401,7 @@ sr_mpls_policy_mod (mpls_label_t bsid, u8 operation,
 	.frp_local_label = segment_list->segments[0],
       };
 
-      vec_add (path.frp_label_stack, segment_list + 1,
-	       vec_len (segment_list) - 1);
+      path.frp_label_stack = sr_mpls_label_stack (segment_list->segments);
 
       fib_route_path_t *paths = NULL;
       vec_add1 (paths, path);
@@ -410,19 +423,20 @@ sr_mpls_policy_mod (mpls_label_t bsid, u8 operation,
 
       path.frp_weight = segment_list->weight;
 
-      vec_free (paths);
-      paths = NULL;
-      vec_add1 (paths, path);
+      vec_free (path.frp_label_stack);
 
       FOR_EACH_MPLS_EOS_BIT (eos)
       {
-			fib_prefix_t	pfx = {
-				.fp_len = 21,
-				.fp_proto = FIB_PROTOCOL_MPLS,
-				.fp_label = sr_policy->bsid,
-				.fp_eos = eos,
-				.fp_payload_proto = DPO_PROTO_MPLS,
-			};
+	path.frp_label_stack = sr_mpls_label_stack (segment_list->segments);
+	paths[0] = path;
+
+	fib_prefix_t pfx = {
+	  .fp_len = 21,
+	  .fp_proto = FIB_PROTOCOL_MPLS,
+	  .fp_label = sr_policy->bsid,
+	  .fp_eos = eos,
+	  .fp_payload_proto = DPO_PROTO_MPLS,
+	};
 
 	fib_table_entry_path_add2 (0,
 				   &pfx,
@@ -432,6 +446,8 @@ sr_mpls_policy_mod (mpls_label_t bsid, u8 operation,
 				    FIB_ENTRY_FLAG_NONE :
 				    FIB_ENTRY_FLAG_MULTICAST), paths);
       }
+
+      vec_free (paths);
     }
   return 0;
 }
