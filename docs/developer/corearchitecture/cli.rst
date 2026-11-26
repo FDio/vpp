@@ -764,7 +764,7 @@ Testing
 * ``test_cli`` (``src/vppinfra/test_cli.c``) is a stand-alone unit
   test of the parser, completion, errors and filters, built with the other
   vppinfra tests. It does not need a running VPP.
-* ``test/test_cli.py`` tests the CLI of a running VPP.
+* ``test/test_cli_declarative.py`` tests the CLI of a running VPP.
 
 ``extras/bash/vppctl-completion.bash`` provides ``vppctl`` completion in bash,
 using the same completion as the interactive CLI.
