@@ -170,8 +170,8 @@ vhost_user_rx_thread_placement (vhost_user_intf_t * vui, u32 qid)
     vnet_hw_if_get_rx_queue_thread_index (vnm, txvq->queue_index);
 
   if (txvq->mode == VNET_HW_IF_RX_MODE_UNKNOWN)
-    /* Set polling as the default */
-    txvq->mode = VNET_HW_IF_RX_MODE_POLLING;
+    /* Use the global default rx-mode */
+    txvq->mode = vnm->interface_main.default_rx_mode;
   if (txvq->mode == VNET_HW_IF_RX_MODE_POLLING)
     {
       vhost_cpu_t *cpu = vec_elt_at_index (vum->cpus, txvq->thread_index);
@@ -290,7 +290,7 @@ vhost_user_vring_init (vhost_user_intf_t * vui, u32 qid)
   vring->qid = -1;
   vring->queue_index = ~0;
   vring->thread_index = ~0;
-  vring->mode = VNET_HW_IF_RX_MODE_POLLING;
+  vring->mode = vnet_get_main ()->interface_main.default_rx_mode;
 
   clib_spinlock_init (&vring->vring_lock);
 
