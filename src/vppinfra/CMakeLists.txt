@@ -354,6 +354,7 @@ set(test_files
   test/mask_compare.c
   test/memcpy_x86_64.c
   test/sha2.c
+  test/store_partial.c
   test/toeplitz.c
 )
 
