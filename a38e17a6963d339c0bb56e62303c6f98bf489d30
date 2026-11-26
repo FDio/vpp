@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "306ea508_8fe773d0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 3390
+      },
+      "writtenOn": "2026-11-26T08:25:28Z",
+      "side": 1,
+      "message": "riendly ping for a review. This is a small fix (44 lines, with a unit test that fails without it) for arp_dst_fib_check(). Without it, after a VRRP failover with linux-cp the new virtual address gets no ARP reply, details in the commit message and in https://github.com/FDio/vpp/issues/3756. Verified +1 and mergeable. @Dave Barach, as a maintainer of src/vnet/arp, could you have a look?",
+      "revId": "a38e17a6963d339c0bb56e62303c6f98bf489d30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
