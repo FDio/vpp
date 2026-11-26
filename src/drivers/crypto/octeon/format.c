@@ -45,12 +45,6 @@ styled_format_oct_cpt_dev_info (styled_text_t *st, va_list *args)
 {
   __clib_unused vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
-  static const char *eng_names[CPT_MAX_ENG_TYPES] = {
-    [CPT_ENG_TYPE_AE] = "AE",
-    [CPT_ENG_TYPE_SE] = "SE",
-    [CPT_ENG_TYPE_IE] = "IE",
-    [CPT_ENG_TYPE_RE] = "RE",
-  };
   oct_crypto_device_t *cd = vnet_dev_get_data (dev);
   struct roc_cpt *rc = cd->roc_cpt;
 
@@ -60,15 +54,35 @@ styled_format_oct_cpt_dev_info (styled_text_t *st, va_list *args)
   styled_text_add_marked (st, ST_R_VALUE,
 			  "CPT revision %{%u%}, %{%u%} LFs in use, %{%u%} available",
 			  rc->cpt_revision, rc->nb_lf, rc->nb_lf_avail);
+}
+
+void
+styled_format_oct_cpt_dev_caps (styled_text_t *st, va_list *args)
+{
+  __clib_unused vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
+  vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
+  static const char *eng_names[CPT_MAX_ENG_TYPES] = {
+    [CPT_ENG_TYPE_AE] = "AE",
+    [CPT_ENG_TYPE_SE] = "SE",
+    [CPT_ENG_TYPE_IE] = "IE",
+    [CPT_ENG_TYPE_RE] = "RE",
+  };
+  oct_crypto_device_t *cd = vnet_dev_get_data (dev);
+  struct roc_cpt *rc = cd->roc_cpt;
+  char *nl = "";
+
+  if (rc == 0)
+    return;
 
   for (u32 t = CPT_ENG_TYPE_AE; t < CPT_MAX_ENG_TYPES; t++)
     {
       if (rc->hw_caps[t].u == 0)
 	continue;
 
-      styled_text_add_marked (st, ST_R_VALUE, "\n%{%s%} engines: group %{%u%}, capabilities:%{%U%}",
-			      eng_names[t], rc->eng_grp[t], format_oct_cpt_eng_caps,
+      styled_text_add_marked (st, ST_R_VALUE, "%s%{%s%} engines: group %{%u%}, capabilities:%{%U%}",
+			      nl, eng_names[t], rc->eng_grp[t], format_oct_cpt_eng_caps,
 			      rc->hw_caps + t);
+      nl = "\n";
     }
 }
 

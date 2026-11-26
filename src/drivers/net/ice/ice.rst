@@ -243,7 +243,7 @@ Debugging
 
 * ``show device pci/0000:18:00.0`` shows the device, port and queue state and the
   firmware information the driver read at init. Add ``debug`` for more.
-* ``show device counters all pci/0000:18:00.0`` shows all counters including zero
+* ``show device zero-counters pci/0000:18:00.0`` shows all counters including zero
   ones.
 * ``show hardware-interfaces eth0`` shows the interface view.
 * ``show device driver ice phy`` is the first thing to check when the link does

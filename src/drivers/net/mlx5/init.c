@@ -159,6 +159,7 @@ mlx5_add_port (vlib_main_t *vm, vnet_dev_t *dev, vnet_dev_port_id_t port_id)
 	.start = mlx5_port_start,
 	.stop = mlx5_port_stop,
 	.styled_format_status = styled_format_mlx5_port_status,
+	.styled_format_rss = styled_format_mlx5_port_rss,
 	.config_change_validate = mlx5_port_cfg_change_validate,
 	.config_change = mlx5_port_cfg_change,
 	.get_module_eeprom = mlx5_port_get_module_eeprom,
@@ -466,6 +467,7 @@ VNET_DEV_REGISTER_DRIVER (mlx5_generic) = {
       .free = mlx5_free,
       .probe = mlx5_probe,
       .styled_format_info = styled_format_mlx5_dev_info,
+      .styled_format_capabilities = styled_format_mlx5_dev_caps,
     },
   },
 };

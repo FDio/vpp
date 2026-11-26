@@ -198,7 +198,7 @@ Debugging
 * ``show device <device-id>`` shows the firmware version, the interface version
   and the filter capabilities the driver read at init, plus the port and queue
   state.
-* ``show device counters all <device-id>`` shows all counters.
+* ``show device zero-counters <device-id>`` shows all counters.
 * Raise the log level with ``logging { class atlantic { level debug } class dev
   { level debug } }``.
 * Typical errors: ``FW reboot timeout`` and ``FW restart timeout`` (the

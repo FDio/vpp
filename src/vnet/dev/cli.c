@@ -437,6 +437,22 @@ dev_vector_from_ctx (cli_ctx_t *ctx)
   return devs;
 }
 
+/* prints the output of a formatter at indent, if there is any */
+static void
+show_device_output (vlib_main_t *vm, u32 indent, format_function_t *fn, ...)
+{
+  u8 *s = format (0, "%U", format_white_space, indent);
+  va_list va;
+
+  va_start (va, fn);
+  s = fn (s, &va);
+  va_end (va);
+
+  if (vec_len (s) > indent)
+    vlib_cli_output (vm, "%v", s);
+  vec_free (s);
+}
+
 static clib_error_t *
 show_devices_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
@@ -452,33 +468,89 @@ show_devices_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
   else if (cli_flag (ctx, "debug"))
     fa.debug = 1;
 
+  if (cli_flag (ctx, "all"))
+    fa.info = fa.status = fa.rss = fa.capabilities = fa.queues = fa.arguments = fa.module =
+      fa.counters = 1;
+  else
+    {
+      fa.info = cli_flag (ctx, "info");
+      fa.status = cli_flag (ctx, "status");
+      fa.rss = cli_flag (ctx, "rss");
+      fa.capabilities = cli_flag (ctx, "capabilities");
+      fa.queues = cli_flag (ctx, "queues");
+      fa.arguments = cli_flag (ctx, "arguments");
+      fa.module = cli_flag (ctx, "module");
+      fa.counters = cli_flag (ctx, "counters");
+    }
+
+  fa.show_zero_counters = cli_flag (ctx, "zero-counters");
+  fa.clear = cli_flag (ctx, "clear");
+  if (fa.show_zero_counters || fa.clear)
+    fa.counters = 1;
+
+  if ((fa.info | fa.status | fa.rss | fa.capabilities | fa.queues | fa.arguments | fa.module |
+       fa.counters) == 0)
+    fa.info = 1;
+
   vec_foreach_pointer (dev, devs)
     {
       vlib_cli_output (vm, "device '%U':", format_vnet_dev_value, a, "%s", dev->device_id);
-      vlib_cli_output (vm, "  %U", format_vnet_dev_info, a, dev);
+      show_device_output (vm, 2, format_vnet_dev_info, a, dev);
+
       foreach_vnet_dev_port (p, dev)
 	{
 	  vlib_cli_output (vm, "  Port %U:", format_vnet_dev_value, a, "%u", p->port_id);
-	  vlib_cli_output (vm, "    %U", format_vnet_dev_port_info, a, p);
+	  show_device_output (vm, 4, format_vnet_dev_port_info, a, p);
 
-	  foreach_vnet_dev_port_rx_queue (q, p)
+	  if (fa.counters)
+	    show_device_output (vm, 4, format_vnet_dev_counters, a, p->counter_main);
+
+	  if (fa.queues || fa.counters)
 	    {
-	      vlib_cli_output (vm, "    RX queue %U:", format_vnet_dev_value, a, "%u", q->queue_id);
-	      vlib_cli_output (vm, "      %U", format_vnet_dev_rx_queue_info, a, q);
+	      foreach_vnet_dev_port_rx_queue (q, p)
+		{
+		  /* queues without counters only show up with their info */
+		  if (fa.queues == 0 && q->counter_main == 0)
+		    continue;
+
+		  vlib_cli_output (vm, "    RX queue %U:", format_vnet_dev_value, a, "%u",
+				   q->queue_id);
+		  if (fa.queues)
+		    show_device_output (vm, 6, format_vnet_dev_rx_queue_info, a, q);
+		  if (fa.counters && q->counter_main)
+		    show_device_output (vm, 6, format_vnet_dev_counters, a, q->counter_main);
+		}
+
+	      foreach_vnet_dev_port_tx_queue (q, p)
+		{
+		  /* queues without counters only show up with their info */
+		  if (fa.queues == 0 && q->counter_main == 0)
+		    continue;
+
+		  vlib_cli_output (vm, "    TX queue %U:", format_vnet_dev_value, a, "%u",
+				   q->queue_id);
+		  if (fa.queues)
+		    show_device_output (vm, 6, format_vnet_dev_tx_queue_info, a, q);
+		  if (fa.counters && q->counter_main)
+		    show_device_output (vm, 6, format_vnet_dev_counters, a, q->counter_main);
+		}
 	    }
 
-	  foreach_vnet_dev_port_tx_queue (q, p)
-	    {
-	      vlib_cli_output (vm, "    TX queue %U:", format_vnet_dev_value, a, "%u", q->queue_id);
-	      vlib_cli_output (vm, "      %U", format_vnet_dev_tx_queue_info, a, q);
-	    }
+	  if (fa.clear)
+	    vnet_dev_process_call_port_op_no_rv (vm, p, vnet_dev_port_clear_counters);
 	}
 
-      vec_foreach_pointer (cq, dev->crypto_queues)
-	{
-	  vlib_cli_output (vm, "  Crypto queue %U:", format_vnet_dev_value, a, "%u", cq->index);
-	  vlib_cli_output (vm, "    %U", format_vnet_dev_crypto_queue_info, a, cq);
-	}
+      if (fa.queues || fa.counters)
+	vec_foreach_pointer (cq, dev->crypto_queues)
+	  {
+	    vlib_cli_output (vm, "  Crypto queue %U:", format_vnet_dev_value, a, "%u", cq->index);
+	    if (fa.queues)
+	      show_device_output (vm, 4, format_vnet_dev_crypto_queue_info, a, cq);
+	    if (fa.counters)
+	      show_device_output (vm, 4, format_vnet_dev_crypto_queue_counters, a, cq);
+	    if (fa.clear)
+	      vnet_dev_crypto_queue_clear_counters (cq);
+	  }
     }
   vec_free (devs);
   return 0;
@@ -487,69 +559,23 @@ show_devices_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 VLIB_CLI_COMMAND (show_devices_cmd, static) = {
   .path = "show device",
   .short_help = "Show devices, ports and queues",
-  .args = CLI_ARGS (CLI_FLAG ("debug", .help = "show debug information"),
-		    CLI_OPT_KEYWORD ("debug-level", cli_type_u32,
-				     .help = "level of the debug information"),
-		    CLI_VALUE ("device-id", cli_type_dev, .flags = CLI_F_OPTIONAL | CLI_F_REPEAT,
-			       .help = "only these devices")),
+  .args = CLI_ARGS (
+    CLI_FLAG ("info", .help = "show the device and port information, the default"),
+    CLI_FLAG ("status", .help = "show the driver specific port status"),
+    CLI_FLAG ("rss", .help = "show the RSS configuration"),
+    CLI_FLAG ("capabilities", .help = "show the capabilities and offloads"),
+    CLI_FLAG ("queues", .help = "show the queues"),
+    CLI_FLAG ("arguments", .alias = "args", .help = "show the device and port arguments"),
+    CLI_FLAG ("module", .help = "show the transceiver module information"),
+    CLI_FLAG ("counters", .help = "show the non-zero counters"),
+    CLI_FLAG ("zero-counters", .help = "show the counters including the ones which are zero"),
+    CLI_FLAG ("clear", .help = "clear the counters after showing them"),
+    CLI_FLAG ("all", .help = "show everything except the debug information"),
+    CLI_FLAG ("debug", .help = "show debug information"),
+    CLI_OPT_KEYWORD ("debug-level", cli_type_u32, .help = "level of the debug information"),
+    CLI_VALUE ("device-id", cli_type_dev, .flags = CLI_F_OPTIONAL | CLI_F_REPEAT,
+	       .help = "only these devices")),
   .handler = show_devices_cmd_fn,
-  .is_mp_safe = 1,
-};
-
-static clib_error_t *
-show_device_counters_cmd_fn (vlib_main_t *vm, cli_ctx_t *ctx)
-{
-  vnet_dev_format_args_t fa = { .show_zero_counters = cli_flag (ctx, "all"),
-				.clear = cli_flag (ctx, "clear"),
-				.plain_text = ctx->plain_text_only };
-  vnet_dev_t **devs = dev_vector_from_ctx (ctx);
-
-  vec_foreach_pointer (dev, devs)
-    {
-      vlib_cli_output (vm, "device '%U':", format_vnet_dev_value, &fa, "%s", dev->device_id);
-      foreach_vnet_dev_port (p, dev)
-	{
-	  vlib_cli_output (vm, "  Port %U:", format_vnet_dev_value, &fa, "%u", p->port_id);
-	  vlib_cli_output (vm, "    %U", format_vnet_dev_counters, &fa, p->counter_main);
-
-	  foreach_vnet_dev_port_rx_queue (q, p)
-	    {
-	      vlib_cli_output (vm, "    RX queue %U:", format_vnet_dev_value, &fa, "%u",
-			       q->queue_id);
-	      vlib_cli_output (vm, "      %U", format_vnet_dev_counters, &fa, q->counter_main);
-	    }
-
-	  foreach_vnet_dev_port_tx_queue (q, p)
-	    {
-	      vlib_cli_output (vm, "    TX queue %U:", format_vnet_dev_value, &fa, "%u",
-			       q->queue_id);
-	      vlib_cli_output (vm, "      %U", format_vnet_dev_counters, &fa, q->counter_main);
-	    }
-	  if (fa.clear)
-	    vnet_dev_process_call_port_op_no_rv (vm, p, vnet_dev_port_clear_counters);
-	}
-
-      vec_foreach_pointer (cq, dev->crypto_queues)
-	{
-	  vlib_cli_output (vm, "  Crypto queue %U:", format_vnet_dev_value, &fa, "%u", cq->index);
-	  vlib_cli_output (vm, "    %U", format_vnet_dev_crypto_queue_counters, &fa, cq);
-	  if (fa.clear)
-	    vnet_dev_crypto_queue_clear_counters (cq);
-	}
-    }
-
-  vec_free (devs);
-  return 0;
-}
-
-VLIB_CLI_COMMAND (show_device_counters_cmd, static) = {
-  .path = "show device counters",
-  .short_help = "Show the counters of devices, ports and queues",
-  .args = CLI_ARGS (CLI_FLAG ("all", .help = "show the counters which are zero"),
-		    CLI_FLAG ("clear", .help = "clear the counters after showing them"),
-		    CLI_VALUE ("device-id", cli_type_dev, .flags = CLI_F_OPTIONAL | CLI_F_REPEAT,
-			       .help = "only these devices")),
-  .handler = show_device_counters_cmd_fn,
   .is_mp_safe = 1,
 };
 

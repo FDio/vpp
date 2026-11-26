@@ -151,7 +151,9 @@ vnet_dev_rv_t vnp_rss (vlib_main_t *, vnet_dev_port_t *, const vnet_dev_rss_conf
 format_function_t format_vnp_ctrl_cmd;
 format_function_t format_vnp_ctrl_ack;
 styled_format_fn_t styled_format_vnp_dev_info;
+styled_format_fn_t styled_format_vnp_dev_caps;
 styled_format_fn_t styled_format_vnp_port_status;
+styled_format_fn_t styled_format_vnp_port_rss;
 styled_format_fn_t styled_format_vnp_rx_queue;
 styled_format_fn_t styled_format_vnp_tx_queue;
 format_function_t format_vnp_rx_trace;

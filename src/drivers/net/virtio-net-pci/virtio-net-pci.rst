@@ -259,7 +259,7 @@ Debugging
   which of them were negotiated, the device status, the number of virtqueues,
   whether the packed ring, indirect descriptors and the control queue are in use
   and the device MTU, plus the ports and the queues. Add ``debug`` for more.
-* ``show device counters all pci/0000:00:04.0`` shows all counters.
+* ``show device zero-counters pci/0000:00:04.0`` shows all counters.
 * Raise the log level with ``logging { class virtio-net-pci { level debug }
   class dev { level debug } }``.
 * Typical errors: ``not supported`` at attach (a legacy only device, or the

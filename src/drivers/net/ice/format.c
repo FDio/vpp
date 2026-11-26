@@ -129,6 +129,44 @@ ice_dump_capabilities (vlib_main_t *vm, vnet_dev_t *dev, void *data)
 }
 
 void
+styled_format_ice_dev_caps (styled_text_t *st, va_list *args)
+{
+  va_arg (*args, vnet_dev_format_args_t *);
+  vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
+  ice_dev_info_t info = {};
+  table_t caps = {};
+  vnet_dev_rv_t rv;
+
+  rv = vnet_dev_process_call_op_with_ptr (vlib_get_main (), dev, ice_aq_get_dev_info, &info);
+  if (rv != VNET_DEV_OK)
+    {
+      ice_styled_add_unavailable (st, "device capabilities", rv);
+      return;
+    }
+
+  table_add_hdr_row (&caps, 5, "capability", "version", "number", "logical ID", "physical ID");
+  table_set_cell_align (&caps, -1, 0, TTAA_LEFT);
+
+  for (int i = 0; i < vec_len (info.dev_caps); i++)
+    {
+      ice_aqc_list_caps_elem_t *cap = info.dev_caps + i;
+      table_format_cell (&caps, i, 0, "%U", format_ice_aqc_capability, cap->cap);
+      table_format_cell (&caps, i, 1, "%u.%u", cap->major_ver, cap->minor_ver);
+      table_format_cell (&caps, i, 2, "%u", cap->number);
+      table_format_cell (&caps, i, 3, "0x%08x", cap->logical_id);
+      table_format_cell (&caps, i, 4, "0x%08x", cap->phys_id);
+      table_set_cell_align (&caps, i, 0, TTAA_LEFT);
+    }
+
+  if (vec_len (info.dev_caps))
+    styled_text_add (st, "%T", format_styled_table, &caps);
+
+  table_free (&caps);
+  vec_free (info.dev_caps);
+  vec_free (info.pkg_info);
+}
+
+void
 styled_format_ice_dev_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);

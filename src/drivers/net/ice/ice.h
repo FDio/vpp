@@ -229,6 +229,7 @@ void ice_port_counter_poll (vlib_main_t *, vnet_dev_port_t *);
 vnet_dev_op_with_ptr_t ice_dump_capabilities;
 styled_format_fn_t styled_format_ice_port_status;
 styled_format_fn_t styled_format_ice_dev_info;
+styled_format_fn_t styled_format_ice_dev_caps;
 format_function_t format_ice_family;
 format_function_t format_ice_adminq_opcode;
 styled_format_fn_t styled_format_ice_rx_queue_info;

@@ -218,6 +218,25 @@ atl_tx_trace (u8 *s, va_list *args)
 }
 
 void
+styled_format_atl_dev_caps (styled_text_t *st, va_list *args)
+{
+  va_arg (*args, vnet_dev_format_args_t *);
+  vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
+  atl_reg_aq2_device_caps_t device_caps;
+  vnet_dev_rv_t rv;
+
+  rv = atl_aq2_interface_buffer_read (dev, ATL_REG_AQ2_FW_INTERFACE_OUT_DEVICE_CAPS,
+				      &device_caps.as_u32, 1);
+  if (rv == VNET_DEV_OK)
+    styled_text_add_marked (
+      st, ST_R_VALUE, "flashless %{%u%} cable_diag %{%u%} ncsi %{%u%} avb %{%u%}",
+      device_caps.finite_flashless, device_caps.cable_diag, device_caps.ncsi, device_caps.avb);
+  else
+    styled_text_add_marked (st, ST_R_ERROR, "device caps read failed: %{%U%}", format_vnet_dev_rv,
+			    rv);
+}
+
+void
 styled_format_atl_dev_info (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t __clib_unused *a = va_arg (*args, vnet_dev_format_args_t *);
@@ -226,7 +245,6 @@ styled_format_atl_dev_info (styled_text_t *st, va_list *args)
   atl_reg_glb_mif_id_t hwrev;
   atl_reg_aq2_phy_health_monitor_t phy_health;
   atl_reg_aq2_mac_health_monitor_t mac_health;
-  atl_reg_aq2_device_caps_t device_caps;
   atl_aq2_management_status_t mgmt_status;
   vnet_dev_rv_t rv;
 
@@ -269,15 +287,6 @@ styled_format_atl_dev_info (styled_text_t *st, va_list *args)
 			      " fault %{%u%} warn %{%u%} temp %{%u%} heartbeat %{%u%}",
 			      phy_health.phy_fault, phy_health.phy_hot_warning,
 			      phy_health.phy_temperature, phy_health.phy_heart_beat);
-    }
-
-  rv = atl_aq2_interface_buffer_read (dev, ATL_REG_AQ2_FW_INTERFACE_OUT_DEVICE_CAPS,
-				      &device_caps.as_u32, 1);
-  if (rv == VNET_DEV_OK)
-    {
-      styled_text_add_marked (
-	st, ST_R_VALUE, "\nDevice Caps: flashless %{%u%} cable_diag %{%u%} ncsi %{%u%} avb %{%u%}",
-	device_caps.finite_flashless, device_caps.cable_diag, device_caps.ncsi, device_caps.avb);
     }
 
   rv = atl_aq2_interface_buffer_read (dev, ATL_REG_AQ2_FW_INTERFACE_OUT_MANAGEMENT_STATUS,

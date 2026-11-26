@@ -215,7 +215,7 @@ Debugging
 * ``show device <device-id>`` shows the RDMA device attributes and the mlx5
   context capabilities (CQE formats, multi-packet send support and others)
   and the port and queue state.
-* ``show device counters all <device-id>`` shows all counters.
+* ``show device zero-counters <device-id>`` shows all counters.
 * ``rdma link show`` and ``ibv_devinfo -v`` verify the RDMA device, the port
   state and the netdev.
 * Raise the log level with ``logging { class mlx5 { level debug } class dev {

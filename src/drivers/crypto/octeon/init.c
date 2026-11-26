@@ -193,6 +193,7 @@ VNET_DEV_REGISTER_DRIVER (octeon_cpt) = {
       .deinit = oct_crypto_deinit,
       .probe = oct_crypto_probe,
       .styled_format_info = styled_format_oct_cpt_dev_info,
+      .styled_format_capabilities = styled_format_oct_cpt_dev_caps,
     },
   },
   .driver = {

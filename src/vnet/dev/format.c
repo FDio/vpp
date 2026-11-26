@@ -258,31 +258,32 @@ format_vnet_dev_info (u8 *s, va_list *args)
   styled_text_t st = vnet_dev_styled_text (a);
   u32 indent = format_get_indent (s), start = vec_len (s);
 
-  styled_text_add_marked (&st, ST_R_VALUE, "Driver is '%{%s%}', bus is '%{%s%}'",
-			  dr->registration->name, bus->registration->name);
-
-  if (dev->description)
+  if (a->info)
     {
-      styled_text_add_marked (&st, ST_R_VALUE, ", description is '%{%v%}'", dev->description);
+      styled_text_add_marked (&st, ST_R_VALUE, "Driver is '%{%s%}', bus is '%{%s%}'",
+			      dr->registration->name, bus->registration->name);
+
+      if (dev->description)
+	styled_text_add_marked (&st, ST_R_VALUE, ", description is '%{%v%}'", dev->description);
+
+      if (bus->ops.styled_format_device_info)
+	{
+	  styled_text_add (&st, "\n");
+	  vnet_dev_styled_add_device_info (&st, dev, bus->ops.styled_format_device_info, a, dev);
+	}
+      else if (bus->ops.format_device_info)
+	{
+	  u8 *t = vnet_dev_format_in_process (0, dev, "%U", bus->ops.format_device_info, a, dev);
+
+	  styled_text_add (&st, "\n%v", t);
+	  vec_free (t);
+	}
+
+      styled_text_add_marked (&st, ST_R_VALUE, "\nAssigned process node is '%{%U%}'",
+			      format_vlib_node_name, vm, dev->process_node_index);
     }
 
-  if (bus->ops.styled_format_device_info)
-    {
-      styled_text_add (&st, "\n");
-      vnet_dev_styled_add_device_info (&st, dev, bus->ops.styled_format_device_info, a, dev);
-    }
-  else if (bus->ops.format_device_info)
-    {
-      u8 *t = vnet_dev_format_in_process (0, dev, "%U", bus->ops.format_device_info, a, dev);
-
-      styled_text_add (&st, "\n%v", t);
-      vec_free (t);
-    }
-
-  styled_text_add_marked (&st, ST_R_VALUE, "\nAssigned process node is '%{%U%}'",
-			  format_vlib_node_name, vm, dev->process_node_index);
-
-  if (dev->args)
+  if (a->arguments && dev->args)
     {
       vnet_dev_styled_new_line (&st);
       styled_text_add (&st, "Device Specific Arguments:\n  %T", styled_format_clib_args, dev->args);
@@ -318,7 +319,7 @@ format_vnet_dev_info (u8 *s, va_list *args)
       table_free (&t);
     }
 
-  if (dev->ops.styled_format_info || dev->ops.format_info)
+  if (a->info && (dev->ops.styled_format_info || dev->ops.format_info))
     {
       s = vnet_dev_styled_block (s, start, indent, &st, "Device Specific Info");
 
@@ -326,6 +327,13 @@ format_vnet_dev_info (u8 *s, va_list *args)
 	s = vnet_dev_styled_format_in_process (s, a, dev, dev->ops.styled_format_info, a, dev);
       else
 	s = vnet_dev_format_in_process (s, dev, "%U", dev->ops.format_info, a, dev);
+    }
+
+  if (a->capabilities && dev->ops.styled_format_capabilities)
+    {
+      s = vnet_dev_styled_block (s, start, indent, &st, "Device Specific Capabilities");
+      s =
+	vnet_dev_styled_format_in_process (s, a, dev, dev->ops.styled_format_capabilities, a, dev);
     }
 
   s = vnet_dev_styled_flush (s, start, indent, &st);
@@ -341,44 +349,13 @@ format_vnet_dev_hw_addr (u8 *s, va_list *args)
   return format (s, "%U", format_ethernet_address, addr->eth_mac);
 }
 
-u8 *
-format_vnet_dev_port_info (u8 *s, va_list *args)
+static void
+vnet_dev_styled_add_rss (styled_text_t *st, vnet_dev_port_t *port)
 {
-  vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
-  vlib_main_t *vm = vlib_get_main ();
-  vnet_main_t *vnm = vnet_get_main ();
-  vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
-  styled_text_t st = vnet_dev_styled_text (a);
-  u32 indent = format_get_indent (s), start = vec_len (s);
-
-  styled_text_add_marked (
-    &st, ST_R_VALUE,
-    "Hardware Address is %{%U%}, %{%u%} RX queues (max %u), %{%u%} TX queues (max "
-    "%u)\nLink state is ",
-    format_vnet_dev_hw_addr, &port->primary_hw_addr, pool_elts (port->rx_queues),
-    port->attr.max_rx_queues, pool_elts (port->tx_queues), port->attr.max_tx_queues);
-  styled_text_add_marked (&st, ST_R_VALUE, "%{%s%}, speed is %{%U%}", port->link_up ? "up" : "down",
-			  format_vnet_hw_interface_link_speed, port->speed);
-
-  if (pool_elts (port->secondary_hw_addr))
-    {
-      vnet_dev_hw_addr_t *addr;
-      u32 i = 0;
-
-      styled_text_add (&st, "\nSecondary Hardware Address%s:",
-		       pool_elts (port->secondary_hw_addr) > 1 ? "es are" : " is");
-      pool_foreach (addr, port->secondary_hw_addr)
-	{
-	  if (i++ % 6 == 0)
-	    styled_text_add (&st, "\n ");
-
-	  styled_text_add_marked (&st, ST_R_VALUE, " %{%U%}", format_vnet_dev_hw_addr, addr);
-	}
-    }
-
   if (port->rss_config.set_key)
     {
-      styled_text_add_marked (&st, ST_R_VALUE, "\nRSS Key is %{%U%}", format_hex_bytes_no_wrap,
+      vnet_dev_styled_new_line (st);
+      styled_text_add_marked (st, ST_R_VALUE, "RSS Key is %{%U%}", format_hex_bytes_no_wrap,
 			      port->rss_config.key, port->rss_config.key_len);
     }
 
@@ -389,22 +366,69 @@ format_vnet_dev_port_info (u8 *s, va_list *args)
       for (u32 row = 0; row * 16 < port->rss_config.lut_len; row++)
 	for (u32 column = 0; column < 16 && row * 16 + column < port->rss_config.lut_len; column++)
 	  table_format_cell (&table, row, column, "%u", port->rss_config.lut[row * 16 + column]);
-      vnet_dev_styled_new_line (&st);
-      styled_text_add (&st, "RSS LUT:\n  %T", format_styled_table, &table);
+      vnet_dev_styled_new_line (st);
+      styled_text_add (st, "RSS LUT:\n  %T", format_styled_table, &table);
       table_free (&table);
     }
+}
 
-  vnet_dev_styled_new_line (&st);
-  styled_text_add_marked (&st, ST_R_VALUE, "Max RX frame size is %{%u%} (max supported %u)",
-			  port->max_rx_frame_size, port->attr.max_supported_rx_frame_size);
-  styled_text_add_marked (&st, ST_R_VALUE, "\nCaps: %{%U%}", format_vnet_dev_port_caps,
-			  &port->attr.caps);
-  styled_text_add_marked (&st, ST_R_VALUE, "\nRX Offloads: %{%U%}",
-			  format_vnet_dev_port_rx_offloads, &port->attr.rx_offloads);
-  styled_text_add_marked (&st, ST_R_VALUE, "\nTX Offloads: %{%U%}",
-			  format_vnet_dev_port_tx_offloads, &port->attr.tx_offloads);
+u8 *
+format_vnet_dev_port_info (u8 *s, va_list *args)
+{
+  vnet_dev_format_args_t *a = va_arg (*args, vnet_dev_format_args_t *);
+  vlib_main_t *vm = vlib_get_main ();
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
+  styled_text_t st = vnet_dev_styled_text (a);
+  u32 indent = format_get_indent (s), start = vec_len (s);
 
-  if (port->port_ops.styled_format_status || port->port_ops.format_status)
+  if (a->info)
+    {
+      styled_text_add_marked (
+	&st, ST_R_VALUE,
+	"Hardware Address is %{%U%}, %{%u%} RX queues (max %u), %{%u%} TX queues (max "
+	"%u)\nLink state is ",
+	format_vnet_dev_hw_addr, &port->primary_hw_addr, pool_elts (port->rx_queues),
+	port->attr.max_rx_queues, pool_elts (port->tx_queues), port->attr.max_tx_queues);
+      styled_text_add_marked (&st, ST_R_VALUE, "%{%s%}, speed is %{%U%}",
+			      port->link_up ? "up" : "down", format_vnet_hw_interface_link_speed,
+			      port->speed);
+
+      if (pool_elts (port->secondary_hw_addr))
+	{
+	  vnet_dev_hw_addr_t *addr;
+	  u32 i = 0;
+
+	  styled_text_add (&st, "\nSecondary Hardware Address%s:",
+			   pool_elts (port->secondary_hw_addr) > 1 ? "es are" : " is");
+	  pool_foreach (addr, port->secondary_hw_addr)
+	    {
+	      if (i++ % 6 == 0)
+		styled_text_add (&st, "\n ");
+
+	      styled_text_add_marked (&st, ST_R_VALUE, " %{%U%}", format_vnet_dev_hw_addr, addr);
+	    }
+	}
+
+      styled_text_add_marked (&st, ST_R_VALUE,
+			      "\nMax RX frame size is %{%u%} (max supported %u)\nInterface ",
+			      port->max_rx_frame_size, port->attr.max_supported_rx_frame_size);
+
+      if (port->interfaces)
+	{
+	  styled_text_add_marked (
+	    &st, ST_R_VALUE, "assigned, primary interface name is '%{%U%}', RX node is '%{%U%}'",
+	    format_vnet_sw_if_index_name, vnm, port->interfaces->primary_interface.sw_if_index,
+	    format_vlib_node_name, vm, vnet_dev_get_port_rx_node_index (port));
+	  pool_foreach_pointer (sif, port->interfaces->secondary_interfaces)
+	    styled_text_add_marked (&st, ST_R_VALUE, "\nSecondary interface '%{%U%}'",
+				    format_vnet_sw_if_index_name, vnm, sif->sw_if_index);
+	}
+      else
+	styled_text_add (&st, "not assigned");
+    }
+
+  if (a->status && (port->port_ops.styled_format_status || port->port_ops.format_status))
     {
       s = vnet_dev_styled_block (s, start, indent, &st, "Device Specific Port Status");
 
@@ -415,57 +439,60 @@ format_vnet_dev_port_info (u8 *s, va_list *args)
 	s = vnet_dev_format_in_process (s, port->dev, "%U", port->port_ops.format_status, a, port);
     }
 
-  if (port->port_ops.get_module_eeprom)
+  if (a->rss)
+    vnet_dev_styled_add_rss (&st, port);
+
+  if (a->rss && port->port_ops.styled_format_rss)
+    {
+      s = vnet_dev_styled_block (s, start, indent, &st, "Device Specific RSS Data");
+      s = vnet_dev_styled_format_in_process (s, a, port->dev, port->port_ops.styled_format_rss, a,
+					     port);
+    }
+
+  if (a->capabilities)
+    {
+      vnet_dev_styled_new_line (&st);
+      styled_text_add_marked (&st, ST_R_VALUE, "Caps: %{%U%}", format_vnet_dev_port_caps,
+			      &port->attr.caps);
+      styled_text_add_marked (&st, ST_R_VALUE, "\nRX Offloads: %{%U%}",
+			      format_vnet_dev_port_rx_offloads, &port->attr.rx_offloads);
+      styled_text_add_marked (&st, ST_R_VALUE, "\nTX Offloads: %{%U%}",
+			      format_vnet_dev_port_tx_offloads, &port->attr.tx_offloads);
+    }
+
+  if (a->module && port->port_ops.get_module_eeprom)
     {
       vnet_interface_eeprom_t eeprom = {};
       vnet_dev_rv_t rv = vnet_dev_port_get_module_eeprom (vm, port, &eeprom);
 
-      if (rv == VNET_DEV_OK)
-	{
-	  vnet_dev_styled_new_line (&st);
-	  styled_text_add (&st, "Module Base Information:\n  %T", styled_format_sfp_eeprom_module,
-			   &eeprom, /* is_terse */ 0);
-	}
-      else
-	{
-	  vnet_dev_styled_new_line (&st);
-	  styled_text_add_marked (&st, ST_R_VALUE, "Transceiver not present or unreadable: %{%U%}",
-				  format_vnet_dev_rv, rv);
-	}
-    }
-
-  if (port->args)
-    {
       vnet_dev_styled_new_line (&st);
-      styled_text_add (&st, "Device Specific Port Arguments:\n  %T", styled_format_clib_args,
-		       port->args);
+      if (rv == VNET_DEV_OK)
+	styled_text_add (&st, "Module Base Information:\n  %T", styled_format_sfp_eeprom_module,
+			 &eeprom, /* is_terse */ 0);
+      else
+	styled_text_add_marked (&st, ST_R_VALUE, "Transceiver not present or unreadable: %{%U%}",
+				format_vnet_dev_rv, rv);
     }
 
-  vnet_dev_styled_new_line (&st);
-  styled_text_add (&st, "Interface ");
-
-  if (port->interfaces)
+  if (a->arguments)
     {
-      styled_text_add_marked (
-	&st, ST_R_VALUE, "assigned, primary interface name is '%{%U%}', RX node is '%{%U%}'",
-	format_vnet_sw_if_index_name, vnm, port->interfaces->primary_interface.sw_if_index,
-	format_vlib_node_name, vm, vnet_dev_get_port_rx_node_index (port));
-      pool_foreach_pointer (sif, port->interfaces->secondary_interfaces)
+      if (port->args)
 	{
 	  vnet_dev_styled_new_line (&st);
-	  styled_text_add_marked (&st, ST_R_VALUE, "Secondary interface '%{%U%}'",
-				  format_vnet_sw_if_index_name, vnm, sif->sw_if_index);
+	  styled_text_add (&st, "Device Specific Port Arguments:\n  %T", styled_format_clib_args,
+			   port->args);
+	}
 
+      if (port->interfaces)
+	pool_foreach_pointer (sif, port->interfaces->secondary_interfaces)
 	  if (sif->args)
 	    {
 	      vnet_dev_styled_new_line (&st);
-	      styled_text_add (&st, "Secondary Interface Arguments:\n  %T", styled_format_clib_args,
-			       sif->args);
+	      styled_text_add (&st, "Secondary Interface '%U' Arguments:\n  %T",
+			       format_vnet_sw_if_index_name, vnm, sif->sw_if_index,
+			       styled_format_clib_args, sif->args);
 	    }
-	}
     }
-  else
-    styled_text_add (&st, "not assigned");
 
   s = vnet_dev_styled_flush (s, start, indent, &st);
   styled_text_free (&st);
@@ -489,6 +516,7 @@ format_vnet_dev_rx_queue_info (u8 *s, va_list *args)
     rxq->started ? "started" : "not-started", rxq->interrupt_mode ? "interrupt" : "polling");
   s = vnet_dev_styled_flush (s, start, indent, &st);
   styled_text_free (&st);
+  start = vec_len (s);
 
   if (rxq->port->rx_queue_ops.styled_format_info)
     {
@@ -502,6 +530,10 @@ format_vnet_dev_rx_queue_info (u8 *s, va_list *args)
       s = vnet_dev_format_in_process (s, rxq->port->dev, "%U", rxq->port->rx_queue_ops.format_info,
 				      a, rxq);
     }
+
+  /* no driver specific output, drop the new line */
+  if (vec_len (s) == start + 1 + indent)
+    vec_set_len (s, start);
 
   return s;
 }
@@ -526,6 +558,7 @@ format_vnet_dev_tx_queue_info (u8 *s, va_list *args)
     }
   s = vnet_dev_styled_flush (s, start, indent, &st);
   styled_text_free (&st);
+  start = vec_len (s);
 
   if (txq->port->tx_queue_ops.styled_format_info)
     {
@@ -540,6 +573,10 @@ format_vnet_dev_tx_queue_info (u8 *s, va_list *args)
 				      a, txq);
     }
 
+  /* no driver specific output, drop the new line */
+  if (vec_len (s) == start + 1 + indent)
+    vec_set_len (s, start);
+
   return s;
 }
 
@@ -547,7 +584,15 @@ u8 *
 format_vnet_dev_interface_info (u8 *s, va_list *args)
 {
   u32 i = va_arg (*args, u32);
-  vnet_dev_format_args_t fa = { .plain_text = vlib_unix_cli_plain_text_only () }, *a = &fa;
+  vnet_dev_format_args_t fa = {
+    .plain_text = vlib_unix_cli_plain_text_only (),
+    .info = 1,
+    .status = 1,
+    .rss = 1,
+    .capabilities = 1,
+    .arguments = 1,
+    .module = 1,
+  }, *a = &fa;
   vnet_dev_port_t *port = vnet_dev_get_port_from_dev_instance (i);
   vnet_dev_t *dev = port->dev;
   u32 indent = format_get_indent (s);

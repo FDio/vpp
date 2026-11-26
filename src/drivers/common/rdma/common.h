@@ -164,6 +164,7 @@ void rdma_rxq_destroy_flows (rdma_rx_flow_t ***flows);
 
 format_function_t format_rdma_ibv_wc;
 styled_format_fn_t styled_format_rdma_ibv_dev_info;
+styled_format_fn_t styled_format_rdma_ibv_dev_caps;
 format_function_t format_rdma_cap_list;
 styled_format_fn_t styled_format_rdma_port_status;
 enum

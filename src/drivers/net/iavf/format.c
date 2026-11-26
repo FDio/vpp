@@ -89,17 +89,40 @@ format_iavf_rx_trace (u8 *s, va_list *args)
 }
 
 void
+styled_format_iavf_dev_caps (styled_text_t *st, va_list *args)
+{
+  va_arg (*args, vnet_dev_format_args_t *);
+  vnet_dev_t *dev = va_arg (*args, vnet_dev_t *);
+  vnet_dev_port_t *port = vnet_dev_get_port_by_id (dev, 0);
+  iavf_port_t *ap;
+
+  if (port == 0)
+    return;
+
+  ap = vnet_dev_get_port_data (port);
+  styled_text_add_marked (st, ST_R_VALUE, "VF caps: %{%U%}", format_iavf_vf_cap_flags,
+			  ap->vf_cap_flags);
+}
+
+void
+styled_format_iavf_port_rss (styled_text_t *st, va_list *args)
+{
+  va_arg (*args, vnet_dev_format_args_t *);
+  vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
+  iavf_port_t *ap = vnet_dev_get_port_data (port);
+
+  styled_text_add_marked (st, ST_R_VALUE, "key size is %{%u%}, lut size is %{%u%}",
+			  ap->rss_key_size, ap->rss_lut_size);
+}
+
+void
 styled_format_iavf_port_status (styled_text_t *st, va_list *args)
 {
   vnet_dev_format_args_t __clib_unused *a = va_arg (*args, vnet_dev_format_args_t *);
   vnet_dev_port_t *port = va_arg (*args, vnet_dev_port_t *);
   iavf_port_t *ap = vnet_dev_get_port_data (port);
 
-  styled_text_add_marked (st, ST_R_VALUE, "caps: %{%U%}", format_iavf_vf_cap_flags,
-			  ap->vf_cap_flags);
-  styled_text_add_marked (st, ST_R_VALUE,
-			  "\nvsi is %{%u%}, RSS key size is %{%u%}, RSS lut size is %{%u%}",
-			  ap->vsi_id, ap->rss_key_size, ap->rss_lut_size);
+  styled_text_add_marked (st, ST_R_VALUE, "vsi is %{%u%}", ap->vsi_id);
   styled_text_add (st, "\nflow offload ");
 
   if (ap->flow_offload)

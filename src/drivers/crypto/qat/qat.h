@@ -294,6 +294,7 @@ extern vnet_dev_node_t qat_deq_node;
 
 /* format.c */
 styled_format_fn_t styled_format_qat_dev_info;
+styled_format_fn_t styled_format_qat_dev_caps;
 format_function_t format_qat_enq_trace;
 format_function_t format_qat_deq_trace;
 styled_format_fn_t styled_format_qat_queue_info;

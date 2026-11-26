@@ -267,7 +267,7 @@ vnp_init (vlib_main_t *vm, vnet_dev_t *dev)
         .caps.change_max_rx_frame_size = 1,
       },
       .ops = { .init = vnp_port_init, .deinit = vnp_port_deinit, .start = vnp_port_start, .stop = vnp_port_stop, .config_change_validate = vnp_port_cfg_validate,
-        .config_change = vnp_port_cfg_change, .styled_format_status = styled_format_vnp_port_status, },
+        .config_change = vnp_port_cfg_change, .styled_format_status = styled_format_vnp_port_status, .styled_format_rss = styled_format_vnp_port_rss, },
       .data_size = sizeof (vnp_port_t),
     },
     .rx_node = &vnp_rx_node,
@@ -413,6 +413,6 @@ VNET_DEV_REGISTER_DRIVER (virtio_net_pci) = {
   .device = {
     .data_sz = sizeof (vnp_dev_t),
     .args = vnp_device_args,
-    .ops = { .probe = vnp_probe, .init = vnp_init, .deinit = vnp_deinit, .styled_format_info = styled_format_vnp_dev_info, },
+    .ops = { .probe = vnp_probe, .init = vnp_init, .deinit = vnp_deinit, .styled_format_info = styled_format_vnp_dev_info, .styled_format_capabilities = styled_format_vnp_dev_caps, },
   },
 };

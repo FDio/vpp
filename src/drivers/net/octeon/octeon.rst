@@ -251,7 +251,7 @@ Debugging
 =========
 
 * ``show device <device-id>`` shows the device, the port and the queue state.
-* ``show device counters all <device-id>`` shows all counters.
+* ``show device zero-counters <device-id>`` shows all counters.
 * Raise the log level with ``logging { class octeon { level debug } class dev {
   level debug } }``. The ``octeon`` log class has subclasses for the flow
   rules and the traffic manager. ROC library errors are logged as ``ROC error
