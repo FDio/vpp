@@ -179,7 +179,11 @@ vhost_user_rx_thread_placement (vhost_user_intf_t * vui, u32 qid)
       cpu->polling_q_count++;
     }
   txvq->qid = q;
-  rv = vnet_hw_if_set_rx_queue_mode (vnm, txvq->queue_index, txvq->mode);
+  /* Go through rx_mode_change so that the queue counters stay consistent */
+  rv = vnet_hw_if_set_rx_queue_mode (vnm, txvq->queue_index,
+				     txvq->mode == VNET_HW_IF_RX_MODE_POLLING ?
+					     VNET_HW_IF_RX_MODE_DEFAULT :
+					     txvq->mode);
   if (rv)
     vu_log_warn (vui, "unable to set rx mode for interface %d, "
 		 "queue %d: rc=%d", vui->hw_if_index, q, rv);
