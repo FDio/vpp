@@ -7,79 +7,72 @@
 #include <perfmon/perfmon.h>
 #include <vppinfra/format_table.h>
 
-uword
-unformat_perfmon_bundle_name (unformat_input_t *input, va_list *args)
+/* the value of the name types is the pointer to the bundle or source */
+static u8 *
+parse_perfmon_name (uword *by_name, char *what, u8 *tok, cli_value_t *v)
 {
-  perfmon_main_t *pm = &perfmon_main;
-  perfmon_bundle_t **b = va_arg (*args, perfmon_bundle_t **);
-  uword *p;
-  u8 *str = 0;
+  u8 *name = format (0, "%v%c", tok, 0);
+  uword *p = hash_get_mem (by_name, name);
 
-  if (unformat (input, "%s", &str) == 0)
-    return 0;
+  vec_free (name);
 
-  p = hash_get_mem (pm->bundle_by_name, str);
+  if (p == 0)
+    return format (0, "unknown %s '%v'", what, tok);
 
-  if (p)
-    b[0] = (perfmon_bundle_t *) p[0];
+  v->u64 = p[0];
 
-  vec_free (str);
-  return p ? 1 : 0;
+  return 0;
 }
 
-uword
-unformat_perfmon_active_type (unformat_input_t *input, va_list *args)
+static u8 *
+parse_perfmon_bundle (const cli_arg_t *a, u8 *tok, cli_value_t *v)
 {
-  perfmon_bundle_t *b = va_arg (*args, perfmon_bundle_t *);
-  perfmon_bundle_type_t *bundle_type = va_arg (*args, perfmon_bundle_type_t *);
-  char *str = 0;
-
-  char *_str_types[PERFMON_BUNDLE_TYPE_MAX];
-
-#define _(type, pstr) _str_types[type] = (char *) pstr;
-
-  foreach_perfmon_bundle_type
-#undef _
-
-    if (!b) return 0;
-
-  if (unformat (input, "%s", &str) == 0)
-    return 0;
-
-  for (int i = PERFMON_BUNDLE_TYPE_NODE; i < PERFMON_BUNDLE_TYPE_MAX; i++)
-    {
-      /* match the name and confirm it is available on this cpu */
-      if (strncmp (str, _str_types[i], strlen (_str_types[i])) == 0 &&
-	  (b->type_flags & 1 << i))
-	{
-	  *bundle_type = i;
-	  break;
-	}
-    }
-
-  vec_free (str);
-  return 1;
+  return parse_perfmon_name (perfmon_main.bundle_by_name, "bundle", tok, v);
 }
 
-uword
-unformat_perfmon_source_name (unformat_input_t *input, va_list *args)
+static void
+complete_perfmon_bundle (const cli_arg_t *a, u8 *prefix, cli_candidate_t **out)
 {
-  perfmon_main_t *pm = &perfmon_main;
-  perfmon_source_t **b = va_arg (*args, perfmon_source_t **);
-  uword *p;
-  u8 *str = 0;
+  perfmon_bundle_t *b;
+  char *name;
 
-  if (unformat (input, "%s", &str) == 0)
-    return 0;
-
-  p = hash_get_mem (pm->source_by_name, str);
-
-  if (p)
-    b[0] = (perfmon_source_t *) p[0];
-
-  vec_free (str);
-  return p ? 1 : 0;
+  hash_foreach_mem (name, b, perfmon_main.bundle_by_name, {
+    if (cli_prefix_match (name, prefix))
+      cli_candidate_add (out, name, b->description);
+  });
 }
+
+CLIB_CLI_TYPE (cli_type_perfmon_bundle, static) = {
+  .name = "bundle-name",
+  .help = "perfmon bundle",
+  .parse = parse_perfmon_bundle,
+  .complete = complete_perfmon_bundle,
+};
+
+static u8 *
+parse_perfmon_source (const cli_arg_t *a, u8 *tok, cli_value_t *v)
+{
+  return parse_perfmon_name (perfmon_main.source_by_name, "source", tok, v);
+}
+
+static void
+complete_perfmon_source (const cli_arg_t *a, u8 *prefix, cli_candidate_t **out)
+{
+  perfmon_source_t *src;
+  char *name;
+
+  hash_foreach_mem (name, src, perfmon_main.source_by_name, {
+    if (cli_prefix_match (name, prefix))
+      cli_candidate_add (out, name, src->description);
+  });
+}
+
+CLIB_CLI_TYPE (cli_type_perfmon_source, static) = {
+  .name = "source-name",
+  .help = "perfmon source",
+  .parse = parse_perfmon_source,
+  .complete = complete_perfmon_source,
+};
 
 typedef enum
 {
@@ -157,30 +150,19 @@ bundle_name_sort_cmp (void *a1, void *a2)
 }
 
 static clib_error_t *
-show_perfmon_bundle_command_fn (vlib_main_t *vm, unformat_input_t *input,
-				vlib_cli_command_t *cmd)
+show_perfmon_bundle_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   perfmon_main_t *pm = &perfmon_main;
-  unformat_input_t _line_input, *line_input = &_line_input;
   perfmon_bundle_t *b = 0, **vb = 0;
-  int verbose = 0;
+  int verbose = cli_flag (ctx, "verbose");
   format_perfmon_bundle_args_t cfg = FORMAT_PERFMON_BUNDLE_NONE;
+  cli_value_t *v;
 
-  if (unformat_user (input, unformat_line_input, line_input))
-    {
-      while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-	{
-	  if (unformat (line_input, "verbose"))
-	    verbose = 1;
-	  else if (unformat (line_input, "%U", unformat_perfmon_bundle_name,
-			     &b))
-	    vec_add (vb, &b, 1);
-	  else
-	    return clib_error_return (0, "unknown input `%U'",
-				      format_unformat_error, line_input);
-	}
-      unformat_free (line_input);
-    }
+  cli_foreach (v, ctx, "bundle-name")
+  {
+    b = uword_to_pointer (v->u64, perfmon_bundle_t *);
+    vec_add1 (vb, b);
+  }
 
   if (verbose) /* if verbose is specified */
     cfg = FORMAT_PERFMON_BUNDLE_VERBOSE;
@@ -214,8 +196,11 @@ show_perfmon_bundle_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (show_perfmon_bundle_command, static) = {
   .path = "show perfmon bundle",
-  .short_help = "show perfmon bundle [<bundle-name>] [verbose]",
-  .function = show_perfmon_bundle_command_fn,
+  .short_help = "Show the perfmon bundles",
+  .args = CLI_ARGS (CLI_VALUE ("bundle-name", cli_type_perfmon_bundle,
+			       .flags = CLI_F_OPTIONAL | CLI_F_REPEAT),
+		    CLI_FLAG ("verbose", .help = "show the event configuration")),
+  .handler = show_perfmon_bundle_command_fn,
   .is_mp_safe = 1,
 };
 
@@ -271,29 +256,18 @@ format_perfmon_source (u8 *s, va_list *args)
 }
 
 static clib_error_t *
-show_perfmon_source_command_fn (vlib_main_t *vm, unformat_input_t *input,
-				vlib_cli_command_t *cmd)
+show_perfmon_source_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   perfmon_main_t *pm = &perfmon_main;
-  unformat_input_t _line_input, *line_input = &_line_input;
   perfmon_source_t *s = 0, **vs = 0;
-  int verbose = 0;
+  int verbose = cli_flag (ctx, "verbose");
+  cli_value_t *v;
 
-  if (unformat_user (input, unformat_line_input, line_input))
-    {
-      while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-	{
-	  if (unformat (line_input, "verbose"))
-	    verbose = 1;
-	  else if (unformat (line_input, "%U", unformat_perfmon_source_name,
-			     &s))
-	    vec_add (vs, &s, 1);
-	  else
-	    return clib_error_return (0, "unknown input `%U'",
-				      format_unformat_error, line_input);
-	}
-      unformat_free (line_input);
-    }
+  cli_foreach (v, ctx, "source-name")
+  {
+    s = uword_to_pointer (v->u64, perfmon_source_t *);
+    vec_add1 (vs, s);
+  }
 
   if (vs == 0)
     {
@@ -315,15 +289,16 @@ show_perfmon_source_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (show_perfmon_source_command, static) = {
   .path = "show perfmon source",
-  .short_help = "show perfmon source [<source-name>] [verbose]",
-  .function = show_perfmon_source_command_fn,
+  .short_help = "Show the perfmon event sources",
+  .args = CLI_ARGS (CLI_VALUE ("source-name", cli_type_perfmon_source,
+			       .flags = CLI_F_OPTIONAL | CLI_F_REPEAT),
+		    CLI_FLAG ("verbose", .help = "show the events")),
+  .handler = show_perfmon_source_command_fn,
   .is_mp_safe = 1,
 };
 
 static clib_error_t *
-show_perfmon_active_bundle_command_fn (vlib_main_t *vm,
-				       unformat_input_t *input,
-				       vlib_cli_command_t *cmd)
+show_perfmon_active_bundle_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   perfmon_main_t *pm = &perfmon_main;
 
@@ -333,14 +308,13 @@ show_perfmon_active_bundle_command_fn (vlib_main_t *vm,
 
 VLIB_CLI_COMMAND (show_perfmon_active_bundle_command, static) = {
   .path = "show perfmon active-bundle",
-  .short_help = "show perfmon active-bundle",
-  .function = show_perfmon_active_bundle_command_fn,
+  .short_help = "Show the active perfmon bundle",
+  .handler = show_perfmon_active_bundle_command_fn,
   .is_mp_safe = 1,
 };
 
 static clib_error_t *
-show_perfmon_stats_command_fn (vlib_main_t *vm, unformat_input_t *input,
-			       vlib_cli_command_t *cmd)
+show_perfmon_stats_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   perfmon_main_t *pm = &perfmon_main;
   perfmon_bundle_t *b = pm->active_bundle;
@@ -492,14 +466,15 @@ done:
 
 VLIB_CLI_COMMAND (show_perfmon_stats_command, static) = {
   .path = "show perfmon statistics",
-  .short_help = "show perfmon statistics [raw]",
-  .function = show_perfmon_stats_command_fn,
+  .short_help = "Show the perfmon statistics",
+  /* "raw" was accepted and ignored, scripts may still give it */
+  .args = CLI_ARGS (CLI_FLAG ("raw", .flags = CLI_F_HIDDEN)),
+  .handler = show_perfmon_stats_command_fn,
   .is_mp_safe = 1,
 };
 
 static clib_error_t *
-perfmon_reset_command_fn (vlib_main_t *vm, unformat_input_t *input,
-			  vlib_cli_command_t *cmd)
+perfmon_reset_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   perfmon_reset (vm);
   return 0;
@@ -507,41 +482,32 @@ perfmon_reset_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (perfmon_reset_command, static) = {
   .path = "perfmon reset",
-  .short_help = "perfmon reset",
-  .function = perfmon_reset_command_fn,
+  .short_help = "Reset the perfmon statistics",
+  .handler = perfmon_reset_command_fn,
   .is_mp_safe = 1,
 };
 
+static const cli_choice_t perfmon_type_choices[] = {
+  { "node", "per graph node", PERFMON_BUNDLE_TYPE_NODE },
+  { "thread", "per thread", PERFMON_BUNDLE_TYPE_THREAD },
+  { "system", "for the whole system", PERFMON_BUNDLE_TYPE_SYSTEM },
+  {},
+};
+
 static clib_error_t *
-perfmon_start_command_fn (vlib_main_t *vm, unformat_input_t *input,
-			  vlib_cli_command_t *cmd)
+perfmon_start_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   perfmon_main_t *pm = &perfmon_main;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  perfmon_bundle_t *b = 0;
+  perfmon_bundle_t *b = uword_to_pointer (cli_get (ctx, "bundle")->u64, perfmon_bundle_t *);
   perfmon_bundle_type_t bundle_type = PERFMON_BUNDLE_TYPE_UNKNOWN;
+  cli_value_t *v = cli_get (ctx, "type");
 
   if (pm->is_running)
     return clib_error_return (0, "please stop first");
 
-  if (unformat_user (input, unformat_line_input, line_input) == 0)
-    return clib_error_return (0, "please specify bundle name");
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (line_input, "bundle %U", unformat_perfmon_bundle_name, &b))
-	;
-      else if (unformat (line_input, "type %U", unformat_perfmon_active_type,
-			 b, &bundle_type))
-	;
-      else
-	return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, line_input);
-    }
-  unformat_free (line_input);
-
-  if (b == 0)
-    return clib_error_return (0, "please specify bundle name");
+  /* a type the bundle does not have counts as not given */
+  if (v && (b->type_flags & 1 << v->index))
+    bundle_type = v->index;
 
   /* if there is more than one valid mode */
   if (count_set_bits (b->type_flags) > 1)
@@ -564,21 +530,23 @@ perfmon_start_command_fn (vlib_main_t *vm, unformat_input_t *input,
 
 VLIB_CLI_COMMAND (perfmon_start_command, static) = {
   .path = "perfmon start",
-  .short_help = "perfmon start bundle [<bundle-name>] type [<node|thread>]",
-  .function = perfmon_start_command_fn,
+  .short_help = "Start collecting the events of a perfmon bundle",
+  .args = CLI_ARGS (CLI_KEYWORD ("bundle", cli_type_perfmon_bundle),
+		    CLI_OPT_KEYWORD ("type", cli_type_enum, .choices = perfmon_type_choices,
+				     .help = "needed if the bundle has more than one type")),
+  .handler = perfmon_start_command_fn,
   .is_mp_safe = 1,
 };
 
 static clib_error_t *
-perfmon_stop_command_fn (vlib_main_t *vm, unformat_input_t *input,
-			 vlib_cli_command_t *cmd)
+perfmon_stop_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   return perfmon_stop (vm);
 }
 
 VLIB_CLI_COMMAND (perfmon_stop_command, static) = {
   .path = "perfmon stop",
-  .short_help = "perfmon stop",
-  .function = perfmon_stop_command_fn,
+  .short_help = "Stop collecting perfmon events",
+  .handler = perfmon_stop_command_fn,
   .is_mp_safe = 1,
 };
