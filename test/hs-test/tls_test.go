@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net"
 	"strings"
 	"time"
 
@@ -19,8 +20,31 @@ var (
 func init() {
 	RegisterTlsTests(TlsAlpMatchTest, TlsAlpnOverlapMatchTest, TlsAlpnServerPriorityMatchTest, TlsAlpnMismatchTest,
 		TlsAlpnEmptyServerListTest, TlsAlpnEmptyClientListTest, TlsCrlRejectThenAllowTest,
-		TlsPicotlsAlpnEmptyServerListTest, TlsPicotlsAlpnEmptyClientListTest, TlsPeerCertCloseTest)
+		TlsPicotlsAlpnEmptyServerListTest, TlsPicotlsAlpnEmptyClientListTest, TlsPeerCertCloseTest, TlsIpSanTest)
 	RegisterTlsTapTests(TlsFinDrainTest)
+}
+
+func TlsIpSanTest(s *TlsSuite) {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	clientVpp := s.Containers.ClientVpp.VppInstance
+	serverIP := s.Interfaces.Server.Ip4AddressString()
+	uri := "tls://" + JoinHostPort(serverIP, s.Ports.Port1)
+	dnsName := "peer.example.test"
+	a := s.CreateTlsTestArtifacts("tls-ip-san", dnsName,
+		[]net.IP{net.ParseIP(serverIP), net.ParseIP("2001:db8::10")}, []string{dnsName},
+		s.Containers.ServerVpp, s.Containers.ClientVpp)
+
+	o := serverVpp.Vppctl("test tls server cert " + a.ServerCert + " key " + a.ServerKey + " uri " + uri)
+	AssertContains(o, "server started")
+	client := "test tls client verify hostname ca-cert " + a.CaCert + " uri " + uri + " hostname "
+	for _, hostname := range []string{serverIP, "2001:0db8:0:0:0:0:0:10", dnsName} {
+		o = clientVpp.Vppctl(client + hostname)
+		AssertContains(o, "TLS version:")
+	}
+	for _, hostname := range []string{"192.0.2.20", "2001:db8::20"} {
+		o = clientVpp.Vppctl(client + hostname)
+		AssertContains(o, "connect error failed tls handshake")
+	}
 }
 
 func TlsPeerCertCloseTest(s *TlsSuite) {

@@ -364,7 +364,7 @@ tc_program_connect (vnet_connect_args_t *a)
 }
 
 static void
-tc_connect ()
+tc_connect (const u8 *hostname)
 {
   tls_client_main_t *cm = &tls_client_main;
   vnet_connect_args_t *a = 0;
@@ -383,13 +383,15 @@ tc_connect ()
   ext_cfg->crypto.tls_profile_index = cm->tls_profile_index;
   ext_cfg->crypto.ca_trust_index = cm->ca_trust_index;
   ext_cfg->crypto.verify_cfg = cm->verify_cfg;
+  if (hostname)
+    clib_memcpy (ext_cfg->crypto.hostname, hostname, vec_len (hostname));
   clib_memcpy (ext_cfg->crypto.alpn_protos, cm->alpn_protos, 4);
 
   tc_program_connect (a);
 }
 
 static clib_error_t *
-tc_run (vlib_main_t *vm)
+tc_run (vlib_main_t *vm, const u8 *hostname)
 {
   tls_client_main_t *cm = &tls_client_main;
   uword event_type, *event_data = 0;
@@ -404,7 +406,7 @@ tc_run (vlib_main_t *vm)
     return clib_error_return (0, "attach failed");
 
   for (i = 0; i < cm->nclients; i++)
-    tc_connect ();
+    tc_connect (hostname);
 
   vlib_process_wait_for_event_or_clock (vm, 10);
   event_type = vlib_process_get_events (vm, &event_data);
@@ -468,6 +470,7 @@ tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
   tls_client_main_t *cm = &tls_client_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
+  u8 *hostname = 0;
   int rv;
 
   cm->tls_engine = CRYPTO_ENGINE_OPENSSL;
@@ -488,6 +491,8 @@ tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "uri %_%v%_", &cm->uri))
+	;
+      else if (!hostname && unformat (line_input, "hostname %s", &hostname))
 	;
       else if (unformat (line_input, "tls-engine %d", &cm->tls_engine))
 	;
@@ -540,6 +545,11 @@ tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
       error = clib_error_return (0, "uri not defined");
       goto done;
     }
+  if (vec_len (hostname) > STRUCT_SIZE_OF (transport_endpt_crypto_cfg_t, hostname))
+    {
+      error = clib_error_return (0, "hostname is too long");
+      goto done;
+    }
   if (cm->crl_file && !cm->ca_cert_file)
     {
       error = clib_error_return (0, "crl requires ca-cert");
@@ -570,7 +580,7 @@ tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
   vnet_session_enable_disable (vm, &args);
   vlib_worker_thread_barrier_release (vm);
 
-  error = tc_run (vm);
+  error = tc_run (vm, hostname);
 
   vlib_worker_thread_barrier_sync (vm);
   rv = tc_detach ();
@@ -584,6 +594,7 @@ tls_client_run_command_fn (vlib_main_t *vm, unformat_input_t *input, vlib_cli_co
     }
 
 done:
+  vec_free (hostname);
   vec_free (cm->uri);
   vec_free (cm->ca_cert_file);
   vec_free (cm->crl_file);
@@ -596,7 +607,7 @@ done:
 
 VLIB_CLI_COMMAND (tls_client_run_command, static) = {
   .path = "test tls client",
-  .short_help = "test tls client [uri <tls://ip/port>] [tls-engine %d] "
+  .short_help = "test tls client [uri <tls://ip/port>] [hostname <name>] [tls-engine %d] "
 		"[send-bytes <bytes>[k|m]] "
 		"[nclients <n>] "
 		"[profile-index %d] [verify <mode>] [ca-cert <ca-cert-file>] "

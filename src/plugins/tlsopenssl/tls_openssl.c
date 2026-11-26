@@ -3,6 +3,7 @@
  * Copyright (c) 2018 Cisco and/or its affiliates.
  */
 
+#include <arpa/inet.h>
 #include <openssl/ssl.h>
 #include <openssl/conf.h>
 #include <openssl/err.h>
@@ -1156,11 +1157,35 @@ openssl_app_verify_cb (int preverify_ok __clib_unused, X509_STORE_CTX *x509_ctx 
   return 1;
 }
 
+static size_t
+openssl_parse_ip_literal (const char *hostname, unsigned char *address)
+{
+  if (!hostname)
+    return 0;
+  if (inet_pton (AF_INET, hostname, address) == 1)
+    return sizeof (struct in_addr);
+  if (inet_pton (AF_INET6, hostname, address) == 1)
+    return sizeof (struct in6_addr);
+  return 0;
+}
+
 static int
-openssl_client_set_verify (tls_ctx_t *ctx)
+openssl_client_configure_peer (tls_ctx_t *ctx)
 {
   openssl_ctx_t *oc = (openssl_ctx_t *) ctx;
+  const char *hostname = (const char *) ctx->srv_hostname;
+  unsigned char address[sizeof (struct in6_addr)];
+  size_t address_len = openssl_parse_ip_literal (hostname, address);
   int (*verify_cb) (int, X509_STORE_CTX *) = 0;
+
+  if (hostname && hostname[0] && !address_len && !SSL_set_tlsext_host_name (oc->ssl, hostname))
+    {
+      TLS_DBG (1, "Couldn't set SNI hostname");
+      return -1;
+    }
+
+  if (!ctx->verify_cfg)
+    return 0;
 
   if (ctx->verify_cfg & (TLS_VERIFY_F_HOSTNAME | TLS_VERIFY_F_HOSTNAME_STRICT))
     {
@@ -1177,10 +1202,15 @@ openssl_client_set_verify (tls_ctx_t *ctx)
 
       if (ctx->verify_cfg & TLS_VERIFY_F_HOSTNAME)
 	{
-	  if (!X509_VERIFY_PARAM_set1_host (
-		param, (const char *) ctx->srv_hostname, 0))
+	  int rv = 0;
+
+	  if (address_len)
+	    rv = X509_VERIFY_PARAM_set1_ip (param, address, address_len);
+	  else if (hostname && hostname[0])
+	    rv = X509_VERIFY_PARAM_set1_host (param, hostname, 0);
+	  if (!rv)
 	    {
-	      TLS_DBG (1, "Couldn't set hostname for verification");
+	      TLS_DBG (1, "Couldn't set peer identity for verification");
 	      return -1;
 	    }
 	}
@@ -1234,20 +1264,8 @@ openssl_ctx_init_client (tls_ctx_t *ctx)
 	}
     }
 
-  if (!SSL_set_tlsext_host_name (oc->ssl, (const char *) ctx->srv_hostname))
-    {
-      TLS_DBG (1, "Couldn't set hostname");
-      return -1;
-    }
-
-  if (ctx->verify_cfg)
-    {
-      if (openssl_client_set_verify (ctx))
-	{
-	  TLS_DBG (1, "ERROR: setting verify flags failed");
-	  return -1;
-	}
-    }
+  if (openssl_client_configure_peer (ctx))
+    return -1;
 
   /* Configure a ckpair index only if non-default/test provided */
   if (ctx->ckpair_index)

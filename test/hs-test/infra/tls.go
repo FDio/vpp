@@ -20,6 +20,11 @@ type TlsCrlTestArtifacts struct {
 }
 
 func (s *HstSuite) CreateTlsCrlTestArtifacts(name, serverIP string, containers ...*Container) TlsCrlTestArtifacts {
+	return s.CreateTlsTestArtifacts(name, serverIP, []net.IP{net.ParseIP(serverIP)}, []string{serverIP}, containers...)
+}
+
+func (s *HstSuite) CreateTlsTestArtifacts(name, commonName string, ipAddresses []net.IP, dnsNames []string,
+	containers ...*Container) TlsCrlTestArtifacts {
 	now := time.Now()
 	caKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	AssertNil(err)
@@ -43,13 +48,13 @@ func (s *HstSuite) CreateTlsCrlTestArtifacts(name, serverIP string, containers .
 	AssertNil(err)
 	serverTmpl := &x509.Certificate{
 		SerialNumber: big.NewInt(2),
-		Subject:      pkix.Name{CommonName: serverIP},
+		Subject:      pkix.Name{CommonName: commonName},
 		NotBefore:    now.Add(-1 * time.Hour),
 		NotAfter:     now.Add(24 * time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		IPAddresses:  []net.IP{net.ParseIP(serverIP)},
-		DNSNames:     []string{serverIP},
+		IPAddresses:  ipAddresses,
+		DNSNames:     dnsNames,
 	}
 	serverDer, err := x509.CreateCertificate(rand.Reader, serverTmpl, caCert, &serverKey.PublicKey, caKey)
 	AssertNil(err)
