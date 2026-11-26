@@ -36,7 +36,6 @@ typedef struct
   uword hash_memory_size;
     BVT (clib_bihash) hash;
   clib_time_t clib_time;
-  void *global_heap;
 
   unformat_input_t *input;
 
@@ -148,7 +147,6 @@ test_bihash_thread_fn (void *arg)
 
   u32 my_thread_index = (u32) (u64) arg;
   __os_thread_index = my_thread_index;
-  clib_mem_set_per_cpu_heap (tm->global_heap);
 
   while (tm->thread_barrier)
     ;
@@ -614,8 +612,6 @@ main (int argc, char *argv[])
   test_main_t *tm = &test_main;
 
   clib_mem_init (0, 4095ULL << 20);
-
-  tm->global_heap = clib_mem_get_per_cpu_heap ();
 
   tm->input = &i;
   tm->seed = 0xdeaddabe;
