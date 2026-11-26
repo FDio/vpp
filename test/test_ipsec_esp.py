@@ -1192,6 +1192,14 @@ class RunTestIpsecEspAll(ConfigIpsecESP, IpsecTra4, IpsecTra6, IpsecTun4, IpsecT
         #
         saf = VppEnum.vl_api_ipsec_sad_flags_t
         if flag & saf.IPSEC_API_SAD_FLAG_USE_ANTI_REPLAY:
+            if (
+                not self.async_mode
+                and engine in ("native", "openssl")
+                and not self.get_vpp_worker_count()
+            ):
+                # PG completes main-thread forwarding and capture before
+                # pg_start() returns with a synchronous crypto engine.
+                self.anti_replay_capture_timeout = None
             for anti_replay_window_size in (
                 64,
                 131072,

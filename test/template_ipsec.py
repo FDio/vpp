@@ -336,6 +336,8 @@ class IpsecTcpTests(IpsecTcp):
 
 
 class IpsecTra4(object):
+    anti_replay_capture_timeout = 0.2
+
     """verify methods for Transport v4"""
 
     def get_replay_counts(self, p):
@@ -605,6 +607,11 @@ class IpsecTra4(object):
                 ]
                 self.send_and_expect(self.tra_if, pkts, self.tra_if)
 
+    def assert_anti_replay_drops(self, pkts):
+        self.send_and_assert_no_replies(
+            self.tra_if, pkts, timeout=self.anti_replay_capture_timeout
+        )
+
     def verify_tra_anti_replay(self):
         p = self.params[socket.AF_INET]
         esn_en = p.vpp_tra_sa.esn_en
@@ -652,7 +659,7 @@ class IpsecTra4(object):
         recv_pkts = self.send_and_expect(self.tra_if, pkts, self.tra_if)
 
         # replayed packets are dropped
-        self.send_and_assert_no_replies(self.tra_if, pkts, timeout=0.2)
+        self.assert_anti_replay_drops(pkts)
         replay_count += len(pkts)
         self.assertEqual(self.get_replay_counts(p), replay_count)
         err = p.tra_sa_in.get_err("replay") + initial_sa_node_replay_diff
@@ -691,7 +698,7 @@ class IpsecTra4(object):
         self.logger.info(self.vapi.ppcli("show ipsec sa 1"))
 
         # replayed packets are dropped
-        self.send_and_assert_no_replies(self.tra_if, pkt * 3, timeout=0.2)
+        self.assert_anti_replay_drops(pkt * 3)
         replay_count += 3
         self.assertEqual(self.get_replay_counts(p), replay_count)
         err = p.tra_sa_in.get_err("replay") + initial_sa_node_replay_diff
@@ -721,7 +728,7 @@ class IpsecTra4(object):
             IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4) / ICMP(),
             seq_num=anti_replay_window_size + 200,
         )
-        self.send_and_assert_no_replies(self.tra_if, pkt * 17, timeout=0.2)
+        self.assert_anti_replay_drops(pkt * 17)
 
         hash_failed_count += 17
         self.assertEqual(self.get_hash_failed_counts(p), hash_failed_count)
@@ -739,7 +746,7 @@ class IpsecTra4(object):
                 IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4) / ICMP(),
                 seq_num=anti_replay_window_size + 200,
             )
-            self.send_and_assert_no_replies(self.tra_if, pkt * 17, timeout=0.2)
+            self.assert_anti_replay_drops(pkt * 17)
 
             undersize_count += 17
             self.assert_error_counter_equal(undersize_node_name, undersize_count)
@@ -766,7 +773,7 @@ class IpsecTra4(object):
             IP(src=self.tra_if.remote_ip4, dst=self.tra_if.local_ip4) / ICMP(),
             seq_num=17,
         )
-        self.send_and_assert_no_replies(self.tra_if, pkt * 17, timeout=0.2)
+        self.assert_anti_replay_drops(pkt * 17)
 
         if esn_en:
             # an out of window error with ESN looks like a high sequence
@@ -905,7 +912,7 @@ class IpsecTra4(object):
             # without ESN TX sequence numbers can't wrap and packets are
             # dropped from here on out.
             #
-            self.send_and_assert_no_replies(self.tra_if, pkts, timeout=0.2)
+            self.assert_anti_replay_drops(pkts)
             seq_cycle_count += len(pkts)
             self.assert_error_counter_equal(seq_cycle_node_name, seq_cycle_count)
             err = p.tra_sa_out.get_err("seq_cycled") + initial_sa_node_cycled_diff
@@ -1120,7 +1127,7 @@ class IpsecTra4(object):
         ]
 
         # out-of-window packets fail integrity check
-        self.send_and_assert_no_replies(self.tra_if, pkts, timeout=0.2)
+        self.assert_anti_replay_drops(pkts)
         hash_failed_count += len(pkts)
         self.assertEqual(self.get_hash_failed_counts(p), hash_failed_count)
 
@@ -1156,7 +1163,7 @@ class IpsecTra4(object):
             for seq in range(seq_num(Th - 1, Tl - 35), seq_num(Th - 1, Tl - 5))
         ]
 
-        self.send_and_assert_no_replies(self.tra_if, pkts, timeout=0.2)
+        self.assert_anti_replay_drops(pkts)
 
         # some packets are rejected by the pre-crypto check
         replay_count += 5
@@ -1184,7 +1191,7 @@ class IpsecTra4(object):
             for seq in range(seq_num(Th - 1, Tl + 5), seq_num(Th - 1, Tl + 20))
         ]
 
-        self.send_and_assert_no_replies(self.tra_if, pkts, timeout=0.2)
+        self.assert_anti_replay_drops(pkts)
 
         # out-of-window packets fail integrity check
         hash_failed_count += len(pkts)
@@ -1210,7 +1217,7 @@ class IpsecTra4(object):
         ]
 
         # out-of-window packets fail integrity check
-        self.send_and_assert_no_replies(self.tra_if, pkts, timeout=0.2)
+        self.assert_anti_replay_drops(pkts)
         hash_failed_count += len(pkts)
         self.assertEqual(self.get_hash_failed_counts(p), hash_failed_count)
 
@@ -1333,7 +1340,7 @@ class IpsecTra4(object):
             for seq in range(seq_num(Th + 1, Tl - 20), seq_num(Th + 1, Tl - 5))
         ]
 
-        self.send_and_assert_no_replies(self.tra_if, pkts, timeout=0.2)
+        self.assert_anti_replay_drops(pkts)
 
         # some packets are rejected by the pre-crypto check
         replay_count += 5
@@ -1362,7 +1369,7 @@ class IpsecTra4(object):
         ]
 
         # out-of-window packets fail integrity check
-        self.send_and_assert_no_replies(self.tra_if, pkts, timeout=0.2)
+        self.assert_anti_replay_drops(pkts)
         hash_failed_count += len(pkts)
         self.assertEqual(self.get_hash_failed_counts(p), hash_failed_count)
 
@@ -1418,7 +1425,7 @@ class IpsecTra4(object):
             for seq in range(seq_num(Th - 1, 0), seq_num(Th - 1, 15))
         ]
 
-        self.send_and_assert_no_replies(self.tra_if, pkts, timeout=0.2)
+        self.assert_anti_replay_drops(pkts)
 
         # some packets are rejected by the pre-crypto check
         replay_count += 5
@@ -1446,7 +1453,7 @@ class IpsecTra4(object):
             for seq in range(seq_num(Th - 1, Tl + 10), seq_num(Th - 1, Tl + 20))
         ]
 
-        self.send_and_assert_no_replies(self.tra_if, pkts, timeout=0.2)
+        self.assert_anti_replay_drops(pkts)
 
         # out-of-window packets fail integrity check
         hash_failed_count += len(pkts)
@@ -1565,7 +1572,7 @@ class IpsecTra4(object):
             for seq in range(seq_num(Th, Bl + 10), seq_num(Th, Bl + 20))
         ]
 
-        self.send_and_assert_no_replies(self.tra_if, pkts, timeout=0.2)
+        self.assert_anti_replay_drops(pkts)
 
         # out-of-window packets fail integrity check
         hash_failed_count += len(pkts)
@@ -1604,7 +1611,7 @@ class IpsecTra4(object):
             for seq in range(seq_num(Th + 1, 0), seq_num(Th + 1, 15))
         ]
 
-        self.send_and_assert_no_replies(self.tra_if, pkts, timeout=0.2)
+        self.assert_anti_replay_drops(pkts)
 
         # some packets are rejected by the pre-crypto check
         replay_count += 5
@@ -1632,7 +1639,7 @@ class IpsecTra4(object):
             for seq in range(seq_num(Th + 1, Tl + 10), seq_num(Th + 1, Tl + 20))
         ]
 
-        self.send_and_assert_no_replies(self.tra_if, pkts, timeout=0.2)
+        self.assert_anti_replay_drops(pkts)
 
         # out-of-window packets fail integrity check
         hash_failed_count += len(pkts)
@@ -1697,7 +1704,7 @@ class IpsecTra4(object):
         ]
 
         # out-of-window packets
-        self.send_and_assert_no_replies(self.tra_if, pkts, timeout=0.2)
+        self.assert_anti_replay_drops(pkts)
         replay_count += len(pkts)
         self.assertEqual(self.get_replay_counts(p), replay_count)
 
@@ -1732,7 +1739,7 @@ class IpsecTra4(object):
             for seq in range(seq_num(Tl - 35), seq_num(Tl - 30))
         ]
 
-        self.send_and_assert_no_replies(self.tra_if, pkts, timeout=0.2)
+        self.assert_anti_replay_drops(pkts)
 
         # replayed packets
         replay_count += 5
