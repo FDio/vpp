@@ -145,7 +145,7 @@ class VCLTestCase(VppAsfTestCase):
             cpus=self.helper_affinity(),
         )
         worker_server.start()
-        self.sleep(self.pre_test_sleep)
+        self.wait_for_server(worker_server, server_app, server_args, local_scope=True)
 
         self.update_vcl_app_env("", "", self.sapi_client_sock)
         worker_client = VCLAppWorker(
@@ -283,8 +283,28 @@ class VCLTestCase(VppAsfTestCase):
 
         self.vapi.session_enable_disable(is_enable=0)
 
-    def wait_for_vperf_tcp_listeners(self, worker, is_ip6):
-        address = self.loop0.local_ip6 if is_ip6 else self.loop0.local_ip4
+    def wait_for_server(self, worker, server_app, server_args, *, local_scope=False):
+        if server_app != "vperf_server" or server_args not in (
+            self.server_args,
+            self.server_ipv6_args,
+        ):
+            self.sleep(self.pre_test_sleep)
+            return
+
+        is_ip6 = server_args == self.server_ipv6_args
+        app_name = "vperf_srv_vcl"
+        if local_scope:
+            address = "::" if is_ip6 else "0.0.0.0"
+            command = "show app listeners"
+            listener_kind = "[CT:T]"
+            if not self.sapi_server_sock:
+                # BAPI registers the vperf main worker as a shared memory app.
+                app_name = "vperf_srv_vcl-wrk-0[shm]"
+        else:
+            address = self.loop0.local_ip6 if is_ip6 else self.loop0.local_ip4
+            command = "show session listeners tcp"
+            listener_kind = "[T]"
+
         port = int(self.server_port)
         # vperf_make_data_port() uses the port after the control port.
         endpoints = {f"{address}:{port}", f"{address}:{port + 1}"}
@@ -296,7 +316,7 @@ class VCLTestCase(VppAsfTestCase):
                     break
                 try:
                     reply = self.vapi.papi.cli_inband(
-                        cmd="show session listeners tcp\n", _timeout=remaining
+                        cmd=f"{command}\n", _timeout=remaining
                     )
                 except OSError as error:
                     self.logger.debug("vperf TCP listener query failed: %s", error)
@@ -306,7 +326,11 @@ class VCLTestCase(VppAsfTestCase):
                 listeners = set()
                 for line in reply.reply.splitlines():
                     fields = line.split()
-                    if len(fields) == 3 and fields[2] == "vperf_srv_vcl":
+                    if (
+                        len(fields) >= 3
+                        and fields[0].endswith(listener_kind)
+                        and fields[2] == app_name
+                    ):
                         listeners.add(fields[1].partition("->")[0])
                 if endpoints <= listeners:
                     self.logger.debug(
@@ -332,15 +356,7 @@ class VCLTestCase(VppAsfTestCase):
             cpus=self.helper_affinity(),
         )
         worker_server.start()
-        if server_app == "vperf_server" and server_args in (
-            self.server_args,
-            self.server_ipv6_args,
-        ):
-            self.wait_for_vperf_tcp_listeners(
-                worker_server, server_args == self.server_ipv6_args
-            )
-        else:
-            self.sleep(self.pre_test_sleep)
+        self.wait_for_server(worker_server, server_app, server_args)
 
         self.update_vcl_app_env("2", "5678", self.sapi_client_sock)
         worker_client = VCLAppWorker(
