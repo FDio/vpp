@@ -321,7 +321,7 @@ sr_mpls_policy_mod (mpls_label_t bsid, u8 operation,
 	if (*sl_index_iterate == sl_index)
 	break;
 
-      if (*sl_index_iterate != sl_index)
+      if (sl_index_iterate == vec_end (sr_policy->segments_lists))
 	return -22;
 
       /* Remove the lucky SR list that is being kicked out */
@@ -370,7 +370,7 @@ sr_mpls_policy_mod (mpls_label_t bsid, u8 operation,
 	if (*sl_index_iterate == sl_index)
 	break;
 
-      if (*sl_index_iterate != sl_index)
+      if (sl_index_iterate == vec_end (sr_policy->segments_lists))
 	return -32;
 
       /* Change the weight */
