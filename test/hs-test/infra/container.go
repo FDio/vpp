@@ -5,8 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
+	"path"
 	"regexp"
 	"slices"
 	"strconv"
@@ -17,9 +20,11 @@ import (
 	containerTypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/go-units"
 	"github.com/edwarnicke/exechelper"
+	"github.com/google/shlex"
 	"github.com/onsi/ginkgo/v2"
 )
 
@@ -135,19 +140,6 @@ func (c *Container) GetContainerWorkDir() (res string) {
 		res = v.ContainerDir
 	}
 	return
-}
-
-func (c *Container) getContainerArguments() string {
-	args := "--ulimit nofile=90000:90000 --cap-add=NET_ADMIN --cap-add=SYS_RESOURCE " +
-		"--cap-add=IPC_LOCK --cap-add=SYS_PTRACE --device /dev/net/tun:/dev/net/tun --device /dev/vhost-net:/dev/vhost-net"
-	args += c.getVolumesAsCliOption()
-	args += c.getEnvVarsAsCliOption()
-	if (*IsVppDebug || *IsCoverage) && *VppSourceFileDir != "" {
-		args += fmt.Sprintf(" -v %s:%s", *VppSourceFileDir, *VppSourceFileDir)
-	}
-	args += " --name " + c.Name + " " + c.Image
-	args += " " + c.ExtraRunningArgs
-	return args
 }
 
 func (c *Container) PullDockerImage(name string, ctx context.Context) {
@@ -321,30 +313,8 @@ func (c *Container) GetOutput() (string, string) {
 	return stdout, stderr
 }
 
-func (c *Container) prepareCommand() (string, error) {
-	if c.Name == "" {
-		return "", fmt.Errorf("run container failed: name is blank")
-	}
-
-	cmd := "docker exec "
-	if c.RunDetached {
-		cmd += " -d"
-	}
-
-	cmd += " " + c.getContainerArguments()
-
-	Log(cmd)
-	return cmd, nil
-}
-
 func (c *Container) CombinedOutput() (string, error) {
-	cmd, err := c.prepareCommand()
-	if err != nil {
-		return "", err
-	}
-
-	byteOutput, err := exechelper.CombinedOutput(cmd)
-	return string(byteOutput), err
+	return c.execCombined(c.ctx, true, c.RunDetached, c.ExtraRunningArgs)
 }
 
 // Creates and starts a container
@@ -422,32 +392,8 @@ func (c *Container) getVolumesAsSlice() []string {
 	return volumeSlice
 }
 
-func (c *Container) getVolumesAsCliOption() string {
-	cliOption := ""
-
-	if len(c.Volumes) > 0 {
-		for _, volume := range c.Volumes {
-			cliOption += fmt.Sprintf(" -v %s:%s", volume.HostDir, volume.ContainerDir)
-		}
-	}
-
-	return cliOption
-}
-
 func (c *Container) AddEnvVar(name string, value string) {
 	c.EnvVars[name] = value
-}
-
-func (c *Container) getEnvVarsAsCliOption() string {
-	cliOption := ""
-	if len(c.EnvVars) == 0 {
-		return cliOption
-	}
-
-	for name, value := range c.EnvVars {
-		cliOption += fmt.Sprintf(" -e %s=%s", name, value)
-	}
-	return cliOption
 }
 
 func (c *Container) getEnvVars() []string {
@@ -517,106 +463,164 @@ func (c *Container) GetFile(sourceFileName, targetFileName string) error {
 	return cmd.Run()
 }
 
-/*
- * Executes in detached mode so that the started application can continue to run
- * without blocking execution of test
- */
+// ExecServer starts a command without waiting for it to exit.
 func (c *Container) ExecServer(useEnvVars bool, command any, arguments ...any) {
-	var envVars string
-	var serverCommand string
-	if len(arguments) > 0 {
-		serverCommand = fmt.Sprintf(fmt.Sprint(command), arguments...)
-	} else {
-		serverCommand = fmt.Sprint(command)
-	}
-	if useEnvVars {
-		envVars = c.getEnvVarsAsCliOption()
-	} else {
-		envVars = ""
-	}
-	containerExecCommand := fmt.Sprintf("docker exec -d %s %s %s", envVars, c.Name, serverCommand)
 	ginkgo.GinkgoHelper()
-	Log(containerExecCommand)
-	AssertNil(exechelper.Run(containerExecCommand))
+	_, err := c.execCombined(c.ctx, useEnvVars, true, formatExecCommand(command, arguments))
+	AssertNil(err)
 }
 
 func (c *Container) Exec(useEnvVars bool, command any, arguments ...any) (string, error) {
-	var envVars string
-	var serverCommand string
-	if len(arguments) > 0 {
-		serverCommand = fmt.Sprintf(fmt.Sprint(command), arguments...)
-	} else {
-		serverCommand = fmt.Sprint(command)
-	}
-	if useEnvVars {
-		envVars = c.getEnvVarsAsCliOption()
-	} else {
-		envVars = ""
-	}
-	containerExecCommand := fmt.Sprintf("docker exec %s %s %s", envVars, c.Name, serverCommand)
 	ginkgo.GinkgoHelper()
-	Log(containerExecCommand)
-	byteOutput, err := exechelper.CombinedOutput(containerExecCommand)
-	return string(byteOutput), err
+	return c.execCombined(c.ctx, useEnvVars, false, formatExecCommand(command, arguments))
 }
 
-// Returns outputBuffer.String(), errorBuffer.String(), error. Runs commands with 'stdbuf -oL'.
+// ExecLineBuffered runs a command with stdbuf -oL and captures stdout and stderr separately.
 func (c *Container) ExecLineBuffered(ctx context.Context, useEnvVars bool, command any, arguments ...any) (string, string, error) {
-	var envVars string
-	outputBuffer := bytes.NewBuffer([]byte{})
-	errBuffer := bytes.NewBuffer([]byte{})
-	var serverCommand string
-	if len(arguments) > 0 {
-		serverCommand = fmt.Sprintf(fmt.Sprint(command), arguments...)
-	} else {
-		serverCommand = fmt.Sprint(command)
-	}
-	if useEnvVars {
-		envVars = c.getEnvVarsAsCliOption()
-	} else {
-		envVars = ""
-	}
-
-	containerExecCommand := fmt.Sprintf("docker exec %s %s stdbuf -oL %s", envVars, c.Name, serverCommand)
 	ginkgo.GinkgoHelper()
-	Log(containerExecCommand)
-	err := exechelper.Run(containerExecCommand, exechelper.WithContext(ctx),
-		exechelper.WithStdout(outputBuffer), exechelper.WithStderr(errBuffer))
-
-	// ignore SIGKILL errors
-	if IsKilledError(err) {
-		Log("'%v' error ignored (context cancelled)", err)
-		err = nil
+	cmd, err := shlex.Split("stdbuf -oL " + formatExecCommand(command, arguments))
+	if err != nil {
+		return "", "", err
 	}
-
-	return outputBuffer.String(), errBuffer.String(), err
+	var stdout, stderr bytes.Buffer
+	err = c.exec(ctx, useEnvVars, false, cmd, &stdout, &stderr)
+	return stdout.String(), stderr.String(), err
 }
 
 func (c *Container) ExecContext(ctx context.Context, useEnvVars bool, command any, arguments ...any) (string, error) {
-	var envVars string
-	var serverCommand string
+	ginkgo.GinkgoHelper()
+	return c.execCombined(ctx, useEnvVars, false, formatExecCommand(command, arguments))
+}
+
+func formatExecCommand(command any, arguments []any) string {
+	cmd := fmt.Sprint(command)
 	if len(arguments) > 0 {
-		serverCommand = fmt.Sprintf(fmt.Sprint(command), arguments...)
-	} else {
-		serverCommand = fmt.Sprint(command)
+		return fmt.Sprintf(cmd, arguments...)
+	}
+	return cmd
+}
+
+func (c *Container) execCombined(ctx context.Context, useEnvVars, detached bool, command string) (string, error) {
+	cmd, err := shlex.Split(command)
+	if err != nil {
+		return "", err
+	}
+	var output bytes.Buffer
+	err = c.exec(ctx, useEnvVars, detached, cmd, &output, &output)
+	return output.String(), err
+}
+
+type containerExecExitError int
+
+func (e containerExecExitError) Error() string {
+	return fmt.Sprintf("exit status %d", e)
+}
+
+func (e containerExecExitError) ExitCode() int {
+	return int(e)
+}
+
+func (c *Container) exec(ctx context.Context, useEnvVars, detached bool, cmd []string, stdout, stderr io.Writer) error {
+	if len(cmd) == 0 {
+		return errors.New("container exec requires a command")
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	Log("Exec in %s (detached=%t): %q", c.Name, detached, cmd)
+	docker := c.Suite.Docker
+	options := containerTypes.ExecOptions{
+		Cmd:          cmd,
+		Detach:       detached,
+		AttachStdout: !detached,
+		AttachStderr: !detached,
 	}
 	if useEnvVars {
-		envVars = c.getEnvVarsAsCliOption()
-	} else {
-		envVars = ""
-	}
-	containerExecCommand := fmt.Sprintf("docker exec %s %s %s", envVars, c.Name, serverCommand)
-	ginkgo.GinkgoHelper()
-	Log(containerExecCommand)
-	byteOutput, err := exechelper.CombinedOutput(containerExecCommand, exechelper.WithContext(ctx))
-
-	// ignore SIGKILL errors
-	if IsKilledError(err) {
-		Log("'%v' error ignored (context cancelled)", err)
-		err = nil
+		options.Env = c.getEnvVars()
 	}
 
-	return string(byteOutput), err
+	created, err := docker.ContainerExecCreate(ctx, c.Name, options)
+	if err != nil {
+		return err
+	}
+	if detached {
+		return docker.ContainerExecStart(ctx, created.ID, containerTypes.ExecStartOptions{Detach: true})
+	}
+
+	stream, err := attachExec(ctx, docker, created.ID)
+	if err != nil {
+		return err
+	}
+	defer stream.Close()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	// Once the connection is upgraded, cancelling the request no longer
+	// interrupts reads. Callers can explicitly cancel to finish collecting logs.
+	stop := context.AfterFunc(ctx, func() { stream.Close() })
+	_, err = stdcopy.StdCopy(stdout, stderr, stream)
+	if !stop() {
+		ctxErr := ctx.Err()
+		if ctxErr != context.Canceled {
+			return ctxErr
+		}
+		Log("'%v' error ignored (context cancelled)", ctxErr)
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	status, err := docker.ContainerExecInspect(ctx, created.ID)
+	if err != nil {
+		return err
+	}
+	if status.ExitCode != 0 {
+		return containerExecExitError(status.ExitCode)
+	}
+	return nil
+}
+
+// Use the SDK's HTTP transport for the upgrade so cancellation can interrupt
+// the handshake. ContainerExecAttach only uses the context while dialing.
+func attachExec(ctx context.Context, docker *client.Client, id string) (io.ReadCloser, error) {
+	endpoint, err := client.ParseHostURL(docker.DaemonHost())
+	if err != nil {
+		return nil, err
+	}
+	if endpoint.Scheme == "unix" || endpoint.Scheme == "npipe" {
+		endpoint.Host = client.DummyHost
+	}
+	// The suite configures Docker with client.FromEnv, which enables TLS
+	// when DOCKER_CERT_PATH is set.
+	endpoint.Scheme = "http"
+	if os.Getenv(client.EnvOverrideCertPath) != "" {
+		endpoint.Scheme = "https"
+	}
+	if version := docker.ClientVersion(); version != "" {
+		endpoint.Path = path.Join(endpoint.Path, "v"+strings.TrimPrefix(version, "v"))
+	}
+	endpoint.Path = path.Join(endpoint.Path, "exec", id, "start")
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint.String(), strings.NewReader("{}"))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Connection", "Upgrade")
+	req.Header.Set("Upgrade", "tcp")
+
+	response, err := docker.HTTPClient().Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode != http.StatusSwitchingProtocols {
+		response.Body.Close()
+		return nil, fmt.Errorf("Docker exec attach returned %s", response.Status)
+	}
+	return response.Body, nil
 }
 
 func (c *Container) saveLogs() {

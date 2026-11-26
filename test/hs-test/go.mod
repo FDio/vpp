@@ -8,6 +8,7 @@ require (
 	github.com/edwarnicke/exechelper v1.0.3
 	github.com/florianl/go-nfqueue v1.3.2
 	github.com/google/gopacket v1.1.19
+	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/mdlayher/netlink v1.11.2
 	github.com/onsi/ginkgo/v2 v2.34.0
 	github.com/onsi/gomega v1.44.0
@@ -39,7 +40,6 @@ require (
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/pprof v0.0.0-20261111200114-fac431ef4d26 // indirect
-	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/lunixbochs/struc v0.0.0-20241101090106-8d528fa2c543 // indirect
 	github.com/mattn/go-colorable v0.1.16 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect

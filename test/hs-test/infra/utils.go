@@ -19,7 +19,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/edwarnicke/exechelper"
@@ -458,8 +457,7 @@ func StartServerApp(c *Container, processName string, cmd string,
 
 	Log("starting server")
 	c.ExecServer(true, cmd)
-	cmd2 := exec.Command("docker", "exec", c.Name, "pidof", processName)
-	err := cmd2.Run()
+	err := c.exec(c.ctx, false, false, []string{"pidof", processName}, io.Discard, io.Discard)
 	if err != nil {
 		msg := fmt.Errorf("failed to start server app: %v", err)
 		running <- msg
@@ -478,19 +476,16 @@ func StartClientApp(c *Container, cmd string,
 	}()
 
 	Log("starting client app, please wait")
-	cmd2 := exec.Command("/bin/sh", "-c", "docker exec "+c.getEnvVarsAsCliOption()+" "+
-		c.Name+" "+cmd)
-	Log(cmd2)
-	o, err := cmd2.CombinedOutput()
+	o, err := c.Exec(true, cmd)
 
 	if err != nil {
 		Log(err)
-		Log(string(o))
+		Log(o)
 		clnRes <- nil
 		clnCh <- fmt.Errorf("failed to start client app '%s'", err)
 		AssertNil(err, fmt.Sprint(err))
 	} else {
-		clnRes <- o
+		clnRes <- []byte(o)
 	}
 }
 
@@ -731,17 +726,6 @@ func ParseIperfText(output string) (*IperfResult, error) {
 	}
 
 	return nil, fmt.Errorf("failed to parse iperf output: no summary line found")
-}
-
-// Check if the error is an exec.ExitError caused by SIGKILL
-func IsKilledError(err error) bool {
-	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) {
-		if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
-			return status.Signaled() && status.Signal() == syscall.SIGKILL
-		}
-	}
-	return false
 }
 
 func WrapCmdWithLineBuffering(cmd string) string {
