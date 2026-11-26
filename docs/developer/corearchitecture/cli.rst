@@ -106,7 +106,10 @@ An argument has a kind, a name, a type and optional modifiers.
 ``CLI_GROUP (name, help, ...)``
   An optional keyword which enables its own keywords and flags, in any order:
   ``tunnel src 1.1.1.1 dst 2.2.2.2``. The child names are valid only after the
-  group keyword, so they do not need to be unique in the command.
+  group keyword, so they do not need to be unique in the command. After a group
+  keyword, a name which is used more than once means the one of that group, up
+  to the next group keyword. A keyword outside of the groups which has the same
+  name has to be given before the group.
 
 Modifiers, set with designated fields after the type:
 
