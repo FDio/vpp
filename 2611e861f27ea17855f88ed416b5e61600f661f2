@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "87bb8d9f_f68dfe0f",
+        "filename": "src/vlib/threads.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-11-26T15:34:58Z",
+      "side": 1,
+      "message": "Can this be fixed inside the helper?\nWhole idea of helper is to make it more readable than multiline macro.,..",
+      "revId": "2611e861f27ea17855f88ed416b5e61600f661f2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
