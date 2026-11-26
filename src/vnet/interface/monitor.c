@@ -5,44 +5,22 @@
 
 #include <vnet/vnet.h>
 #include <vlib/vlib.h>
+#include <vnet/interface/cli_types.h>
 
 static clib_error_t *
-monitor_interface_command_fn (vlib_main_t *vm, unformat_input_t *input,
-			      vlib_cli_command_t *cmd)
+monitor_interface_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   const vnet_main_t *vnm = vnet_get_main ();
   const vlib_combined_counter_main_t *counters =
     vnm->interface_main.combined_sw_if_counters;
-  f64 refresh_interval = 1.0;
-  u32 refresh_count = ~0;
+  cli_value_t *interval = cli_get (ctx, "interval");
+  f64 refresh_interval = interval ? interval->f64 : 1.0;
+  u32 refresh_count = cli_u64 (ctx, "count", ~0);
   clib_error_t *error = 0;
   vlib_counter_t vrx[2], vtx[2];
   f64 ts[2];
-  u32 sw_if_index = ~0;
+  u32 sw_if_index = cli_index (ctx, "interface");
   u8 spin = 0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "%U", unformat_vnet_sw_interface, vnm,
-		    &sw_if_index))
-	;
-      else if (unformat (input, "interval %f", &refresh_interval))
-	;
-      else if (unformat (input, "count %u", &refresh_count))
-	;
-      else
-	{
-	  error = clib_error_return (0, "unknown input `%U'",
-				     format_unformat_error, input);
-	  goto done;
-	}
-    }
-
-  if (sw_if_index == ~0)
-    {
-      error = clib_error_return (0, "no interface passed");
-      goto done;
-    }
 
   vlib_get_combined_counter (counters + VNET_INTERFACE_COUNTER_RX, sw_if_index,
 			     &vrx[spin]);
@@ -96,8 +74,11 @@ done:
 
 VLIB_CLI_COMMAND (monitor_interface_command, static) = {
   .path = "monitor interface",
-  .short_help =
-    "monitor interface <interface> [interval <intv>] [count <count>]",
-  .function = monitor_interface_command_fn,
+  .short_help = "Print the packet and bit rates of an interface",
+  .args = CLI_ARGS (
+    CLI_VALUE ("interface", cli_type_sw_interface),
+    CLI_OPT_KEYWORD ("interval", cli_type_f64, .help = "seconds between samples, default 1"),
+    CLI_OPT_KEYWORD ("count", cli_type_u32, .help = "number of samples, default until a key")),
+  .handler = monitor_interface_command_fn,
   .is_mp_safe = 1,
 };

@@ -10,6 +10,7 @@
 #include <vnet/l2/l2_output.h>
 
 #include <vnet/span/span.h>
+#include <vnet/interface/cli_types.h>
 
 span_main_t span_main;
 
@@ -130,54 +131,21 @@ span_add_delete_entry (vlib_main_t * vm,
   return 0;
 }
 
-static uword
-unformat_span_state (unformat_input_t * input, va_list * args)
-{
-  span_state_t *state = va_arg (*args, span_state_t *);
-  if (unformat (input, "disable"))
-    *state = SPAN_DISABLE;
-  else if (unformat (input, "rx"))
-    *state = SPAN_RX;
-  else if (unformat (input, "tx"))
-    *state = SPAN_TX;
-  else if (unformat (input, "both"))
-    *state = SPAN_BOTH;
-  else
-    return 0;
-  return 1;
-}
-
 static clib_error_t *
-set_interface_span_command_fn (vlib_main_t * vm,
-			       unformat_input_t * input,
-			       vlib_cli_command_t * cmd)
+set_interface_span_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   span_main_t *sm = &span_main;
-  u32 src_sw_if_index = ~0;
-  u32 dst_sw_if_index = ~0;
-  span_feat_t sf = SPAN_FEAT_DEVICE;
+  u32 src_sw_if_index = cli_index (ctx, "interface");
+  u32 dst_sw_if_index = cli_index (ctx, "destination");
+  span_feat_t sf = cli_flag (ctx, "l2") ? SPAN_FEAT_L2 : SPAN_FEAT_DEVICE;
   span_state_t state = SPAN_BOTH;
-  int state_set = 0;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "%U", unformat_vnet_sw_interface,
-		    sm->vnet_main, &src_sw_if_index))
-	;
-      else if (unformat (input, "destination %U", unformat_vnet_sw_interface,
-			 sm->vnet_main, &dst_sw_if_index))
-	;
-      else if (unformat (input, "%U", unformat_span_state, &state))
-	{
-	  if (state_set)
-	    return clib_error_return (0, "Multiple mirror states in input");
-	  state_set = 1;
-	}
-      else if (unformat (input, "l2"))
-	sf = SPAN_FEAT_L2;
-      else
-	return clib_error_return (0, "Invalid input");
-    }
+  if (cli_flag (ctx, "disable"))
+    state = SPAN_DISABLE;
+  else if (cli_flag (ctx, "rx"))
+    state = SPAN_RX;
+  else if (cli_flag (ctx, "tx"))
+    state = SPAN_TX;
 
   int rv =
     span_add_delete_entry (vm, src_sw_if_index, dst_sw_if_index, state, sf);
@@ -193,14 +161,21 @@ set_interface_span_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (set_interface_span_command, static) = {
   .path = "set interface span",
-  .short_help = "set interface span <if-name> [l2] {disable | destination <if-name> [both|rx|tx]}",
-  .function = set_interface_span_command_fn,
+  .short_help = "Mirror the traffic of an interface to another interface",
+  .args = CLI_ARGS (
+    CLI_VALUE ("interface", cli_type_sw_interface, .help = "interface which is mirrored"),
+    CLI_OPT_KEYWORD ("destination", cli_type_sw_interface,
+		     .help = "interface which gets the mirrored traffic"),
+    CLI_FLAG ("l2", .help = "mirror at the L2 layer"),
+    CLI_FLAG ("both", .excludes = "rx,tx,disable", .help = "received and sent traffic, default"),
+    CLI_FLAG ("rx", .excludes = "tx,disable", .help = "received traffic"),
+    CLI_FLAG ("tx", .excludes = "disable", .help = "sent traffic"),
+    CLI_FLAG ("disable", .help = "stop mirroring")),
+  .handler = set_interface_span_command_fn,
 };
 
 static clib_error_t *
-show_interfaces_span_command_fn (vlib_main_t * vm,
-				 unformat_input_t * input,
-				 vlib_cli_command_t * cmd)
+show_interfaces_span_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   span_main_t *sm = &span_main;
   span_interface_t *si;
@@ -260,6 +235,6 @@ show_interfaces_span_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (show_interfaces_span_command, static) = {
   .path = "show interface span",
-  .short_help = "Shows SPAN mirror table",
-  .function = show_interfaces_span_command_fn,
+  .short_help = "Show the SPAN mirror table",
+  .handler = show_interfaces_span_command_fn,
 };
