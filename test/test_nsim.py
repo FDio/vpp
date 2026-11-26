@@ -134,6 +134,25 @@ class TestNsimCli(VppTestCase):
         self.sleep(0.2, "nsim release window")
         return self.pg1.get_capture(count, timeout=timeout)
 
+    def verify_release_deadlines(self, capture):
+        indexes = [self.get_info_from_packet(packet).index for packet in capture]
+        self.assertEqual(indexes, sorted(set(indexes)))
+
+        trace = self.vapi.cli("show trace")
+        deadlines = []
+        for packet in re.split(r"(?m)^Packet \d+$", trace)[1:]:
+            due = re.search(r"NSIM: tx time (\d*\.\d+)", packet)
+            if due is None:
+                continue
+            tx = re.search(r"NSIM: tx at (\d*\.\d+)", packet)
+            self.assertIsNotNone(tx, packet)
+            deadline = float(due[1])
+            # The scheduler can run late; it must never release a packet early.
+            self.assertGreaterEqual(float(tx[1]), deadline, packet)
+            deadlines.append(deadline)
+        self.assertEqual(len(deadlines), len(capture), trace)
+        return deadlines
+
     def send_plain_and_capture(self, count, expected_count=None, timeout=2):
         packets = [
             Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac)
@@ -227,14 +246,11 @@ class TestNsimCli(VppTestCase):
         self.enable_cross_connect()
         capture = self.send_and_capture(3)
 
-        first_gap = float(capture[1].time - capture[0].time)
-        second_gap = float(capture[2].time - capture[1].time)
+        deadlines = self.verify_release_deadlines(capture)
         # Packet one takes 10 ms. Packet two starts 5 ms before the transition,
         # then serializes its remaining half at the 20 ms/packet bad rate.
-        self.assertGreater(first_gap, 0.012)
-        self.assertLess(first_gap, 0.019)
-        self.assertGreater(second_gap, 0.017)
-        self.assertLess(second_gap, 0.026)
+        self.assertAlmostEqual(deadlines[1] - deadlines[0], 0.015, delta=0.000002)
+        self.assertAlmostEqual(deadlines[2] - deadlines[1], 0.020, delta=0.000002)
 
         reply = self.vapi.cli("show nsim verbose")
         self.assertIn("cycle:", reply)
@@ -290,12 +306,9 @@ class TestNsimCli(VppTestCase):
         self.enable_cross_connect()
         capture = self.send_and_capture(7)
 
-        indexes = [self.get_info_from_packet(packet).index for packet in capture]
-        self.assertEqual(indexes, sorted(indexes))
-        self.assertLess(float(capture[5].time - capture[0].time), 0.002)
-        boundary_gap = float(capture[6].time - capture[5].time)
-        self.assertGreater(boundary_gap, 0.003)
-        self.assertLess(boundary_gap, 0.009)
+        deadlines = self.verify_release_deadlines(capture)
+        self.assertEqual(deadlines[:6], [deadlines[0]] * 6)
+        self.assertAlmostEqual(deadlines[6] - deadlines[0], 0.0055, delta=0.000002)
 
         reply = self.vapi.cli("show nsim verbose")
         self.assertIn("batch interval: 5.5 ms", reply)
@@ -314,13 +327,12 @@ class TestNsimCli(VppTestCase):
         self.enable_cross_connect()
         capture = self.send_and_capture(20)
 
-        indexes = [self.get_info_from_packet(packet).index for packet in capture]
-        self.assertEqual(indexes, sorted(indexes))
-        self.assertLess(float(capture[1].time - capture[0].time), 0.002)
-        self.assertGreater(float(capture[2].time - capture[1].time), 0.003)
-        self.assertLess(float(capture[3].time - capture[2].time), 0.002)
-        self.assertGreater(float(capture[4].time - capture[3].time), 0.003)
-        self.assertGreater(float(capture[-1].time - capture[0].time), 0.035)
+        deadlines = self.verify_release_deadlines(capture)
+        for index in range(0, len(deadlines), 2):
+            self.assertEqual(deadlines[index], deadlines[index + 1])
+            self.assertAlmostEqual(
+                deadlines[index] - deadlines[0], index // 2 * 0.005, delta=0.000002
+            )
 
         reply = self.vapi.cli("show nsim verbose")
         self.assertIn("batch packet budget: 2 (base capacity 400.0 packets/s)", reply)
