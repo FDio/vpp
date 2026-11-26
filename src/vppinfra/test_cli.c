@@ -894,7 +894,8 @@ test_alt_keyword (void)
   cli_ctx_free (&ctx);
 
   cli_complete_args (alt_args, c, &cands);
-  TEST_ASSERT (vec_len (cands) == 1 && strcmp ((char *) cands[0].text, "index") == 0);
+  TEST_ASSERT (vec_len (cands) == 1 &&
+	       strcmp ((char *) format (0, "%v%c", cands[0].text, 0), "index") == 0);
   cli_candidates_free (cands);
 
   vec_free (c);
