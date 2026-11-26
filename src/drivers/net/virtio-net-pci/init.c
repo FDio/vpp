@@ -334,6 +334,19 @@ vnp_init (vlib_main_t *vm, vnet_dev_t *dev)
   args.port.attr.caps.mac_filter = clib_args_get_bool_val_by_name (dev->args, "mac_filter") &&
 				   (vd->features & VIRTIO_NET_F_CTRL_RX_BIT) != 0;
   args.port.attr.caps.rss = (vd->features & VIRTIO_NET_F_RSS_BIT) != 0;
+  /* hash fields if the device has all hash types, otherwise it hashes with the ones it has */
+  if (args.port.attr.caps.rss && vnp_rss_supported_types (vd).as_u8 == vnp_rss_all_types.as_u8)
+    args.port.attr.rss_caps = (vnet_dev_rss_caps_t) {
+      .classes = {
+	[VNET_DEV_RSS_CLASS_IP4] = VNET_DEV_RSS_CLASS_CAPS_TUPLES,
+	[VNET_DEV_RSS_CLASS_IP4_TCP] = VNET_DEV_RSS_CLASS_CAPS_TUPLES,
+	[VNET_DEV_RSS_CLASS_IP4_UDP] = VNET_DEV_RSS_CLASS_CAPS_TUPLES,
+	[VNET_DEV_RSS_CLASS_IP6] = VNET_DEV_RSS_CLASS_CAPS_TUPLES,
+	[VNET_DEV_RSS_CLASS_IP6_TCP] = VNET_DEV_RSS_CLASS_CAPS_TUPLES,
+	[VNET_DEV_RSS_CLASS_IP6_UDP] = VNET_DEV_RSS_CLASS_CAPS_TUPLES,
+      },
+      .functions = VNET_DEV_RSS_FUNCTION (TOEPLITZ),
+    };
 
   if (vd->features & VIRTIO_NET_F_CTRL_VQ_BIT)
     {

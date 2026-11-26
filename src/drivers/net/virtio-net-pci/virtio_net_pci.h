@@ -147,6 +147,21 @@ vnet_dev_rv_t vnp_control (vlib_main_t *, vnet_dev_t *, u8, u8, void *, u32);
 vnet_dev_rv_t vnp_filters (vlib_main_t *, vnet_dev_port_t *);
 vnet_dev_rv_t vnp_rss (vlib_main_t *, vnet_dev_port_t *, const vnet_dev_rss_config_t *);
 
+static const vnet_dev_rss_tuple_types_t vnp_rss_all_types = {
+  .ip4 = 1,
+  .ip4_tcp = 1,
+  .ip4_udp = 1,
+  .ip6 = 1,
+  .ip6_tcp = 1,
+  .ip6_udp = 1,
+};
+
+static_always_inline vnet_dev_rss_tuple_types_t
+vnp_rss_supported_types (vnp_dev_t *vd)
+{
+  return (vnet_dev_rss_tuple_types_t) { .as_u8 = vd->config->supported_hash_types & 0x3f };
+}
+
 /* format.c */
 format_function_t format_vnp_ctrl_cmd;
 format_function_t format_vnp_ctrl_ack;

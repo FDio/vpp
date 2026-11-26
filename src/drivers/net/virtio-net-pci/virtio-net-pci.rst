@@ -193,6 +193,12 @@ Supported features
   device). The key and the table can be set at start (``rss-key``,
   ``rss-lut``) and at runtime (``device set-rss-config``). Needs the control
   virtqueue.
+  The ``ipv4``, ``ipv6`` and their TCP and UDP classes hash on ``2-tuple`` or
+  ``4-tuple`` (or ``no-hash``), as far as the device offers the hash types, the
+  default is ``4-tuple``. A TCP or UDP class can only differ from its ``ipv4``
+  or ``ipv6`` class with ``4-tuple``, otherwise the device falls back to the
+  IP hash. SCTP, ESP and AH traffic is hashed like the IP class. Traffic which
+  isn't hashed goes to the first LUT entry. See :ref:`dev_rss`.
 * **Multiple queue pairs** through the control virtqueue.
 * **Interrupt mode** for RX queues. With MSI-X it needs one vector per VPP
   thread plus one; if the device has fewer vectors a shared INTx interrupt is
