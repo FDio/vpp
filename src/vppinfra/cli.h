@@ -245,6 +245,9 @@ __clib_export extern cli_type_t cli_type_hex;
 __clib_export extern cli_type_t cli_type_file;
 /* v->f64 is 0 to 100, with an optional % */
 __clib_export extern cli_type_t cli_type_percent;
+/* days and hours within a week, mon-fri/09:00-17:00. v->str is a vector of
+ * clib_timebase_range_t, one per day, in seconds since Sunday midnight */
+__clib_export extern cli_type_t cli_type_time_range;
 /* v->u64 is the or of the values of the choices which were given, a comma
  * separated list. Case is ignored and '-' is the same as '_' */
 __clib_export extern cli_type_t cli_type_flags;

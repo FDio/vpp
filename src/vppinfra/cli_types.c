@@ -6,8 +6,10 @@
 
 #include <vppinfra/cli.h>
 #include <vppinfra/bitmap.h>
+#include <vppinfra/time_range.h>
 #include <errno.h>
 #include <dirent.h>
+#include <strings.h>
 
 static u8 *
 parse_uint (u64 def_max, const cli_arg_t *a, u8 *tok, cli_value_t *v)
@@ -536,6 +538,101 @@ CLIB_CLI_TYPE (cli_type_percent) = {
   .name = "percent",
   .help = "0 to 100, with an optional %",
   .parse = parse_percent,
+};
+
+/* The index of a day of the week, which starts on Sunday, given by its name or
+ * by at least three characters of it, -1 if there is no such day */
+static int
+find_day (u8 *name, u32 len)
+{
+  static const char *names[] = {
+    "sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday",
+  };
+
+  for (int i = 0; i < ARRAY_LEN (names); i++)
+    if (len >= 3 && len <= strlen (names[i]) && strncasecmp (names[i], (char *) name, len) == 0)
+      return i;
+
+  return -1;
+}
+
+/* hh:mm or hh:mm:ss, as seconds since midnight, up to 24:00 */
+static uword
+unformat_time_of_day (unformat_input_t *input, va_list *args)
+{
+  u32 *seconds = va_arg (*args, u32 *);
+  u32 h, m, s = 0;
+
+  if (!unformat (input, "%u:%u", &h, &m))
+    return 0;
+
+  if (unformat (input, ":%u", &s) && s > 59)
+    return 0;
+
+  if (h > 24 || m > 59 || (h == 24 && (m || s)))
+    return 0;
+
+  *seconds = h * 3600 + m * 60 + s;
+  return 1;
+}
+
+/* <day>[-<day>]/<time>-<time> */
+static u8 *
+parse_time_range (const cli_arg_t *a, u8 *tok, cli_value_t *v)
+{
+  u32 len = vec_len (tok), slash = 0, dash = 0, start = 0, stop = 0;
+  clib_timebase_range_t *ranges = 0, *r;
+  unformat_input_t in;
+  int first, last, ok = 0;
+  u8 *hours = 0;
+
+  while (slash < len && tok[slash] != '/')
+    slash++;
+
+  while (dash < slash && tok[dash] != '-')
+    dash++;
+
+  first = find_day (tok, dash);
+
+  if (dash < slash)
+    last = find_day (tok + dash + 1, slash - dash - 1);
+  else
+    last = first;
+
+  if (slash < len && first >= 0 && last >= 0)
+    {
+      vec_add (hours, tok + slash + 1, len - slash - 1);
+      unformat_init_vector (&in, hours);
+      ok = unformat (&in, "%U-%U", unformat_time_of_day, &start, unformat_time_of_day, &stop) &&
+	   unformat_check_input (&in) == UNFORMAT_END_OF_INPUT;
+      unformat_free (&in);
+    }
+
+  if (!ok)
+    return format (0, "'%v' is not days and hours like mon-fri/09:00-17:00", tok);
+
+  if (last < first)
+    return format (0, "'%v': the week starts on Sunday, the last day is before the first", tok);
+
+  if (stop <= start)
+    return format (0, "'%v': the end time is not after the start time", tok);
+
+  for (int day = first; day <= last; day++)
+    {
+      vec_add2 (ranges, r, 1);
+      r->start = day * 86400 + start;
+      r->end = day * 86400 + stop;
+    }
+
+  v->str = (u8 *) ranges;
+  return 0;
+}
+
+CLIB_CLI_TYPE (cli_type_time_range) = {
+  .name = "time-range",
+  .help = "days and hours, e.g. mon-fri/09:00-17:00",
+  .owns_str = 1,
+  .parse = parse_time_range,
 };
 
 /* the names of flags and the words typed are compared in upper case, with
