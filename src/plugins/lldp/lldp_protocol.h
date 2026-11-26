@@ -9,7 +9,7 @@
  * @file
  * @brief LLDP protocol declarations
  */
-#include <vnet/srp/packet.h>
+#include <vnet/ethernet/packet.h>
 
 /*
  * optional TLV codes.

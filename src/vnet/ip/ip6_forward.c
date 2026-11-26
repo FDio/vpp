@@ -10,7 +10,6 @@
 #include <vnet/ip/ip_frag.h>
 #include <vnet/ip/ip6_link.h>
 #include <vnet/ethernet/ethernet.h>	/* for ethernet_header_t */
-#include <vnet/srp/srp.h>	/* for srp_hw_interface_class */
 #include <vppinfra/cache.h>
 #include <vnet/fib/fib_urpf_list.h>	/* for FIB uRPF check */
 #include <vnet/fib/ip6_fib.h>

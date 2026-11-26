@@ -157,7 +157,6 @@ cdp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	      hdlc_register_input_protocol (vm, HDLC_PROTOCOL_cdp,
 					    cdp_input_node.index);
 #endif
-	      /* with ethernet input (for SRP) */
 	      ethernet_register_input_type (vm, ETHERNET_TYPE_CDP /* CDP */ ,
 					    cdp_input_node.index);
 	      cm->cdp_protocol_registered = 1;

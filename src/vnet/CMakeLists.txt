@@ -238,21 +238,6 @@ list(APPEND VNET_HEADERS
 list(APPEND VNET_API_FILES l2/l2.api)
 
 ##############################################################################
-# Layer 2 protocol: SRP
-##############################################################################
-list(APPEND VNET_SOURCES
-  srp/format.c
-  srp/interface.c
-  srp/node.c
-  srp/pg.c
-)
-
-list(APPEND VNET_HEADERS
-  srp/packet.h
-  srp/srp.h
-)
-
-##############################################################################
 # Layer 2 protocol: HDLC
 ##############################################################################
 list(APPEND VNET_SOURCES

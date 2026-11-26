@@ -24,7 +24,6 @@ typedef enum
 {
   CDP_PACKET_TEMPLATE_ETHERNET,
   CDP_PACKET_TEMPLATE_HDLC,
-  CDP_PACKET_TEMPLATE_SRP,
   CDP_N_PACKET_TEMPLATES,
 } cdp_packet_template_id_t;
 

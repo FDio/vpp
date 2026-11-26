@@ -10,7 +10,6 @@
 #include <vnet/ip/ip_frag.h>
 #include <vnet/ethernet/ethernet.h>	/* for ethernet_header_t */
 #include <vnet/ethernet/arp_packet.h>	/* for ethernet_arp_header_t */
-#include <vnet/srp/srp.h>	/* for srp_hw_interface_class */
 #include <vnet/api_errno.h>	/* for API error numbers */
 #include <vnet/fib/fib_table.h>	/* for FIB table and entry creation */
 #include <vnet/fib/fib_entry.h>	/* for FIB table and entry creation */
