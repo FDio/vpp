@@ -560,16 +560,19 @@ vl_api_ikev2_nonce_get_t_handler (vl_api_ikev2_nonce_get_t * mp)
   ikev2_main_t *im = &ikev2_main;
   ikev2_sa_t *sa;
   u32 sai = clib_net_to_host_u32 (mp->sa_index);
+  vl_api_ikev2_nonce_get_reply_t *rmp = 0;
+  u8 *nonce = 0;
+  int rv = 0;
 
   if (pool_len (im->sas) <= sai || pool_is_free_index (im->sas, sai))
-  return;
+    rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+  else
+    {
+      sa = pool_elt_at_index (im->sas, sai);
+      nonce = mp->is_initiator ? sa->i_nonce : sa->r_nonce;
+    }
 
-  sa = pool_elt_at_index (im->sas, sai);
-
-  u8 *nonce = mp->is_initiator ? sa->i_nonce : sa->r_nonce;
-  vl_api_ikev2_nonce_get_reply_t *rmp = 0;
   int data_len = vec_len (nonce);
-  int rv = 0;
 
   REPLY_MACRO3_ZERO (VL_API_IKEV2_NONCE_GET_REPLY, data_len,
   {
