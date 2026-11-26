@@ -104,6 +104,21 @@ map_guest_mem (vhost_user_intf_t *vui, uword addr, u32 len, u32 *hint)
   rh = vld1q_u64 (&vui->region_guest_addr_hi[4]);
   rh = vcgtq_u64 (rh, ah);
   r = vandq_u64 (rl, rh);
+  u32 |= ((vgetq_lane_u8 (vreinterpretq_u8_u64 (r), 0) & 0x1) << 4);
+  u32 |= ((vgetq_lane_u8 (vreinterpretq_u8_u64 (r), 8) & 0x1) << 5);
+
+  if (u32)
+    {
+      i = count_trailing_zeros (u32);
+      goto vhost_map_guest_mem_done;
+    }
+
+  /* Fourth Iteration */
+  rl = vld1q_u64 (&vui->region_guest_addr_lo[6]);
+  rl = vcgtq_u64 (al, rl);
+  rh = vld1q_u64 (&vui->region_guest_addr_hi[6]);
+  rh = vcgtq_u64 (rh, ah);
+  r = vandq_u64 (rl, rh);
   u32 |= ((vgetq_lane_u8 (vreinterpretq_u8_u64 (r), 0) & 0x1) << 6);
   u32 |= ((vgetq_lane_u8 (vreinterpretq_u8_u64 (r), 8) & 0x1) << 7);
 
