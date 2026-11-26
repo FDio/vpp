@@ -300,3 +300,40 @@ VLIB_CLI_COMMAND (test_vlib2_command, static) = {
   .short_help = "vlib code coverage unit test #2",
   .function = test_vlib2_command_fn,
 };
+
+static clib_error_t *
+test_vlib_node_by_name_command_fn (vlib_main_t *vm, unformat_input_t *input,
+				   vlib_cli_command_t *cmd)
+{
+  vlib_node_main_t *nm = &vm->node_main;
+  clib_error_t *error = 0;
+  vlib_node_t *n;
+  u8 *name;
+  u32 i;
+
+  vlib_worker_thread_barrier_sync (vm);
+  foreach_vlib_main ()
+    {
+      vec_foreach_index (i, nm->nodes)
+	{
+	  name = format (0, "%v%c", nm->nodes[i]->name, 0);
+	  n = vlib_get_node_by_name (this_vlib_main, name);
+	  vec_free (name);
+	  if (!n || n->index != i)
+	    {
+	      error = clib_error_return (0, "thread %u: node %v not found",
+					 this_vlib_main->thread_index, nm->nodes[i]->name);
+	      goto done;
+	    }
+	}
+    }
+done:
+  vlib_worker_thread_barrier_release (vm);
+  return error;
+}
+
+VLIB_CLI_COMMAND (test_vlib_node_by_name_command, static) = {
+  .path = "test node-by-name",
+  .short_help = "look up every node by name on every thread",
+  .function = test_vlib_node_by_name_command_fn,
+};

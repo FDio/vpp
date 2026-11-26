@@ -271,6 +271,20 @@ class TestPoolCache8Workers(TemplatePoolCacheWorkers):
     vpp_worker_count = 8
 
 
+class TestVlibNodeByName(VppTestCase):
+    """Vlib Node By Name Test Cases"""
+
+    vpp_worker_count = 2
+
+    def test_node_by_name_after_new_nodes(self):
+        """Node lookup by name on workers after nodes are added"""
+        loops = [self.vapi.create_loopback().sw_if_index for i in range(1024)]
+        r = self.vapi.cli_return_response("test node-by-name")
+        self.assertEqual(r.retval, 0, getattr(r, "reply", ""))
+        for sw_if_index in loops:
+            self.vapi.delete_loopback(sw_if_index=sw_if_index)
+
+
 class TestVlibFrameLeak(VppTestCase):
     """Vlib Frame Leak Test Cases"""
 
