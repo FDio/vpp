@@ -110,6 +110,12 @@ struct cli_type_t
    * parse and complete set
    * to cli_names_parse and cli_names_complete the type needs nothing else. */
   const char *(*next_name) (const cli_arg_t *arg, u32 *iter, u32 *value, const char **help);
+  /* For a value which selects the arguments which follow it, e.g. the name of
+   * a message: returns the arguments of the value, 0 if it has none, and sets
+   * *help to the description of what was selected, if help is not 0 and there
+   * is one. The value has to be the last argument of its list, and the returned
+   * arguments have to stay valid as long as the values which were parsed. */
+  const cli_arg_t *(*next_args) (const cli_arg_t *arg, const cli_value_t *v, const char **help);
 
   /* private */
   struct cli_type_t *next;
@@ -369,6 +375,12 @@ struct cli_ctx_t
   u8 has_where;
   u8 emitted;
   u8 help;	      /* the line ended with '?' */
+  /* the line which ends with '?' has a value which selects arguments, see
+   * next_args: the arguments, their description and the words which selected
+   * them */
+  const cli_arg_t *help_args;
+  const char *help_text;
+  u8 *help_words;
   u8 plain_text_only; /* the handler must not use ANSI sequences, such as colors */
   u32 terminal_width; /* width of the terminal of the session, 0 if it has none */
 };

@@ -407,6 +407,32 @@ with their description and suggests the closest name for a typo:
 
 Registered types are listed in ``show cli schema``.
 
+A value which selects arguments
+-------------------------------
+
+The arguments of a command are static, but some depend on a value which is
+typed, for example the fields of an API message depend on its name. A type
+with ``next_args`` returns the arguments which follow its value:
+
+.. code-block:: c
+
+   static const cli_arg_t *
+   foo_next_args (const cli_arg_t *arg, const cli_value_t *v, const char **help)
+   {
+     foo_t *foo = foo_get (v->index);
+
+     if (help)
+       *help = foo->description;
+
+     return foo->args;
+   }
+
+They are parsed, completed and checked like the other arguments, and
+``<command> <value> ?`` shows them with the description. The value has to be
+the last argument of its list, and the returned arguments have to stay valid
+while the values which were parsed are used, so they are typically made when
+they are first needed and kept.
+
 Output
 ======
 
