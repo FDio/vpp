@@ -386,9 +386,15 @@ ssh_channel_data (ssh_session session, ssh_channel channel, void *data, uint32_t
   return len;
 }
 
+#if LIBSSH_VERSION_INT < SSH_VERSION_INT(0, 10, 0)
+typedef size_t ssh_channel_write_size_t;
+#else
+typedef uint32_t ssh_channel_write_size_t;
+#endif
+
 static int
-ssh_channel_write_wontblock (ssh_session session, ssh_channel channel, uint32_t bytes,
-			     void *userdata)
+ssh_channel_write_wontblock (ssh_session session, ssh_channel channel,
+			     ssh_channel_write_size_t bytes, void *userdata)
 {
   ssh_session_t *s = userdata;
 
