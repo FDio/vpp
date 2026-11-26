@@ -462,7 +462,7 @@ func (s *HstSuite) LogVppInstance(container *Container, maxLines int) {
 
 func (s *HstSuite) HstFail() {
 	for _, container := range s.StartedContainers {
-		out, err := container.log(20)
+		out, err := container.log(container.ctx, 20)
 		if err != nil {
 			Log("An error occured while obtaining '" + container.Name + "' container logs: " + fmt.Sprint(err))
 			Log("The container might not be running - check logs in " + s.getLogDirPath())

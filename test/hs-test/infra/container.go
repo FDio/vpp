@@ -20,7 +20,6 @@ import (
 	"time"
 
 	containerTypes "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
@@ -37,6 +36,12 @@ var (
 // runLabel is set on every container so cleanup can target one run without
 // matching on container names.
 const runLabel = "io.fd.hs-test.run"
+
+const (
+	containerStartupTimeout     = 10 * time.Second
+	containerStartupPoll        = 50 * time.Millisecond
+	containerStartupDiagnostics = 2 * time.Second
+)
 
 type Volume struct {
 	HostDir          string
@@ -244,49 +249,87 @@ func (c *Container) allocateCpus() {
 	Log("Allocated CPUs " + fmt.Sprint(c.AllocatedCpus) + " to container " + c.Name)
 }
 
-// Starts a container
+// Start waits for Docker to start the container process. Callers check application readiness.
 func (c *Container) Start() error {
+	ctx, cancel := context.WithTimeout(c.ctx, containerStartupTimeout)
+	defer cancel()
+
+	var state *containerTypes.State
 	var err error
-	var nTries int
-
-	for nTries = 0; nTries < 5; nTries++ {
-		err = c.Suite.Docker.ContainerStart(c.ctx, c.ID, containerTypes.StartOptions{})
+	startErr := c.Suite.Docker.ContainerStart(ctx, c.ID, containerTypes.StartOptions{})
+	if startErr == nil {
+		state, err = c.waitForStartup(ctx)
 		if err == nil {
-			break
+			Log("Container %s is %s", c.Name, state.Status)
+			return nil
 		}
-		Log("Error while starting " + c.Name + ". Retrying...")
-		time.Sleep(1 * time.Second)
-	}
-	if nTries >= 5 {
-		return err
 	}
 
-	// wait for container to start
-	time.Sleep(500 * time.Millisecond)
+	// Give diagnostics their own deadline so they are available after a startup timeout.
+	diagnosticCtx, cancelDiagnostics := context.WithTimeout(c.ctx, containerStartupDiagnostics)
+	defer cancelDiagnostics()
+	if startErr != nil {
+		err = fmt.Errorf("Docker start failed: %w", startErr)
+		var inspectErr error
+		state, inspectErr = c.inspectState(diagnosticCtx)
+		if inspectErr != nil {
+			err = fmt.Errorf("%w (could not inspect state: %v)", err, inspectErr)
+		}
+	}
 
-	// check if container exited right after startup.
-	// the name filter is a regex; anchor it so it cannot match a concurrent run's
-	// containers
-	containers, err := c.Suite.Docker.ContainerList(c.ctx, containerTypes.ListOptions{
-		All:     true,
-		Filters: filters.NewArgs(filters.Arg("name", "^/"+regexp.QuoteMeta(c.Name)+"$")),
-	})
+	details := "state unavailable"
+	if state != nil {
+		details = fmt.Sprintf("state=%q, exit code=%d, Docker error=%q, OOM killed=%t",
+			state.Status, state.ExitCode, state.Error, state.OOMKilled)
+	}
+	err = fmt.Errorf("container %s (%s) startup failed: %w (%s)", c.Name, c.ID, err, details)
+	logs, logErr := c.log(diagnosticCtx, 20)
+	if logErr != nil {
+		logs += fmt.Sprintf("\nDocker logs error: %v", logErr)
+	}
+	if logs != "" {
+		return fmt.Errorf("%w\nContainer logs:\n%s", err, logs)
+	}
+	return err
+}
+
+func (c *Container) inspectState(ctx context.Context) (*containerTypes.State, error) {
+	inspection, err := c.Suite.Docker.ContainerInspect(ctx, c.ID)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if len(containers) == 0 {
-		return fmt.Errorf("container %s not found after start", c.Name)
+	if inspection.ContainerJSONBase == nil || inspection.State == nil {
+		return nil, errors.New("Docker inspect response has no container state")
 	}
+	return inspection.State, nil
+}
 
-	Log("Container '%s': %s", c.Name, containers[0].Status)
-	if !(strings.Contains(strings.ToLower(containers[0].Status), "up") ||
-		strings.Contains(strings.ToLower(containers[0].Status), "created") ||
-		strings.Contains(strings.ToLower(containers[0].Status), "exited (")) {
-		Log("Container details: " + fmt.Sprint(containers[0]))
-		return fmt.Errorf("Container %s exited: '%s'", c.Name, containers[0].Status)
+func (c *Container) waitForStartup(ctx context.Context) (*containerTypes.State, error) {
+	var state *containerTypes.State
+	for ctx.Err() == nil {
+		current, err := c.inspectState(ctx)
+		if err != nil {
+			return state, fmt.Errorf("Docker inspect failed: %w", err)
+		}
+		state = current
+		if state.Error != "" {
+			return state, errors.New("Docker reported a container startup error")
+		}
+		// Foreground jobs may finish before the first inspect. The test owns
+		// their result, including an intentional nonzero exit code.
+		if state.Status == containerTypes.StateRunning ||
+			(!c.RunDetached && state.Status == containerTypes.StateExited) {
+			return state, nil
+		}
+		if state.Status != containerTypes.StateCreated && state.Status != containerTypes.StateRestarting {
+			return state, errors.New("unexpected container state during startup")
+		}
+		select {
+		case <-ctx.Done():
+		case <-time.After(containerStartupPoll):
+		}
 	}
-
-	return nil
+	return state, fmt.Errorf("waiting for Docker container startup: %w", ctx.Err())
 }
 
 func (c *Container) GetOutput() (string, string) {
@@ -630,7 +673,7 @@ func (c *Container) saveLogs() {
 	// repeating the run and process in the file name only makes it harder to read
 	testLogFilePath := c.Suite.getLogDirPath() + "container-" + c.BaseName + ".log"
 
-	logs, err := c.log(0)
+	logs, err := c.log(c.ctx, 0)
 	if err != nil {
 		Log(err)
 		return
@@ -651,7 +694,7 @@ func (c *Container) saveLogs() {
 }
 
 // Returns logs from docker containers. Set 'maxLines' to 0 to output the full log.
-func (c *Container) log(maxLines int) (string, error) {
+func (c *Container) log(ctx context.Context, maxLines int) (string, error) {
 	var logOptions containerTypes.LogsOptions
 	if maxLines == 0 {
 		logOptions = containerTypes.LogsOptions{ShowStdout: true, ShowStderr: true, Details: true, Timestamps: true}
@@ -659,7 +702,7 @@ func (c *Container) log(maxLines int) (string, error) {
 		logOptions = containerTypes.LogsOptions{ShowStdout: true, ShowStderr: true, Details: true, Tail: strconv.Itoa(maxLines)}
 	}
 
-	out, err := c.Suite.Docker.ContainerLogs(c.ctx, c.ID, logOptions)
+	out, err := c.Suite.Docker.ContainerLogs(ctx, c.ID, logOptions)
 	if err != nil {
 		Log(err)
 		return "", err

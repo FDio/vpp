@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -19,9 +20,9 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 )
 
-type dockerArchiveTransport func(*http.Request) (*http.Response, error)
+type dockerTestTransport func(*http.Request) (*http.Response, error)
 
-func (transport dockerArchiveTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+func (transport dockerTestTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return transport(req)
 }
 
@@ -29,7 +30,7 @@ func newArchiveTestContainer(t *testing.T, dest, content string, mode int64, sta
 	t.Helper()
 	requests := 0
 	start := time.Now().Truncate(time.Second)
-	transport := dockerArchiveTransport(func(req *http.Request) (*http.Response, error) {
+	transport := dockerTestTransport(func(req *http.Request) (*http.Response, error) {
 		requests++
 		if req.Method != http.MethodPut || !strings.HasSuffix(req.URL.Path, "/containers/hst/archive") ||
 			req.URL.Query().Get("path") != path.Dir(dest) {
@@ -67,6 +68,142 @@ func newArchiveTestContainer(t *testing.T, dest, content string, mode int64, sta
 		}
 	})
 	return &Container{Name: "hst", Suite: &HstSuite{Docker: docker}, ctx: t.Context()}
+}
+
+func TestContainerStart(t *testing.T) {
+	const (
+		apiVersion = "1.47"
+		created    = `{"State":{"Status":"created"}}`
+		restarting = `{"State":{"Status":"restarting","Running":true,"Restarting":true}}`
+		running    = `{"State":{"Status":"running","Running":true}}`
+		exited     = `{"State":{"Status":"exited","ExitCode":7}}`
+	)
+	for _, test := range []struct {
+		name          string
+		foreground    bool
+		states        []string
+		startStatus   int
+		inspectStatus int
+		blockInspect  bool
+		pending       bool
+		elapsed       time.Duration
+		wantError     []string
+	}{
+		{name: "running immediately", states: []string{running}},
+		{name: "pending then running", states: []string{created, restarting, running}, elapsed: 2 * containerStartupPoll},
+		{name: "early exit", states: []string{exited}, wantError: []string{`state="exited"`, "exit code=7"}},
+		{name: "foreground exit", foreground: true, states: []string{exited}},
+		{name: "Docker state error", states: []string{`{"State":{"Status":"created","ExitCode":128,"Error":"runtime failure"}}`},
+			wantError: []string{`state="created"`, "exit code=128", `Docker error="runtime failure"`}},
+		{name: "startup timeout", states: []string{created}, pending: true, elapsed: containerStartupTimeout,
+			wantError: []string{`state="created"`, "context deadline exceeded"}},
+		{name: "blocked inspection", blockInspect: true, elapsed: containerStartupTimeout,
+			wantError: []string{"Docker inspect failed", "context deadline exceeded", "state unavailable"}},
+		{name: "missing container", inspectStatus: http.StatusNotFound, wantError: []string{"Docker inspect failed", "No such container", "state unavailable"}},
+		{name: "inspect error", inspectStatus: http.StatusInternalServerError, wantError: []string{"Docker inspect failed", "daemon unavailable"}},
+		{name: "missing state", states: []string{`{}`}, wantError: []string{"Docker inspect response has no container state"}},
+		{name: "start error", startStatus: http.StatusInternalServerError, states: []string{created},
+			wantError: []string{"Docker start failed", "failed to start process", `state="created"`}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				var starts, inspects, logRequests int
+				transport := dockerTestTransport(func(req *http.Request) (*http.Response, error) {
+					var status int
+					var body strings.Builder
+					requestPath := strings.TrimPrefix(req.URL.Path, "/v"+apiVersion)
+					switch req.Method + " " + requestPath {
+					case "POST /containers/test-id/start":
+						starts++
+						status = http.StatusNoContent
+						if test.startStatus != 0 {
+							status = test.startStatus
+							body.WriteString(`{"message":"failed to start process"}`)
+						}
+					case "GET /containers/test-id/json":
+						inspects++
+						if starts != 1 {
+							t.Fatalf("inspected container after %d start requests", starts)
+						}
+						if test.blockInspect {
+							<-req.Context().Done()
+							return nil, req.Context().Err()
+						}
+						status = http.StatusOK
+						switch test.inspectStatus {
+						case http.StatusNotFound:
+							status = test.inspectStatus
+							body.WriteString(`{"message":"No such container: test-id"}`)
+						case http.StatusInternalServerError:
+							status = test.inspectStatus
+							body.WriteString(`{"message":"daemon unavailable"}`)
+						default:
+							body.WriteString(test.states[min(inspects, len(test.states))-1])
+						}
+					case "GET /containers/test-id/logs":
+						logRequests++
+						query := req.URL.Query()
+						if query.Get("tail") != "20" || query.Has("follow") {
+							t.Errorf("unexpected log query: %s", query.Encode())
+						}
+						status = http.StatusOK
+						fmt.Fprintln(stdcopy.NewStdWriter(&body, stdcopy.Stderr), "container diagnostic")
+					default:
+						t.Fatalf("unexpected Docker request: %s %s", req.Method, req.URL)
+					}
+					return &http.Response{
+						StatusCode: status,
+						Header:     http.Header{"Content-Type": {"application/json"}},
+						Body:       io.NopCloser(strings.NewReader(body.String())),
+					}, nil
+				})
+				docker, err := client.NewClientWithOpts(client.WithVersion(apiVersion), client.WithHTTPClient(&http.Client{Transport: transport}))
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer docker.Close()
+				c := &Container{Name: "hst", ID: "test-id", RunDetached: !test.foreground, Suite: &HstSuite{Docker: docker}, ctx: t.Context()}
+				started := time.Now()
+				err = c.Start()
+				if elapsed := time.Since(started); elapsed != test.elapsed {
+					t.Errorf("Start took %s, want %s", elapsed, test.elapsed)
+				}
+				if starts != 1 {
+					t.Errorf("got %d start requests, want 1", starts)
+				}
+				if test.pending {
+					if inspects < 2 {
+						t.Errorf("got %d inspect requests, want repeated inspection while startup is pending", inspects)
+					}
+				} else if want := max(1, len(test.states)); inspects != want {
+					t.Errorf("got %d inspect requests, want %d", inspects, want)
+				}
+				if len(test.wantError) == 0 {
+					if err != nil || logRequests != 0 {
+						t.Errorf("Start returned %v and requested logs %d times", err, logRequests)
+					}
+					return
+				}
+				if err == nil {
+					t.Fatal("Start succeeded, want an error")
+				}
+				for _, part := range append(test.wantError, "hst (test-id)", "container diagnostic") {
+					if !strings.Contains(err.Error(), part) {
+						t.Errorf("Start error %q is missing %q", err, part)
+					}
+				}
+				if logRequests != 1 {
+					t.Errorf("got %d log requests, want 1", logRequests)
+				}
+				if test.inspectStatus == http.StatusNotFound && !errdefs.IsNotFound(err) {
+					t.Errorf("Start error %v lost Docker's not-found classification", err)
+				}
+				if test.elapsed == containerStartupTimeout && !errors.Is(err, context.DeadlineExceeded) {
+					t.Errorf("Start error %v lost the deadline-exceeded cause", err)
+				}
+			})
+		})
+	}
 }
 
 func TestContainerCreateFile(t *testing.T) {
