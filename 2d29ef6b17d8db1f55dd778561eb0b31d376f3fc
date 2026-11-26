@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e2d143fe_278e7d3e",
+        "filename": "src/vlib/threads.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 163,
+      "author": {
+        "id": 3383
+      },
+      "writtenOn": "2026-11-26T18:45:27Z",
+      "side": 1,
+      "message": "Done in PS3: the checks are in __foreach_vlib_main_helper again. The cursor is a pointer to a slot of vlib_mains, the helper returns 0 for a null vector or past the end, and the macro is back to three lines with a single loop, so break and continue behave as before.",
+      "parentUuid": "87bb8d9f_f68dfe0f",
+      "revId": "2d29ef6b17d8db1f55dd778561eb0b31d376f3fc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
