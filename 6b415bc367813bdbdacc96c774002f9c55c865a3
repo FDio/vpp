@@ -1,0 +1,76 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8f129d9d_51992c93",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-26T14:38:49Z",
+      "side": 1,
+      "message": "Rewrote the commit message to focus on the shorter waits and how the test deadlines are derived.",
+      "parentUuid": "58065d88_5a57553b",
+      "revId": "6b415bc367813bdbdacc96c774002f9c55c865a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "20b8bf04_f373d18f",
+        "filename": "test/asf/test_cli.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-26T14:38:49Z",
+      "side": 1,
+      "message": "Removed the comment and expressed the ordering in the constants used by the tests.",
+      "parentUuid": "36905223_1abfecc4",
+      "revId": "6b415bc367813bdbdacc96c774002f9c55c865a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b4f1efbf_50df683b",
+        "filename": "test/asf/test_cli.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-26T14:38:49Z",
+      "side": 1,
+      "message": "The successful cases wait for the default timeout plus two seconds. Their extended timeout is that wait plus eight seconds, so changing the default preserves both margins.",
+      "parentUuid": "54ae2f00_9e51a6a2",
+      "revId": "6b415bc367813bdbdacc96c774002f9c55c865a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "acade85d_f20ce2d2",
+        "filename": "test/asf/test_cli.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-26T14:38:49Z",
+      "side": 1,
+      "message": "The timeout case now uses TIMED_OUT_REPLY_DELAY, derived from the default plus five seconds. This preserves its original margin.",
+      "parentUuid": "0290ce62_4719c717",
+      "revId": "6b415bc367813bdbdacc96c774002f9c55c865a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
