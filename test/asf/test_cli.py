@@ -7,6 +7,9 @@ from vpp_papi import VPPIOError
 
 from asfframework import VppAsfTestCase, VppTestRunner
 
+# This command must outlast the standard five-second API timeout.
+CLI_REPLY_DELAY = 7
+
 
 class TestCLI(VppAsfTestCase):
     """CLI Test Case"""
@@ -39,12 +42,12 @@ class TestCLI(VppAsfTestCase):
 
     def test_long_cli_delay(self):
         """Test that VppApiClient raises VppIOError if timeout."""  # noqa
-        with self.assertRaises(VPPIOError) as ctx:
-            rv = self.vapi.papi.cli_inband(cmd="wait 10")
+        with self.assertRaisesRegex(VPPIOError, "VPP API client: read failed"):
+            self.vapi.papi.cli_inband(cmd="wait 10")
 
     def test_long_cli_delay_override(self):
         """Test per-command _timeout option."""  # noqa
-        rv = self.vapi.papi.cli_inband(cmd="wait 10", _timeout=15)
+        rv = self.vapi.papi.cli_inband(cmd=f"wait {CLI_REPLY_DELAY}", _timeout=15)
         self.assertEqual(rv.retval, 0)
 
 
@@ -72,19 +75,18 @@ class TestCLIExtendedVapiTimeout(VppAsfTestCase):
 
     def test_long_cli_delay(self):
         """Test that delayed result returns with extended timeout."""
-        wait_secs = self.vapi_response_timeout - 1
-
         # get vpp time as float
         start = self.vapi.papi.show_vpe_system_time(
             _no_type_conversion=True
         ).vpe_system_time
-        rv = self.vapi.papi.cli_inband(cmd="wait %s" % wait_secs)
+        rv = self.vapi.papi.cli_inband(cmd=f"wait {CLI_REPLY_DELAY}")
+        self.assertEqual(rv.retval, 0)
         now = self.vapi.papi.show_vpe_system_time(
             _no_type_conversion=True
         ).vpe_system_time
 
         # assume that the overhead of the measurement is not more that .5 sec.
-        self.assertEqual(round(now - start), wait_secs)
+        self.assertEqual(round(now - start), CLI_REPLY_DELAY)
 
 
 if __name__ == "__main__":
