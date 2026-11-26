@@ -1,20 +1,90 @@
 package hst
 
 import (
+	"archive/tar"
 	"bufio"
 	"context"
 	"errors"
 	"io"
 	"net"
 	"net/http"
+	"path"
 	"strings"
 	"testing"
 	"testing/synctest"
 	"time"
 
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/errdefs"
 	"github.com/docker/docker/pkg/stdcopy"
 )
+
+type dockerArchiveTransport func(*http.Request) (*http.Response, error)
+
+func (transport dockerArchiveTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	return transport(req)
+}
+
+func newArchiveTestContainer(t *testing.T, dest, content string, mode int64, status int, response string) *Container {
+	t.Helper()
+	requests := 0
+	start := time.Now().Truncate(time.Second)
+	transport := dockerArchiveTransport(func(req *http.Request) (*http.Response, error) {
+		requests++
+		if req.Method != http.MethodPut || !strings.HasSuffix(req.URL.Path, "/containers/hst/archive") ||
+			req.URL.Query().Get("path") != path.Dir(dest) {
+			t.Fatalf("unexpected Docker request: %s %s", req.Method, req.URL)
+		}
+		defer req.Body.Close()
+		reader := tar.NewReader(req.Body)
+		header, err := reader.Next()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if header.Name != path.Base(dest) || header.Mode != mode {
+			t.Errorf("archive entry is %q with mode %#o, want %q with mode %#o", header.Name, header.Mode, path.Base(dest), mode)
+		}
+		if header.ModTime.Before(start) || header.ModTime.After(time.Now()) {
+			t.Errorf("archive entry has unexpected modification time %v", header.ModTime)
+		}
+		data, err := io.ReadAll(reader)
+		if err != nil || string(data) != content {
+			t.Errorf("archive content is %q (%v), want %q", data, err, content)
+		}
+		if _, err := reader.Next(); err != io.EOF {
+			t.Errorf("expected end of archive, got %v", err)
+		}
+		return &http.Response{StatusCode: status, Body: io.NopCloser(strings.NewReader(response))}, nil
+	})
+	docker, err := client.NewClientWithOpts(client.WithHTTPClient(&http.Client{Transport: transport}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		docker.Close()
+		if requests != 1 {
+			t.Errorf("got %d Docker requests, want 1", requests)
+		}
+	})
+	return &Container{Name: "hst", Suite: &HstSuite{Docker: docker}, ctx: t.Context()}
+}
+
+func TestContainerCreateFile(t *testing.T) {
+	const dest, content = "/etc/vpp/config", "file contents\n"
+
+	t.Run("copy", func(t *testing.T) {
+		c := newArchiveTestContainer(t, dest, content, 0644, http.StatusOK, "")
+		if err := c.CreateFile(dest, content); err != nil {
+			t.Fatal(err)
+		}
+	})
+	t.Run("copy error", func(t *testing.T) {
+		c := newArchiveTestContainer(t, dest, content, 0644, http.StatusNotFound, `{"message":"destination missing"}`)
+		if err := c.CreateFile(dest, content); !errdefs.IsNotFound(err) || !strings.Contains(err.Error(), "destination missing") {
+			t.Errorf("CreateFile returned %v, want Docker's missing destination error", err)
+		}
+	})
+}
 
 func TestContainerExecCancellation(t *testing.T) {
 	const createPath = "/containers/hst/exec"

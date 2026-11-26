@@ -10,6 +10,8 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -89,6 +91,7 @@ const (
 	defaultCliSocketFilePath = "/var/run/vpp/cli.sock"
 	defaultApiSocketFilePath = "/var/run/vpp/api.sock"
 	defaultLogFilePath       = "/var/log/vpp/vpp.log"
+	startupConfigFilePath    = "/etc/vpp/startup.conf"
 	Consistent_qp            = 256
 
 	pcapTraceFileName              = "vppTest.pcap"
@@ -129,18 +132,6 @@ func (vpp *VppInstance) getCliSocket() string {
 	return fmt.Sprintf("%s%s", vpp.Container.GetContainerWorkDir(), defaultCliSocketFilePath)
 }
 
-func (vpp *VppInstance) getRunDir() string {
-	return vpp.Container.GetContainerWorkDir() + "/var/run/vpp"
-}
-
-func (vpp *VppInstance) getLogDir() string {
-	return vpp.Container.GetContainerWorkDir() + "/var/log/vpp"
-}
-
-func (vpp *VppInstance) getEtcDir() string {
-	return vpp.Container.GetContainerWorkDir() + "/etc/vpp"
-}
-
 // Appends a string to '[host-work-dir]/cli-config.conf'.
 // Creates the conf file if it doesn't exist. Used for dry-run mode.
 func (vpp *VppInstance) AppendToCliConfig(vppCliConfig string) {
@@ -152,19 +143,44 @@ func (vpp *VppInstance) AppendToCliConfig(vppCliConfig string) {
 	AssertNil(err)
 }
 
+func (vpp *VppInstance) writeStartupConfig(startupFileName, contents string) error {
+	c := vpp.Container
+	runDir := path.Dir(defaultCliSocketFilePath)
+	logDir := path.Dir(defaultLogFilePath)
+	configDir := path.Dir(startupConfigFilePath)
+
+	if hostWorkDir := c.GetHostWorkDir(); hostWorkDir != "" {
+		for _, dir := range []string{runDir, logDir, configDir} {
+			hostDir := filepath.Join(hostWorkDir, dir)
+			if info, err := os.Stat(hostDir); err == nil && info.IsDir() {
+				continue
+			}
+			if err := os.MkdirAll(hostDir, 0755); err != nil {
+				return err
+			}
+			// Match mkdir -m 777 on each leaf directory regardless of umask.
+			if err := os.Chmod(hostDir, 0777); err != nil {
+				return err
+			}
+		}
+		return c.CreateFileInWorkDir(startupConfigFilePath, contents)
+	}
+
+	workDir := c.GetContainerWorkDir()
+	output, err := c.Exec(false, "mkdir -m 777 -p %q %q %q",
+		path.Join(workDir, runDir), path.Join(workDir, logDir), path.Join(workDir, configDir))
+	if err != nil {
+		return fmt.Errorf("create VPP startup directories in %s: %w (%s)", c.Name, err, output)
+	}
+	return c.CreateFile(startupFileName, contents)
+}
+
 func (vpp *VppInstance) Start() error {
 	containerWorkDir := vpp.Container.GetContainerWorkDir()
 	var cliConfig string
 	if *DryRun {
 		cliConfig = fmt.Sprintf("exec %s/cli-config.conf", containerWorkDir)
 	}
-
-	o, err := vpp.Container.Exec(false, "mkdir -m 777 -p "+vpp.getRunDir())
-	AssertNil(err, o)
-	o, err = vpp.Container.Exec(false, "mkdir -m 777 -p "+vpp.getLogDir())
-	AssertNil(err, o)
-	o, err = vpp.Container.Exec(false, "mkdir -m 777 -p "+vpp.getEtcDir())
-	AssertNil(err, o)
 
 	// formatting a log message allocates a string that vlib_log keeps in its
 	// ring buffer, which the mem-leak report then sees as a live allocation
@@ -173,7 +189,6 @@ func (vpp *VppInstance) Start() error {
 		logLevel = "disabled"
 	}
 
-	// Create startup.conf inside the container
 	configContent := fmt.Sprintf(
 		vppConfigTemplate,
 		containerWorkDir,
@@ -187,19 +202,22 @@ func (vpp *VppInstance) Start() error {
 	for _, c := range vpp.AdditionalConfig {
 		configContent += c.ToString()
 	}
-	startupFileName := vpp.getEtcDir() + "/startup.conf"
-	vpp.Container.CreateFile(startupFileName, configContent)
+	startupFileName := path.Join(containerWorkDir, startupConfigFilePath)
+	if err := vpp.writeStartupConfig(startupFileName, configContent); err != nil {
+		return fmt.Errorf("write VPP startup config for %s: %w", vpp.Container.Name, err)
+	}
 
 	// create wrapper script for vppctl with proper CLI socket path
-	cliContent := "#!/usr/bin/bash\nvppctl -s " + vpp.getRunDir() + "/cli.sock"
-	vppcliFileName := "/usr/bin/vppcli"
-	vpp.Container.CreateFile(vppcliFileName, cliContent)
-	vpp.Container.Exec(false, "chmod 0755 "+vppcliFileName)
+	cliSocket := vpp.getCliSocket()
+	cliContent := "#!/usr/bin/bash\nvppctl -s " + cliSocket
+	if err := vpp.Container.createFileWithMode("/usr/bin/vppcli", cliContent, 0755); err != nil {
+		return err
+	}
 
 	if *DryRun {
 		Log("%s* Commands to start VPP and VPPCLI:", Colors.pur)
-		Log("vpp -c %s/startup.conf", vpp.getEtcDir())
-		Log("vppcli (= vppctl -s %s/cli.sock)%s\n", vpp.getRunDir(), Colors.rst)
+		Log("vpp -c %s", startupFileName)
+		Log("vppcli (= vppctl -s %s)%s\n", cliSocket, Colors.rst)
 		return nil
 	}
 

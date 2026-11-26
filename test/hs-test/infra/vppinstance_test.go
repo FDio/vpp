@@ -1,9 +1,63 @@
 package hst
 
 import (
+	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestVppStartupDryRun(t *testing.T) {
+	dryRun := *DryRun
+	*DryRun = true
+	t.Cleanup(func() { *DryRun = dryRun })
+
+	const containerWorkDir = "/tmp/custom-vpp"
+	const cliSocket = containerWorkDir + "/var/run/vpp/cli.sock"
+	c := newArchiveTestContainer(t, "/usr/bin/vppcli", "#!/usr/bin/bash\nvppctl -s "+cliSocket, 0755, http.StatusOK, "")
+	hostWorkDir := t.TempDir()
+	c.Volumes = map[string]Volume{
+		hostWorkDir: {HostDir: hostWorkDir, ContainerDir: containerWorkDir, IsDefaultWorkDir: true},
+	}
+
+	vpp := &VppInstance{Container: c}
+	if err := vpp.Start(); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, dir := range []string{"var/run/vpp", "var/log/vpp", "etc/vpp"} {
+		info, err := os.Stat(filepath.Join(hostWorkDir, dir))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !info.IsDir() || info.Mode().Perm() != 0777 {
+			t.Errorf("%s has mode %v, want directory mode 0777", dir, info.Mode())
+		}
+	}
+	configPath := filepath.Join(hostWorkDir, "etc/vpp/startup.conf")
+	info, err := os.Stat(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0644 {
+		t.Errorf("startup.conf has mode %#o, want 0644", info.Mode().Perm())
+	}
+	config, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range []string{
+		"cli-listen " + cliSocket,
+		"socket-name " + containerWorkDir + "/var/run/vpp/api.sock",
+		"log " + containerWorkDir + "/var/log/vpp/vpp.log",
+		"exec " + containerWorkDir + "/cli-config.conf",
+	} {
+		if !strings.Contains(string(config), line+"\n") {
+			t.Errorf("startup.conf is missing %q", line)
+		}
+	}
+}
 
 // Tracebacks as they appear in the mem-leak report, deepest frame first.
 var (
