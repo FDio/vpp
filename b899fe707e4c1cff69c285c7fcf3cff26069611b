@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0f0d717b_0f517ceb",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 596,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-27T09:32:55Z",
+      "side": 1,
+      "message": "app should not modify http state or data flow directly by function call, it need to use only session and fifo apis",
+      "revId": "b899fe707e4c1cff69c285c7fcf3cff26069611b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ed898576_7f851186",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 606,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-27T09:32:55Z",
+      "side": 1,
+      "message": "app should not modify http state or data flow directly by function call, it need to use only session and fifo apis",
+      "revId": "b899fe707e4c1cff69c285c7fcf3cff26069611b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0dc80636_f946142a",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 633,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-27T09:32:55Z",
+      "side": 1,
+      "message": "app should not modify http state or data flow directly by function call, it need to use only session and fifo apis",
+      "revId": "b899fe707e4c1cff69c285c7fcf3cff26069611b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "51a6b6e7_97ad3176",
+        "filename": "src/plugins/http/http2/hpack.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-27T09:32:55Z",
+      "side": 1,
+      "message": "why is this modified? I don\u0027t see any change",
+      "revId": "b899fe707e4c1cff69c285c7fcf3cff26069611b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e73942d8_cc90b56a",
+        "filename": "src/plugins/http/http2/hpack.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-27T09:32:55Z",
+      "side": 1,
+      "message": "why there? I see hpack just set it and don\u0027t use",
+      "revId": "b899fe707e4c1cff69c285c7fcf3cff26069611b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
