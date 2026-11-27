@@ -3755,21 +3755,60 @@ func HttpFragmentedH2PrefaceTest(s *Http1Suite) {
 	AssertNotContains(vpp.Vppctl("show http stats"), "connections protocol error")
 }
 
+func httpConnectionStatTotal(stats, name string) int {
+	total := 0
+	for line := range strings.SplitSeq(stats, "\n") {
+		if count, found := strings.CutSuffix(strings.TrimSpace(line), " "+name); found {
+			value, err := strconv.Atoi(count)
+			AssertNil(err, stats)
+			total += value
+		}
+	}
+	return total
+}
+
 func HttpTimerSessionDisable(s *Http1Suite) {
 	vpp := s.Containers.Vpp.VppInstance
-	serverAddress := s.VppAddr() + ":" + s.Ports.Http
-	Log(vpp.Vppctl("http static server www-root " + wwwRootPath + " uri tcp://" + serverAddress))
-	time.Sleep(250 * time.Millisecond)
-	resp := vpp.Vppctl("show node http-timer-process")
-	AssertContains(resp, "node http-timer-process, type process, state any wait")
-	vpp.Vppctl("session disable")
-	time.Sleep(1 * time.Second)
-	resp = vpp.Vppctl("show node http-timer-process")
-	AssertContains(resp, "node http-timer-process, type process, state not started")
-	vpp.Vppctl("session enable")
-	time.Sleep(100 * time.Millisecond)
-	resp = vpp.Vppctl("show node http-timer-process")
-	AssertContains(resp, "node http-timer-process, type process, state any wait")
+	// Make both accepts use the same timer wheel so the new connection
+	// exercises any timers left on the original wheel after re-enable.
+	for queue := range vpp.CpuConfig.NumWorkers {
+		AssertEmpty(vpp.Vppctl("set interface rx-placement %s queue %d worker 0", s.VppIfName(), queue))
+	}
+
+	openIdleConn := func(address string) *bufio.Reader {
+		conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+		AssertNil(err)
+		DeferCleanup(conn.Close)
+		AssertNil(conn.SetDeadline(time.Now().Add(defaultHttpTimeout)))
+		_, err = fmt.Fprintf(conn, "GET /version.json HTTP/1.1\r\nHost: %s\r\n\r\n", address)
+		AssertNil(err)
+		reader := bufio.NewReader(conn)
+		resp, err := http.ReadResponse(reader, nil)
+		AssertNil(err)
+		AssertEqual(http.StatusOK, resp.StatusCode)
+		_, err = io.Copy(io.Discard, resp.Body)
+		AssertNil(err)
+		AssertNil(resp.Body.Close())
+		AssertNil(conn.SetReadDeadline(time.Now().Add(defaultHttpTimeout)))
+		return reader
+	}
+
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
+	Log(vpp.Vppctl("http static server uri tcp://%s url-handlers keepalive-timeout 5", address))
+	openIdleConn(address)
+	AssertNotContains(vpp.Vppctl("show http stats"), "connections timeout")
+
+	Log(vpp.Vppctl("session disable"))
+	Log(vpp.Vppctl("session enable"))
+
+	// Keep the original connection idle while testing a new listener. Its
+	// earlier timeout would have been counted by the time the new one expires.
+	address = net.JoinHostPort(s.VppAddr(), s.Ports.Https)
+	Log(vpp.Vppctl("http static listener add uri tcp://%s url-handlers keepalive-timeout 6", address))
+	reader := openIdleConn(address)
+	_, err := reader.ReadByte()
+	AssertMatchError(err, io.EOF, "new connection did not time out after re-enable")
+	AssertEqual(1, httpConnectionStatTotal(vpp.Vppctl("show http stats"), "connections timeout"))
 }
 
 func HttpRequestLineTest(s *Http1Suite) {
@@ -4348,7 +4387,7 @@ func HttpConnTimeoutTest(s *Http1Suite) {
 	AssertMatchError(err, io.EOF, "connection not closed by server")
 	o := vpp.Vppctl("show http stats")
 	Log(o)
-	AssertContains(o, "1 connections timeout")
+	AssertEqual(1, httpConnectionStatTotal(o, "connections timeout"))
 }
 
 // Cover the request-line substates and retained HTTP/2 magic as well as headers
@@ -4425,15 +4464,7 @@ func HttpIncompleteHeadersTimeoutTest(s *Http1Suite) {
 			fmt.Sprintf("partial request %q was not closed by the server: %v", partials[i], result.err))
 	}
 	stats := vpp.Vppctl("show http stats")
-	timeouts := 0
-	for line := range strings.SplitSeq(stats, "\n") {
-		if count, found := strings.CutSuffix(strings.TrimSpace(line), " connections timeout"); found {
-			n, err := strconv.Atoi(count)
-			AssertNil(err, stats)
-			timeouts += n
-		}
-	}
-	AssertEqual(len(partials), timeouts, stats)
+	AssertEqual(len(partials), httpConnectionStatTotal(stats, "connections timeout"), stats)
 	AssertNotContains(stats, "connections protocol error")
 }
 
@@ -4851,16 +4882,17 @@ func HttpPartialRequestPeerResetTest(s *Http1Suite) {
 			AssertNil(conn.(*net.TCPConn).SetLinger(0))
 			AssertNil(conn.Close())
 		}()
-		expected := fmt.Sprintf("%d connections reset by peer", i+1)
 		var stats string
+		var resets int
 		for range 20 {
 			stats = vpp.Vppctl("show http stats")
-			if strings.Contains(stats, expected) {
+			resets = httpConnectionStatTotal(stats, "connections reset by peer")
+			if resets == i+1 {
 				break
 			}
 			time.Sleep(50 * time.Millisecond)
 		}
-		AssertContains(stats, expected)
+		AssertEqual(i+1, resets)
 		AssertNotContains(stats, "connections accepted")
 		AssertNotContains(stats, "connections protocol error")
 	}

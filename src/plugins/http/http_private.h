@@ -7,6 +7,7 @@
 
 #include <vppinfra/llist.h>
 #include <vppinfra/time_range.h>
+#include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
 #include <vnet/session/application.h>
 #include <vnet/session/session.h>
 #include <vnet/session/transport.h>
@@ -164,7 +165,6 @@ typedef struct
 #define foreach_http_conn_flags                                                                    \
   _ (HO_DONE, "ho-done")                                                                           \
   _ (NO_APP_SESSION, "no-app-session")                                                             \
-  _ (PENDING_TIMER, "pending-timer")                                                               \
   _ (IS_SERVER, "is-server")                                                                       \
   _ (HAS_REQUEST, "has-request")                                                                   \
   _ (UNIDIRECTIONAL_STREAM, "unidirectional-stream")                                               \
@@ -333,7 +333,11 @@ typedef struct http_ctx_
   union
   {
     transport_connection_t connection;
-    http_ctx_id_t c_http_ctx_id;
+    struct
+    {
+      http_ctx_id_t c_http_ctx_id;
+      u32 timer_expiry_slot; /* One-based index in the wheel's current expiration batch. */
+    };
   };
 #define hc_tc_session_handle c_http_ctx_id.tc_session_handle
 #define hc_tl_handle_tcp     c_http_ctx_id.tl_handle_tcp
@@ -492,6 +496,8 @@ typedef struct http_ctx_
   };
 } http_ctx_t;
 
+STATIC_ASSERT_FITS_IN (http_ctx_t, timer_expiry_slot, TRANSPORT_CONN_ID_LEN);
+
 typedef struct
 {
   u8 has_body;
@@ -566,6 +572,13 @@ typedef struct http_worker_
   u32 h2_n_sessions;
   http_wrk_stats_t stats;
   clib_timebase_t timebase; /* uses this thread's clock */
+  vlib_main_t *vm;
+  u32 n_timers;
+  u32 n_pending_timers;
+  u32 timer_expiry_cursor;
+  u32 timer_dispatch_loop;
+  bool timer_dispatch_queued;
+  tw_timer_wheel_1t_3w_1024sl_ov_t timer_wheel;
 } http_worker_t;
 
 typedef struct http_main_
@@ -613,7 +626,7 @@ typedef struct http_engine_vft_
   void (*app_reset_callback) (http_ctx_t *hc, u32 req_index, clib_thread_index_t thread_index);
   int (*transport_connected_callback) (http_ctx_t *hc);
   void (*transport_rx_callback) (http_ctx_t *hc);
-  void (*transport_close_callback) (http_ctx_t *hc);
+  void (*transport_close_callback) (http_ctx_t *hc, bool is_timeout);
   void (*transport_reset_callback) (http_ctx_t *hc);
   void (*transport_conn_reschedule_callback) (http_ctx_t *hc);
   int (*transport_stream_accept_callback) (http_ctx_t *stream, http_ctx_t *hc);

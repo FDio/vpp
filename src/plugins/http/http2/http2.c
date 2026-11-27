@@ -4000,7 +4000,7 @@ http2_transport_rx_callback (http_ctx_t *hc)
 }
 
 static void
-http2_transport_close_callback (http_ctx_t *hc)
+http2_transport_close_callback (http_ctx_t *hc, CLIB_UNUSED (bool is_timeout))
 {
   http_worker_t *wrk = http_worker_get (hc->c_thread_index);
   u32 req_index, stream_id, n_open_streams = 0;
@@ -4010,11 +4010,18 @@ http2_transport_close_callback (http_ctx_t *hc)
 
   HTTP_DBG (1, "hc [%u]%x", hc->c_thread_index, hc->hc_hc_index);
 
-  /* transport close event may precede RX for a buffered END_STREAM */
+  /* Close and timeout can both precede RX for a buffered END_STREAM. */
   if (http_io_ts_max_read (hc))
     {
       http2_rx_expect_funcs[hc->rx_expect](hc);
       hc = http_ctx_get_w_thread (hc_index, thread_index);
+    }
+
+  /* The client preface initializes the HTTP/2 scheduler during an upgrade. */
+  if (hc->flags & HTTP_CONN_F_NEED_REINIT)
+    {
+      http_disconnect_transport (hc);
+      return;
     }
 
   hash_foreach (stream_id, req_index, hc->req_by_stream_id, ({
