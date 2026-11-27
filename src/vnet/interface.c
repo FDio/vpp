@@ -764,6 +764,14 @@ vnet_hw_interface_set_mtu (vnet_main_t *vnm, u32 hw_if_index, u32 mtu)
 					       mtu + hi->frame_overhead);
 }
 
+/* Workers get nodes registered under the barrier only when it is released,
+ * with runtimes copied from main. Until then, only main has them. */
+static_always_inline int
+vnet_hw_if_node_is_on_thread (vlib_main_t *vm, u32 node_index)
+{
+  return node_index < vec_len (vm->node_main.nodes);
+}
+
 static void
 setup_tx_node (vlib_main_t * vm,
 	       u32 node_index, vnet_device_class_t * dev_class)
@@ -913,6 +921,10 @@ vnet_register_interface (vnet_main_t * vnm,
 	{
 	  vnet_interface_output_runtime_t *rt;
 
+	  if (!vnet_hw_if_node_is_on_thread (this_vlib_main, hw->output_node_index) ||
+	      !vnet_hw_if_node_is_on_thread (this_vlib_main, hw->tx_node_index))
+	    continue;
+
 	  rt =
 	    vlib_node_get_runtime_data (this_vlib_main, hw->output_node_index);
 	  ASSERT (rt->is_deleted == 1);
@@ -936,6 +948,8 @@ vnet_register_interface (vnet_main_t * vnm,
 
       foreach_vlib_main ()
 	{
+	  if (!vnet_hw_if_node_is_on_thread (this_vlib_main, hw->output_node_index))
+	    continue;
 	  nrt = vlib_node_get_runtime (this_vlib_main, hw->output_node_index);
 	  nrt->function = node->function;
 	  vlib_node_runtime_perf_counter (this_vlib_main, nrt, 0, 0, 0,
@@ -955,6 +969,8 @@ vnet_register_interface (vnet_main_t * vnm,
 
       foreach_vlib_main ()
 	{
+	  if (!vnet_hw_if_node_is_on_thread (this_vlib_main, hw->tx_node_index))
+	    continue;
 	  nrt = vlib_node_get_runtime (this_vlib_main, hw->tx_node_index);
 	  nrt->function = node->function;
 	  vlib_node_runtime_perf_counter (this_vlib_main, nrt, 0, 0, 0,
@@ -1106,6 +1122,8 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
 
       foreach_vlib_main ()
 	{
+	  if (!vnet_hw_if_node_is_on_thread (this_vlib_main, hw->output_node_index))
+	    continue;
 	  vnet_interface_output_runtime_t *rt =
 	    vlib_node_get_runtime_data (this_vlib_main, hw->output_node_index);
 
