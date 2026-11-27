@@ -42,6 +42,36 @@ static const struct
   [ICE_PTYPE_IPV6_ICMP] = { .ip = ICE_PROT_IPV6_OUTER, },
 };
 
+/* tunnels are hashed on their outer header */
+static const struct
+{
+  u16 first, last;
+  u8 ip;
+} ice_rss_tunnels[] = {
+  { ICE_PTYPE_IPV4_TUNNEL_FIRST, ICE_PTYPE_IPV4_TUNNEL_LAST, ICE_PROT_IPV4_OUTER },
+  { ICE_PTYPE_IPV6_TUNNEL_FIRST, ICE_PTYPE_IPV6_TUNNEL_LAST, ICE_PROT_IPV6_OUTER },
+};
+
+/* outer ip and transport protocol of a packet type, 0 if it is not hashed */
+static u8
+ice_rss_ptype (u32 ptype, u8 *transport)
+{
+  if (ptype < ARRAY_LEN (ice_rss_protocols) && ice_rss_protocols[ptype].ip)
+    {
+      *transport = ice_rss_protocols[ptype].transport;
+      return ice_rss_protocols[ptype].ip;
+    }
+
+  for (u32 i = 0; i < ARRAY_LEN (ice_rss_tunnels); i++)
+    if (ptype >= ice_rss_tunnels[i].first && ptype <= ice_rss_tunnels[i].last)
+      {
+	*transport = 0;
+	return ice_rss_tunnels[i].ip;
+      }
+
+  return 0;
+}
+
 static void
 ice_rss_profile_words (ice_rss_profile_plan_t *profile, u8 ip, u8 transport)
 {
@@ -75,9 +105,9 @@ ice_rss_make_plan (const u8 *xlt1, ice_rss_plan_t *plan)
 
   *plan = (ice_rss_plan_t) {};
 
-  for (u32 ptype = 0; ptype < ARRAY_LEN (ice_rss_protocols); ptype++)
+  for (u32 ptype = 0; ptype < ICE_PROFILE_PTYPE_COUNT; ptype++)
     {
-      u8 ip = ice_rss_protocols[ptype].ip, transport = ice_rss_protocols[ptype].transport;
+      u8 transport, ip = ice_rss_ptype (ptype, &transport);
       u8 group = xlt1[ptype];
 
       if (!group || !ip)

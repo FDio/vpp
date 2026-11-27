@@ -1258,6 +1258,11 @@ enum
   ICE_PTYPE_IPV6_TCP = 92,
   ICE_PTYPE_IPV6_SCTP = 93,
   ICE_PTYPE_IPV6_ICMP = 94,
+  /* tunnels (IP, GRE, GRE-MAC) behind an IPv4 or IPv6 outer header */
+  ICE_PTYPE_IPV4_TUNNEL_FIRST = 29,
+  ICE_PTYPE_IPV4_TUNNEL_LAST = 87,
+  ICE_PTYPE_IPV6_TUNNEL_FIRST = 95,
+  ICE_PTYPE_IPV6_TUNNEL_LAST = 153,
 };
 
 /* Protocol IDs identify parser header instances, not IP protocol numbers. */

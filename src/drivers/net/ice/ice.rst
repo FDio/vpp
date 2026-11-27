@@ -172,7 +172,7 @@ Supported features
 * **RSS** with a 40 byte hash key and a 64 entry lookup table. The key and the
   table are configurable at start (``rss-key``, ``rss-lut``) and at runtime
   (``device set-rss-config``). RSS is programmed for IPv4 and IPv6 with TCP, UDP
-  and SCTP.
+  and SCTP. IP-in-IP and GRE tunnels are hashed on their outer header.
 * **Interrupt mode** for RX queues. It is enabled when the device provides at
   least one MSI-X vector more than the number of VPP threads. Otherwise the
   capability is disabled and a notice is logged.
