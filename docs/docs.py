@@ -347,28 +347,45 @@ def spell(argv):
 
 
 def changed_pages(ws, docs_dir, html, base):
-    """HTML pages for docs/ sources changed (incl. uncommitted) since base."""
+    """HTML pages for docs sources changed (incl. uncommitted) since base,
+    including sources linked into docs/ from elsewhere in the tree."""
 
     def git(*args):
         return subprocess.run(
             ["git", "-C", ws, *args], capture_output=True, text=True
         ).stdout.split()
 
-    docs_rel = docs_dir.resolve().relative_to(ws.resolve())
+    ws_abs = ws.resolve()
+    docs_rel = docs_dir.resolve().relative_to(ws_abs)
     mb = git("merge-base", base, "HEAD")
     if not mb:
         return []
     names = set(git("diff", "--name-only", "--diff-filter=d", mb[0]))
     names |= set(git("ls-files", "--others", "--exclude-standard"))
-    pages = []
-    for n in sorted(names):
+
+    # pages whose source lives elsewhere in the tree, linked into docs/
+    linked = {}
+    for p in docs_dir.rglob("*"):
+        if p.is_symlink() and p.suffix in (".rst", ".md"):
+            t = p.resolve()
+            if t.is_relative_to(ws_abs):
+                linked[t.relative_to(ws_abs)] = p.relative_to(docs_dir)
+
+    pages = set()
+    for n in names:
         p = Path(n)
-        if not p.is_relative_to(docs_rel) or p.suffix not in (".rst", ".md"):
+        if p.suffix not in (".rst", ".md"):
             continue
-        page = p.relative_to(docs_rel).with_suffix(".html")
+        if p in linked:
+            page = linked[p]
+        elif p.is_relative_to(docs_rel):
+            page = p.relative_to(docs_rel)
+        else:
+            continue
+        page = page.with_suffix(".html")
         if (html / page).exists():
-            pages.append(page)
-    return pages
+            pages.add(page)
+    return sorted(pages)
 
 
 def link(url):
