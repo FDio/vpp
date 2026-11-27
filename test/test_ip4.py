@@ -32,6 +32,7 @@ from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 from vpp_papi import vpp_papi, VppEnum
 from vpp_neighbor import VppNeighbor
 from vpp_lo_interface import VppLoInterface
+from vpp_pg_interface import PcapReplay
 from vpp_policer import VppPolicer, PolicerAction
 from config import config
 
@@ -1852,7 +1853,7 @@ class TestIPPunt(IPPuntSetup, VppTestCase):
     def test_ip_punt(self):
         """IP punt police and redirect"""
 
-        pkts = self.pkt * 1025
+        pkts = PcapReplay(self.pkt * 1025)
 
         #
         # Configure a punt redirect via pg1.

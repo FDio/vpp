@@ -60,7 +60,7 @@ from vpp_ip_route import (
 )
 from vpp_neighbor import find_nbr, VppNeighbor
 from vpp_ipip_tun_interface import VppIpIpTunInterface
-from vpp_pg_interface import is_ipv6_misc
+from vpp_pg_interface import PcapReplay, is_ipv6_misc
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint
 from vpp_policer import VppPolicer, PolicerAction
 from ipaddress import IPv6Network, IPv6Address
@@ -2861,7 +2861,7 @@ class TestIP6Punt(IP6PuntSetup, VppTestCase):
     def test_ip_punt(self):
         """IP6 punt police and redirect"""
 
-        pkts = self.pkt * 1025
+        pkts = PcapReplay(self.pkt * 1025)
 
         #
         # Configure a punt redirect via pg1.
