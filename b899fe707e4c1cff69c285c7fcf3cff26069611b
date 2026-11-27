@@ -18,6 +18,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "540ad0c4_3b1fa5f9",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 596,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-27T14:21:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0f0d717b_0f517ceb",
+      "revId": "b899fe707e4c1cff69c285c7fcf3cff26069611b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ed898576_7f851186",
@@ -35,6 +53,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "a866aaad_64293c02",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 606,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-27T14:21:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ed898576_7f851186",
+      "revId": "b899fe707e4c1cff69c285c7fcf3cff26069611b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "0dc80636_f946142a",
@@ -48,6 +84,24 @@
       "writtenOn": "2026-11-27T09:32:55Z",
       "side": 1,
       "message": "app should not modify http state or data flow directly by function call, it need to use only session and fifo apis",
+      "revId": "b899fe707e4c1cff69c285c7fcf3cff26069611b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8eeec0eb_fa4e4de4",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 633,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-27T14:21:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "0dc80636_f946142a",
       "revId": "b899fe707e4c1cff69c285c7fcf3cff26069611b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
@@ -75,6 +129,30 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "378dd40d_a7288a9e",
+        "filename": "src/plugins/http/http.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 463,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-27T14:21:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "25051843_035f214f",
+      "range": {
+        "startLine": 463,
+        "startChar": 2,
+        "endLine": 463,
+        "endChar": 4
+      },
+      "revId": "b899fe707e4c1cff69c285c7fcf3cff26069611b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "51a6b6e7_97ad3176",
@@ -92,6 +170,24 @@
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "be7766e6_01f36805",
+        "filename": "src/plugins/http/http2/hpack.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-27T14:21:55Z",
+      "side": 1,
+      "message": "Line 59 and 60 are both \"etag\". Fixed to \"expect\". Make fixstyle then reformated the whole table.",
+      "parentUuid": "51a6b6e7_97ad3176",
+      "revId": "b899fe707e4c1cff69c285c7fcf3cff26069611b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "e73942d8_cc90b56a",
@@ -105,6 +201,24 @@
       "writtenOn": "2026-11-27T09:32:55Z",
       "side": 1,
       "message": "why there? I see hpack just set it and don\u0027t use",
+      "revId": "b899fe707e4c1cff69c285c7fcf3cff26069611b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1b27533b_1ceaf238",
+        "filename": "src/plugins/http/http2/hpack.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 431
+      },
+      "writtenOn": "2026-11-27T14:21:55Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e73942d8_cc90b56a",
       "revId": "b899fe707e4c1cff69c285c7fcf3cff26069611b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
