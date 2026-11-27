@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"crypto/tls"
 	"errors"
@@ -19,6 +20,7 @@ import (
 	"time"
 
 	"golang.org/x/net/http2"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/onsi/gomega/ghttp"
 	"github.com/onsi/gomega/gmeasure"
@@ -3602,72 +3604,144 @@ func HttpIncrementalRequestLineTest(s *Http1Suite) {
 			AssertNil(response.Body.Close())
 		}()
 	}
-	// Reuse the connection while crossing every single split position of
-	// representative request lines, then deliver each line byte by byte.
-	conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
-	AssertNil(err)
-	defer conn.Close()
-	reader := bufio.NewReader(conn)
-	var expectedBody string
-	check := func(parts []string) {
+	readBody := func(conn net.Conn, reader *bufio.Reader, parts []string) (string, error) {
 		for i, part := range parts {
-			AssertNil(conn.SetWriteDeadline(time.Now().Add(defaultHttpTimeout)))
-			_, err := io.WriteString(conn, part)
-			AssertNil(err)
+			if err := conn.SetWriteDeadline(time.Now().Add(defaultHttpTimeout)); err != nil {
+				return "", err
+			}
+			if _, err := io.WriteString(conn, part); err != nil {
+				return "", fmt.Errorf("write fragment %d: %w", i+1, err)
+			}
 			if i < len(parts)-1 {
-				AssertNil(conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond)))
+				if err := conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond)); err != nil {
+					return "", err
+				}
 				var b [1]byte
-				n, readErr := conn.Read(b[:])
-				AssertEqual(0, n)
+				n, readErr := reader.Read(b[:])
+				if n != 0 {
+					return "", fmt.Errorf("fragment %d: received a premature response during the quiet period", i+1)
+				}
 				timeout, ok := readErr.(net.Error)
-				AssertEqual(true, ok && timeout.Timeout(), fmt.Sprint(readErr))
+				if !ok || !timeout.Timeout() {
+					return "", fmt.Errorf("fragment %d: expected a quiet-period read timeout, got %v", i+1, readErr)
+				}
 			}
 		}
-		AssertNil(conn.SetReadDeadline(time.Now().Add(defaultHttpTimeout)))
-		response, err := http.ReadResponse(reader, nil)
-		AssertNil(err)
-		AssertHttpStatus(response, http.StatusOK)
-		body, err := io.ReadAll(response.Body)
-		AssertNil(err)
-		AssertNil(response.Body.Close())
-		if expectedBody == "" {
-			expectedBody = string(body)
-			AssertContains(expectedBody, "build_date")
+		if err := conn.SetReadDeadline(time.Now().Add(defaultHttpTimeout)); err != nil {
+			return "", err
 		}
-		AssertEqual(expectedBody, string(body))
+		response, err := http.ReadResponse(reader, nil)
+		if err != nil {
+			return "", fmt.Errorf("read response: %w", err)
+		}
+		if response.StatusCode != http.StatusOK {
+			return "", fmt.Errorf("expected HTTP %d, got %s", http.StatusOK, response.Status)
+		}
+		body, err := io.ReadAll(response.Body)
+		if err != nil {
+			return "", fmt.Errorf("read response body: %w", err)
+		}
+		return string(body), response.Body.Close()
 	}
 	headers := "Host: example.com\r\n\r\n"
-	for _, line := range []string{
+	lines := []string{
 		"GET /version.json?x=a?b HTTP/1.1\r\n",
 		"\r\nGET /version.json?x=a?b HTTP/1.1\r\n",
 		"GET http://example.com/version.json?x=a?b HTTP/1.1\r\n",
 		"GET /version.json HTTP/1.0\r\n",
-	} {
+	}
+	conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+	AssertNil(err)
+	defer conn.Close()
+	reader := bufio.NewReader(conn)
+	expectedBody, err := readBody(conn, reader, []string{lines[0] + headers})
+	AssertNil(err)
+	AssertContains(expectedBody, "build_date")
+	check := func(conn net.Conn, reader *bufio.Reader, parts []string, description string) error {
+		body, err := readBody(conn, reader, parts)
+		if err != nil {
+			return fmt.Errorf("%s: %w", description, err)
+		}
+		if body != expectedBody {
+			return fmt.Errorf("%s: response body %q, want %q", description, body, expectedBody)
+		}
+		return nil
+	}
+	// Exercise the sequence of request-line forms on one connection.
+	for _, line := range lines[1:] {
+		AssertNil(check(conn, reader, []string{line + headers}, fmt.Sprintf("request line %q", line)))
+	}
+	checkSplits := func(conn net.Conn, reader *bufio.Reader, line string) error {
 		Log("Request-line fragmentation invariance: %q", line)
-		check([]string{line + headers})
 		for split := 1; split < len(line); split++ {
-			check([]string{line[:split], line[split:] + headers})
+			description := fmt.Sprintf("request line %q, split at byte %d", line, split)
+			if err := check(conn, reader, []string{line[:split], line[split:] + headers}, description); err != nil {
+				return err
+			}
 		}
 		parts := make([]string, 0, len(line)+1)
 		for _, c := range line {
 			parts = append(parts, string(c))
 		}
-		check(append(parts, headers))
+		return check(conn, reader, append(parts, headers), fmt.Sprintf("request line %q, bytewise", line))
 	}
-	// The total target length includes path, '?' and query. Cross both the
-	// u16 limit and a FIFO chunk boundary while keeping headers within limits.
-	for _, length := range []int{65534, 65535} {
-		target := "/version.json?x=" + strings.Repeat("x", length-len("/version.json?x="))
-		check([]string{"GET " + target + " HTTP/1.1\r\n" + headers})
-		check([]string{"GET " + target[:len(target)-1], target[len(target)-1:] + " HTTP/1.1\r\n" + headers})
+	// Reuse one connection for every split of each line. Separate connections
+	// let the quiet periods overlap. Close the connections on cancellation
+	// so a failing check also unblocks the other checks' pending I/O.
+	splitChecks, splitCtx := errgroup.WithContext(context.Background())
+	stopClosing := context.AfterFunc(splitCtx, func() { conn.Close() })
+	defer stopClosing()
+	dialer := net.Dialer{Timeout: defaultHttpTimeout}
+	for i, line := range lines[:len(lines)-1] {
+		splitChecks.Go(func() error {
+			conn, err := dialer.DialContext(splitCtx, "tcp", address)
+			if err != nil {
+				return fmt.Errorf("request line %q: dial: %w", line, err)
+			}
+			defer conn.Close()
+			stopClosing := context.AfterFunc(splitCtx, func() { conn.Close() })
+			defer stopClosing()
+			reader := bufio.NewReader(conn)
+			if err := check(conn, reader, []string{line + headers}, fmt.Sprintf("request line %q", line)); err != nil {
+				return err
+			}
+			if err := checkSplits(conn, reader, line); err != nil {
+				return err
+			}
+			// Retain the transition to the next form after the bytewise request.
+			next := lines[i+1]
+			return check(conn, reader, []string{next + headers}, fmt.Sprintf("request line transition from %q to %q", line, next))
+		})
 	}
+	splitChecks.Go(func() error {
+		if err := checkSplits(conn, reader, lines[len(lines)-1]); err != nil {
+			return err
+		}
+		// The total target length includes path, '?' and query. Cross both the
+		// u16 limit and a FIFO chunk boundary while keeping headers within limits.
+		for _, length := range []int{65534, 65535} {
+			target := "/version.json?x=" + strings.Repeat("x", length-len("/version.json?x="))
+			if err := check(conn, reader, []string{"GET " + target + " HTTP/1.1\r\n" + headers}, fmt.Sprintf("target length %d", length)); err != nil {
+				return err
+			}
+			parts := []string{"GET " + target[:len(target)-1], target[len(target)-1:] + " HTTP/1.1\r\n" + headers}
+			description := fmt.Sprintf("origin-form HTTP/1.1 target length %d, split at byte %d", length, len(parts[0]))
+			if err := check(conn, reader, parts, description); err != nil {
+				return err
+			}
+		}
 
-	// Put both field-line and final CRLF at bounded header-scan edges.
-	for _, boundary := range []int{253, 254, 255, 256, 257} {
-		fields := "Host: example.com\r\nX-Pad: "
-		fields += strings.Repeat("x", boundary-len(fields))
-		check([]string{"GET /version.json HTTP/1.1\r\n" + fields + "\r\n\r\n"})
-	}
+		// Put both field-line and final CRLF at bounded header-scan edges.
+		for _, boundary := range []int{253, 254, 255, 256, 257} {
+			fields := "Host: example.com\r\nX-Pad: "
+			fields += strings.Repeat("x", boundary-len(fields))
+			if err := check(conn, reader, []string{"GET /version.json HTTP/1.1\r\n" + fields + "\r\n\r\n"}, fmt.Sprintf("header boundary %d", boundary)); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	AssertNil(splitChecks.Wait())
 
 	// Exercise ambiguous P prefixes and retain a coalesced body after CRLF.
 	echoAddress := net.JoinHostPort(s.VppAddr(), s.Ports.Https)
@@ -3679,23 +3753,10 @@ func HttpIncrementalRequestLineTest(s *Http1Suite) {
 	for _, method := range []string{"GET", "POST", "PUT"} {
 		request := method + " /echo?x=a?b HTTP/1.1\r\nHost: example.com\r\nContent-Length: 4\r\n\r\nbody"
 		for split := 1; split <= len(method)+1; split++ {
-			AssertNil(echo.SetWriteDeadline(time.Now().Add(defaultHttpTimeout)))
-			_, err = io.WriteString(echo, request[:split])
-			AssertNil(err)
-			AssertNil(echo.SetReadDeadline(time.Now().Add(100 * time.Millisecond)))
-			var b [1]byte
-			n, readErr := echo.Read(b[:])
-			AssertEqual(0, n)
-			timeout, ok := readErr.(net.Error)
-			AssertEqual(true, ok && timeout.Timeout(), fmt.Sprint(readErr))
-			_, err = io.WriteString(echo, request[split:])
-			AssertNil(err)
-			AssertNil(echo.SetReadDeadline(time.Now().Add(defaultHttpTimeout)))
-			response, err := http.ReadResponse(echoReader, nil)
-			AssertNil(err)
-			AssertHttpStatus(response, http.StatusOK)
-			AssertHttpBody(response, "body")
-			AssertNil(response.Body.Close())
+			description := fmt.Sprintf("%s echo request line, split at byte %d", method, split)
+			body, err := readBody(echo, echoReader, []string{request[:split], request[split:]})
+			AssertNil(err, description)
+			AssertEqual("body", body, description)
 		}
 	}
 }
