@@ -4926,8 +4926,16 @@ func HttpPartialRequestListenerRemovedTest(s *Http1Suite) {
 			AssertEqual(0, n)
 			timeout, ok := err.(net.Error)
 			AssertEqual(true, ok && timeout.Timeout(), fmt.Sprint(err))
-			AssertContains(vpp.Vppctl("show session verbose 2 proto http state accepting"),
-				"session: state: accepting")
+			// Earlier removals can still have a pending HTTP session. Match
+			// the accepting session to this connection's TCP session.
+			tcp := vpp.Vppctl("show session tcp %s->%s", address, conn.LocalAddr())
+			tcpID, _, found := strings.Cut(strings.TrimSpace(tcp), "][T]")
+			AssertEqual(true, found, tcp)
+			tcpID = strings.TrimPrefix(tcpID, "[")
+			thread, _, found := strings.Cut(tcpID, ":")
+			AssertEqual(true, found, tcp)
+			accepting := vpp.Vppctl("show session verbose 2 thread %s proto http state accepting", thread)
+			AssertContains(strings.Join(strings.Fields(accepting), " ")+" ", " ts "+tcpID+" ", accepting)
 
 			AssertEqual("", vpp.Vppctl("http cli server listener del uri http://%s", address))
 			AssertNotContains(vpp.Vppctl("show session verbose proto http state listening"), address)
@@ -4938,19 +4946,19 @@ func HttpPartialRequestListenerRemovedTest(s *Http1Suite) {
 			AssertEqual(0, n, "removed listener must not receive a request or send a response")
 			AssertEqual(io.EOF, err)
 		}()
-
-		// This active close retains the transport and pending app session
-		// until TCP's ten-second TIME_WAIT expires and invokes cleanup.
-		var sessions string
-		for range 75 {
-			sessions = vpp.Vppctl("show session")
-			if sessions == baseline {
-				break
-			}
-			time.Sleep(200 * time.Millisecond)
-		}
-		AssertEqual(baseline, sessions, "pending transport and app sessions must be freed")
 	}
+	// Run the listener-removal cases while earlier connections are in
+	// TIME_WAIT. Once the last connection is closed, check that every TCP
+	// session and its pending HTTP session were freed.
+	var sessions string
+	for range 75 {
+		sessions = vpp.Vppctl("show session")
+		if sessions == baseline {
+			break
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	AssertEqual(baseline, sessions, "pending transport and app sessions must be freed")
 	stats := vpp.Vppctl("show http stats")
 	AssertNotContains(stats, "connections accepted")
 	AssertNotContains(stats, "responses sent")
