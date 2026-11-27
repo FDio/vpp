@@ -15,6 +15,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -4379,37 +4380,57 @@ func HttpIncompleteHeadersTimeoutTest(s *Http1Suite) {
 	address := net.JoinHostPort(s.VppAddr(), s.Ports.Http)
 	vpp.Vppctl("http static server uri tcp://%s url-handlers keepalive-timeout 2", address)
 	partials := http1PartialRequestPrefixes
-	for _, partial := range partials {
+	type readResult struct {
+		bytes int
+		err   error
+	}
+	results := make([]readResult, len(partials))
+	var pending sync.WaitGroup
+	defer pending.Wait() // The deferred connection closes unblock reads on failure.
+	for i, partial := range partials {
 		Log("Checking inactivity timeout for partial request %q", partial)
 		conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
 		AssertNil(err)
-		func() {
-			defer conn.Close()
-			AssertNil(conn.SetWriteDeadline(time.Now().Add(defaultHttpTimeout)))
-			n, err := io.WriteString(conn, partial)
-			AssertNil(err)
-			AssertEqual(len(partial), n)
+		defer conn.Close()
+		AssertNil(conn.SetWriteDeadline(time.Now().Add(defaultHttpTimeout)))
+		n, err := io.WriteString(conn, partial)
+		AssertNil(err)
+		AssertEqual(len(partial), n)
 
-			// Partial input must wait for more data rather than fail immediately.
-			AssertNil(conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond)))
-			var b [1]byte
-			n, err = conn.Read(b[:])
-			AssertEqual(0, n)
-			timeout, ok := err.(net.Error)
-			AssertEqual(true, ok && timeout.Timeout())
+		// Partial input must wait for more data rather than fail immediately.
+		AssertNil(conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond)))
+		var b [1]byte
+		n, err = conn.Read(b[:])
+		AssertEqual(0, n)
+		timeout, ok := err.(net.Error)
+		AssertEqual(true, ok && timeout.Timeout())
+		AssertNil(conn.SetReadDeadline(time.Now().Add(defaultHttpTimeout)))
 
-			// Send nothing else. The HTTP inactivity timer must close the
-			// connection before the client's longer read deadline expires.
-			AssertNil(conn.SetReadDeadline(time.Now().Add(defaultHttpTimeout)))
-			n, err = conn.Read(b[:])
-			AssertEqual(0, n)
-			// TCP may reset on close because the partial request is still unread.
-			AssertEqual(true, errors.Is(err, io.EOF) || errors.Is(err, syscall.ECONNRESET),
-				fmt.Sprintf("partial request was not closed by the server: %v", err))
-		}()
+		// Wait for this connection's inactivity timer while opening the next connection.
+		pending.Go(func() {
+			var reply [1]byte
+			n, err := conn.Read(reply[:])
+			results[i] = readResult{bytes: n, err: err}
+		})
+	}
+
+	pending.Wait()
+	for i, result := range results {
+		AssertEqual(0, result.bytes)
+		// TCP may reset on close because the partial request is still unread.
+		AssertEqual(true, errors.Is(result.err, io.EOF) || errors.Is(result.err, syscall.ECONNRESET),
+			fmt.Sprintf("partial request %q was not closed by the server: %v", partials[i], result.err))
 	}
 	stats := vpp.Vppctl("show http stats")
-	AssertContains(stats, fmt.Sprintf("%d connections timeout", len(partials)))
+	timeouts := 0
+	for line := range strings.SplitSeq(stats, "\n") {
+		if count, found := strings.CutSuffix(strings.TrimSpace(line), " connections timeout"); found {
+			n, err := strconv.Atoi(count)
+			AssertNil(err, stats)
+			timeouts += n
+		}
+	}
+	AssertEqual(len(partials), timeouts, stats)
 	AssertNotContains(stats, "connections protocol error")
 }
 
