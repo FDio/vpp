@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "32ccd6ca_bf358f2b",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-27T08:21:45Z",
+      "side": 1,
+      "message": "What makes the BlueFlame flush necessary only on x86-64? Did we check whether the doorbell can also remain buffered on Arm64? Could we give the post-write operation a dedicated macro such as `CLIB_MMIO_FLUSH_WRITES()`? That would make its purpose explicit and let each architecture use the appropriate instruction. rdma-core uses `sfence` on x86-64 and `dsb st` on Arm64, where VPP’s `CLIB_MMIO_WMB()` emits `dmb oshst`.",
+      "tag": "prview:f414b430c59d95a2b2a3d4ddd705d715:69379a112e5da784774e0eb61e443ff8d9ccbc3b",
+      "revId": "69379a112e5da784774e0eb61e443ff8d9ccbc3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
