@@ -76,7 +76,7 @@ vnet_dev_config_driver_args (vlib_main_t *vm, unformat_input_t *input,
 {
   vnet_dev_main_t *dm = &vnet_dev_main;
   clib_error_t *err = 0;
-  u8 *args;
+  u8 *args = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
