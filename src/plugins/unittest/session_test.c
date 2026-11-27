@@ -3324,6 +3324,86 @@ session_test_reconn_while_closed (vlib_main_t *vm, unformat_input_t *input)
   return 0;
 }
 
+static int
+session_test_port_exhaust (vlib_main_t *vm, unformat_input_t *input)
+{
+  session_main_t *smm = vnet_get_session_main ();
+  session_cb_vft_t cbs = placeholder_session_cbs;
+  u16 port = clib_host_to_net_u16 (smm->port_allocator_min_src_port);
+  u64 options[APP_OPTIONS_N_OPTIONS];
+  transport_connection_t *tc;
+  ip4_address_t intf_addr;
+  u32 sw_if_index, app_index;
+  int error;
+
+  /* Allocation is random, so use a range with a single port */
+  if (smm->port_allocator_max_src_port - smm->port_allocator_min_src_port != 1)
+    {
+      vlib_cli_output (vm, "port-exhaust needs one source port, e.g., "
+			   "session { min-src-port 10000 max-src-port 10001 }");
+      return 1;
+    }
+
+  intf_addr.as_u32 = clib_host_to_net_u32 (0x07070707);
+  if (session_create_lookpback (0, &sw_if_index, &intf_addr))
+    return 1;
+
+  /* UDP sessions are added to the lookup table on connect */
+  cbs.session_cleanup_callback = 0;
+  clib_memset (options, 0, sizeof (options));
+  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
+  vnet_app_attach_args_t attach_args = {
+    .api_client_index = ~0,
+    .options = options,
+    .namespace_id = 0,
+    .session_cb_vft = &cbs,
+    .name = format (0, "session_test_port_exhaust"),
+  };
+  error = vnet_application_attach (&attach_args);
+  vec_free (attach_args.name);
+  SESSION_TEST ((error == 0), "app attached: %U", format_session_error, error);
+  app_index = attach_args.app_index;
+
+  vnet_connect_args_t connect_args = {
+    .sep_ext = {
+      .is_ip4 = 1,
+      .ip.ip4.as_u32 = clib_host_to_net_u32 (0x07070708),
+      .port = clib_host_to_net_u16 (1234),
+      .transport_proto = TRANSPORT_PROTO_UDP,
+      .peer.sw_if_index = ENDPOINT_INVALID_INDEX,
+    },
+    .app_index = app_index,
+  };
+
+  error = vnet_connect (&connect_args);
+  SESSION_TEST ((error == 0), "first connect should work: %U", format_session_error, error);
+  tc = session_get_transport (session_get_from_handle (connect_args.sh));
+  SESSION_TEST ((tc->lcl_port == port), "first connect uses port %u",
+		clib_net_to_host_u16 (tc->lcl_port));
+
+  error = vnet_connect (&connect_args);
+  SESSION_TEST ((error == SESSION_E_NOPORT),
+		"second connect to same remote should fail with no port: %U", format_session_error,
+		error);
+
+  connect_args.sep_ext.port = clib_host_to_net_u16 (1235);
+  error = vnet_connect (&connect_args);
+  SESSION_TEST ((error == 0), "connect to another remote port should work: %U",
+		format_session_error, error);
+  tc = session_get_transport (session_get_from_handle (connect_args.sh));
+  SESSION_TEST ((tc->lcl_port == port), "other remote shares port %u",
+		clib_net_to_host_u16 (tc->lcl_port));
+
+  vnet_app_detach_args_t detach_args = {
+    .app_index = app_index,
+    .api_client_index = ~0,
+  };
+  vnet_application_detach (&detach_args);
+  session_delete_loopback (sw_if_index);
+
+  return 0;
+}
+
 static clib_error_t *
 session_test (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd_arg)
@@ -3364,6 +3444,8 @@ session_test (vlib_main_t * vm,
 	res = session_test_pacer (vm, input);
       else if (unformat (input, "reconn-while-closed"))
 	res = session_test_reconn_while_closed (vm, input);
+      else if (unformat (input, "port-exhaust"))
+	res = session_test_port_exhaust (vm, input);
       else if (unformat (input, "all"))
 	{
 	  if ((res = session_test_basic (vm, input)))

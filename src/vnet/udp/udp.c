@@ -437,7 +437,7 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
   udp_connection_t *uc;
   clib_thread_index_t thread_index;
   u16 lcl_port;
-  int rv;
+  int rv, port;
 
   rv = transport_alloc_local_endpoint (TRANSPORT_PROTO_UDP, rmt, &lcl_addr,
 				       &lcl_port);
@@ -461,10 +461,10 @@ udp_open_connection (transport_endpoint_cfg_t * rmt)
 	{
 	  transport_release_local_endpoint (
 	    TRANSPORT_PROTO_UDP, rmt->fib_index, &lcl_addr, lcl_port);
-	  lcl_port =
-	    transport_alloc_local_port (TRANSPORT_PROTO_UDP, &lcl_addr, rmt);
-	  if ((int) lcl_port < 1)
+	  port = transport_alloc_local_port (TRANSPORT_PROTO_UDP, &lcl_addr, rmt);
+	  if (port < 1)
 	    return SESSION_E_PORTINUSE;
+	  lcl_port = port;
 	}
     }
 

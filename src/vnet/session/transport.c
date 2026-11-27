@@ -812,6 +812,11 @@ transport_alloc_local_port (u8 proto, ip46_address_t *lcl_addr,
 
   tm->port_alloc_max_tries = clib_max (tm->port_alloc_max_tries, tries);
 
+  /* All tries hit ports already used with this remote. The last one
+   * would give a second connection with the same 6-tuple. */
+  if (PREDICT_FALSE (tries == limit))
+    return -1;
+
   return port;
 }
 

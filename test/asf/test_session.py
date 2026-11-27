@@ -589,6 +589,22 @@ class TestSessionUnitTests(VppAsfTestCase):
 
 
 @tag_fixme_vpp_workers
+class TestSessionPortExhaust(VppAsfTestCase):
+    """Session Local Port Exhaustion Test Case"""
+
+    # Allocation is random, so leave a single source port
+    extra_vpp_config = ["session { enable min-src-port 10000 max-src-port 10001 }"]
+
+    def test_session_port_exhaust(self):
+        """Connect fails when no source port is free for a remote"""
+        error = self.vapi.cli("test session port-exhaust")
+
+        if error:
+            self.logger.critical(error)
+        self.assertNotIn("failed", error)
+
+
+@tag_fixme_vpp_workers
 class TestSessionRuleTableTests(VppAsfTestCase):
     """Session Rule Table Tests Case"""
 
