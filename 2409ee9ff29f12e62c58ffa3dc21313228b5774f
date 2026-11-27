@@ -21,6 +21,24 @@
     {
       "unresolved": false,
       "key": {
+        "uuid": "332c3451_958c1422",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-11-27T18:47:19Z",
+      "side": 1,
+      "message": "if i get it right, each doorbell have own cacheline. As sfence have big blast radius ave you considered using",
+      "parentUuid": "cd151056_0281ed0d",
+      "revId": "2409ee9ff29f12e62c58ffa3dc21313228b5774f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
         "uuid": "21262b16_0ed185a2",
         "filename": "src/drivers/net/mlx5/tx_node.c",
         "patchSetId": 2
