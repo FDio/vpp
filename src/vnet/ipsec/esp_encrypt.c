@@ -571,6 +571,7 @@ esp_encrypt_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  goto trace;
 	}
 
+      /* coverity[var_deref_op] - ort is set as sa_index0 is never ~0 here */
       if (PREDICT_FALSE ((u16) ~0 == ort->thread_index))
 	{
 	  /* this is the first packet to use this SA, claim the SA
