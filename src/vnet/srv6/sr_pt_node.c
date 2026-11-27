@@ -138,7 +138,7 @@ VLIB_NODE_FN (sr_pt_node)
 	      pt_midpoint_processing (vm, node, b0, ip0, ls, t64);
 	      pt_behavior = PT_BEHAVIOR_MID;
 	    }
-	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	  if (ls && PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      pt_trace_t *tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
 	      tr->iface = iface;
