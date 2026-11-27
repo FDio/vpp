@@ -83,7 +83,7 @@ vm_run() {
   VM_DIR=$(cd "$(dirname "$0")" && pwd)
   ROOT=$(dirname "$VM_DIR")
 
-mem=4G cpus=4 nics=1 iommu=0 hugepages=256 bind=vfio-pci ssh_port=2222 fwd=(5001:5001) extra=()
+mem=4G cpus=4 nics=1 queues=1 nic_props= iommu=0 hugepages=256 bind=vfio-pci ssh_port=2222 fwd=(5001:5001) extra=()
 run_vpp=0 run_gdb=0 vhost=0
 vm_usage() {
   cat <<EOF
@@ -97,6 +97,8 @@ Options:
   -c <n>      guest cpus (default: $cpus)
   -n <n>      number of data virtio-net-pci devices, attached to host tap
               interfaces vpp-vm0, vpp-vm1, ... (default: $nics)
+  -Q <n>      queue pairs per data NIC, multiqueue tap and mq=on (default: $queues)
+  -o <props>  extra virtio-net-pci properties for the data NICs, e.g. rss=on
   -i          emulate an iommu (intel-iommu on x86_64, smmuv3 on aarch64) and
               set iommu_platform=on on the NICs
   -H <n>      2MB hugepages to reserve in guest (default: $hugepages)
@@ -114,11 +116,13 @@ Options:
 EOF
 }
 fwd_set=0
-while getopts "m:c:n:iH:b:p:f:q:vrdh" o; do
+while getopts "m:c:n:Q:o:iH:b:p:f:q:vrdh" o; do
   case $o in
     m) mem=$OPTARG ;;
     c) cpus=$OPTARG ;;
     n) nics=$OPTARG ;;
+    Q) queues=$OPTARG ;;
+    o) nic_props=$OPTARG ;;
     i) iommu=1 ;;
     H) hugepages=$OPTARG ;;
     b) bind=$OPTARG ;;
@@ -197,7 +201,13 @@ case $ARCH in
     ;;
 esac
 args+=(-machine "$machine")
-args+=(-run-with user="$(id -un)")   # drop root once taps/kvm are open
+# drop root once taps/kvm are open, -run-with user= replaced -runas in QEMU 9.0
+qemu_help=$("$QEMU" -help)
+if grep -q '^-run-with.*user=' <<< "$qemu_help"; then
+  args+=(-run-with user="$(id -un)")
+else
+  args+=(-runas "$(id -un)")
+fi
 args+=(-accel kvm)
 args+=(-cpu host)
 args+=(-m "$mem")
@@ -221,13 +231,23 @@ args+=(-device virtio-net-pci,netdev=mgmt,mac=52:54:00:00:00:00)
 # "sudo ip link del vpp-vmN")
 for ((i = 0; i < nics; i++)); do
   tap=vpp-vm$i
+  mq=
+  [ "$queues" = 1 ] || mq=multi_queue
+  # a tap created without multi_queue can't take more queues, recreate it
+  if ip link show "$tap" >/dev/null 2>&1 && [ -n "$mq" ] &&
+     ! ip -d link show "$tap" | grep -q multi_queue; then
+    sudo ip link del "$tap"
+  fi
   if ! ip link show "$tap" >/dev/null 2>&1; then
-    sudo ip tuntap add dev "$tap" mode tap user "$(id -un)"
+    sudo ip tuntap add dev "$tap" mode tap user "$(id -un)" $mq
   fi
   sudo ip link set "$tap" up
   dev="virtio-net-pci,netdev=n$i,mac=52:54:00:00:00:$(printf %02x $((i + 1)))"
   [ $iommu = 1 ] && dev+=",iommu_platform=on,ats=off,disable-legacy=on"
+  [ "$queues" = 1 ] || dev+=",mq=on,vectors=$((2 * queues + 2))"
+  [ -z "$nic_props" ] || dev+=",$nic_props"
   netdev="tap,id=n$i,ifname=$tap,script=no,downscript=no"
+  [ "$queues" = 1 ] || netdev+=",queues=$queues"
   [ $vhost = 0 ] || netdev+=,vhost=on,vhostforce=on
   args+=(-netdev "$netdev")
   args+=(-device "$dev")
