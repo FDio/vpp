@@ -6,6 +6,7 @@ import (
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 type TapSuite struct {
@@ -24,6 +25,7 @@ type TapSuite struct {
 		Port1 string
 		Port2 string
 	}
+	DeferServerSessions bool
 }
 
 func (s *TapSuite) SetupSuite() {
@@ -53,27 +55,31 @@ func (s *TapSuite) SetupTest(startupConf ...Stanza) {
 		}
 	}
 
-	var sessionConfig Stanza
-	sessionConfig.
-		NewStanza("session").
-		Append("enable").
-		Append("use-app-socket-api").
-		Append("event-queue-length 100000")
-
-	if strings.Contains(CurrentSpecReport().LeafNodeText, "InterruptMode") {
-		sessionConfig.Append("use-private-rx-mqs").Close()
+	interruptMode := strings.Contains(CurrentSpecReport().LeafNodeText, "InterruptMode")
+	if interruptMode {
 		Log("**********************INTERRUPT MODE**********************")
-	} else {
-		sessionConfig.Close()
+	}
+	sessionConfig := func(enable bool) Stanza {
+		var config Stanza
+		config.NewStanza("session")
+		if enable {
+			config.Append("enable")
+		}
+		config.Append("use-app-socket-api").Append("event-queue-length 100000")
+		if interruptMode {
+			config.Append("use-private-rx-mqs")
+		}
+		config.Close()
+		return config
 	}
 
 	var httpConfig Stanza
 	httpConfig.NewStanza("http").NewStanza("http2").Append("max-header-list-size 65536").Close().Close()
 
-	serverVpp, err := s.Containers.ServerVpp.newVppInstance(s.Containers.ServerVpp.AllocatedCpus, sessionConfig, customStartupConf1, customStartupConf2)
+	serverVpp, err := s.Containers.ServerVpp.newVppInstance(s.Containers.ServerVpp.AllocatedCpus, sessionConfig(!s.DeferServerSessions), customStartupConf1, customStartupConf2)
 	AssertNotNil(serverVpp, fmt.Sprint(err))
 
-	clientVpp, err := s.Containers.ClientVpp.newVppInstance(s.Containers.ClientVpp.AllocatedCpus, sessionConfig, httpConfig, customStartupConf1, customStartupConf2)
+	clientVpp, err := s.Containers.ClientVpp.newVppInstance(s.Containers.ClientVpp.AllocatedCpus, sessionConfig(true), httpConfig, customStartupConf1, customStartupConf2)
 	AssertNotNil(clientVpp, fmt.Sprint(err))
 
 	s.SetupServerVpp()
@@ -102,6 +108,22 @@ func (s *TapSuite) SetupServerVpp() {
 	serverVpp := s.Containers.ServerVpp.VppInstance
 	AssertNil(serverVpp.Start())
 	AssertNil(serverVpp.CreateTap(s.Interfaces.Server, false, 1), "failed to create tap interface")
+	if s.DeferServerSessions {
+		// Open the app socket once VCL can bind its listeners to the TAP address.
+		output := serverVpp.Vppctl("session enable")
+		if !*DryRun {
+			AssertEmpty(output)
+		}
+	}
+}
+
+func (s *TapSuite) RestartServerVpp() {
+	serverVpp := s.Containers.ServerVpp.VppInstance
+	serverVpp.Disconnect()
+	serverVpp.Stop()
+	Eventually(serverVpp.isRunning, 30*time.Second, 100*time.Millisecond).
+		Should(BeFalse(), "old server VPP still running")
+	s.SetupServerVpp()
 }
 
 func (s *TapSuite) SetupClientVpp() {
