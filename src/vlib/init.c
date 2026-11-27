@@ -414,8 +414,9 @@ vlib_call_all_config_functions (vlib_main_t * vm,
 
       if (!unformat (input, "%s %v", &s, &v) || !(p = hash_get_mem (hash, s)))
 	{
-	  error = clib_error_create ("unknown input `%s %v'", s, v);
-	  goto done;
+	  vec_free (v);
+	  vec_free (s);
+	  continue;
 	}
 
       c = all[p[0]];
