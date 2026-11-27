@@ -5459,6 +5459,57 @@ http_test_decode_varint (vlib_main_t *vm)
   return 0;
 }
 
+typedef struct
+{
+  const session_cb_vft_t *callbacks;
+  session_handle_t handle;
+  bool cleanup;
+  int rv;
+  u8 done;
+} http_test_listener_session_call_t;
+
+static void
+http_test_listener_session_rpc (void *arg)
+{
+  http_test_listener_session_call_t *call = arg;
+  session_t *s = session_get_from_handle (call->handle);
+
+  if (call->cleanup)
+    call->callbacks->session_cleanup_callback (s, SESSION_CLEANUP_SESSION);
+  else
+    call->rv = call->callbacks->session_accept_callback (s);
+
+  if (call->cleanup || call->rv)
+    session_free (session_get_from_handle (call->handle));
+  clib_atomic_store_rel_n (&call->done, 1);
+}
+
+static int
+http_test_listener_session_call (vlib_main_t *vm, const session_cb_vft_t *callbacks,
+				 session_handle_t handle, bool cleanup)
+{
+  http_test_listener_session_call_t call = {
+    .callbacks = callbacks,
+    .handle = handle,
+    .cleanup = cleanup,
+  };
+  clib_thread_index_t thread_index = session_thread_from_handle (handle);
+
+  if (thread_index == vm->thread_index)
+    http_test_listener_session_rpc (&call);
+  else
+    {
+      /* Let the owning worker run the callback, then inspect its pool under
+       * the CLI's worker barrier again. */
+      session_send_rpc_evt_to_thread (thread_index, http_test_listener_session_rpc, &call);
+      vlib_worker_thread_barrier_release (vm);
+      while (!clib_atomic_load_acq_n (&call.done))
+	vlib_process_suspend (vm, 1e-3);
+      vlib_worker_thread_barrier_sync (vm);
+    }
+  return call.rv;
+}
+
 static int
 http_test_listener_metadata (vlib_main_t *vm)
 {
@@ -5488,7 +5539,7 @@ http_test_listener_metadata (vlib_main_t *vm)
   u32 lhc_index = SESSION_INVALID_INDEX;
   clib_thread_index_t ti = 0;
   int result = 1;
-  u8 barrier = 0, stats_saved = 0;
+  u8 stats_saved = 0;
 
 #define METADATA_TEST(_cond, _comment)                                                             \
   do                                                                                               \
@@ -5518,10 +5569,7 @@ http_test_listener_metadata (vlib_main_t *vm)
   fifo = fifo_segment_alloc_fifo_w_slice (fs, 0, 4096, FIFO_SEGMENT_TX_FIFO);
   METADATA_TEST (fifo != 0, "listener metadata test FIFO allocated");
 
-  /* Exercise worker pools while their owners are stopped. The fixture uses
-   * real HTTP callbacks without attaching its synthetic transport sessions. */
-  vlib_worker_thread_barrier_sync (vm);
-  barrier = 1;
+  ASSERT (vlib_thread_is_main_w_barrier ());
   s = listen_session_alloc (0, session_type_from_proto_and_ip (TRANSPORT_PROTO_HTTP, 1));
   listener = session_handle (s);
   lhc_index = vft->start_listen (s->session_index, (transport_endpoint_cfg_t *) &sep);
@@ -5541,8 +5589,10 @@ http_test_listener_metadata (vlib_main_t *vm)
       s->listener_handle = tcp_listener;
       s->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_TCP, 1);
       s->tx_fifo = fifo;
-      vec_add1 (connections, session_handle (s));
-      METADATA_TEST (!callbacks.session_accept_callback (s), "HTTP connection accepted");
+      session_handle_t handle = session_handle (s);
+      METADATA_TEST (!http_test_listener_session_call (vm, &callbacks, handle, false),
+		     "HTTP connection accepted");
+      vec_add1 (connections, handle);
       s = session_get_from_handle (connections[i]);
       hc = pool_elt_at_index (hm->wrk[i].ctx_pool, ((http_conn_handle_t) s->opaque).conn_index);
       METADATA_TEST (hc->hc_listener_metadata == metadata[i] && metadata[i]->refcnt == 2 &&
@@ -5568,8 +5618,10 @@ http_test_listener_metadata (vlib_main_t *vm)
       s->session_type = session_type_from_proto_and_ip (TRANSPORT_PROTO_QUIC, 1);
       s->flags = SESSION_F_STREAM | SESSION_F_UNIDIRECTIONAL;
       s->tx_fifo = fifo;
-      streams[i] = session_handle (s);
-      METADATA_TEST (!callbacks.session_accept_callback (s), "HTTP/3 stream accepted");
+      session_handle_t handle = session_handle (s);
+      METADATA_TEST (!http_test_listener_session_call (vm, &callbacks, handle, false),
+		     "HTTP/3 stream accepted");
+      streams[i] = handle;
       METADATA_TEST (metadata[ti]->refcnt == 3, "HTTP/3 stream owns an independent reference");
       if (!i)
 	{
@@ -5580,9 +5632,7 @@ http_test_listener_metadata (vlib_main_t *vm)
 	}
     }
 
-  callbacks.session_cleanup_callback (session_get_from_handle (parent_handle),
-				      SESSION_CLEANUP_SESSION);
-  session_free (session_get_from_handle (parent_handle));
+  http_test_listener_session_call (vm, &callbacks, parent_handle, true);
   connections[ti] = SESSION_INVALID_HANDLE;
   METADATA_TEST (metadata[ti]->refcnt == 2, "streams retain metadata after parent cleanup");
   for (u32 i = 0; i < ARRAY_LEN (streams); i++)
@@ -5594,8 +5644,7 @@ http_test_listener_metadata (vlib_main_t *vm)
 	  vec_len (hc->hc_h3_alt_svc_port) == sizeof ("h3=\":8443\"") - 1 &&
 	  !memcmp (hc->hc_h3_alt_svc_port, "h3=\":8443\"", sizeof ("h3=\":8443\"") - 1),
 	"server name and Alt-Svc remain valid after unlisten and parent cleanup");
-      callbacks.session_cleanup_callback (s, SESSION_CLEANUP_SESSION);
-      session_free (session_get_from_handle (streams[i]));
+      http_test_listener_session_call (vm, &callbacks, streams[i], true);
       streams[i] = SESSION_INVALID_HANDLE;
     }
   result = 0;
@@ -5603,27 +5652,16 @@ http_test_listener_metadata (vlib_main_t *vm)
 done:
   for (u32 i = 0; i < ARRAY_LEN (streams); i++)
     if (streams[i] != SESSION_INVALID_HANDLE)
-      {
-	s = session_get_from_handle (streams[i]);
-	/* coverity[forward_null] - streams are only set after callbacks is initialized */
-	callbacks.session_cleanup_callback (s, SESSION_CLEANUP_SESSION);
-	session_free (session_get_from_handle (streams[i]));
-      }
+      http_test_listener_session_call (vm, &callbacks, streams[i], true);
   for (u32 i = 0; i < vec_len (connections); i++)
     if (connections[i] != SESSION_INVALID_HANDLE)
-      {
-	s = session_get_from_handle (connections[i]);
-	callbacks.session_cleanup_callback (s, SESSION_CLEANUP_SESSION);
-	session_free (session_get_from_handle (connections[i]));
-      }
+      http_test_listener_session_call (vm, &callbacks, connections[i], true);
   if (lhc_index != SESSION_INVALID_INDEX)
     vft->stop_listen (lhc_index);
   if (listener != SESSION_INVALID_HANDLE)
     listen_session_free (session_get_from_handle (listener));
   if (stats_saved)
     hm->wrk[ti].stats = saved_stats;
-  if (barrier)
-    vlib_worker_thread_barrier_release (vm);
   if (fifo)
     fifo_segment_free_fifo (fs, fifo);
   if (fs)

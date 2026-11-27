@@ -2860,7 +2860,7 @@ http3_transport_rx_callback (http_ctx_t *stream)
 }
 
 static void
-http3_transport_close_callback (http_ctx_t *hc)
+http3_transport_close_callback (http_ctx_t *hc, CLIB_UNUSED (bool is_timeout))
 {
   http_ctx_t *parent_req;
 

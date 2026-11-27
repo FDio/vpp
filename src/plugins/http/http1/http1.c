@@ -2519,6 +2519,9 @@ http1_app_rx_evt_callback (http_ctx_t *hc, u32 req_index, clib_thread_index_t th
 {
   http_ctx_t *req;
 
+  if (PREDICT_FALSE (hc->state == HTTP_CONN_STATE_CLOSED))
+    return;
+
   req = http_ctx_get_w_thread (req_index, thread_index);
 
   if (http1_req_state_is_rx_valid (hc, req))
@@ -2624,7 +2627,7 @@ http1_transport_rx_callback (http_ctx_t *hc)
 }
 
 static void
-http1_transport_close_callback (http_ctx_t *hc)
+http1_transport_close_callback (http_ctx_t *hc, bool is_timeout)
 {
   u32 hc_index = hc->hc_hc_index;
   clib_thread_index_t thread_index = hc->c_thread_index;
@@ -2633,21 +2636,19 @@ http1_transport_close_callback (http_ctx_t *hc)
   if (hc->state == HTTP_CONN_STATE_CLOSED)
     return;
 
-  /* Process buffered bytes before checking message completion, including after
-   * app shutdown. An expired timer must not reenter RX and update itself under
-   * the timer lock. */
-  if (!(hc->flags & HTTP_CONN_F_PENDING_TIMER) && http_io_ts_max_read (hc))
+  /* Process buffered bytes on transport close, including after app shutdown. */
+  if (!is_timeout && http_io_ts_max_read (hc))
     {
       http1_transport_rx_callback (hc);
       hc = http_ctx_get_w_thread (hc_index, thread_index);
+      if (hc->state == HTTP_CONN_STATE_CLOSED)
+	return;
     }
 
   if (!(hc->flags & HTTP_CONN_F_HAS_REQUEST))
     return;
 
   req = http1_conn_get_req (hc);
-  if (hc->state == HTTP_CONN_STATE_CLOSED)
-    return;
 
   if (hc->flags & HTTP_CONN_F_NO_APP_SESSION)
     {
