@@ -16,6 +16,24 @@
       "message": "Why do you think we need two CLI tests?",
       "revId": "cb8168ff1f3626fcdbbfd7902b71a73d648459e1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "633401a9_2c9ae605",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-27T11:17:04Z",
+      "side": 1,
+      "message": "Both sets of tests already exist. The ASF tests check cli_inband return codes and timeout handling. The declarative CLI tests cover command parsing, completion, structured output and schema export in a running VPP.\n\nDiscovery imports modules by basename. When it encounters the second test_cli.py, Python returns the first module from sys.modules, so one set runs twice and the other is skipped. Both sets could live in one file. I chose the rename because it fixes discovery with a smaller change and keeps the existing test_cli filter for the API tests.",
+      "parentUuid": "2c864586_b907c723",
+      "revId": "cb8168ff1f3626fcdbbfd7902b71a73d648459e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
