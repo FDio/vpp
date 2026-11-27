@@ -15,6 +15,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -3602,14 +3603,8 @@ func HttpIncrementalRequestLineTest(s *Http1Suite) {
 			AssertNil(response.Body.Close())
 		}()
 	}
-	// Reuse the connection while crossing every single split position of
-	// representative request lines, then deliver each line byte by byte.
-	conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
-	AssertNil(err)
-	defer conn.Close()
-	reader := bufio.NewReader(conn)
-	var expectedBody string
-	check := func(parts []string) {
+	readBody := func(conn net.Conn, reader *bufio.Reader, parts []string) string {
+		GinkgoHelper()
 		for i, part := range parts {
 			AssertNil(conn.SetWriteDeadline(time.Now().Add(defaultHttpTimeout)))
 			_, err := io.WriteString(conn, part)
@@ -3617,7 +3612,7 @@ func HttpIncrementalRequestLineTest(s *Http1Suite) {
 			if i < len(parts)-1 {
 				AssertNil(conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond)))
 				var b [1]byte
-				n, readErr := conn.Read(b[:])
+				n, readErr := reader.Read(b[:])
 				AssertEqual(0, n)
 				timeout, ok := readErr.(net.Error)
 				AssertEqual(true, ok && timeout.Timeout(), fmt.Sprint(readErr))
@@ -3630,44 +3625,74 @@ func HttpIncrementalRequestLineTest(s *Http1Suite) {
 		body, err := io.ReadAll(response.Body)
 		AssertNil(err)
 		AssertNil(response.Body.Close())
-		if expectedBody == "" {
-			expectedBody = string(body)
-			AssertContains(expectedBody, "build_date")
-		}
-		AssertEqual(expectedBody, string(body))
+		return string(body)
 	}
 	headers := "Host: example.com\r\n\r\n"
-	for _, line := range []string{
+	lines := []string{
 		"GET /version.json?x=a?b HTTP/1.1\r\n",
 		"\r\nGET /version.json?x=a?b HTTP/1.1\r\n",
 		"GET http://example.com/version.json?x=a?b HTTP/1.1\r\n",
 		"GET /version.json HTTP/1.0\r\n",
-	} {
+	}
+	conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+	AssertNil(err)
+	defer conn.Close()
+	reader := bufio.NewReader(conn)
+	expectedBody := readBody(conn, reader, []string{lines[0] + headers})
+	AssertContains(expectedBody, "build_date")
+	check := func(conn net.Conn, reader *bufio.Reader, parts []string) {
+		GinkgoHelper()
+		AssertEqual(expectedBody, readBody(conn, reader, parts))
+	}
+	// Exercise the sequence of request-line forms on one connection.
+	for _, line := range lines[1:] {
+		check(conn, reader, []string{line + headers})
+	}
+	checkSplits := func(conn net.Conn, reader *bufio.Reader, line string) {
+		GinkgoHelper()
 		Log("Request-line fragmentation invariance: %q", line)
-		check([]string{line + headers})
 		for split := 1; split < len(line); split++ {
-			check([]string{line[:split], line[split:] + headers})
+			check(conn, reader, []string{line[:split], line[split:] + headers})
 		}
 		parts := make([]string, 0, len(line)+1)
 		for _, c := range line {
 			parts = append(parts, string(c))
 		}
-		check(append(parts, headers))
+		check(conn, reader, append(parts, headers))
 	}
+	// Reuse one connection for every split of each line. Separate connections
+	// let the quiet periods for the different lines overlap.
+	var splitChecks sync.WaitGroup
+	defer splitChecks.Wait()
+	for i, line := range lines[:len(lines)-1] {
+		splitChecks.Go(func() {
+			defer GinkgoRecover()
+			conn, err := net.DialTimeout("tcp", address, defaultHttpTimeout)
+			AssertNil(err)
+			defer conn.Close()
+			reader := bufio.NewReader(conn)
+			check(conn, reader, []string{line + headers})
+			checkSplits(conn, reader, line)
+			// Retain the transition to the next form after the bytewise request.
+			check(conn, reader, []string{lines[i+1] + headers})
+		})
+	}
+	checkSplits(conn, reader, lines[len(lines)-1])
 	// The total target length includes path, '?' and query. Cross both the
 	// u16 limit and a FIFO chunk boundary while keeping headers within limits.
 	for _, length := range []int{65534, 65535} {
 		target := "/version.json?x=" + strings.Repeat("x", length-len("/version.json?x="))
-		check([]string{"GET " + target + " HTTP/1.1\r\n" + headers})
-		check([]string{"GET " + target[:len(target)-1], target[len(target)-1:] + " HTTP/1.1\r\n" + headers})
+		check(conn, reader, []string{"GET " + target + " HTTP/1.1\r\n" + headers})
+		check(conn, reader, []string{"GET " + target[:len(target)-1], target[len(target)-1:] + " HTTP/1.1\r\n" + headers})
 	}
 
 	// Put both field-line and final CRLF at bounded header-scan edges.
 	for _, boundary := range []int{253, 254, 255, 256, 257} {
 		fields := "Host: example.com\r\nX-Pad: "
 		fields += strings.Repeat("x", boundary-len(fields))
-		check([]string{"GET /version.json HTTP/1.1\r\n" + fields + "\r\n\r\n"})
+		check(conn, reader, []string{"GET /version.json HTTP/1.1\r\n" + fields + "\r\n\r\n"})
 	}
+	splitChecks.Wait()
 
 	// Exercise ambiguous P prefixes and retain a coalesced body after CRLF.
 	echoAddress := net.JoinHostPort(s.VppAddr(), s.Ports.Https)
