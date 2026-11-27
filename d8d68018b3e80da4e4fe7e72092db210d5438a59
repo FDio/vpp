@@ -1,6 +1,23 @@
 {
   "comments": [
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "9433221a_15b5fdc8",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-11-27T11:19:27Z",
+      "side": 1,
+      "message": "and why not using flush/wb instructions if intention is to flush?",
+      "revId": "d8d68018b3e80da4e4fe7e72092db210d5438a59",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "02a609b5_cfbdd9aa",
