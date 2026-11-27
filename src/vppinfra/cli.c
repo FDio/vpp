@@ -518,9 +518,23 @@ add_first_candidates (cli_parse_t *p, const cli_arg_t *a, u8 *prefix)
     }
 }
 
+/* A keyword of a group which can not be given again, first is the index of the
+ * first value of the sequence which the group is in */
+static int
+is_used_up (cli_parse_t *p, const cli_arg_t *a, u32 first)
+{
+  if (a->flags & CLI_F_REPEAT)
+    return 0;
+
+  for (u32 i = first; i < vec_len (p->values); i++)
+    if (p->values[i].arg == a)
+      return 1;
+  return 0;
+}
+
 /* Collect everything which can come at the token under the cursor. */
 static void
-collect (cli_parse_t *p, const cli_arg_t *seq, u32 n, u64 done, u32 pos, u64 gactive)
+collect (cli_parse_t *p, const cli_arg_t *seq, u32 n, u64 done, u32 pos, u64 gactive, u32 first)
 {
   u8 *prefix = p->tok[p->i].s;
 
@@ -533,7 +547,8 @@ collect (cli_parse_t *p, const cli_arg_t *seq, u32 n, u64 done, u32 pos, u64 gac
 
       if (seq[k].kind == CLI_K_GROUP && (gactive & (1ULL << k)))
 	for (const cli_arg_t *c = seq[k].children; c->kind; c++)
-	  add_first_candidates (p, c, prefix);
+	  if (!is_used_up (p, c, first))
+	    add_first_candidates (p, c, prefix);
     }
 
   for (u32 j = pos; j < n; j++)
@@ -690,6 +705,17 @@ find_group_keyword (const cli_arg_t *group, cli_tok_t *t)
 }
 
 static int
+parse_group_keyword (cli_parse_t *p, const cli_arg_t *a, u32 first)
+{
+  if (is_used_up (p, a, first))
+    {
+      set_err (p, p->i, format (0, "'%s' given more than once", a->name));
+      return P_ERR;
+    }
+  return parse_keyword (p, a);
+}
+
+static int
 parse_oneof (cli_parse_t *p, const cli_arg_t *a)
 {
   u8 *alts = 0;
@@ -752,7 +778,7 @@ parse_positional (cli_parse_t *p, const cli_arg_t *a)
 static int
 parse_seq (cli_parse_t *p, const cli_arg_t *seq, int top)
 {
-  u32 n = 0, start = p->i, pos = 0;
+  u32 n = 0, start = p->i, pos = 0, first = vec_len (p->values);
   u64 done = 0, gactive = 0;
   const cli_arg_t *last_group = 0;
 
@@ -768,7 +794,7 @@ parse_seq (cli_parse_t *p, const cli_arg_t *seq, int top)
 
       if (p->complete && p->i == p->n_tok - 1)
 	{
-	  collect (p, seq, n, done, pos, gactive);
+	  collect (p, seq, n, done, pos, gactive, first);
 	  return P_STOP;
 	}
       if (p->i >= p->n_tok)
@@ -780,7 +806,7 @@ parse_seq (cli_parse_t *p, const cli_arg_t *seq, int top)
        * can be used by other groups and outside of the groups too */
       if (last_group && (c = find_group_keyword (last_group, t)))
 	{
-	  r = parse_keyword (p, c);
+	  r = parse_group_keyword (p, c, first);
 	  if (r != P_OK)
 	    return r;
 	  continue;
@@ -829,7 +855,7 @@ parse_seq (cli_parse_t *p, const cli_arg_t *seq, int top)
       for (u32 k = 0; k < n && !found; k++)
 	if ((gactive & (1ULL << k)) && (c = find_group_keyword (&seq[k], t)))
 	  {
-	    r = parse_keyword (p, c);
+	    r = parse_group_keyword (p, c, first);
 	    if (r != P_OK)
 	      return r;
 	    found = 1;

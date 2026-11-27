@@ -153,6 +153,8 @@ test_errors (void)
   TEST_ERROR ("add 5 alpha count 101", "out of range");
   TEST_ERROR ("add 5 alpha count", "missing value");
   TEST_ERROR ("add 5 alpha count 1 count 2", "given more than once");
+  TEST_ERROR ("add 5 alpha tunnel src alpha src beta", "'src' given more than once");
+  TEST_ERROR ("add 5 alpha tunnel mp count 1 mp", "'mp' given more than once");
   TEST_ERROR ("add 5 alpha src beta", "only valid after 'tunnel'");
   TEST_ERROR ("add 5 alpha verbos", "did you mean 'verbose'");
   TEST_ERROR ("add 5 alpha verb", "did you mean 'verbose'");
@@ -179,6 +181,8 @@ test_completion (void)
   TEST_COMPLETE ("add 5 beta f", "fast");
   TEST_COMPLETE ("add 5 beta tunnel ", "count,fast,mp,slow,src,verbose");
   TEST_COMPLETE ("add 5 beta tunnel src ", "alpha,beta,gamma");
+  TEST_COMPLETE ("add 5 beta tunnel mp ", "count,fast,slow,src,verbose");
+  TEST_COMPLETE ("add 5 beta tunnel src gamma ", "count,fast,mp,slow,verbose");
   TEST_COMPLETE ("add 5 beta count 5 verbose count", "");
   TEST_COMPLETE ("add 5 beta | ", "json,where,grep,head,tail,count");
   TEST_COMPLETE ("add 5 beta | g", "grep");
