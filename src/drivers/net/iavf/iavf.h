@@ -17,6 +17,7 @@
 #define IAVF_RX_MAX_DESC_IN_CHAIN 5
 #define IAVF_MAX_RSS_KEY_SIZE	  52
 #define IAVF_MAX_RSS_LUT_SIZE	  64
+#define IAVF_RSS_TUNNEL_FIELDS	  (VNET_DEV_RSS_FIELDS_4_TUPLE | VNET_DEV_RSS_FIELDS_INNER)
 /* virtchnl RX queue buffer sizes use 128-byte units in this range. */
 #define IAVF_RX_DATA_BUF_ALIGN	  128
 #define IAVF_RX_MIN_DATA_BUF_SIZE 1024
@@ -59,6 +60,7 @@ typedef struct
   u16 num_qp;
   u16 max_vectors;
   u16 n_rx_vectors;
+  vnet_dev_rss_fields_t rss_fields[VNET_DEV_RSS_N_CLASSES];
 } iavf_port_t;
 
 typedef struct

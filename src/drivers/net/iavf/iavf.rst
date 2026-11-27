@@ -134,9 +134,23 @@ Supported features
 * **TX offloads**: IPv4, TCP and UDP checksum, TCP segmentation offload (TSO)
   and UDP segmentation offload (USO, when the PF advertises it).
 * **RSS** when the PF provides RSS (the key must be at least 52 bytes and the
-  lookup table is limited to 64 entries). RSS is configured at start and
-  programmed through the PF. Changing the key or table at runtime is not
-  supported.
+  lookup table is limited to 64 entries), programmed through the PF. The 52
+  byte key and the lookup table can be set at start (``rss-key``, ``rss-lut``)
+  and at runtime (``device set-rss-config``, ``set interface rss``). A default
+  key is programmed, without a configured table the enabled RX queues are used
+  in turn.
+  When the PF offers advanced RSS (``offload-adv-rss-pf``), the ``ipv4``,
+  ``ipv6`` and their TCP, UDP and SCTP classes hash on one or more of
+  ``src-ip``, ``dst-ip``, ``src-port`` and ``dst-port``, the default is
+  ``4-tuple``. ``no-hash`` is not supported, the PF rejects a class without
+  fields. IP fragments hash on the ``ipv4`` or ``ipv6`` fields and the fragment
+  packet id, the only fragment hash the PF takes, so the fragments of a packet
+  stay together. ``ipv4-ipip-gre`` and ``ipv6-ipip-gre`` (IP-in-IP and
+  GRE) take ``inner`` with inner addresses and ports; without ``inner`` tunnels
+  are hashed on the outer header with the fields of ``ipv4`` or ``ipv6``.
+  The ESP and AH classes and the symmetric hash are not
+  offered: the ice PF rejects ESP and AH configs and rejects a symmetric config
+  when its fields are also used by another function. See :ref:`dev_rss`.
 * **Interrupt mode** for RX queues. It requires at least one MSI-X vector more
   than the number of VPP threads, otherwise the capability is disabled and a
   notice is logged. The driver uses write-back on ITR when the PF supports it.
@@ -157,7 +171,6 @@ Not supported:
   (VF limitation, the PF owns the link). Stopping the port does not take the
   link down for the link partner.
 * Secondary interfaces and flow offload.
-* Changing the RSS key or lookup table at runtime.
 * VLAN insertion and filtering offload. The driver negotiates the VLAN
   capabilities with the PF only to disable VLAN stripping, so tags stay in the
   packet.
