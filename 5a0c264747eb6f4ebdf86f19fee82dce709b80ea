@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ca2eda78_d9eecc9f",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 210,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-27T11:41:18Z",
+      "side": 1,
+      "message": "Thanks, Benoît. I agree that we should cover both architectures in this change. The revised patch uses a dedicated post-doorbell flush, with `sfence` on x86-64 and `dsb st` on Arm64, following rdma-core.\n\nOn ConnectX-5 Ex, the x86-64 UET SEND completion p50 went from 357 µs to 66 µs with one SEND outstanding per PDC. On BlueField-3, both versions completed 3,600 tagged UET ping-pong exchanges over the physical mlx5 port, with a TAP behind VPP. Median RTT was 235 µs before and 240 µs after the change, and the p99 varied across runs. The BF3 result gives us functional validation on Arm64.",
+      "parentUuid": "32ccd6ca_bf358f2b",
+      "revId": "5a0c264747eb6f4ebdf86f19fee82dce709b80ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
