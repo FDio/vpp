@@ -1603,7 +1603,10 @@ format_desc_flags (u8 *s, va_list *args)
   u32 n = 0;
 
   if (flags & VL_API_DTF_MANUAL_PRINT)
-    s = format (s, "%smanual_print", n++ ? "," : "");
+    {
+      s = format (s, "manual_print");
+      n++;
+    }
 
   if (flags & VL_API_DTF_MANUAL_ENDIAN)
     s = format (s, "%smanual_endian", n++ ? "," : "");
