@@ -105,6 +105,9 @@ typedef struct
 } ice_vsi_t;
 
 /* rss.c */
+/* addresses and ports of the outer or, with inner, of the inner headers */
+#define ICE_RSS_TUNNEL_FIELDS (VNET_DEV_RSS_FIELDS_4_TUPLE | VNET_DEV_RSS_FIELDS_INNER)
+
 typedef struct
 {
   u16 id;
@@ -199,6 +202,7 @@ vnet_dev_rv_t ice_aq_request_resource (vlib_main_t *, vnet_dev_t *, u16, u16, u3
 vnet_dev_rv_t ice_aq_release_resource (vlib_main_t *, vnet_dev_t *, u16);
 vnet_dev_rv_t ice_aq_add_vsi (vlib_main_t *, vnet_dev_t *, ice_aqc_vsi_props_t *, u16 *);
 vnet_dev_rv_t ice_aq_get_vsi (vlib_main_t *, vnet_dev_t *, u16, ice_aqc_vsi_props_t *);
+vnet_dev_rv_t ice_aq_update_vsi (vlib_main_t *, vnet_dev_t *, u16, ice_aqc_vsi_props_t *);
 vnet_dev_rv_t ice_aq_free_vsi (vlib_main_t *, vnet_dev_t *, u16);
 vnet_dev_rv_t ice_aq_upload_section (vlib_main_t *, vnet_dev_t *, void *, u16);
 vnet_dev_rv_t ice_aq_add_txq_group (vlib_main_t *, vnet_dev_t *, ice_aqc_add_txq_group_t *);
@@ -271,6 +275,8 @@ void ice_rss_profiles_dispose (vnet_dev_port_t *);
 vnet_dev_rv_t ice_rss_init (vlib_main_t *, vnet_dev_port_t *);
 vnet_dev_rv_t ice_rss_set_config (vlib_main_t *, vnet_dev_port_t *, const vnet_dev_rss_config_t *);
 vnet_dev_rv_t ice_rss_validate_config (vnet_dev_port_t *, const vnet_dev_rss_config_t *);
+vnet_dev_rv_t ice_rss_validate_fields (vlib_main_t *, vnet_dev_port_t *,
+				       const vnet_dev_rss_config_t *);
 
 /* rss_format.c */
 vnet_dev_op_with_ptr_t ice_dump_rss;

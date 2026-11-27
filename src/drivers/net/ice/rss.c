@@ -9,12 +9,16 @@ VLIB_REGISTER_LOG_CLASS (ice_log, static) = {
   .subclass_name = "rss",
 };
 
-#define ICE_RSS_PROFILE_LIMIT 8
+/* outer and inner IPv4 and IPv6, each without transport and with TCP, UDP and SCTP, and
+ * different fields for plain and tunnel classes */
+#define ICE_RSS_PROFILE_LIMIT 32
 
 typedef struct
 {
   ice_profile_fv_t words[ICE_PROFILE_FV_WORDS];
+  u8 pair[ICE_PROFILE_FV_WORDS];
   uword groups[ICE_PROFILE_PTG_COUNT / uword_bits];
+  u32 fields;
   u8 ip, transport, n_words;
 } ice_rss_profile_plan_t;
 
@@ -27,127 +31,300 @@ typedef struct
 static const struct
 {
   u8 ip, transport;
+  vnet_dev_rss_class_t class;
 } ice_rss_protocols[] = {
-  [ICE_PTYPE_IPV4_FRAG] = { .ip = ICE_PROT_IPV4_OUTER, },
-  [ICE_PTYPE_IPV4_PAYLOAD] = { .ip = ICE_PROT_IPV4_OUTER, },
-  [ICE_PTYPE_IPV4_UDP] = { .ip = ICE_PROT_IPV4_OUTER, .transport = ICE_PROT_UDP_INNER, },
-  [ICE_PTYPE_IPV4_TCP] = { .ip = ICE_PROT_IPV4_OUTER, .transport = ICE_PROT_TCP_INNER, },
-  [ICE_PTYPE_IPV4_SCTP] = { .ip = ICE_PROT_IPV4_OUTER, .transport = ICE_PROT_SCTP_INNER, },
-  [ICE_PTYPE_IPV4_ICMP] = { .ip = ICE_PROT_IPV4_OUTER, },
-  [ICE_PTYPE_IPV6_FRAG] = { .ip = ICE_PROT_IPV6_OUTER, },
-  [ICE_PTYPE_IPV6_PAYLOAD] = { .ip = ICE_PROT_IPV6_OUTER, },
-  [ICE_PTYPE_IPV6_UDP] = { .ip = ICE_PROT_IPV6_OUTER, .transport = ICE_PROT_UDP_INNER, },
-  [ICE_PTYPE_IPV6_TCP] = { .ip = ICE_PROT_IPV6_OUTER, .transport = ICE_PROT_TCP_INNER, },
-  [ICE_PTYPE_IPV6_SCTP] = { .ip = ICE_PROT_IPV6_OUTER, .transport = ICE_PROT_SCTP_INNER, },
-  [ICE_PTYPE_IPV6_ICMP] = { .ip = ICE_PROT_IPV6_OUTER, },
+  [ICE_PTYPE_IPV4_FRAG] = { .ip = ICE_PROT_IPV4_OUTER, .class = VNET_DEV_RSS_CLASS_IP4, },
+  [ICE_PTYPE_IPV4_PAYLOAD] = { .ip = ICE_PROT_IPV4_OUTER, .class = VNET_DEV_RSS_CLASS_IP4, },
+  [ICE_PTYPE_IPV4_UDP] = { .ip = ICE_PROT_IPV4_OUTER, .transport = ICE_PROT_UDP_INNER, .class = VNET_DEV_RSS_CLASS_IP4_UDP, },
+  [ICE_PTYPE_IPV4_TCP] = { .ip = ICE_PROT_IPV4_OUTER, .transport = ICE_PROT_TCP_INNER, .class = VNET_DEV_RSS_CLASS_IP4_TCP, },
+  [ICE_PTYPE_IPV4_SCTP] = { .ip = ICE_PROT_IPV4_OUTER, .transport = ICE_PROT_SCTP_INNER, .class = VNET_DEV_RSS_CLASS_IP4_SCTP, },
+  [ICE_PTYPE_IPV4_ICMP] = { .ip = ICE_PROT_IPV4_OUTER, .class = VNET_DEV_RSS_CLASS_IP4, },
+  [ICE_PTYPE_IPV6_FRAG] = { .ip = ICE_PROT_IPV6_OUTER, .class = VNET_DEV_RSS_CLASS_IP6, },
+  [ICE_PTYPE_IPV6_PAYLOAD] = { .ip = ICE_PROT_IPV6_OUTER, .class = VNET_DEV_RSS_CLASS_IP6, },
+  [ICE_PTYPE_IPV6_UDP] = { .ip = ICE_PROT_IPV6_OUTER, .transport = ICE_PROT_UDP_INNER, .class = VNET_DEV_RSS_CLASS_IP6_UDP, },
+  [ICE_PTYPE_IPV6_TCP] = { .ip = ICE_PROT_IPV6_OUTER, .transport = ICE_PROT_TCP_INNER, .class = VNET_DEV_RSS_CLASS_IP6_TCP, },
+  [ICE_PTYPE_IPV6_SCTP] = { .ip = ICE_PROT_IPV6_OUTER, .transport = ICE_PROT_SCTP_INNER, .class = VNET_DEV_RSS_CLASS_IP6_SCTP, },
+  [ICE_PTYPE_IPV6_ICMP] = { .ip = ICE_PROT_IPV6_OUTER, .class = VNET_DEV_RSS_CLASS_IP6, },
 };
 
-/* tunnels are hashed on their outer header */
+/* tunnels are hashed on their outer header with the ipv4 or ipv6 class */
 static const struct
 {
   u16 first, last;
   u8 ip;
+  vnet_dev_rss_class_t class;
 } ice_rss_tunnels[] = {
-  { ICE_PTYPE_IPV4_TUNNEL_FIRST, ICE_PTYPE_IPV4_TUNNEL_LAST, ICE_PROT_IPV4_OUTER },
-  { ICE_PTYPE_IPV6_TUNNEL_FIRST, ICE_PTYPE_IPV6_TUNNEL_LAST, ICE_PROT_IPV6_OUTER },
+  { ICE_PTYPE_IPV4_TUNNEL_FIRST, ICE_PTYPE_IPV4_TUNNEL_LAST, ICE_PROT_IPV4_OUTER,
+    VNET_DEV_RSS_CLASS_IP4 },
+  { ICE_PTYPE_IPV6_TUNNEL_FIRST, ICE_PTYPE_IPV6_TUNNEL_LAST, ICE_PROT_IPV6_OUTER,
+    VNET_DEV_RSS_CLASS_IP6 },
 };
 
-/* outer ip and transport protocol of a packet type, 0 if it is not hashed */
-static u8
-ice_rss_ptype (u32 ptype, u8 *transport)
+/* tunnel packet types with an inner IP header come in blocks of seven, the offset in the block
+ * gives the inner transport; IP-in-IP and GRE with the same inner header share a packet type
+ * group, so both are the tunnel class */
+static const struct
 {
+  u16 first;
+  u8 outer, inner;
+  vnet_dev_rss_class_t class;
+} ice_rss_tunnel_blocks[] = {
+  { 29, ICE_PROT_IPV4_OUTER, ICE_PROT_IPV4_INNER, VNET_DEV_RSS_CLASS_IP4_IPIP_GRE },
+  { 36, ICE_PROT_IPV4_OUTER, ICE_PROT_IPV6_INNER, VNET_DEV_RSS_CLASS_IP4_IPIP_GRE },
+  { 44, ICE_PROT_IPV4_OUTER, ICE_PROT_IPV4_INNER, VNET_DEV_RSS_CLASS_IP4_IPIP_GRE },
+  { 51, ICE_PROT_IPV4_OUTER, ICE_PROT_IPV6_INNER, VNET_DEV_RSS_CLASS_IP4_IPIP_GRE },
+  { 59, ICE_PROT_IPV4_OUTER, ICE_PROT_IPV4_INNER, VNET_DEV_RSS_CLASS_IP4_IPIP_GRE },
+  { 66, ICE_PROT_IPV4_OUTER, ICE_PROT_IPV6_INNER, VNET_DEV_RSS_CLASS_IP4_IPIP_GRE },
+  { 74, ICE_PROT_IPV4_OUTER, ICE_PROT_IPV4_INNER, VNET_DEV_RSS_CLASS_IP4_IPIP_GRE },
+  { 81, ICE_PROT_IPV4_OUTER, ICE_PROT_IPV6_INNER, VNET_DEV_RSS_CLASS_IP4_IPIP_GRE },
+  { 95, ICE_PROT_IPV6_OUTER, ICE_PROT_IPV4_INNER, VNET_DEV_RSS_CLASS_IP6_IPIP_GRE },
+  { 102, ICE_PROT_IPV6_OUTER, ICE_PROT_IPV6_INNER, VNET_DEV_RSS_CLASS_IP6_IPIP_GRE },
+  { 110, ICE_PROT_IPV6_OUTER, ICE_PROT_IPV4_INNER, VNET_DEV_RSS_CLASS_IP6_IPIP_GRE },
+  { 117, ICE_PROT_IPV6_OUTER, ICE_PROT_IPV6_INNER, VNET_DEV_RSS_CLASS_IP6_IPIP_GRE },
+  { 125, ICE_PROT_IPV6_OUTER, ICE_PROT_IPV4_INNER, VNET_DEV_RSS_CLASS_IP6_IPIP_GRE },
+  { 132, ICE_PROT_IPV6_OUTER, ICE_PROT_IPV6_INNER, VNET_DEV_RSS_CLASS_IP6_IPIP_GRE },
+  { 140, ICE_PROT_IPV6_OUTER, ICE_PROT_IPV4_INNER, VNET_DEV_RSS_CLASS_IP6_IPIP_GRE },
+  { 147, ICE_PROT_IPV6_OUTER, ICE_PROT_IPV6_INNER, VNET_DEV_RSS_CLASS_IP6_IPIP_GRE },
+};
+
+/* fragment, payload, UDP, unused, TCP, SCTP, ICMP */
+static const u8 ice_rss_tunnel_block_transport[7] = {
+  [2] = ICE_PROT_UDP_INNER,
+  [4] = ICE_PROT_TCP_INNER,
+  [5] = ICE_PROT_SCTP_INNER,
+};
+
+typedef struct
+{
+  u32 fields;
+  u8 ip, transport;
+} ice_rss_ptype_hash_t;
+
+/* what a packet type hashes on with the config, 0 if the packet type is not hashed */
+static int
+ice_rss_ptype_hash (u32 ptype, const vnet_dev_rss_config_t *cfg, ice_rss_ptype_hash_t *h)
+{
+  vnet_dev_rss_class_t class;
+  vnet_dev_rss_fields_t f;
+  u8 outer = 0, transport = 0, inner = 0, inner_transport = 0;
+
   if (ptype < ARRAY_LEN (ice_rss_protocols) && ice_rss_protocols[ptype].ip)
     {
-      *transport = ice_rss_protocols[ptype].transport;
-      return ice_rss_protocols[ptype].ip;
+      outer = ice_rss_protocols[ptype].ip;
+      transport = ice_rss_protocols[ptype].transport;
+      class = ice_rss_protocols[ptype].class;
     }
 
-  for (u32 i = 0; i < ARRAY_LEN (ice_rss_tunnels); i++)
-    if (ptype >= ice_rss_tunnels[i].first && ptype <= ice_rss_tunnels[i].last)
+  for (u32 i = 0; outer == 0 && i < ARRAY_LEN (ice_rss_tunnel_blocks); i++)
+    if (ptype >= ice_rss_tunnel_blocks[i].first &&
+	ptype < ice_rss_tunnel_blocks[i].first + ARRAY_LEN (ice_rss_tunnel_block_transport))
       {
-	*transport = 0;
-	return ice_rss_tunnels[i].ip;
+	u32 offset = ptype - ice_rss_tunnel_blocks[i].first;
+
+	/* unused packet type in the block */
+	if (offset == 3)
+	  return 0;
+
+	outer = ice_rss_tunnel_blocks[i].outer;
+	inner = ice_rss_tunnel_blocks[i].inner;
+	inner_transport = ice_rss_tunnel_block_transport[offset];
+	class = ice_rss_tunnel_blocks[i].class;
       }
 
-  return 0;
+  /* other tunnels, without an inner IP header */
+  for (u32 i = 0; outer == 0 && i < ARRAY_LEN (ice_rss_tunnels); i++)
+    if (ptype >= ice_rss_tunnels[i].first && ptype <= ice_rss_tunnels[i].last)
+      {
+	outer = ice_rss_tunnels[i].ip;
+	class = ice_rss_tunnels[i].class;
+      }
+
+  if (outer == 0)
+    return 0;
+
+  f = vnet_dev_rss_class_fields (cfg, class);
+  *h = (ice_rss_ptype_hash_t) { .ip = outer, .transport = transport };
+
+  if (f.inner && inner)
+    {
+      h->ip = inner;
+      h->transport = inner_transport;
+    }
+
+  h->fields = f.as_u32 & VNET_DEV_RSS_FIELDS_4_TUPLE;
+
+  if ((h->fields & ~VNET_DEV_RSS_FIELDS_2_TUPLE) == 0)
+    h->transport = 0;
+
+  return 1;
+}
+
+static u8
+ice_rss_profile_add_word (ice_rss_profile_plan_t *profile, u8 protocol, u16 offset)
+{
+  u8 index = ICE_PROFILE_FV_WORDS - 1 - profile->n_words++;
+
+  profile->words[index] = (ice_profile_fv_t) { .protocol = protocol, .offset = offset };
+  return index;
+}
+
+/* pairs source and destination words for the symmetric hash when both are present */
+static void
+ice_rss_profile_add_words (ice_rss_profile_plan_t *profile, u8 protocol, u16 src_offset,
+			   u16 dst_offset, u8 n_words, int src, int dst)
+{
+  for (u32 i = 0; i < n_words; i++)
+    {
+      u8 s = 0, d = 0;
+
+      if (src)
+	s = ice_rss_profile_add_word (profile, protocol, src_offset + i * 2);
+
+      if (dst)
+	d = ice_rss_profile_add_word (profile, protocol, dst_offset + i * 2);
+
+      if (src && dst)
+	{
+	  profile->pair[s] = d + 1;
+	  profile->pair[d] = s + 1;
+	}
+    }
 }
 
 static void
-ice_rss_profile_words (ice_rss_profile_plan_t *profile, u8 ip, u8 transport)
+ice_rss_profile_words (ice_rss_profile_plan_t *profile, u8 ip, u8 transport,
+		       vnet_dev_rss_fields_t fields)
 {
-  u32 address_words = ip == ICE_PROT_IPV6_OUTER ? 16 : 4;
-  u32 offset = address_words == 16 ? 8 : 12;
+  u8 ip6 = ip == ICE_PROT_IPV6_OUTER || ip == ICE_PROT_IPV6_INNER;
+  u8 address_words = ip6 ? 8 : 2;
+  u16 offset = ip6 ? 8 : 12;
 
   *profile = (ice_rss_profile_plan_t) {
     .ip = ip,
     .transport = transport,
+    .fields = fields.as_u32,
   };
 
   for (u32 i = 0; i < ICE_PROFILE_FV_WORDS; i++)
     profile->words[i] =
       (ice_profile_fv_t) { .protocol = ICE_PROT_UNUSED, .offset = ICE_PROFILE_FV_OFFSET_UNUSED };
 
-  for (u32 i = 0; i < address_words; i++)
-    profile->words[ICE_PROFILE_FV_WORDS - 1 - profile->n_words++] =
-      (ice_profile_fv_t) { .protocol = ip, .offset = offset + i * 2 };
+  ice_rss_profile_add_words (profile, ip, offset, offset + address_words * 2, address_words,
+			     fields.src_ip, fields.dst_ip);
 
   if (transport)
-    for (u32 i = 0; i < 2; i++)
-      profile->words[ICE_PROFILE_FV_WORDS - 1 - profile->n_words++] =
-	(ice_profile_fv_t) { .protocol = transport, .offset = i * 2 };
+    ice_rss_profile_add_words (profile, transport, 0, 2, 1, fields.src_port, fields.dst_port);
 }
 
 static vnet_dev_rv_t
-ice_rss_make_plan (const u8 *xlt1, ice_rss_plan_t *plan)
+ice_rss_make_plan (const u8 *xlt1, const vnet_dev_rss_config_t *cfg, ice_rss_plan_t *plan)
 {
-  u8 ip_by_group[ICE_PROFILE_PTG_COUNT] = {}, transport_by_group[ICE_PROFILE_PTG_COUNT] = {},
-     l3_only[ICE_PROFILE_PTG_COUNT] = {};
+  ice_rss_ptype_hash_t by_group[ICE_PROFILE_PTG_COUNT] = {};
+  u8 l3_only[ICE_PROFILE_PTG_COUNT] = {};
 
   *plan = (ice_rss_plan_t) {};
 
+  /* all packet types of a group share its profile, so they must hash alike */
   for (u32 ptype = 0; ptype < ICE_PROFILE_PTYPE_COUNT; ptype++)
     {
-      u8 transport, ip = ice_rss_ptype (ptype, &transport);
-      u8 group = xlt1[ptype];
+      ice_rss_ptype_hash_t h, *g = by_group + xlt1[ptype];
 
-      if (!group || !ip)
+      if (xlt1[ptype] == 0 || ice_rss_ptype_hash (ptype, cfg, &h) == 0)
 	continue;
 
-      if (ip_by_group[group] && ip_by_group[group] != ip)
+      if (g->ip == 0)
+	{
+	  *g = h;
+	  continue;
+	}
+
+      if (g->ip != h.ip)
 	return VNET_DEV_ERR_NOT_SUPPORTED;
 
-      if (ip_by_group[group] && transport_by_group[group] != transport)
-	l3_only[group] = 1;
-
-      ip_by_group[group] = ip;
-      transport_by_group[group] = transport;
+      /* a group with different transports hashes the addresses only */
+      if (g->transport != h.transport)
+	l3_only[xlt1[ptype]] = 1;
+      else if (g->fields != h.fields)
+	return VNET_DEV_ERR_NOT_SUPPORTED;
     }
 
   for (u32 group = 1; group < ICE_PROFILE_PTG_COUNT; group++)
     {
-      u8 ip = ip_by_group[group], transport = transport_by_group[group];
+      ice_rss_ptype_hash_t *g = by_group + group;
+      vnet_dev_rss_fields_t fields = { .as_u32 = g->fields };
+      u8 transport = g->transport;
       u32 index;
 
-      if (!ip)
+      if (g->ip == 0)
 	continue;
 
       if (l3_only[group])
-	transport = 0;
+	{
+	  transport = 0;
+	  fields.as_u32 &= VNET_DEV_RSS_FIELDS_2_TUPLE;
+	}
+
+      /* no hash fields, packets of this group are not hashed */
+      if (fields.as_u32 == 0)
+	continue;
 
       for (index = 0; index < plan->n_profiles; index++)
-	if (plan->profiles[index].ip == ip && plan->profiles[index].transport == transport)
+	if (plan->profiles[index].ip == g->ip && plan->profiles[index].transport == transport &&
+	    plan->profiles[index].fields == fields.as_u32)
 	  break;
 
       if (index == plan->n_profiles)
 	{
-	  ASSERT (index < ARRAY_LEN (plan->profiles));
-	  ice_rss_profile_words (&plan->profiles[plan->n_profiles++], ip, transport);
+	  if (index == ARRAY_LEN (plan->profiles))
+	    return VNET_DEV_ERR_RESOURCE_NOT_AVAILABLE;
+	  ice_rss_profile_words (&plan->profiles[plan->n_profiles++], g->ip, transport, fields);
 	}
 
       plan->profiles[index].groups[group / uword_bits] |= (uword) 1 << (group % uword_bits);
     }
 
-  return plan->n_profiles ? VNET_DEV_OK : VNET_DEV_ERR_NOT_SUPPORTED;
+  return VNET_DEV_OK;
+}
+
+/* checks that the config, merged into the port config, can be programmed */
+vnet_dev_rv_t
+ice_rss_validate_fields (vlib_main_t *vm, vnet_dev_port_t *port,
+			 const vnet_dev_rss_config_t *config)
+{
+  vnet_dev_rss_config_t merged = port->rss_config;
+  u8 xlt1[ICE_PROFILE_PTYPE_COUNT];
+  ice_rss_plan_t plan;
+  vnet_dev_rv_t rv;
+
+  vnet_dev_rss_config_merge (&merged, config);
+
+  rv = ice_rss_read_xlt1 (vm, port->dev, xlt1);
+  if (rv)
+    return rv;
+
+  return ice_rss_make_plan (xlt1, &merged, &plan);
+}
+
+static u32
+ice_rss_hsymm_word (const ice_rss_profile_plan_t *profile, u32 group, int symmetric)
+{
+  ice_reg_glqf_hsymm_t hsymm = {};
+
+  if (!symmetric)
+    return 0;
+
+  for (u32 i = 0; i < ARRAY_LEN (hsymm.words); i++)
+    {
+      u8 pair = profile->pair[group * ARRAY_LEN (hsymm.words) + i];
+
+      if (pair)
+	{
+	  hsymm.words[i].fv_word_index = pair - 1;
+	  hsymm.words[i].enable = 1;
+	}
+    }
+
+  return hsymm.as_u32;
 }
 
 static u32
@@ -372,8 +549,7 @@ ice_rss_get_queue_ids (vnet_dev_port_t *port, u8 queue_ids[ICE_RSS_MAX_QUEUES])
 vnet_dev_rv_t
 ice_rss_validate_config (vnet_dev_port_t *port, const vnet_dev_rss_config_t *config)
 {
-  if ((!config->set_key && !config->set_lut) ||
-      (config->set_key && config->key_len != ICE_RSS_KEY_SIZE) ||
+  if ((config->set_key && config->key_len != ICE_RSS_KEY_SIZE) ||
       (config->set_lut && config->lut_len != ICE_RSS_LUT_SIZE))
     return VNET_DEV_ERR_INVALID_DATA;
 
@@ -578,22 +754,87 @@ rollback:
   return rv;
 }
 
+static vnet_dev_rv_t
+ice_rss_reinit (vlib_main_t *vm, vnet_dev_port_t *port, const vnet_dev_rss_config_t *config,
+		int user_lut)
+{
+  ice_port_t *ip = vnet_dev_get_port_data (port);
+  vnet_dev_rss_config_t saved = port->rss_config;
+  int saved_user_lut = ip->rss->user_lut;
+  vnet_dev_rv_t rv;
+
+  ice_rss_free (vm, port);
+  if (ip->rss)
+    return VNET_DEV_ERR_NOT_READY;
+
+  port->rss_config = *config;
+  rv = ice_rss_init (vm, port);
+
+  if (rv == VNET_DEV_OK)
+    {
+      ip->rss->user_lut = user_lut;
+      return rv;
+    }
+
+  port->rss_config = saved;
+
+  if (ice_rss_init (vm, port) == VNET_DEV_OK)
+    ip->rss->user_lut = saved_user_lut;
+
+  return rv;
+}
+
 vnet_dev_rv_t
 ice_rss_set_config (vlib_main_t *vm, vnet_dev_port_t *port, const vnet_dev_rss_config_t *config)
 {
   ice_port_t *ip = vnet_dev_get_port_data (port);
+  vnet_dev_rss_config_t merged = port->rss_config;
   vnet_dev_rv_t rv;
 
   /* The framework retains updates for later multi-queue initialization. */
   if (!ip->rss)
     return VNET_DEV_OK;
 
-  rv = ice_rss_apply (vm, port, config, 0);
+  vnet_dev_rss_config_merge (&merged, config);
+
+  if (merged.function != port->rss_config.function ||
+      clib_memcmp (merged.fields, port->rss_config.fields, sizeof (merged.fields)))
+    rv = ice_rss_reinit (vm, port, &merged, ip->rss->user_lut || config->set_lut);
+  else
+    rv = ice_rss_apply (vm, port, config, 0);
 
   if (rv)
     log_err (port->dev, "VSI RSS update failed: %U", format_vnet_dev_rv, rv);
   else if (config->set_lut)
     ip->rss->user_lut = 1;
+
+  return rv;
+}
+
+static vnet_dev_rv_t
+ice_rss_set_hash_scheme (vlib_main_t *vm, vnet_dev_port_t *port, vnet_dev_rss_function_t function)
+{
+  ice_port_t *ip = vnet_dev_get_port_data (port);
+  static const u8 schemes[] = {
+    [VNET_DEV_RSS_FUNCTION_TOEPLITZ] = ICE_AQ_VSI_Q_OPT_RSS_HASH_TOEPLITZ,
+    [VNET_DEV_RSS_FUNCTION_SYMMETRIC_TOEPLITZ] = ICE_AQ_VSI_Q_OPT_RSS_HASH_SYM_TOEPLITZ,
+  };
+  ice_aqc_vsi_props_t props = {
+    .valid_sections.queue_option_section = 1,
+    .q_opt_rss = ip->vsi.props.q_opt_rss,
+    .q_opt_tc = ip->vsi.props.q_opt_tc,
+    .q_opt_flags = ip->vsi.props.q_opt_flags,
+  };
+  vnet_dev_rv_t rv;
+
+  if (ip->vsi.props.q_opt_rss.hash_type == schemes[function])
+    return VNET_DEV_OK;
+
+  props.q_opt_rss.hash_type = schemes[function];
+
+  rv = ice_aq_update_vsi (vm, port->dev, ip->vsi.num, &props);
+  if (rv == VNET_DEV_OK)
+    ip->vsi.props.q_opt_rss = props.q_opt_rss;
 
   return rv;
 }
@@ -609,12 +850,8 @@ ice_rss_init (vlib_main_t *vm, vnet_dev_port_t *port)
   u16 n_queues = ice_rss_get_queue_ids (port, queue_ids);
   ice_rss_t *rss = ip->rss;
   vnet_dev_rv_t rv, cleanup_rv;
-  vnet_dev_rss_config_t config = {
-    .key_len = ICE_RSS_KEY_SIZE,
-    .lut_len = ICE_RSS_LUT_SIZE,
-    .set_key = 1,
-    .set_lut = 1,
-  };
+  vnet_dev_rss_config_t config = port->rss_config;
+  int symmetric = config.function == VNET_DEV_RSS_FUNCTION_SYMMETRIC_TOEPLITZ;
 
   /* Require an enabled RX queue and disable RSS for a single queue. */
   if (!n_queues)
@@ -648,7 +885,9 @@ ice_rss_init (vlib_main_t *vm, vnet_dev_port_t *port)
     user_lut = saved.set_lut = 0;
 
   /* Preserve the configured key and build the active queue LUT. */
-  clib_memcpy (config.key, port->rss_config.key, ICE_RSS_KEY_SIZE);
+  config.key_len = ICE_RSS_KEY_SIZE;
+  config.lut_len = ICE_RSS_LUT_SIZE;
+  config.set_key = config.set_lut = 1;
 
   for (u32 i = 0; i < ICE_RSS_LUT_SIZE; i++)
     config.lut[i] = saved.set_lut ? saved.lut[i] : queue_ids[i % n_queues];
@@ -687,7 +926,7 @@ ice_rss_init (vlib_main_t *vm, vnet_dev_port_t *port)
       rv = ice_rss_read_xlt1 (vm, dev, xlt1);
 
       if (!rv)
-	rv = ice_rss_make_plan (xlt1, &plan);
+	rv = ice_rss_make_plan (xlt1, &config, &plan);
 
       if (!rv)
 	rv = ice_rss_find_vsig (vm, dev, ip->vsi.num, &rss->vsig, &rss->saved_vsig);
@@ -728,6 +967,10 @@ ice_rss_init (vlib_main_t *vm, vnet_dev_port_t *port)
 	    ice_reg_write (dev, ICE_GLQF_HINSET (profile->id, j),
 			   ice_rss_inset_word (j, p->n_words));
 
+	  for (u32 j = 0; j < ICE_PROFILE_FV_WORDS / 4; j++)
+	    ice_reg_write (dev, ICE_GLQF_HSYMM (profile->id, j),
+			   ice_rss_hsymm_word (p, j, symmetric));
+
 	  ice_reg_write (dev, ICE_GLQF_HMASK_SEL (profile->id), 0);
 
 	  rv = ice_rss_section (vm, dev, ICE_RSS_SECTION_FV, &fv, sizeof (fv), 0);
@@ -751,6 +994,10 @@ ice_rss_init (vlib_main_t *vm, vnet_dev_port_t *port)
 		  goto profile_error;
 	      }
 	}
+
+      rv = ice_rss_set_hash_scheme (vm, port, config.function);
+      if (rv)
+	goto profile_error;
 
       /* Release the package lock after all profile updates complete. */
       ice_aq_release_resource (vm, dev, ICE_AQ_RES_ID_CHANGE_LOCK);

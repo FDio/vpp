@@ -171,8 +171,20 @@ Supported features
   (GSO) is advertised when the buffer size allows packets of 64 KB.
 * **RSS** with a 40 byte hash key and a 64 entry lookup table. The key and the
   table are configurable at start (``rss-key``, ``rss-lut``) and at runtime
-  (``device set-rss-config``). RSS is programmed for IPv4 and IPv6 with TCP, UDP
-  and SCTP. IP-in-IP and GRE tunnels are hashed on their outer header.
+  (``device set-rss-config``, ``set interface rss``). The ``ipv4``,
+  ``ipv6`` and their TCP, UDP and SCTP classes hash on any
+  combination of ``src-ip``, ``dst-ip``, ``src-port`` and ``dst-port``, the
+  default is ``4-tuple``. Packets of a class with ``no-hash`` are not hashed
+  and go to the queue in the first lookup table entry. The hash function is
+  ``toeplitz`` or ``symmetric-toeplitz``. The hardware XOR function is not
+  offered: it folds half of the field words into the upper 16 bits of the
+  hash, which the lookup table index doesn't use. Changing the fields or the
+  function reprograms the RSS profiles. IP-in-IP and GRE tunnels with an inner
+  IP header are the ``ipv4-ipip-gre`` and ``ipv6-ipip-gre`` classes, which also
+  take ``inner`` to hash the inner addresses and ports. The hardware puts
+  IP-in-IP and GRE with the same inner header in one packet type group, so
+  ``ipv4-ipip`` and ``ipv4-gre`` can't be set on their own. Other tunnels are
+  hashed on their outer header. See :ref:`dev_rss`.
 * **Interrupt mode** for RX queues. It is enabled when the device provides at
   least one MSI-X vector more than the number of VPP threads. Otherwise the
   capability is disabled and a notice is logged.
