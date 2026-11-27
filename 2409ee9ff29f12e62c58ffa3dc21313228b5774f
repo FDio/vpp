@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cd151056_0281ed0d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-27T12:49:27Z",
+      "side": 1,
+      "message": "The BlueFlame doorbell is mapped as write-combining MMIO. CLWB and CLFLUSHOPT operate on cache lines. The pending doorbell write sits in the CPU\u0027s write-combining buffer, which sfence drains on x86-64. Patch set 2 uses the same post-store primitive as rdma-core\u0027s mmio_flush_writes(), with dsb st on Arm64. https://github.com/linux-rdma/rdma-core/blob/master/util/udma_barrier.h",
+      "parentUuid": "9433221a_15b5fdc8",
+      "revId": "2409ee9ff29f12e62c58ffa3dc21313228b5774f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "21262b16_0ed185a2",
+        "filename": "src/drivers/net/mlx5/tx_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 557,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-27T12:49:27Z",
+      "side": 1,
+      "message": "Thanks, Damjan. The first patch targeted the latency issue I measured on x86-64. Patch set 2 now uses the same post-doorbell helper on x86-64 and Arm64, with sfence and dsb st respectively. It builds on change 48264/2. In the native mlx5 ICMP A/B, all 700 probes per variant returned on both architectures. Median peer-observed RTT went from 50 to 14 us on ConnectX-5 Ex and stayed at 134 us on BlueField-3.",
+      "parentUuid": "02a609b5_cfbdd9aa",
+      "revId": "2409ee9ff29f12e62c58ffa3dc21313228b5774f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
