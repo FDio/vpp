@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "02a609b5_cfbdd9aa",
+        "filename": "src/drivers/net/mlx5/tx_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 557,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-11-27T11:12:08Z",
+      "side": 1,
+      "message": "why x86 only?",
+      "revId": "d8d68018b3e80da4e4fe7e72092db210d5438a59",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
