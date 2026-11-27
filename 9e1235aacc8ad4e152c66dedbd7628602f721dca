@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2ee62118_9289118d",
+        "filename": "test/hs-test/http1_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 3622,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-27T17:54:03Z",
+      "side": 1,
+      "message": "PS2 includes the quoted request line and split byte offset, or the bytewise fragment index, in both quiet-period failure messages. A premature response is reported explicitly. I forced early replies in both split modes and verified the reported context.",
+      "parentUuid": "77592ae4_f70bec39",
+      "revId": "9e1235aacc8ad4e152c66dedbd7628602f721dca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7ea73f4c_9a18b688",
+        "filename": "test/hs-test/http1_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 3744,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-27T17:54:03Z",
+      "side": 1,
+      "message": "The first error cancels the group and closes its active connections to unblock pending I/O. The test joins the group and checks its result before opening the echo connection. I injected a premature response in the HTTP/1.0 check and in a background check. In both cases, the peer socket read unblocked and the test stopped before echo.",
+      "parentUuid": "eb7b993e_c54515e8",
+      "revId": "9e1235aacc8ad4e152c66dedbd7628602f721dca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
