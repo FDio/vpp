@@ -198,6 +198,13 @@
 #define CLIB_MMIO_WMB() CLIB_MEMORY_STORE_BARRIER ()
 #endif
 
+/* Flush writes to write-combining MMIO after the store. */
+#if defined(__aarch64__)
+#define CLIB_MMIO_FLUSH_WRITES() asm volatile ("dsb st" ::: "memory")
+#else
+#define CLIB_MMIO_FLUSH_WRITES() CLIB_MEMORY_STORE_BARRIER ()
+#endif
+
 /* Arranges for function to be called before main. */
 #define INIT_FUNCTION(decl)			\
   decl __attribute ((constructor));		\
