@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "50e0dd60_792d1c51",
+        "filename": "test/hs-test/vcl_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 358,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-27T15:54:29Z",
+      "side": 1,
+      "message": "if vperf_client hangs, exec never reaches this write, so teardown can collect  stale vperf_client.log or find no log at all. could we stream stdout and stderr to tee under bash -o pipefail? that keeps the current run’s output available during teardown and preserves failing client exit status",
+      "revId": "0c287b06e50a94ae3ef0754b51008f1e91ab714c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c9ea18e6_ae5a22c1",
+        "filename": "test/hs-test/vcl_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 379,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-27T15:54:29Z",
+      "side": 1,
+      "message": "do we need the full server byte count check for this test? With -U, server records the count when it receives STOP on separate connection, without confirmation that it has read last data bytes. could we use small bidirectional transfer and verify that client receives echo? that would exercise data path after restart and remove need to parse server’s receive count",
+      "revId": "0c287b06e50a94ae3ef0754b51008f1e91ab714c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
