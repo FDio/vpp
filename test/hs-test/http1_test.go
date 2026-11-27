@@ -89,6 +89,9 @@ func init() {
 	var largeHeaderLimitConfig Stanza
 	largeHeaderLimitConfig.NewStanza("http").NewStanza("http1").Append("max-header-list-size 131072").Close().Close()
 	SetHttp1TestStartupConfig(largeHeaderLimitConfig, HttpOversizedHeaderNameTest)
+	var invalidHeaderConfig Stanza
+	invalidHeaderConfig.NewStanza("tcp").Append("finwait2-time 5").Close()
+	SetHttp1TestStartupConfig(invalidHeaderConfig, HttpClientInvalidHeaderNameTest)
 	RegisterHttp1SoloTests(HttpClientPostMemLeakTest, HttpInvalidClientRequestMemLeakTest, HttpTpsMemLeakTest)
 	RegisterHttp1MWTests(HttpClientGetRepeatMWTest, HttpClientPtrGetRepeatMWTest, HttpTsFifoMemPressureMWTest)
 	RegisterNoTopo6SoloTests(HttpClientGetResponseBody6Test, HttpClientGetTlsResponseBody6Test)
@@ -2679,10 +2682,16 @@ func HttpClientInvalidHeaderNameTest(s *Http1Suite) {
 	l, err := net.Listen("tcp", serverAddress+":80")
 	AssertNil(err, fmt.Sprint(err))
 	defer l.Close()
+	releasePeer := make(chan struct{})
+	defer close(releasePeer)
 	go func() {
 		b := make([]byte, 512)
 		conn, err := l.Accept()
 		if err != nil {
+			return
+		}
+		defer conn.Close()
+		if err := conn.SetDeadline(time.Now().Add(defaultHttpTimeout)); err != nil {
 			return
 		}
 		_, err = conn.Read(b)
@@ -2693,32 +2702,26 @@ func HttpClientInvalidHeaderNameTest(s *Http1Suite) {
 		if err != nil {
 			return
 		}
+		// Keep the peer open so the VPP client must expire FIN_WAIT_2.
+		<-releasePeer
 	}()
 	uri := "http://" + serverAddress + "/index.html"
 	vpp := s.Containers.Vpp.VppInstance
+	baseline := vpp.Vppctl("show session")
 	o := vpp.Vppctl("http client uri " + uri + " timeout 5")
 	Log(o)
 	AssertContains(o, "transport closed")
 
-	/* wait until cleanup to be sure we don't crash */
-	httpCleanupDone := false
-	tcpSessionCleanupDone := false
+	var sessions string
 	for range 60 {
-		o := vpp.Vppctl("show session verbose 2")
-		if !strings.Contains(o, "[T]") {
-			tcpSessionCleanupDone = true
-		}
-		if !strings.Contains(o, "[H1]") {
-			httpCleanupDone = true
-		}
-		if httpCleanupDone && tcpSessionCleanupDone {
-			Log(o)
+		sessions = vpp.Vppctl("show session")
+		if sessions == baseline {
 			break
 		}
 		time.Sleep(1 * time.Second)
 	}
-	AssertEqual(true, tcpSessionCleanupDone, "TCP session not cleanup")
-	AssertEqual(true, httpCleanupDone, "HTTP not cleanup")
+	AssertEqual(baseline, sessions, "TCP and HTTP sessions must be freed")
+	AssertContains(vpp.Vppctl("show tcp stats"), " 1 timeout fin-wait-2")
 	o = vpp.Vppctl("show http stats")
 	Log(o)
 	AssertContains(o, "1 connections protocol error")
