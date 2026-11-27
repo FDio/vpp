@@ -12,7 +12,7 @@
 #include <http/http_private.h>
 #include <http/http_timer.h>
 
-__clib_export http_main_t http_main;
+__clib_export http_main_t http_main = { .app_index = APP_INVALID_INDEX };
 
 static http_engine_vft_t *http_vfts;
 
@@ -386,6 +386,21 @@ http_disconnect_transport (http_ctx_t *hc)
 }
 
 void
+http_conn_timeout (http_ctx_t *hc)
+{
+  clib_thread_index_t thread_index = hc->c_thread_index;
+  u32 hc_index = hc->hc_hc_index;
+
+  HTTP_DBG (1, "hc [%u]%x", thread_index, hc_index);
+  http_stats_connections_timeout_inc (thread_index);
+  http_vfts[hc->version].transport_close_callback (hc, true);
+  /* Buffered HTTP/2 frames can allocate streams and move the pool. */
+  hc = http_ctx_get_w_thread (hc_index, thread_index);
+  if (hc->state != HTTP_CONN_STATE_CLOSED)
+    http_disconnect_transport (hc);
+}
+
+void
 http_shutdown_transport (http_ctx_t *hc)
 {
   vnet_shutdown_args_t a = {
@@ -612,54 +627,6 @@ http_req_tx_buffer_init (http_ctx_t *req, const http_msg_t *msg)
   else
     req->req_flags &= ~HTTP_REQ_F_TX_STREAMING;
   http_buffer_init (&req->tx_buf, msg_to_buf_type[msg->data.type], as->tx_fifo, len);
-}
-
-static void
-http_conn_invalidate_timer_cb (u32 hs_handle)
-{
-  http_ctx_t *hc;
-
-  hc = http_ctx_get_w_thread_if_valid (hs_handle & 0x00FFFFFF, hs_handle >> 24);
-
-  HTTP_DBG (1, "hc [%u]%x", hs_handle >> 24, hs_handle & 0x00FFFFFF);
-  if (!hc)
-    {
-      HTTP_DBG (1, "already deleted");
-      return;
-    }
-
-  hc->timer_handle = HTTP_TIMER_HANDLE_INVALID;
-  hc->flags |= HTTP_CONN_F_PENDING_TIMER;
-}
-
-static void
-http_conn_timeout_cb (void *hc_handlep)
-{
-  http_ctx_t *hc;
-  uword hs_handle;
-
-  hs_handle = pointer_to_uword (hc_handlep);
-  hc = http_ctx_get_w_thread_if_valid (hs_handle & 0x00FFFFFF, hs_handle >> 24);
-
-  HTTP_DBG (1, "hc [%u]%x", hs_handle >> 24, hs_handle & 0x00FFFFFF);
-  if (!hc)
-    {
-      HTTP_DBG (1, "already deleted");
-      return;
-    }
-
-  if (!(hc->flags & HTTP_CONN_F_PENDING_TIMER))
-    {
-      HTTP_DBG (1, "timer not pending");
-      return;
-    }
-
-  /* in case nothing received on cleartext connection before timeout */
-  if (PREDICT_TRUE (hc->version != HTTP_VERSION_NA))
-    http_vfts[hc->version].transport_close_callback (hc);
-  if (hc->state != HTTP_CONN_STATE_CLOSED)
-    http_disconnect_transport (hc);
-  http_stats_connections_timeout_inc (hs_handle >> 24);
 }
 
 /*************************/
@@ -934,14 +901,10 @@ http_ts_disconnect_callback (session_t *ts)
   if (hc->state < HTTP_CONN_STATE_TRANSPORT_CLOSED)
     hc->state = HTTP_CONN_STATE_TRANSPORT_CLOSED;
 
-  /* in case peer close cleartext connection before send something */
-  if (PREDICT_FALSE (hc->version == HTTP_VERSION_NA))
-    return;
-
   if (http_ctx_is_stream (hc))
     http_vfts[hc->version].transport_stream_close_callback (hc);
   else
-    http_vfts[hc->version].transport_close_callback (hc);
+    http_vfts[hc->version].transport_close_callback (hc, false);
 }
 
 static void
@@ -964,11 +927,7 @@ http_ts_reset_callback (session_t *ts)
       http_vfts[hc->version].transport_stream_reset_callback (hc);
     }
   else
-    {
-      /* in case peer reset cleartext connection before send something */
-      if (PREDICT_FALSE (hc->version != HTTP_VERSION_NA))
-	http_vfts[hc->version].transport_reset_callback (hc);
-    }
+    http_vfts[hc->version].transport_reset_callback (hc);
   http_disconnect_transport (hc);
 }
 
@@ -1003,7 +962,7 @@ http_ts_rx_callback (session_t *ts)
       if (http_ctx_is_stream (hc))
 	http_vfts[hc->version].transport_stream_close_callback (hc);
       else
-	http_vfts[hc->version].transport_close_callback (hc);
+	http_vfts[hc->version].transport_close_callback (hc, false);
     }
   return 0;
 }
@@ -1065,12 +1024,8 @@ http_ts_cleanup_callback (session_t *ts, session_cleanup_ntf_t ntf)
     }
   else
     {
-      if (!(hc->flags & HTTP_CONN_F_PENDING_TIMER))
-	http_conn_timer_stop (hc);
-
-      /* in case nothing received on cleartext connection */
-      if (PREDICT_TRUE (hc->version != HTTP_VERSION_NA))
-	http_vfts[hc->version].conn_cleanup_callback (hc);
+      http_conn_timer_stop (hc);
+      http_vfts[hc->version].conn_cleanup_callback (hc);
 
       if (!(hc->flags & HTTP_CONN_F_IS_SERVER))
 	{
@@ -1120,7 +1075,7 @@ static session_cb_vft_t http_app_cb_vft = {
 /*********************************/
 
 static clib_error_t *
-http_transport_enable (vlib_main_t *vm, u8 is_en)
+http_transport_enable (CLIB_UNUSED (vlib_main_t *vm), u8 is_en)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   vnet_app_detach_args_t _da, *da = &_da;
@@ -1134,10 +1089,14 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
 
   if (!is_en)
     {
+      if (hm->app_index == APP_INVALID_INDEX)
+	return 0;
+
+      http_timers_disable ();
       da->app_index = hm->app_index;
       da->api_client_index = APP_INVALID_INDEX;
       vnet_application_detach (da);
-      http_timers_set_state (vm, false);
+      hm->app_index = APP_INVALID_INDEX;
       return 0;
     }
 
@@ -1165,17 +1124,16 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
   vec_free (a->name);
 
   if (hm->is_init)
-    {
-      http_timers_set_state (vm, true);
-      return 0;
-    }
+    return 0;
 
   vec_validate (hm->wrk, num_threads - 1);
   vec_foreach (wrk, hm->wrk)
     {
+      ti = wrk - hm->wrk;
+      wrk->vm = vlib_get_main_by_index (ti);
+      tw_timer_wheel_init_1t_3w_1024sl_ov (&wrk->timer_wheel, 0, 1.0, ~0);
       clib_memset (&wrk->stats, 0, sizeof (wrk->stats));
       wrk->h2_n_sessions = 0;
-      ti = wrk - hm->wrk;
       head_index = http_ctx_alloc_w_thread (ti);
       head = http_ctx_get_w_thread (head_index, ti);
       memset (head, 0xff, sizeof (*head));
@@ -1185,7 +1143,7 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
 						hm->h3_settings.max_field_section_size) -
 					1);
       clib_timebase_init (&wrk->timebase, 0 /* GMT */, CLIB_TIMEBASE_DAYLIGHT_NONE,
-			  &vlib_get_main_by_index (ti)->clib_time);
+			  &wrk->vm->clib_time);
     }
   vec_validate (hm->rx_bufs, num_threads - 1);
   vec_validate (hm->tx_bufs, num_threads - 1);
@@ -1201,7 +1159,6 @@ http_transport_enable (vlib_main_t *vm, u8 is_en)
       vec_validate (hm->app_header_lists[i], 64 << 10);
     }
 
-  http_timers_init (vm, http_conn_timeout_cb, http_conn_invalidate_timer_cb);
   hm->is_init = 1;
 
   return 0;
@@ -1750,7 +1707,7 @@ http_app_rx_evt_cb (transport_connection_t *tc)
       if (http_ctx_is_stream (hc))
 	http_vfts[hc->version].transport_stream_close_callback (hc);
       else
-	http_vfts[hc->version].transport_close_callback (hc);
+	http_vfts[hc->version].transport_close_callback (hc, false);
     }
 
   return 0;
