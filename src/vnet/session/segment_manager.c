@@ -1642,7 +1642,7 @@ segment_manager_alloc_session_fifos_ct (session_t *s, segment_manager_t *sm,
       if (!ct_seg)
 	{
 	  clib_rwlock_writer_unlock (&smm->custom_segs_lock);
-	  return -1;
+	  return SESSION_E_SEG_CREATE;
 	}
 
       sct->seg_ctx_index = ct_seg->seg_ctx_index;

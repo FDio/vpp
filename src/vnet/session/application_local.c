@@ -198,7 +198,6 @@ ct_session_connect_notify (session_t *ss, session_error_t err)
     {
       session_free (cs);
       ct_session_force_disconnect_server (sct);
-      err = SESSION_E_ALLOC;
       goto connect_error;
     }
 
@@ -246,6 +245,7 @@ ct_accept_one (clib_thread_index_t thread_index, u32 ho_index)
   app_worker_t *client_wrk, *server_wrk;
   u32 cct_index, ll_index;
   session_t *ss, *ll;
+  int rv;
 
   /*
    * Alloc client ct and initialize from ho
@@ -323,9 +323,9 @@ ct_accept_one (clib_thread_index_t thread_index, u32 ho_index)
   session_set_state (ss, SESSION_STATE_CREATED);
   sct->c_s_index = ss->session_index;
 
-  if (app_worker_init_accepted_ct (ss))
+  if ((rv = app_worker_init_accepted_ct (ss)))
     {
-      ct_session_connect_notify (ss, SESSION_E_ALLOC);
+      ct_session_connect_notify (ss, rv);
       ct_connection_free (sct);
       session_free (ss);
       return;

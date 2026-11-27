@@ -3324,6 +3324,97 @@ session_test_reconn_while_closed (vlib_main_t *vm, unformat_input_t *input)
   return 0;
 }
 
+static volatile int ct_accept_error_connected;
+static volatile session_error_t ct_accept_error_err;
+
+static int
+ct_accept_error_connected_cb (u32 app_index, u32 api_context, session_t *s, session_error_t err)
+{
+  ct_accept_error_connected = 1;
+  ct_accept_error_err = err;
+  return 0;
+}
+
+static int
+session_test_ct_accept_error (vlib_main_t *vm, unformat_input_t *input)
+{
+  session_endpoint_cfg_t sep = SESSION_ENDPOINT_CFG_NULL;
+  session_cb_vft_t cbs = placeholder_session_cbs;
+  u64 options[APP_OPTIONS_N_OPTIONS];
+  u32 server_index, client_index, tries = 0;
+  int error;
+
+  session_test_reset_placeholder_state ();
+  ct_accept_error_connected = 0;
+  ct_accept_error_err = SESSION_E_NONE;
+  cbs.session_connected_callback = ct_accept_error_connected_cb;
+
+  /* Server fifos do not fit in a cut-through segment, so accepts fail */
+  clib_memset (options, 0, sizeof (options));
+  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN | APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
+  options[APP_OPTIONS_RX_FIFO_SIZE] = 256 << 20;
+  options[APP_OPTIONS_TX_FIFO_SIZE] = 256 << 20;
+  vnet_app_attach_args_t attach_args = {
+    .api_client_index = ~0,
+    .options = options,
+    .namespace_id = 0,
+    .session_cb_vft = &cbs,
+    .name = format (0, "session_test_ct_server"),
+  };
+  error = vnet_application_attach (&attach_args);
+  vec_free (attach_args.name);
+  SESSION_TEST ((error == 0), "server attached: %U", format_session_error, error);
+  server_index = attach_args.app_index;
+
+  sep.is_ip4 = 1;
+  sep.ip.ip4.as_u32 = clib_host_to_net_u32 (0x7f000001);
+  sep.port = clib_host_to_net_u16 (1234);
+  sep.transport_proto = TRANSPORT_PROTO_TCP;
+  vnet_listen_args_t bind_args = {
+    .sep_ext = sep,
+    .app_index = server_index,
+  };
+  error = vnet_listen (&bind_args);
+  SESSION_TEST ((error == 0), "server listening: %U", format_session_error, error);
+
+  options[APP_OPTIONS_RX_FIFO_SIZE] = 0;
+  options[APP_OPTIONS_TX_FIFO_SIZE] = 0;
+  attach_args.name = format (0, "session_test_ct_client");
+  error = vnet_application_attach (&attach_args);
+  vec_free (attach_args.name);
+  SESSION_TEST ((error == 0), "client attached: %U", format_session_error, error);
+  client_index = attach_args.app_index;
+
+  vnet_connect_args_t connect_args = {
+    .sep_ext = sep,
+    .app_index = client_index,
+  };
+  error = vnet_connect (&connect_args);
+  SESSION_TEST ((error == 0), "connect should start: %U", format_session_error, error);
+
+  while (!ct_accept_error_connected && ++tries < 100)
+    {
+      vlib_worker_thread_barrier_release (vm);
+      vlib_process_suspend (vm, 10e-3);
+      vlib_worker_thread_barrier_sync (vm);
+    }
+  SESSION_TEST ((ct_accept_error_connected), "client should get connect reply");
+  SESSION_TEST ((ct_accept_error_err == SESSION_E_SEG_NO_SPACE),
+		"connect should fail with server fifo error: %U", format_session_error,
+		ct_accept_error_err);
+  SESSION_TEST ((placeholder_accept == 0), "server should not accept");
+
+  vnet_app_detach_args_t detach_args = {
+    .app_index = client_index,
+    .api_client_index = ~0,
+  };
+  vnet_application_detach (&detach_args);
+  detach_args.app_index = server_index;
+  vnet_application_detach (&detach_args);
+
+  return 0;
+}
+
 static clib_error_t *
 session_test (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd_arg)
@@ -3364,6 +3455,8 @@ session_test (vlib_main_t * vm,
 	res = session_test_pacer (vm, input);
       else if (unformat (input, "reconn-while-closed"))
 	res = session_test_reconn_while_closed (vm, input);
+      else if (unformat (input, "ct-accept-error"))
+	res = session_test_ct_accept_error (vm, input);
       else if (unformat (input, "all"))
 	{
 	  if ((res = session_test_basic (vm, input)))
@@ -3391,6 +3484,8 @@ session_test (vlib_main_t * vm,
 	  if ((res = session_test_rx_chain (vm, input)))
 	    goto done;
 	  if ((res = session_test_pacer (vm, input)))
+	    goto done;
+	  if ((res = session_test_ct_accept_error (vm, input)))
 	    goto done;
 	  if ((res = session_test_enable_disable (vm, input)))
 	    goto done;
