@@ -29,6 +29,7 @@ var _ = Describe("VclSuite", Ordered, ContinueOnFailure, Label("Tap", "Vcl"), fu
 		s.SetupSuite()
 	})
 	BeforeEach(func() {
+		s.DeferServerSessions = GetCurrentTestName() == "VclRetryAttachTest"
 		s.SetupTest()
 	})
 	AfterAll(func() {

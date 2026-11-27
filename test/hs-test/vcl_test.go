@@ -10,6 +10,7 @@ import (
 
 	. "fd.io/hs-test/infra"
 	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 func init() {
@@ -312,61 +313,56 @@ func VclDtlsOverMTUTest(s *VclSuite) {
 }
 
 func VclRetryAttachTest(s *VclSuite) {
-	testRetryAttach(s, "tcp")
-}
-
-func testRetryAttach(s *VclSuite, proto string) {
+	const transferBytes = 32 * 1024
 	s.SetupAppContainers()
 
-	srvVppContainer := s.GetTransientContainerByName("server-vpp")
+	serverVpp := s.Containers.ServerVpp.VppInstance
 	vperfSrvContainer := s.Containers.ServerApp
 	serverVethAddress := s.Interfaces.Server.Ip4AddressString()
+	controlPort, err := strconv.Atoi(s.Ports.Port1)
+	AssertNil(err)
+	waitForListeners := func() {
+		GinkgoHelper()
+		Eventually(func() string {
+			return serverVpp.Vppctl("show session listeners tcp")
+		}, time.Minute, 100*time.Millisecond).Should(And(
+			ContainSubstring(fmt.Sprintf("%s:%d->", serverVethAddress, controlPort)),
+			ContainSubstring(fmt.Sprintf("%s:%d->", serverVethAddress, controlPort+1)),
+		), "waiting for the vperf control and data listeners")
+	}
 
 	vperfSrvContainer.CreateFile("/vcl.conf", getVclConfig(vperfSrvContainer))
 	vperfSrvContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
 
-	vclSrvCmd := fmt.Sprintf("vperf_server -p %s -B %s %s > %s 2>&1",
-		proto, serverVethAddress, s.Ports.Port1, VclTestSrvLogFileName(vperfSrvContainer))
+	vclSrvCmd := fmt.Sprintf("vperf_server -p tcp -B %s %s > %s 2>&1",
+		serverVethAddress, s.Ports.Port1, VclTestSrvLogFileName(vperfSrvContainer))
 	vperfSrvContainer.ExecServer(true, WrapCmdWithLineBuffering(vclSrvCmd))
-	srvVppContainer.VppInstance.WaitForApp("vperf_srv_vcl", 3)
-
-	Log("This whole test case can take around 3 minutes to run. Please be patient.")
-	Log("... Running first vperf client test, before disconnect.")
+	waitForListeners()
 
 	vperfClnContainer := s.GetTransientContainerByName("client-app")
 	vperfClnContainer.CreateFile("/vcl.conf", getVclConfig(vperfClnContainer))
-
-	testClientCommand := fmt.Sprintf("vperf_client -U -p %s %s %s 2>&1 | tee %s",
-		proto, serverVethAddress, s.Ports.Port1, VclTestClnLogFileName(vperfClnContainer))
 	vperfClnContainer.AddEnvVar("VCL_CONFIG", "/vcl.conf")
-	o, err := vperfClnContainer.Exec(true, WrapCmdWithLineBuffering(testClientCommand))
-	AssertNil(err)
-	AssertNotContains(o, "aborting test")
-	Log(o)
-	Log("... First test ended. Stopping VPP server now.")
+	runClient := func(extraArgs string) {
+		GinkgoHelper()
+		command := fmt.Sprintf("stdbuf -oL -eL vperf_client -B -p tcp -b %d %s %s %s 2>&1 | tee %q",
+			transferBytes, extraArgs, serverVethAddress, s.Ports.Port1, VclTestClnLogFileName(vperfClnContainer))
+		output, err := vperfClnContainer.Exec(true, "bash -o pipefail -c %q", command)
+		Log("****** Client output:\n%s\n******", output)
+		AssertNil(err, output)
+		AssertNotContains(output, "aborting test")
+		_, result, found := strings.Cut(output, "CLIENT RESULTS:")
+		AssertEqual(true, found, output)
+		received, err := vclGetLabelValue(result, "rx bytes")
+		AssertNil(err, output)
+		AssertEqual(transferBytes, received, output)
+	}
 
-	// Stop server-vpp-instance, start it again and then run vperf_client once more
-	srvVppContainer.VppInstance.Disconnect()
-	srvVppContainer.VppInstance.Stop()
-
-	s.SetupServerVpp()
-
-	Log("... VPP server is starting again, so waiting for a bit.")
-	time.Sleep(30 * time.Second) // Wait a moment for the re-attachment to happen
-
-	Log("... Running second vperf client test, after disconnect and re-attachment.")
-	testClientCommand = fmt.Sprintf("vperf_client -U -X -p %s %s %s 2>&1 | tee %s",
-		proto, serverVethAddress, s.Ports.Port1, VclTestClnLogFileName(vperfClnContainer))
-	o, err = vperfClnContainer.Exec(true, WrapCmdWithLineBuffering(testClientCommand))
-	Log("****** Client output:\n%s\n******", o)
-
-	oSrv, errSrv := vperfSrvContainer.Exec(false, "cat %s", VclTestSrvLogFileName(vperfSrvContainer))
-	Log("****** Server output:\n%s\n******", oSrv)
-
-	AssertNil(err, o)
-	AssertNotContains(o, "aborting test")
-	AssertNil(errSrv, oSrv)
-	Log("Done.")
+	Log("Running vperf before the server VPP restart")
+	runClient("")
+	s.RestartServerVpp()
+	waitForListeners()
+	Log("Running vperf after VCL reattachment")
+	runClient("-X")
 }
 
 func VclClUdpDscpTest(s *VclSuite) {
