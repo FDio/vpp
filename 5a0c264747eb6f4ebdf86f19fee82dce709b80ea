@@ -17,6 +17,24 @@
       "parentUuid": "32ccd6ca_bf358f2b",
       "revId": "5a0c264747eb6f4ebdf86f19fee82dce709b80ea",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9d04400d_039e8065",
+        "filename": "src/plugins/rdma/output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 210,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-27T12:47:51Z",
+      "side": 1,
+      "message": "One clarification on the Arm64 result: the BF3 ping-pong validates operation with the new barrier. The direct delay of the MMIO write on Arm64 remains unmeasured. Patch set 2 follows rdma-core\u0027s post-store primitive on both architectures and keeps that operation separate from the pre-store ordering barrier. https://github.com/linux-rdma/rdma-core/blob/master/util/udma_barrier.h",
+      "parentUuid": "32ccd6ca_bf358f2b",
+      "revId": "5a0c264747eb6f4ebdf86f19fee82dce709b80ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
