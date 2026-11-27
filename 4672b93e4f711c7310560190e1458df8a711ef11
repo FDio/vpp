@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ad13fbe4_c34294df",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1894,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-27T09:37:56Z",
+      "side": 1,
+      "message": "Match the refusal to the pending Child SA rekey’s message ID. `last_init_msg_id` advances for INFORMATIONAL liveness probes too. If VPP sends a probe between the rekey request and its authenticated TEMPORARY_FAILURE response, the response still matches the pending rekey but this check leaves `sa-\u003erekey` set. The debug ASAN regression test answered the intervening probe, then observed VPP refuse a valid peer rekey with TEMPORARY_FAILURE. Store the outbound message ID in the pending rekey record when sending or retrying, and compare the refusal against that ID before clearing the record.",
+      "tag": "prview:08f9d361080acb15fe1c66030647f969:4672b93e4f711c7310560190e1458df8a711ef11",
+      "revId": "4672b93e4f711c7310560190e1458df8a711ef11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ee35da1e_fb2da7cf",
+        "filename": "src/plugins/ikev2/ikev2.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1896,
+      "author": {
+        "id": 361
+      },
+      "writtenOn": "2026-11-27T09:37:56Z",
+      "side": 1,
+      "message": "Count valid rekey refusals as handled responses. Even when this branch clears the pending exchange, it returns zero and the caller increments `IKEV2_ERROR_MALFORMED_PACKET`. The debug ASAN test observed `malformed_packet` rise from 0 to 1 after a valid authenticated TEMPORARY_FAILURE. Recognize an error Notify and return a handled-without-reply result so the malformed counter remains useful for packet decoding failures.",
+      "tag": "prview:08f9d361080acb15fe1c66030647f969:4672b93e4f711c7310560190e1458df8a711ef11",
+      "revId": "4672b93e4f711c7310560190e1458df8a711ef11",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
