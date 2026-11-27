@@ -500,15 +500,20 @@ ice_port_stop (vlib_main_t *vm, vnet_dev_port_t *port)
 }
 
 vnet_dev_rv_t
-ice_port_cfg_change_validate (vlib_main_t *vm __clib_unused, vnet_dev_port_t *port __clib_unused,
+ice_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,
 			      vnet_dev_port_cfg_change_req_t *req)
 {
+  vnet_dev_rv_t rv;
+
   switch (req->type)
     {
     case VNET_DEV_PORT_CFG_MAX_RX_FRAME_SIZE:
       return port->started ? VNET_DEV_ERR_PORT_STARTED : VNET_DEV_OK;
     case VNET_DEV_PORT_CFG_SET_RSS_CONFIG:
-      return ice_rss_validate_config (port, &req->rss_config);
+      rv = ice_rss_validate_config (port, &req->rss_config);
+      if (rv == VNET_DEV_OK)
+	rv = ice_rss_validate_fields (vm, port, &req->rss_config);
+      return rv;
     case VNET_DEV_PORT_CFG_SET_LINK_SPEED:
       {
 	ice_phy_type_low_t low;

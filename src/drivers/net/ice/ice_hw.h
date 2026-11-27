@@ -1269,7 +1269,9 @@ enum
 enum
 {
   ICE_PROT_IPV4_OUTER = 32,
+  ICE_PROT_IPV4_INNER = 33,
   ICE_PROT_IPV6_OUTER = 40,
+  ICE_PROT_IPV6_INNER = 41,
   ICE_PROT_TCP_INNER = 49,
   ICE_PROT_UDP_INNER = 53,
   ICE_PROT_SCTP_INNER = 96,
@@ -1614,6 +1616,13 @@ typedef union
   };
   u16 as_u16;
 } ice_aq_vsi_tc_mapping_t;
+
+enum
+{
+  ICE_AQ_VSI_Q_OPT_RSS_HASH_TOEPLITZ = 0,
+  ICE_AQ_VSI_Q_OPT_RSS_HASH_SYM_TOEPLITZ = 1,
+  ICE_AQ_VSI_Q_OPT_RSS_HASH_XOR = 2,
+};
 
 typedef union
 {
@@ -2804,6 +2813,17 @@ typedef union
 {
   struct
   {
+    u8 fv_word_index : 5;
+    u8 reserved : 2;
+    u8 enable : 1;
+  } words[4];
+  u32 as_u32;
+} ice_reg_glqf_hsymm_t;
+
+typedef union
+{
+  struct
+  {
     u32 word_index : 5;
     u32 reserved : 11;
     u32 mask : 16;
@@ -2813,6 +2833,7 @@ typedef union
 
 STATIC_ASSERT_SIZEOF (ice_reg_input_set_word_t, 1);
 STATIC_ASSERT_SIZEOF (ice_reg_glqf_hinset_t, 4);
+STATIC_ASSERT_SIZEOF (ice_reg_glqf_hsymm_t, 4);
 STATIC_ASSERT_SIZEOF (ice_reg_glqf_hmask_t, 4);
 STATIC_ASSERT_SIZEOF (ice_reg_pfqf_hlut_size_t, 4);
 STATIC_ASSERT_SIZEOF (ice_reg_glqf_hlut_size_t, 4);

@@ -401,6 +401,18 @@ ice_aq_get_vsi (vlib_main_t *vm, vnet_dev_t *dev, u16 vsi, ice_aqc_vsi_props_t *
 }
 
 vnet_dev_rv_t
+ice_aq_update_vsi (vlib_main_t *vm, vnet_dev_t *dev, u16 vsi, ice_aqc_vsi_props_t *props)
+{
+  ice_aq_desc_t d = {
+    .flags.read = 1,
+    .opcode = ICE_AQC_OP_UPDATE_VSI,
+    .params.vsi.vsi_num = { .number = vsi, .valid = 1, },
+  };
+
+  return ice_aq_send (vm, dev, &d, props, sizeof (*props), 1.0);
+}
+
+vnet_dev_rv_t
 ice_aq_free_vsi (vlib_main_t *vm, vnet_dev_t *dev, u16 vsi)
 {
   ice_aq_desc_t d = {
