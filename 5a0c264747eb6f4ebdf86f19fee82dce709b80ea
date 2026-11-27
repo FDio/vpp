@@ -35,6 +35,23 @@
       "parentUuid": "32ccd6ca_bf358f2b",
       "revId": "5a0c264747eb6f4ebdf86f19fee82dce709b80ea",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "55b5eed4_08f164e7",
+        "filename": "src/vppinfra/clib.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2026-11-27T14:02:43Z",
+      "side": 1,
+      "message": "Can you please make inline function ionstead, there is no reason this to be macro.\n\nAlso no need for mmio in name, i.e:\n\nstatic_always_inline\nclib_flush_store_buffers()\n{\n#if defined(__aarch64__)\n  asm volatile (\"dsb st\" ::: \"memory\");\n#else\n  CLIB_MEMORY_STORE_BARRIER ();\n#endif\n}",
+      "revId": "5a0c264747eb6f4ebdf86f19fee82dce709b80ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
     }
   ]
 }
