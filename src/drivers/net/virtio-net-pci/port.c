@@ -145,7 +145,6 @@ vnp_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 {
   vnp_dev_t *vd = vnet_dev_get_data (port->dev);
   vnp_port_t *vp = vnet_dev_get_port_data (port);
-  u16 n_rx = 0, n_tx = 0;
   vnet_dev_rv_t rv = vnp_negotiate (vm, port->dev);
 
   if (rv)
@@ -156,15 +155,6 @@ vnp_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
 
   foreach_vnet_dev_port_tx_queue (txq, port)
     vnp_txq_release (vm, vnet_dev_get_tx_queue_data (txq), txq->size);
-
-  foreach_vnet_dev_port_rx_queue (rxq, port)
-    n_rx++;
-
-  foreach_vnet_dev_port_tx_queue (txq, port)
-    n_tx++;
-
-  if (n_rx != n_tx || !n_rx)
-    return VNET_DEV_ERR_NOT_SUPPORTED;
 
   if (vd->control.size)
     {

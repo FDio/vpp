@@ -270,21 +270,24 @@ vnp_rss (vlib_main_t *vm, vnet_dev_port_t *port, const vnet_dev_rss_config_t *co
 {
   vnp_dev_t *vd = vnet_dev_get_data (port->dev);
   u8 payload[512] = {};
-  u16 n_queues = 0, lut_size = 128;
+  u16 n_rx = 0, n_tx = 0, pairs, lut_size = 128;
   virtio_net_rss_config_t *rss = (void *) payload;
   u16 *lut = rss->indirection_table;
   vnp_rss_tail_t *tail;
   u32 supported;
 
   foreach_vnet_dev_port_rx_queue (rxq, port)
-    n_queues++;
+    n_rx++;
+
+  foreach_vnet_dev_port_tx_queue (txq, port)
+    n_tx++;
+
+  /* as many pairs as the larger of rx and tx, rx queues beyond n_rx are not used */
+  pairs = clib_max (n_rx, n_tx);
 
   if (!(vd->features & VIRTIO_NET_F_RSS_BIT))
-    {
-      u16 pairs = n_queues;
-      return vnp_control (vm, port->dev, VIRTIO_NET_CTRL_MQ, VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET,
-			  &pairs, sizeof (pairs));
-    }
+    return vnp_control (vm, port->dev, VIRTIO_NET_CTRL_MQ, VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET, &pairs,
+			sizeof (pairs));
 
   lut_size = clib_min (lut_size, vd->config->rss_max_indirection_table_length);
 
@@ -296,10 +299,10 @@ vnp_rss (vlib_main_t *vm, vnet_dev_port_t *port, const vnet_dev_rss_config_t *co
   rss->indirection_table_mask = (lut_size - 1);
 
   for (u32 i = 0; i < lut_size; i++)
-    lut[i] = (config->set_lut ? config->lut[i] : i % n_queues);
+    lut[i] = (config->set_lut ? config->lut[i] : i % n_rx);
 
   tail = (void *) (lut + lut_size);
-  tail->max_tx_vq = n_queues;
+  tail->max_tx_vq = pairs;
   tail->hash_key_length = 40;
 
   for (u32 i = 0; i < 40; i++)
