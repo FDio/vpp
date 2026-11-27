@@ -272,9 +272,9 @@ Debugging
 Testing in a virtual machine
 ============================
 
-The ``extras/scripts/test-vm`` script builds a minimal, virtio-only guest
+The ``src/scripts/test-vm`` script builds a minimal, virtio-only guest
 kernel and initramfs which runs VPP inside QEMU/KVM with the host root
 filesystem shared into the guest. ``-n <n>`` adds data ``virtio-net-pci``
 devices attached to host tap interfaces and ``-i`` emulates an IOMMU (Intel
 IOMMU on x86_64, SMMUv3 on aarch64) and sets ``iommu_platform=on`` on the
-NICs. See the header of the script for its options.
+NICs. See :ref:`test_vm`.

@@ -187,7 +187,7 @@ calicovppversion
 /startup.vpp
 /install_manifest.txt
 
-# default test VM location, see extras/scripts/test-vm
+# default test VM location, see src/scripts/test-vm
 /tmp
 /vm
 

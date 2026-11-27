@@ -14,3 +14,4 @@ VPP extra tools
     vcl_ldpreload
     hs-test
     kube-test
+    test-vm
