@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4b8361b2_921e6a8f",
+        "filename": "test/hs-test/vcl_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 349,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-27T16:12:15Z",
+      "side": 1,
+      "message": "PS2 streams stdout and stderr to the client log through tee under bash -o pipefail. I confirmed both streams were present while a test producer was still running and the pipeline returned the producer\u0027s nonzero exit status.",
+      "parentUuid": "50e0dd60_792d1c51",
+      "revId": "df4f893f26860460fa6ed95874b6c9de4d5300ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8375aa52_1b7f51ba",
+        "filename": "test/hs-test/vcl_test.go",
+        "patchSetId": 2
+      },
+      "lineNbr": 357,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-27T16:12:15Z",
+      "side": 1,
+      "message": "Both runs now use a 32 KiB bidirectional data transfer and assert the exact echoed byte count from the client RX statistics. The reattach test and the adjacent VCL TCP test passed with one and three VPP CPUs.",
+      "parentUuid": "c9ea18e6_ae5a22c1",
+      "revId": "df4f893f26860460fa6ed95874b6c9de4d5300ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
