@@ -191,5 +191,18 @@ class TestInterfaceDumpApi(VppTestCase):
         self.assertEqual(len(rv), 3, "Expected 3 interfaces.")
 
 
+class TestInterfaceNodeRecycle(VppTestCase):
+    """Interface Node Recycle"""
+
+    vpp_worker_count = 1
+
+    def test_node_recycle_before_workers(self):
+        """Delete and recycle interface nodes before workers have them"""
+        reply = self.vapi.cli("test interface node-recycle")
+        self.assertIn("recycled nodes not yet on workers", reply)
+        reply = self.vapi.cli("test interface node-recycle verify")
+        self.assertIn("passed on 2 threads", reply)
+
+
 if __name__ == "__main__":
     unittest.main(testRunner=VppTestRunner)
