@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 import ctypes
 import ctypes.util
 import os
@@ -55,6 +56,31 @@ def is_ipv6_misc(p):
             if isinstance(o, RouterAlert):
                 return True
     return False
+
+
+class PcapReplay(Sequence):
+    """Serialize a fixed packet stream once and reuse its PCAP on later sends.
+
+    The packets remain available for verification and must stay unchanged
+    while the stream is in use.
+    """
+
+    def __init__(self, packets):
+        self._packets = list(packets)
+        self._pcap = None
+
+    def __len__(self):
+        return len(self._packets)
+
+    def __getitem__(self, index):
+        return self._packets[index]
+
+    def write_pcap(self, path):
+        if self._pcap is None:
+            wrpcap(path, self._packets)
+            self._pcap = Path(path).read_bytes()
+        else:
+            Path(path).write_bytes(self._pcap)
 
 
 class VppPGInterface(VppInterface):
@@ -265,13 +291,16 @@ class VppPGInterface(VppInterface):
         """
         Add a stream of packets to this packet-generator
 
-        :param pkts: iterable packets
+        :param pkts: iterable packets or a PcapReplay for a fixed stream
 
         """
         in_pcap = self.get_in_path(worker)
         if os.path.isfile(in_pcap):
             self.remove_old_pcap_file(in_pcap)
-        wrpcap(in_pcap, pkts)
+        if isinstance(pkts, PcapReplay):
+            pkts.write_pcap(in_pcap)
+        else:
+            wrpcap(in_pcap, pkts)
         self.test.register_pcap(self, worker)
         # FIXME this should be an API, but no such exists atm
         self.test.vapi.cli(self.get_input_cli(nb_replays, worker))

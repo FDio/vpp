@@ -28,6 +28,7 @@ from vpp_ip_route import (
     VppMplsLabel,
 )
 from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
+from vpp_pg_interface import PcapReplay
 from util import ppp, ppc
 from vpp_papi import VppEnum
 from config import config
@@ -1292,7 +1293,9 @@ class TestGRE(VppTestCase):
             #
             for ii in range(1, 4):
                 route_addr = "4.4.4.%d" % ii
-                tx_e = self.create_stream_ip4(self.pg0, "5.5.5.5", route_addr)
+                tx_e = PcapReplay(
+                    self.create_stream_ip4(self.pg0, "5.5.5.5", route_addr)
+                )
 
                 #
                 # route traffic via the peer
@@ -1332,12 +1335,14 @@ class TestGRE(VppTestCase):
                     self.pg0, rx, tx_e, itf.local_ip4, itf._remote_hosts[ii].ip4
                 )
 
-                tx_i = self.create_tunnel_stream_4o4(
-                    self.pg0,
-                    itf._remote_hosts[ii].ip4,
-                    itf.local_ip4,
-                    self.pg0.local_ip4,
-                    self.pg0.remote_ip4,
+                tx_i = PcapReplay(
+                    self.create_tunnel_stream_4o4(
+                        self.pg0,
+                        itf._remote_hosts[ii].ip4,
+                        itf.local_ip4,
+                        self.pg0.local_ip4,
+                        self.pg0.remote_ip4,
+                    )
                 )
                 rx = self.send_and_expect(self.pg0, tx_i, self.pg0)
                 self.verify_decapped_4o4(self.pg0, rx, tx_i)
@@ -1439,19 +1444,21 @@ class TestGRE(VppTestCase):
                 # Send a packet stream that is routed into the tunnel
                 #  - packets are GRE encapped
                 #
-                tx_e = self.create_stream_ip6(
-                    self.pg0, "5::5", route_addr, dscp=2, ecn=1
+                tx_e = PcapReplay(
+                    self.create_stream_ip6(self.pg0, "5::5", route_addr, dscp=2, ecn=1)
                 )
                 rx = self.send_and_expect(self.pg0, tx_e, itf)
                 self.verify_tunneled_6o6(
                     self.pg0, rx, tx_e, itf.local_ip6, itf._remote_hosts[ii].ip6, dscp=2
                 )
-                tx_i = self.create_tunnel_stream_6o6(
-                    self.pg0,
-                    itf._remote_hosts[ii].ip6,
-                    itf.local_ip6,
-                    self.pg0.local_ip6,
-                    self.pg0.remote_ip6,
+                tx_i = PcapReplay(
+                    self.create_tunnel_stream_6o6(
+                        self.pg0,
+                        itf._remote_hosts[ii].ip6,
+                        itf.local_ip6,
+                        self.pg0.local_ip6,
+                        self.pg0.remote_ip6,
+                    )
                 )
                 rx = self.send_and_expect(self.pg0, tx_i, self.pg0)
                 self.verify_decapped_6o6(self.pg0, rx, tx_i)

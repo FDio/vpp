@@ -16,6 +16,7 @@ import copy
 import platform
 import shutil
 from collections import deque
+from collections.abc import Sequence
 from threading import Thread, Event
 from inspect import getdoc, isclass
 from traceback import format_exception
@@ -86,7 +87,7 @@ class Send:
     def __init__(
         self,
         interface: VppPGInterface,
-        packets: list[Ether] | list[Packet] | Packet,
+        packets: Sequence[Packet] | Packet,
         worker: int | None = None,
     ):
         self.interface = interface
