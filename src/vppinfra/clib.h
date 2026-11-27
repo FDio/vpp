@@ -198,6 +198,17 @@
 #define CLIB_MMIO_WMB() CLIB_MEMORY_STORE_BARRIER ()
 #endif
 
+/* Flush stores from CPU write buffers. */
+static_always_inline void
+clib_flush_store_buffers (void)
+{
+#if defined(__aarch64__)
+  asm volatile ("dsb st" ::: "memory");
+#else
+  CLIB_MEMORY_STORE_BARRIER ();
+#endif
+}
+
 /* Arranges for function to be called before main. */
 #define INIT_FUNCTION(decl)			\
   decl __attribute ((constructor));		\
