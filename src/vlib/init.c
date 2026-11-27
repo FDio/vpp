@@ -440,8 +440,6 @@ vlib_call_all_config_functions (vlib_main_t * vm,
       hash_set1 (vgm->init_functions_called, c->function);
 
       error = c->function (vm, &c->input);
-      if (error)
-	goto done;
     }
 
 done:
