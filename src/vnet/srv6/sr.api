@@ -204,6 +204,7 @@ autoreply define sr_policy_mod_v2
 };
 
 /** \brief IPv6 SR policy deletion
+    Policies referenced by steering cannot be deleted; remove the steering first.
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param bsid is the bindingSID of the SR Policy

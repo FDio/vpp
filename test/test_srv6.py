@@ -31,6 +31,7 @@ from util import ppp
 CLASSIFY_VECTOR_BYTES = 16
 IPV6_DST_OFFSET = 24
 CLASSIFY_PREFIX = IPv6Network("a7::/16")
+API_INSTANCE_IN_USE = -147
 
 
 class TestSRv6(VppTestCase):
@@ -1650,6 +1651,78 @@ class TestSRv6(VppTestCase):
             received = self.send_and_expect(self.pg3, [packet], self.pg4)
             self.assertFalse(received[0].haslayer(IPv6ExtHdrSegmentRouting))
             self.assertEqual(received[0][IPv6].dst, packet[IPv6].dst)
+
+    def _sr_delete_in_use(self, traffic):
+        self.setup_interfaces(ipv6=[True, True], ipv4=[True, False])
+        VppIpRoute(
+            self, "a4::", 64, [VppRoutePath(self.pg1.remote_ip6, self.pg1.sw_if_index)]
+        ).add_vpp_config()
+        prefixes = {
+            SRv6PolicySteeringTypes.SR_STEER_L2: ("::", 0),
+            SRv6PolicySteeringTypes.SR_STEER_IPV4: ("7.1.1.0", 24),
+            SRv6PolicySteeringTypes.SR_STEER_IPV6: ("a7::", 64),
+        }
+        prefix, width = prefixes[traffic]
+        with ExitStack() as cleanup:
+            policy = VppSRv6PolicyV2(
+                self,
+                "a3::9999:1",
+                1,
+                SRv6PolicyType.SR_POLICY_TYPE_DEFAULT,
+                1,
+                0,
+                "a3::",
+                "a3::",
+            )
+            policy.add_vpp_config(segments=["a4::", "a5::", "a6::c7"])
+            cleanup.callback(policy.remove_vpp_config)
+            steering = VppSRv6Steering(
+                self, policy.bsid, prefix, width, traffic, 0, 0, self.pg0.sw_if_index
+            )
+            steering.add_vpp_config()
+            cleanup.callback(steering.remove_vpp_config)
+
+            # Dump before checking retval to expose any dangling reference.
+            reply = self.vapi.api(
+                self.vapi.papi.sr_policy_del,
+                {"bsid_addr": policy.bsid},
+                expected_retval=[0, API_INSTANCE_IN_USE],
+            )
+            entries = self.vapi.sr_steering_pol_dump()
+            self.assertEqual(reply.retval, API_INSTANCE_IN_USE)
+            self.assertEqual(len(entries), 1)
+            self.assertEqual(str(entries[0].bsid), policy.bsid)
+            reply = self.vapi.cli_return_response(f"sr policy del bsid {policy.bsid}")
+            self.assertNotEqual(reply.retval, 0)
+            self.assertIn("in use by steering", reply.reply)
+            self.assertTrue(policy.query_vpp_config())
+
+            if traffic == SRv6PolicySteeringTypes.SR_STEER_IPV4:
+                inner = IP(src="123.1.1.1", dst="7.1.1.123")
+            else:
+                inner = IPv6(src="1234::1", dst="a7::1234")
+            packet = (
+                Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac)
+                / inner
+                / UDP(sport=1234, dport=1234)
+                / Raw(b"policy in use")
+            )
+            received = self.send_and_expect(self.pg0, [packet], self.pg1)
+            self.assertTrue(received[0].haslayer(IPv6ExtHdrSegmentRouting))
+            self.assertEqual(received[0][IPv6].dst, "a4::")
+        self._assert_sr_clean()
+
+    def test_sr_delete_l2_in_use(self):
+        """Keep a policy referenced by L2 steering alive."""
+        self._sr_delete_in_use(SRv6PolicySteeringTypes.SR_STEER_L2)
+
+    def test_sr_delete_ip4_in_use(self):
+        """Keep a policy referenced by IPv4 steering alive."""
+        self._sr_delete_in_use(SRv6PolicySteeringTypes.SR_STEER_IPV4)
+
+    def test_sr_delete_ip6_in_use(self):
+        """Keep a policy referenced by IPv6 steering alive."""
+        self._sr_delete_in_use(SRv6PolicySteeringTypes.SR_STEER_IPV6)
 
     def _assert_sr_clean(self):
         self.assertFalse(self.vapi.sr_policies_v2_dump())

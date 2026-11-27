@@ -29,6 +29,7 @@
 
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
+#include <vnet/api_errno.h>
 #include <vnet/srv6/sr.h>
 #include <vnet/ip/ip4_inlines.h>
 #include <vnet/ip/ip6_inlines.h>
@@ -777,6 +778,17 @@ sr_policy_del (ip6_address_t * bsid, u32 index)
       sr_policy = pool_elt_at_index (sm->sr_policies, index);
     }
 
+  /* Steering keeps the policy index alive, including for API dumps. */
+  ip6_sr_steering_policy_t *steering;
+  u32 policy_index = sr_policy - sm->sr_policies;
+  pool_foreach (steering, sm->steer_policies)
+    {
+      if (steering->sr_policy == policy_index)
+	{
+	  return VNET_API_ERROR_INSTANCE_IN_USE;
+	}
+    }
+
   /* Remove BindingSID FIB entry */
   fib_prefix_t pfx = {
     .fp_proto = FIB_PROTOCOL_IP6,
@@ -1101,6 +1113,8 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 				"The SR policy could not be created.");
     case -13:
       return clib_error_return (0, "The specified FIB table does not exist.");
+    case VNET_API_ERROR_INSTANCE_IN_USE:
+      return clib_error_return (0, "SR policy is in use by steering; remove steering first.");
     case -21:
       return clib_error_return (0,
 				"The selected SR policy only contains ONE segment list. "
