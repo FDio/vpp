@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "119573f2_5a25b39c",
+        "filename": "src/vppinfra/clib.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-27T15:03:50Z",
+      "side": 1,
+      "message": "Done in PS3. RDMA and the native mlx5 driver now use clib_flush_store_buffers(). The x86-64 and Arm64 doorbell probes generated identical assembly before and after the change, including sfence and dsb st after the store.",
+      "parentUuid": "55b5eed4_08f164e7",
+      "revId": "7c42a0a88ac7c7ad64f53af73e59f9863347a4e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
