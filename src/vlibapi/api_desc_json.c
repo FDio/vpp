@@ -622,8 +622,9 @@ desc_fromjson_array (desc_fromjson_t *c, const vl_api_desc_type_t *t, const vl_a
     }
 
   {
-    int *e, n;
+    int *e;
     u32 i = 0, at;
+    uword n;
 
     if (!clib_json_value_is_array (c->j, item))
       return -1;
