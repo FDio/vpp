@@ -193,19 +193,32 @@ class TestVlib(VppTestCase):
                     self.logger.info(cmd + " FAIL retval " + str(r.retval))
 
     def test_vlib_main_unittest(self):
-        """Private Binary API Segment Test (takes 70 seconds)"""
+        """Reap a dead client of a private binary API segment"""
 
         vat_path = config.vpp + "_api_test"
         vat = pexpect.spawn(vat_path, ["socket-name", self.get_api_sock_path()])
-        vat.expect("vat# ", timeout=10)
+        self.addCleanup(vat.close, force=True)
+        vat.expect_exact("vat# ", timeout=10)
         vat.sendline("sock_init_shm")
-        vat.expect("vat# ", timeout=10)
-        vat.sendline("sh api cli")
+        vat.expect_exact("vat# ", timeout=10)
+        registration = ["vpp_api_test[shm]", str(vat.pid)]
+
+        def has_registration():
+            output = self.vapi.cli("show api clients")
+            return any(line.split()[:2] == registration for line in output.splitlines())
+
+        self.assertTrue(
+            has_registration(), "VAT did not register a shared-memory client"
+        )
         vat.kill(signal.SIGKILL)
         vat.wait()
-        self.logger.info("vat terminated, 70 second wait for the Reaper")
-        time.sleep(70)
-        self.logger.info("Reaper should be complete...")
+
+        deadline = time.monotonic() + 70
+        while has_registration():
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                self.fail(f"Shared-memory client {vat.pid} was not reaped")
+            time.sleep(min(0.5, remaining))
 
     def test_pool(self):
         """Fixed-size Pool Test"""
