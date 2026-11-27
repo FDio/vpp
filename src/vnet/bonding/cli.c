@@ -595,7 +595,7 @@ bond_create_command_fn (vlib_main_t *vm, cli_ctx_t *ctx)
 {
   bond_create_if_args_t args = {
     .id = cli_u64 (ctx, "id", ~0),
-    .mode = cli_index (ctx, "mode"),
+    .mode = cli_get (ctx, "mode")->index,
     .lb = BOND_LB_L2,
     .gso = cli_flag (ctx, "gso"),
     .numa_only = cli_flag (ctx, "numa-only"),
