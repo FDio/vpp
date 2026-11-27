@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "77592ae4_f70bec39",
+        "filename": "test/hs-test/http1_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 3615,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-27T17:35:44Z",
+      "side": 1,
+      "message": "premature response currently shows up as byte-count mismatch. workers share this assertion and their logs can interleave, so it’s hard to tell which case failed. please include request-line form and split byte offset or bytewise fragment index in both quiet-period assertion messages",
+      "revId": "b2418ed9f88fbb9144d206478b05cffcc68c3adc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "eb7b993e_c54515e8",
+        "filename": "test/hs-test/http1_test.go",
+        "patchSetId": 1
+      },
+      "lineNbr": 3666,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-27T17:35:44Z",
+      "side": 1,
+      "message": "if foreground HTTP/1.0 check fails, deferred Wait delays teardown until background sweeps finish. if background check fails, GinkgoRecover records failure, but foreground can still reach echo checks. please cancel group on the first failure, close active connections to unblock pending I/O before joining, and skip echo checks if any split check failed",
+      "revId": "b2418ed9f88fbb9144d206478b05cffcc68c3adc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
