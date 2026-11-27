@@ -487,6 +487,70 @@ typedef struct
 
 STATIC_ASSERT_SIZEOF (virtchnl_rss_lut_t, 6);
 
+typedef enum
+{
+  VIRTCHNL_RSS_ALG_TOEPLITZ_ASYMMETRIC = 0,
+} virtchnl_rss_algorithm_t;
+
+typedef enum
+{
+  VIRTCHNL_PROTO_HDR_NONE = 0,
+  VIRTCHNL_PROTO_HDR_ETH = 1,
+  VIRTCHNL_PROTO_HDR_S_VLAN = 2,
+  VIRTCHNL_PROTO_HDR_C_VLAN = 3,
+  VIRTCHNL_PROTO_HDR_IPV4 = 4,
+  VIRTCHNL_PROTO_HDR_IPV6 = 5,
+  VIRTCHNL_PROTO_HDR_TCP = 6,
+  VIRTCHNL_PROTO_HDR_UDP = 7,
+  VIRTCHNL_PROTO_HDR_SCTP = 8,
+  VIRTCHNL_PROTO_HDR_IPV4_FRAG = 22,
+  VIRTCHNL_PROTO_HDR_IPV6_EH_FRAG = 23,
+  VIRTCHNL_PROTO_HDR_GRE = 24,
+} virtchnl_proto_hdr_type_t;
+
+/* field_selector bits of the IPv4, IPv6, TCP, UDP and SCTP headers */
+#define VIRTCHNL_PROTO_HDR_FIELD_SRC (1 << 0)
+#define VIRTCHNL_PROTO_HDR_FIELD_DST (1 << 1)
+
+#define VIRTCHNL_MAX_NUM_PROTO_HDRS 32
+
+typedef struct
+{
+  i32 type;
+  u32 field_selector;
+  u8 buffer[64];
+} virtchnl_proto_hdr_t;
+
+STATIC_ASSERT_SIZEOF (virtchnl_proto_hdr_t, 72);
+
+typedef struct
+{
+  u8 tunnel_level;
+  u8 pad[3];
+  u32 count;
+  virtchnl_proto_hdr_t proto_hdr[VIRTCHNL_MAX_NUM_PROTO_HDRS];
+} virtchnl_proto_hdrs_t;
+
+STATIC_ASSERT_SIZEOF (virtchnl_proto_hdrs_t, 2312);
+
+/* VIRTCHNL_OP_SET_RSS_HENA */
+typedef struct
+{
+  u64 hena;
+} virtchnl_rss_hena_t;
+
+STATIC_ASSERT_SIZEOF (virtchnl_rss_hena_t, 8);
+
+/* VIRTCHNL_OP_ADD_RSS_CFG */
+typedef struct
+{
+  virtchnl_proto_hdrs_t proto_hdrs;
+  i32 rss_algorithm;
+  u8 reserved[128];
+} virtchnl_rss_cfg_t;
+
+STATIC_ASSERT_SIZEOF (virtchnl_rss_cfg_t, 2444);
+
 /* VIRTCHNL_OP_REQUEST_QUEUES */
 typedef struct
 {

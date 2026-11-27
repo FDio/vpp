@@ -166,6 +166,42 @@ iavf_vc_op_config_rss_key (vlib_main_t *vm, vnet_dev_t *dev,
 }
 
 static_always_inline vnet_dev_rv_t
+iavf_vc_op_add_rss_cfg (vlib_main_t *vm, vnet_dev_t *dev, const virtchnl_rss_cfg_t *req)
+{
+  iavf_virtchnl_req_t vr = {
+    .op = VIRTCHNL_OP_ADD_RSS_CFG,
+    .req = req,
+    .req_sz = sizeof (*req),
+  };
+
+  return iavf_virtchnl_req (vm, dev, &vr);
+}
+
+static_always_inline vnet_dev_rv_t
+iavf_vc_op_set_rss_hena (vlib_main_t *vm, vnet_dev_t *dev, const virtchnl_rss_hena_t *req)
+{
+  iavf_virtchnl_req_t vr = {
+    .op = VIRTCHNL_OP_SET_RSS_HENA,
+    .req = req,
+    .req_sz = sizeof (*req),
+  };
+
+  return iavf_virtchnl_req (vm, dev, &vr);
+}
+
+static_always_inline vnet_dev_rv_t
+iavf_vc_op_del_rss_cfg (vlib_main_t *vm, vnet_dev_t *dev, const virtchnl_rss_cfg_t *req)
+{
+  iavf_virtchnl_req_t vr = {
+    .op = VIRTCHNL_OP_DEL_RSS_CFG,
+    .req = req,
+    .req_sz = sizeof (*req),
+  };
+
+  return iavf_virtchnl_req (vm, dev, &vr);
+}
+
+static_always_inline vnet_dev_rv_t
 iavf_vc_op_config_promisc_mode (vlib_main_t *vm, vnet_dev_t *dev,
 				const virtchnl_promisc_info_t *req)
 {

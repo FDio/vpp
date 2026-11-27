@@ -17,13 +17,6 @@ VLIB_REGISTER_LOG_CLASS (iavf_log, static) = {
   .subclass_name = "port",
 };
 
-static const u8 default_rss_key[] = {
-  0x44, 0x39, 0x79, 0x6b, 0xb5, 0x4c, 0x50, 0x23, 0xb6, 0x75, 0xea, 0x5b, 0x12,
-  0x4f, 0x9f, 0x30, 0xb8, 0xa2, 0xc0, 0x3d, 0xdf, 0xdc, 0x4d, 0x02, 0xa0, 0x8c,
-  0x9b, 0x33, 0x4a, 0xf6, 0x4a, 0x4c, 0x05, 0xc6, 0xfa, 0x34, 0x39, 0x58, 0xd8,
-  0x55, 0x7d, 0x99, 0x58, 0x3a, 0xe1, 0x38, 0xc9, 0x2e, 0x81, 0x15, 0x03, 0x66,
-};
-
 const static iavf_dyn_ctl dyn_ctln_disabled = {};
 const static iavf_dyn_ctl dyn_ctln_enabled = {
   .intena = 1,
@@ -73,31 +66,311 @@ iavf_port_vlan_strip_disable (vlib_main_t *vm, vnet_dev_port_t *port)
   return rv;
 }
 
+static vnet_dev_rv_t
+iavf_port_set_rss_key (vlib_main_t *vm, vnet_dev_port_t *port, const vnet_dev_rss_config_t *cfg)
+{
+  iavf_port_t *ap = vnet_dev_get_port_data (port);
+  u8 buffer[VIRTCHNL_MSG_SZ (virtchnl_rss_key_t, key, IAVF_MAX_RSS_KEY_SIZE)];
+  virtchnl_rss_key_t *key = (virtchnl_rss_key_t *) buffer;
+
+  ASSERT (cfg->key_len <= IAVF_MAX_RSS_KEY_SIZE);
+
+  *key = (virtchnl_rss_key_t) {
+    .vsi_id = ap->vsi_id,
+    .key_len = cfg->key_len,
+  };
+
+  clib_memcpy (key->key, cfg->key, cfg->key_len);
+
+  return iavf_vc_op_config_rss_key (vm, port->dev, key);
+}
+
+static const struct
+{
+  virtchnl_proto_hdr_type_t l3, l4;
+} iavf_rss_class_hdrs[VNET_DEV_RSS_N_CLASSES] = {
+  [VNET_DEV_RSS_CLASS_IP4] = { .l3 = VIRTCHNL_PROTO_HDR_IPV4, },
+  [VNET_DEV_RSS_CLASS_IP4_TCP] = { .l3 = VIRTCHNL_PROTO_HDR_IPV4, .l4 = VIRTCHNL_PROTO_HDR_TCP, },
+  [VNET_DEV_RSS_CLASS_IP4_UDP] = { .l3 = VIRTCHNL_PROTO_HDR_IPV4, .l4 = VIRTCHNL_PROTO_HDR_UDP, },
+  [VNET_DEV_RSS_CLASS_IP4_SCTP] = { .l3 = VIRTCHNL_PROTO_HDR_IPV4, .l4 = VIRTCHNL_PROTO_HDR_SCTP, },
+  [VNET_DEV_RSS_CLASS_IP6] = { .l3 = VIRTCHNL_PROTO_HDR_IPV6, },
+  [VNET_DEV_RSS_CLASS_IP6_TCP] = { .l3 = VIRTCHNL_PROTO_HDR_IPV6, .l4 = VIRTCHNL_PROTO_HDR_TCP, },
+  [VNET_DEV_RSS_CLASS_IP6_UDP] = { .l3 = VIRTCHNL_PROTO_HDR_IPV6, .l4 = VIRTCHNL_PROTO_HDR_UDP, },
+  [VNET_DEV_RSS_CLASS_IP6_SCTP] = { .l3 = VIRTCHNL_PROTO_HDR_IPV6, .l4 = VIRTCHNL_PROTO_HDR_SCTP, },
+};
+
+/* fields of the class which apply to its headers */
+static vnet_dev_rss_fields_t
+iavf_rss_class_fields (const vnet_dev_rss_config_t *cfg, vnet_dev_rss_class_t class)
+{
+  vnet_dev_rss_fields_t f = vnet_dev_rss_class_fields (cfg, class);
+
+  if (iavf_rss_class_hdrs[class].l4 == VIRTCHNL_PROTO_HDR_NONE)
+    f.as_u32 &= VNET_DEV_RSS_FIELDS_2_TUPLE;
+  else
+    f.as_u32 &= VNET_DEV_RSS_FIELDS_4_TUPLE;
+
+  return f;
+}
+
+static const virtchnl_proto_hdr_type_t iavf_rss_tunnel_outer[VNET_DEV_RSS_N_CLASSES] = {
+  [VNET_DEV_RSS_CLASS_IP4_IPIP_GRE] = VIRTCHNL_PROTO_HDR_IPV4,
+  [VNET_DEV_RSS_CLASS_IP6_IPIP_GRE] = VIRTCHNL_PROTO_HDR_IPV6,
+};
+
+/* fields programmed for a tunnel class, only inner ones get a config of their own */
+static vnet_dev_rss_fields_t
+iavf_rss_tunnel_fields (const vnet_dev_rss_config_t *cfg, vnet_dev_rss_class_t class)
+{
+  vnet_dev_rss_fields_t f = vnet_dev_rss_class_fields (cfg, class);
+
+  if (f.inner == 0)
+    return (vnet_dev_rss_fields_t) {};
+
+  f.as_u32 &= IAVF_RSS_TUNNEL_FIELDS;
+  return f;
+}
+
+/* the PF rejects a config without fields, so every class needs at least one field. Tunnels
+ * without inner are hashed by the config of the outer ip class, so they can only take its
+ * fields. */
+static vnet_dev_rv_t
+iavf_port_validate_rss_fields (vnet_dev_port_t *port, const vnet_dev_rss_config_t *req)
+{
+  vnet_dev_rss_config_t cfg = port->rss_config;
+
+  if (!vnet_dev_rss_caps_has_fields (&port->attr.rss_caps))
+    return VNET_DEV_OK;
+
+  vnet_dev_rss_config_merge (&cfg, req);
+
+  for (u32 i = 0; i < VNET_DEV_RSS_N_CLASSES; i++)
+    {
+      vnet_dev_rss_fields_t f;
+
+      if (iavf_rss_class_hdrs[i].l3 && iavf_rss_class_fields (&cfg, i).as_u32 == 0)
+	return VNET_DEV_ERR_NOT_SUPPORTED;
+
+      if (iavf_rss_tunnel_outer[i] == VIRTCHNL_PROTO_HDR_NONE)
+	continue;
+
+      f = vnet_dev_rss_class_fields (&cfg, i);
+      if (f.inner && (f.as_u32 & VNET_DEV_RSS_FIELDS_4_TUPLE) == 0)
+	return VNET_DEV_ERR_NOT_SUPPORTED;
+
+      if (f.inner == 0 && (f.as_u32 & VNET_DEV_RSS_FIELDS_2_TUPLE) !=
+			    iavf_rss_class_fields (&cfg, vnet_dev_rss_class_parent (i)).as_u32)
+	return VNET_DEV_ERR_NOT_SUPPORTED;
+    }
+
+  return VNET_DEV_OK;
+}
+
+static vnet_dev_rv_t
+iavf_port_set_rss_class (vlib_main_t *vm, vnet_dev_port_t *port, vnet_dev_rss_class_t class,
+			 vnet_dev_rss_fields_t f)
+{
+  /* L2 headers without fields in front, as the DPDK driver sends them: without them the ice PF
+   * files the config with its own default RSS and doesn't apply one equal to the default */
+  virtchnl_rss_cfg_t msg = {
+    .proto_hdrs = {
+      .count = 4,
+      .proto_hdr = {
+        { .type = VIRTCHNL_PROTO_HDR_ETH, },
+        { .type = VIRTCHNL_PROTO_HDR_S_VLAN, },
+        { .type = VIRTCHNL_PROTO_HDR_C_VLAN, },
+      },
+    },
+    .rss_algorithm = VIRTCHNL_RSS_ALG_TOEPLITZ_ASYMMETRIC,
+  };
+  virtchnl_proto_hdr_t *h = msg.proto_hdrs.proto_hdr;
+  vnet_dev_rv_t rv;
+
+  h[3] = (virtchnl_proto_hdr_t) {
+    .type = iavf_rss_class_hdrs[class].l3,
+    .field_selector =
+      (f.src_ip ? VIRTCHNL_PROTO_HDR_FIELD_SRC : 0) | (f.dst_ip ? VIRTCHNL_PROTO_HDR_FIELD_DST : 0),
+  };
+
+  if (iavf_rss_class_hdrs[class].l4 != VIRTCHNL_PROTO_HDR_NONE)
+    {
+      h[4] = (virtchnl_proto_hdr_t) {
+	.type = iavf_rss_class_hdrs[class].l4,
+	.field_selector = (f.src_port ? VIRTCHNL_PROTO_HDR_FIELD_SRC : 0) |
+			  (f.dst_port ? VIRTCHNL_PROTO_HDR_FIELD_DST : 0),
+      };
+      msg.proto_hdrs.count = 5;
+    }
+
+  rv = iavf_vc_op_add_rss_cfg (vm, port->dev, &msg);
+
+  /* fragments, the first one included, hash with the ip class so they stay on one queue. The PF
+   * only takes a fragment config with the fragment packet id (field 0 of the fragment header),
+   * which is also hashed */
+  if (rv == VNET_DEV_OK && iavf_rss_class_hdrs[class].l4 == VIRTCHNL_PROTO_HDR_NONE)
+    {
+      virtchnl_proto_hdr_type_t frag = VIRTCHNL_PROTO_HDR_IPV6_EH_FRAG;
+
+      if (iavf_rss_class_hdrs[class].l3 == VIRTCHNL_PROTO_HDR_IPV4)
+	frag = VIRTCHNL_PROTO_HDR_IPV4_FRAG;
+      h[4] = (virtchnl_proto_hdr_t) { .type = frag, .field_selector = 1 };
+      msg.proto_hdrs.count = 5;
+      rv = iavf_vc_op_add_rss_cfg (vm, port->dev, &msg);
+    }
+
+  if (rv)
+    log_err (port->dev, "failed to set rss class %U fields %U: %U", format_vnet_dev_rss_class,
+	     class, format_vnet_dev_rss_fields, f, format_vnet_dev_rv, rv);
+
+  return rv;
+}
+
+/* inner headers are selected by a GRE header after an outer ip header without fields, the PF
+ * applies such a config to the IP-in-IP and GRE packet types of that outer ip version */
+static vnet_dev_rv_t
+iavf_port_set_rss_tunnel (vlib_main_t *vm, vnet_dev_port_t *port, vnet_dev_rss_class_t class,
+			  vnet_dev_rss_fields_t f, int add)
+{
+  static const virtchnl_proto_hdr_type_t inner_l3[] = {
+    VIRTCHNL_PROTO_HDR_IPV4,
+    VIRTCHNL_PROTO_HDR_IPV6,
+  };
+  static const virtchnl_proto_hdr_type_t inner_l4[] = {
+    VIRTCHNL_PROTO_HDR_NONE,
+    VIRTCHNL_PROTO_HDR_TCP,
+    VIRTCHNL_PROTO_HDR_UDP,
+    VIRTCHNL_PROTO_HDR_SCTP,
+  };
+  u32 l3_sel =
+    (f.src_ip ? VIRTCHNL_PROTO_HDR_FIELD_SRC : 0) | (f.dst_ip ? VIRTCHNL_PROTO_HDR_FIELD_DST : 0);
+  u32 l4_sel = (f.src_port ? VIRTCHNL_PROTO_HDR_FIELD_SRC : 0) |
+	       (f.dst_port ? VIRTCHNL_PROTO_HDR_FIELD_DST : 0);
+  vnet_dev_rv_t rv;
+
+  for (u32 i = 0; i < ARRAY_LEN (inner_l3); i++)
+    for (u32 j = 0; j < ARRAY_LEN (inner_l4); j++)
+      {
+	virtchnl_rss_cfg_t msg = {
+	  .proto_hdrs = {
+	    .count = 3,
+	    .proto_hdr = {
+	      { .type = iavf_rss_tunnel_outer[class], },
+	      { .type = VIRTCHNL_PROTO_HDR_GRE, },
+	      { .type = inner_l3[i], .field_selector = l3_sel, },
+	      { .type = inner_l4[j], .field_selector = l4_sel, },
+	    },
+	  },
+	  .rss_algorithm = VIRTCHNL_RSS_ALG_TOEPLITZ_ASYMMETRIC,
+	};
+
+	if (inner_l4[j] != VIRTCHNL_PROTO_HDR_NONE)
+	  {
+	    if (l4_sel == 0)
+	      continue;
+	    msg.proto_hdrs.count = 4;
+	  }
+	else if (l3_sel == 0)
+	  continue;
+
+	if (add)
+	  rv = iavf_vc_op_add_rss_cfg (vm, port->dev, &msg);
+	else
+	  rv = iavf_vc_op_del_rss_cfg (vm, port->dev, &msg);
+
+	if (rv)
+	  {
+	    log_err (port->dev, "failed to %s rss class %U fields %U: %U", add ? "set" : "remove",
+		     format_vnet_dev_rss_class, class, format_vnet_dev_rss_fields, f,
+		     format_vnet_dev_rv, rv);
+	    return rv;
+	  }
+      }
+
+  return VNET_DEV_OK;
+}
+
+/* sends the classes whose fields changed, a TCP, UDP or SCTP class after its IP class so the
+ * more specific config wins */
+static vnet_dev_rv_t
+iavf_port_set_rss_fields (vlib_main_t *vm, vnet_dev_port_t *port, const vnet_dev_rss_config_t *cfg)
+{
+  iavf_port_t *ap = vnet_dev_get_port_data (port);
+  vnet_dev_rv_t rv;
+
+  if (!vnet_dev_rss_caps_has_fields (&port->attr.rss_caps))
+    return VNET_DEV_OK;
+
+  for (u32 i = 0; i < VNET_DEV_RSS_N_CLASSES; i++)
+    {
+      vnet_dev_rss_fields_t f;
+
+      if (iavf_rss_class_hdrs[i].l3 == VIRTCHNL_PROTO_HDR_NONE)
+	continue;
+
+      f = iavf_rss_class_fields (cfg, i);
+      if (ap->rss_fields[i].as_u32 == f.as_u32)
+	continue;
+
+      rv = iavf_port_set_rss_class (vm, port, i, f);
+      if (rv)
+	return rv;
+
+      ap->rss_fields[i] = f;
+    }
+
+  for (u32 i = 0; i < VNET_DEV_RSS_N_CLASSES; i++)
+    {
+      vnet_dev_rss_fields_t f;
+
+      if (iavf_rss_tunnel_outer[i] == VIRTCHNL_PROTO_HDR_NONE)
+	continue;
+
+      f = iavf_rss_tunnel_fields (cfg, i);
+      if (ap->rss_fields[i].as_u32 == f.as_u32)
+	continue;
+
+      if (ap->rss_fields[i].inner)
+	{
+	  rv = iavf_port_set_rss_tunnel (vm, port, i, ap->rss_fields[i], 0);
+	  if (rv)
+	    return rv;
+	  ap->rss_fields[i] = (vnet_dev_rss_fields_t) {};
+	}
+
+      if (f.inner)
+	{
+	  rv = iavf_port_set_rss_tunnel (vm, port, i, f, 1);
+	  if (rv)
+	    return rv;
+	  ap->rss_fields[i] = f;
+	}
+    }
+
+  return VNET_DEV_OK;
+}
+
 vnet_dev_rv_t
 iavf_port_init_rss (vlib_main_t *vm, vnet_dev_port_t *port)
 {
-  vnet_dev_t *dev = port->dev;
-  iavf_port_t *ap = vnet_dev_get_port_data (port);
-  u16 keylen = clib_min (sizeof (default_rss_key), ap->rss_key_size);
-  u8 buffer[VIRTCHNL_MSG_SZ (virtchnl_rss_key_t, key, keylen)];
-  virtchnl_rss_key_t *key = (virtchnl_rss_key_t *) buffer;
+  vnet_dev_rv_t rv;
 
   if (!port->attr.caps.rss)
     return VNET_DEV_OK;
 
-  /* config RSS key */
-  *key = (virtchnl_rss_key_t){
-    .vsi_id = ap->vsi_id,
-    .key_len = keylen,
-  };
+  rv = iavf_port_set_rss_key (vm, port, &port->rss_config);
+  if (rv || !vnet_dev_rss_caps_has_fields (&port->attr.rss_caps))
+    return rv;
 
-  clib_memcpy (key->key, default_rss_key, keylen);
+  /* the default RSS of the PF overrides the hash fields of some classes, remove it as the DPDK
+   * driver does, a PF which can't is not fatal */
+  if (iavf_vc_op_set_rss_hena (vm, port->dev, &(virtchnl_rss_hena_t) {}))
+    log_warn (port->dev, "PF failed to remove its default RSS");
 
-  return iavf_vc_op_config_rss_key (vm, dev, key);
+  return iavf_port_set_rss_fields (vm, port, &port->rss_config);
 }
 
-vnet_dev_rv_t
-iavf_port_update_rss_lut (vlib_main_t *vm, vnet_dev_port_t *port)
+static vnet_dev_rv_t
+iavf_port_update_rss_lut (vlib_main_t *vm, vnet_dev_port_t *port, const vnet_dev_rss_config_t *cfg)
 {
   vnet_dev_t *dev = port->dev;
   iavf_port_t *ap = vnet_dev_get_port_data (port);
@@ -119,13 +392,17 @@ iavf_port_update_rss_lut (vlib_main_t *vm, vnet_dev_port_t *port)
       enabled_rxq_bmp |= 1ULL << q->queue_id;
 
   /* config RSS LUT */
-  for (u32 i = 0, j; i < lut->lut_entries;)
-    foreach_set_bit_index (j, enabled_rxq_bmp)
-      {
-	lut->lut[i++] = j;
-	if (i >= lut->lut_entries)
-	  break;
-      }
+  if (cfg->set_lut)
+    for (u32 i = 0; i < lut->lut_entries; i++)
+      lut->lut[i] = cfg->lut[i];
+  else
+    for (u32 i = 0, j; i < lut->lut_entries;)
+      foreach_set_bit_index (j, enabled_rxq_bmp)
+	{
+	  lut->lut[i++] = j;
+	  if (i >= lut->lut_entries)
+	    break;
+	}
 
   return iavf_vc_op_config_rss_lut (vm, dev, lut);
 }
@@ -253,7 +530,7 @@ iavf_port_rx_irq_config (vlib_main_t *vm, vnet_dev_port_t *port, int enable)
     }
   else
     {
-      im->vecmap[0] = (virtchnl_vector_map_t){
+      im->vecmap[0] = (virtchnl_vector_map_t) {
 	.vsi_id = ap->vsi_id,
 	.vector_id = 1,
       };
@@ -393,7 +670,7 @@ iavf_port_start (vlib_main_t *vm, vnet_dev_port_t *port)
     if ((rv = iavf_tx_queue_start (vm, q)))
       goto done;
 
-  if ((rv = iavf_port_update_rss_lut (vm, port)))
+  if ((rv = iavf_port_update_rss_lut (vm, port, &port->rss_config)))
     goto done;
 
   /* configure qpairs */
@@ -460,6 +737,19 @@ iavf_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,
     case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_DISABLE:
       break;
 
+    case VNET_DEV_PORT_CFG_SET_RSS_CONFIG:
+      {
+	iavf_port_t *ap = vnet_dev_get_port_data (port);
+	vnet_dev_rss_config_t *cfg = &req->rss_config;
+
+	if ((cfg->set_key && cfg->key_len != clib_min (IAVF_MAX_RSS_KEY_SIZE, ap->rss_key_size)) ||
+	    (cfg->set_lut && cfg->lut_len != clib_min (IAVF_MAX_RSS_LUT_SIZE, ap->rss_lut_size)))
+	  rv = VNET_DEV_ERR_INVALID_DATA;
+	else
+	  rv = iavf_port_validate_rss_fields (port, cfg);
+      }
+      break;
+
     default:
       rv = VNET_DEV_ERR_NOT_SUPPORTED;
     };
@@ -468,15 +758,14 @@ iavf_port_cfg_change_validate (vlib_main_t *vm, vnet_dev_port_t *port,
 }
 
 static vnet_dev_rv_t
-iavf_port_add_del_eth_addr (vlib_main_t *vm, vnet_dev_port_t *port,
-			    vnet_dev_hw_addr_t *addr, int is_add,
-			    int is_primary)
+iavf_port_add_del_eth_addr (vlib_main_t *vm, vnet_dev_port_t *port, vnet_dev_hw_addr_t *addr,
+			    int is_add, int is_primary)
 {
   iavf_port_t *ap = vnet_dev_get_port_data (port);
   u8 buffer[VIRTCHNL_MSG_SZ (virtchnl_ether_addr_list_t, list, 1)];
   virtchnl_ether_addr_list_t *al = (virtchnl_ether_addr_list_t *) buffer;
 
-  *al = (virtchnl_ether_addr_list_t){
+  *al = (virtchnl_ether_addr_list_t) {
     .vsi_id = ap->vsi_id,
     .num_elements = 1,
     .list[0].primary = is_primary ? 1 : 0,
@@ -585,6 +874,22 @@ iavf_port_cfg_change (vlib_main_t *vm, vnet_dev_port_t *port,
       break;
 
     case VNET_DEV_PORT_CFG_MAX_RX_FRAME_SIZE:
+      break;
+
+    case VNET_DEV_PORT_CFG_SET_RSS_CONFIG:
+      if (req->rss_config.set_key)
+	rv = iavf_port_set_rss_key (vm, port, &req->rss_config);
+      if (rv == VNET_DEV_OK && req->rss_config.set_lut && port->started)
+	rv = iavf_port_update_rss_lut (vm, port, &req->rss_config);
+      if (rv == VNET_DEV_OK)
+	{
+	  vnet_dev_rss_config_t cfg = port->rss_config;
+
+	  vnet_dev_rss_config_merge (&cfg, &req->rss_config);
+	  rv = iavf_port_set_rss_fields (vm, port, &cfg);
+	  if (rv)
+	    iavf_port_set_rss_fields (vm, port, &port->rss_config);
+	}
       break;
 
     case VNET_DEV_PORT_CFG_RXQ_INTR_MODE_ENABLE:

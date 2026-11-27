@@ -17,6 +17,13 @@ VLIB_REGISTER_LOG_CLASS (iavf_log, static) = {
   .subclass_name = "init",
 };
 
+static const u8 default_rss_key[] = {
+  0x44, 0x39, 0x79, 0x6b, 0xb5, 0x4c, 0x50, 0x23, 0xb6, 0x75, 0xea, 0x5b, 0x12,
+  0x4f, 0x9f, 0x30, 0xb8, 0xa2, 0xc0, 0x3d, 0xdf, 0xdc, 0x4d, 0x02, 0xa0, 0x8c,
+  0x9b, 0x33, 0x4a, 0xf6, 0x4a, 0x4c, 0x05, 0xc6, 0xfa, 0x34, 0x39, 0x58, 0xd8,
+  0x55, 0x7d, 0x99, 0x58, 0x3a, 0xe1, 0x38, 0xc9, 0x2e, 0x81, 0x15, 0x03, 0x66,
+};
+
 #define IAVF_MAX_QPAIRS 32
 
 static clib_arg_t iavf_dev_args[] = {
@@ -423,7 +430,32 @@ iavf_init (vlib_main_t *vm, vnet_dev_t *dev)
 	}
       else
 	{
+	  vnet_dev_rss_config_t *cfg = &port_add_args.port.default_rss_config;
+
 	  port_add_args.port.attr.caps.rss = 1;
+
+	  if (res.vf_cap_flags & VIRTCHNL_VF_OFFLOAD_ADV_RSS_PF)
+	    {
+	      port_add_args.port.attr.rss_caps = (vnet_dev_rss_caps_t){
+		.classes = {
+		  [VNET_DEV_RSS_CLASS_IP4] = VNET_DEV_RSS_CLASS_CAPS_ANY (VNET_DEV_RSS_FIELDS_4_TUPLE, 0),
+		  [VNET_DEV_RSS_CLASS_IP4_TCP] = VNET_DEV_RSS_CLASS_CAPS_ANY (VNET_DEV_RSS_FIELDS_4_TUPLE, 0),
+		  [VNET_DEV_RSS_CLASS_IP4_UDP] = VNET_DEV_RSS_CLASS_CAPS_ANY (VNET_DEV_RSS_FIELDS_4_TUPLE, 0),
+		  [VNET_DEV_RSS_CLASS_IP4_SCTP] = VNET_DEV_RSS_CLASS_CAPS_ANY (VNET_DEV_RSS_FIELDS_4_TUPLE, 0),
+		  [VNET_DEV_RSS_CLASS_IP6] = VNET_DEV_RSS_CLASS_CAPS_ANY (VNET_DEV_RSS_FIELDS_4_TUPLE, 0),
+		  [VNET_DEV_RSS_CLASS_IP6_TCP] = VNET_DEV_RSS_CLASS_CAPS_ANY (VNET_DEV_RSS_FIELDS_4_TUPLE, 0),
+		  [VNET_DEV_RSS_CLASS_IP6_UDP] = VNET_DEV_RSS_CLASS_CAPS_ANY (VNET_DEV_RSS_FIELDS_4_TUPLE, 0),
+		  [VNET_DEV_RSS_CLASS_IP6_SCTP] = VNET_DEV_RSS_CLASS_CAPS_ANY (VNET_DEV_RSS_FIELDS_4_TUPLE, 0),
+		  [VNET_DEV_RSS_CLASS_IP4_IPIP_GRE] = VNET_DEV_RSS_CLASS_CAPS_ANY (IAVF_RSS_TUNNEL_FIELDS, 0),
+		  [VNET_DEV_RSS_CLASS_IP6_IPIP_GRE] = VNET_DEV_RSS_CLASS_CAPS_ANY (IAVF_RSS_TUNNEL_FIELDS, 0),
+		},
+		.functions = VNET_DEV_RSS_FUNCTION (TOEPLITZ),
+	      };
+	    }
+
+	  cfg->key_len = clib_min (sizeof (default_rss_key), res.rss_key_size);
+	  cfg->set_key = 1;
+	  clib_memcpy (cfg->key, default_rss_key, cfg->key_len);
 	  if (res.rss_lut_size > IAVF_MAX_RSS_LUT_SIZE)
 	    log_notice (dev, "device supports bigger RSS LUT than driver");
 	}
