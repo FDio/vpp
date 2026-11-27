@@ -554,6 +554,7 @@ mlx5_txq_enq (vlib_main_t *vm, vnet_dev_tx_queue_t *txq, u32 *from, u32 n_left, 
       __atomic_store_n (&tq->dv_sq_dbrec[MLX5_SND_DBR], clib_host_to_net_u32 (tail),
 			__ATOMIC_RELEASE);
       __atomic_store_n (&tq->dv_sq_db[0], *(u64 *) wqe, __ATOMIC_RELEASE);
+      clib_flush_store_buffers ();
       tq->tail = tail;
       tq->buf_tail = buf_tail;
     }
