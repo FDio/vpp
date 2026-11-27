@@ -1105,13 +1105,17 @@ VLIB_CLI_COMMAND (enable_disable_memory_trace_command, static) = {
 static clib_error_t *
 save_memory_trace (vlib_main_t *vm, cli_ctx_t *ctx)
 {
-  char *file = (char *) format (0, "%v%c", cli_get (ctx, "filename")->str, 0), *chroot_file;
+  cli_value_t *filename = cli_get (ctx, "filename");
+  char *file = (char *) format (0, "%v%c", filename->str, 0), *chroot_file;
   uword was_enabled;
   clib_mem_trace_t *t, *mem_traces = 0;
   clib_json_text_t j;
   int i;
   FILE *fp;
   u8 *json_str;
+
+  /* Release the parser's temporary filename before taking the snapshot. */
+  vec_free (filename->str);
 
   /* It's fairly hard to get "../oopsie" through unformat; just in case */
   if (strstr (file, "..") || strchr (file, '/'))
