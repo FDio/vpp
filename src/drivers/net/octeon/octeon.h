@@ -234,6 +234,7 @@ typedef struct
 {
   u32 sw_if_index;
   u32 next_index;
+  u16 queue_id;
   oct_nix_rx_cqe_desc_t desc;
 } oct_rx_trace_t;
 

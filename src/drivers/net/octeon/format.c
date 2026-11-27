@@ -101,9 +101,8 @@ format_oct_rx_trace (u8 *s, va_list *args)
   oct_rx_trace_t *t = va_arg (*args, oct_rx_trace_t *);
   u32 indent = format_get_indent (s);
 
-  s = format (s, "octeon-rx: next-node %U sw_if_index %u",
-	      format_vlib_next_node_name, vm, node->index, t->next_index,
-	      t->sw_if_index);
+  s = format (s, "octeon-rx: next-node %U sw_if_index %u queue %u", format_vlib_next_node_name, vm,
+	      node->index, t->next_index, t->sw_if_index, t->queue_id);
   s = format (s, "\n%U%U", format_white_space, indent + 2,
 	      format_oct_nix_rx_cqe_desc, &t->desc);
   return s;

@@ -15,6 +15,7 @@ typedef struct
   u32 hw_if_index;
   u32 trace_count;
   u32 n_traced;
+  u16 queue_id;
   oct_nix_rx_cqe_desc_t *next_desc;
   u64 parse_w0_or;
   u32 n_left_to_next;
@@ -365,6 +366,7 @@ oct_rx_trace (vlib_main_t *vm, vlib_node_runtime_t *node,
 	  oct_rx_trace_t *tr = vlib_add_trace (vm, node, b, sizeof (*tr));
 	  tr->next_index = ctx->next_index;
 	  tr->sw_if_index = ctx->sw_if_index;
+	  tr->queue_id = ctx->queue_id;
 	  tr->desc = d[i];
 	  ctx->n_traced++;
 	}
@@ -389,6 +391,7 @@ oct_rx_node_inline (vlib_main_t *vm, vlib_node_runtime_t *node,
     .next_index = vnet_dev_get_rx_queue_if_next_index(rxq),
     .sw_if_index = vnet_dev_get_rx_queue_if_sw_if_index (rxq),
     .hw_if_index = vnet_dev_get_rx_queue_if_hw_if_index (rxq),
+    .queue_id = rxq->queue_id,
   }, *ctx = &_ctx;
 
   /* get head and tail from NIX_LF_CQ_OP_STATUS */
