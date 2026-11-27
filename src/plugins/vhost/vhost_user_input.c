@@ -68,6 +68,7 @@ extern vlib_node_registration_t vhost_user_input_node;
   _ (UNDERSIZED_FRAME, "undersized ethernet frame received")                                       \
   _ (BAD_CSUM_START, "invalid checksum start offset received")                                     \
   _ (BAD_GSO_SIZE, "invalid gso size received")                                                    \
+  _ (BAD_DESC_IDX, "invalid descriptor index")                                                     \
   _ (NOT_READY, "vhost interface not ready or down")                                               \
   _ (FULL_RX_QUEUE, "full rx queue (possible driver tx drop)")
 
@@ -92,7 +93,7 @@ vhost_user_rx_trace (vhost_trace_t * t,
 		     u16 last_avail_idx)
 {
   vhost_user_main_t *vum = &vhost_user_main;
-  u32 desc_current = txvq->avail->ring[last_avail_idx & txvq->qsz_mask];
+  u32 desc_current = txvq->avail->ring[last_avail_idx & txvq->qsz_mask] & txvq->qsz_mask;
   vnet_virtio_vring_desc_t *hdr_desc = 0;
   vnet_virtio_net_hdr_mrg_rxbuf_t *hdr;
   u32 hint = 0;
@@ -586,6 +587,7 @@ vhost_user_if_input (vlib_main_t *vm, vhost_user_main_t *vum,
       u16 desc_current;
       u32 desc_data_offset;
       vnet_virtio_vring_desc_t *desc_table = txvq->desc;
+      u32 desc_max = mask;
 
       if (PREDICT_FALSE (cpu->rx_buffers_len <= 1))
 	{
@@ -613,6 +615,12 @@ vhost_user_if_input (vlib_main_t *vm, vhost_user_main_t *vum,
       txvq->used->ring[last_used_idx & mask].len = 0;
       vhost_user_log_dirty_ring (vui, txvq, ring[last_used_idx & mask]);
 
+      if (PREDICT_FALSE (desc_current > desc_max))
+	{
+	  vlib_error_count (vm, node->node_index, VHOST_USER_INPUT_FUNC_ERROR_BAD_DESC_IDX, 1);
+	  goto out;
+	}
+
       /* The buffer should already be initialized */
       b_head->total_length_not_including_first_buffer = 0;
       b_head->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
@@ -630,6 +638,7 @@ vhost_user_if_input (vlib_main_t *vm, vhost_user_main_t *vum,
 	    }
 	  desc_table = map_guest_mem (vui, txvq->desc[desc_current].addr,
 				      txvq->desc[desc_current].len, &map_hint);
+	  desc_max = (txvq->desc[desc_current].len >> 4) - 1;
 	  desc_current = 0;
 	  if (PREDICT_FALSE (desc_table == 0))
 	    {
@@ -662,6 +671,12 @@ vhost_user_if_input (vlib_main_t *vm, vhost_user_main_t *vum,
 		  (desc_table[desc_current].flags & VRING_DESC_F_NEXT))
 		{
 		  current = desc_table[desc_current].next;
+		  if (PREDICT_FALSE (current > desc_max))
+		    {
+		      vlib_error_count (vm, node->node_index,
+					VHOST_USER_INPUT_FUNC_ERROR_BAD_DESC_IDX, 1);
+		      goto out;
+		    }
 		  b_data = map_guest_mem (vui, desc_table[current].addr, desc_table[current].len,
 					  &map_hint);
 		  if (PREDICT_FALSE (b_data == 0))
@@ -694,6 +709,12 @@ vhost_user_if_input (vlib_main_t *vm, vhost_user_main_t *vum,
 				 VRING_DESC_F_NEXT))
 		{
 		  desc_current = desc_table[desc_current].next;
+		  if (PREDICT_FALSE (desc_current > desc_max))
+		    {
+		      vlib_error_count (vm, node->node_index,
+					VHOST_USER_INPUT_FUNC_ERROR_BAD_DESC_IDX, 1);
+		      goto out;
+		    }
 		  desc_data_offset = 0;
 		}
 	      else

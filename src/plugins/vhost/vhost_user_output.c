@@ -48,14 +48,15 @@
 
 extern vnet_device_class_t vhost_user_device_class;
 
-#define foreach_vhost_user_tx_func_error      \
-  _(NONE, "no error")  \
-  _(NOT_READY, "vhost vring not ready")  \
-  _(DOWN, "vhost interface is down")  \
-  _(PKT_DROP_NOBUF, "tx packet drops (no available descriptors)")  \
-  _(PKT_DROP_NOMRG, "tx packet drops (cannot merge descriptors)")  \
-  _(MMAP_FAIL, "mmap failure") \
-  _(INDIRECT_OVERFLOW, "indirect descriptor table overflow")
+#define foreach_vhost_user_tx_func_error                                                           \
+  _ (NONE, "no error")                                                                             \
+  _ (NOT_READY, "vhost vring not ready")                                                           \
+  _ (DOWN, "vhost interface is down")                                                              \
+  _ (PKT_DROP_NOBUF, "tx packet drops (no available descriptors)")                                 \
+  _ (PKT_DROP_NOMRG, "tx packet drops (cannot merge descriptors)")                                 \
+  _ (MMAP_FAIL, "mmap failure")                                                                    \
+  _ (BAD_DESC_IDX, "invalid descriptor index")                                                     \
+  _ (INDIRECT_OVERFLOW, "indirect descriptor table overflow")
 
 typedef enum
 {
@@ -115,7 +116,7 @@ vhost_user_tx_trace (vhost_trace_t * t,
 {
   vhost_user_main_t *vum = &vhost_user_main;
   u32 last_avail_idx = rxvq->last_avail_idx;
-  u32 desc_current = rxvq->avail->ring[last_avail_idx & rxvq->qsz_mask];
+  u32 desc_current = rxvq->avail->ring[last_avail_idx & rxvq->qsz_mask] & rxvq->qsz_mask;
   vnet_virtio_vring_desc_t *hdr_desc = 0;
   u32 hint = 0;
 
@@ -731,6 +732,7 @@ retry:
       vlib_buffer_t *b0, *current_b0;
       u16 desc_head, desc_index, desc_len;
       vnet_virtio_vring_desc_t *desc_table;
+      u32 desc_max = rxvq->qsz_mask;
       uword buffer_map_addr;
       u32 buffer_len;
       u16 bytes_left;
@@ -756,6 +758,11 @@ retry:
       desc_table = rxvq->desc;
       desc_head = desc_index =
 	rxvq->avail->ring[rxvq->last_avail_idx & rxvq->qsz_mask];
+      if (PREDICT_FALSE (desc_head > desc_max))
+	{
+	  error = VHOST_USER_TX_FUNC_ERROR_BAD_DESC_IDX;
+	  goto done;
+	}
 
       /* Go deeper in case of indirect descriptor
        * I don't know of any driver providing indirect for RX. */
@@ -773,6 +780,7 @@ retry:
 	      error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
 	      goto done;
 	    }
+	  desc_max = (rxvq->desc[desc_head].len >> 4) - 1;
 	  desc_index = 0;
 	}
 
@@ -817,6 +825,11 @@ retry:
 		{
 		  //Next one is chained
 		  desc_index = desc_table[desc_index].next;
+		  if (PREDICT_FALSE (desc_index > desc_max))
+		    {
+		      error = VHOST_USER_TX_FUNC_ERROR_BAD_DESC_IDX;
+		      goto done;
+		    }
 		  buffer_map_addr = desc_table[desc_index].addr;
 		  buffer_len = desc_table[desc_index].len;
 		}
@@ -850,8 +863,14 @@ retry:
 		    }
 
 		  desc_table = rxvq->desc;
+		  desc_max = rxvq->qsz_mask;
 		  desc_head = desc_index =
 		    rxvq->avail->ring[rxvq->last_avail_idx & rxvq->qsz_mask];
+		  if (PREDICT_FALSE (desc_head > desc_max))
+		    {
+		      error = VHOST_USER_TX_FUNC_ERROR_BAD_DESC_IDX;
+		      goto done;
+		    }
 		  if (PREDICT_FALSE
 		      (rxvq->desc[desc_head].flags & VRING_DESC_F_INDIRECT))
 		    {
@@ -870,6 +889,7 @@ retry:
 			  error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
 			  goto done;
 			}
+		      desc_max = (rxvq->desc[desc_head].len >> 4) - 1;
 		      desc_index = 0;
 		    }
 		  buffer_map_addr = desc_table[desc_index].addr;
