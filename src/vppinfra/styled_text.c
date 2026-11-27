@@ -690,7 +690,7 @@ st_vadd (styled_text_t *t, const styled_text_role_t *mark, char *fmt, va_list *v
   if (*seg)
     t->string = va_format (t->string, seg, va);
 
-  while (n_open--)
+  for (; n_open; n_open--)
     styled_text_end (t);
 
   vec_free (copy);
