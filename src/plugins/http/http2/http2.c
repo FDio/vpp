@@ -37,7 +37,7 @@ static http_token_t http2_ext_connect_proto[] = { { http_token_lit ("bug") },
 
 typedef void (*http2_rx_expect_cb) (http_ctx_t *hc);
 
-static void http2_update_time_callback (f64 now, u8 thread_index);
+void http2_update_time_callback (f64 now, u8 thread_index);
 
 always_inline void
 http2_send_client_preface (http_ctx_t *hc)
@@ -1181,7 +1181,7 @@ http2_req_setup_server_tunnel (http_ctx_t *req, http_ctx_t *hc)
   vec_free (req->headers);
 }
 
-static int
+__clib_export int
 http2_sched_dispatch_postponed_headers (http_ctx_t *req, http_ctx_t *hc, u8 *n_emissions,
 					clib_llist_index_t *next_ri)
 {
@@ -1669,7 +1669,7 @@ http2_sched_dispatch_ctrl_msg (http_ctrl_msg_t *ctrl_msg, http_ctx_t *hc, u32 *f
   return 0;
 }
 
-static void
+__clib_export void
 http2_update_time_callback (f64 now, u8 thread_index)
 {
   http_worker_t *wrk = http_worker_get (thread_index);
@@ -1695,13 +1695,31 @@ http2_update_time_callback (f64 now, u8 thread_index)
       ASSERT (!(hc->flags & HTTP_CONN_F_TS_DESCHED));
       clib_llist_remove (wrk->ctx_pool, sched_list, hc);
 
-      ctrl_he = clib_llist_elt (wrk->ctrl_msg_pool, hc->pending_ctrl_frames);
       new_he = clib_llist_elt (wrk->ctx_pool, hc->new_tx_streams);
       old_he = clib_llist_elt (wrk->ctx_pool, hc->old_tx_streams);
 
-      fifo_space = http_io_ts_max_write (hc, 0);
+      /* active header block must reach END_HEADERS before any other frame */
+      if (PREDICT_FALSE (hc->unsent_headers != 0))
+	{
+	  req = clib_llist_next (wrk->ctx_pool, stream_sched_list, new_he);
+	  if (req != new_he && req->dispatch_headers_cb == http2_sched_dispatch_continuation)
+	    {
+	      ASSERT (hc->flags & HTTP_CONN_F_HAS_REQUEST);
+	      while (hc->unsent_headers)
+		{
+		  if (http_io_ts_check_write_thresh (hc) ||
+		      n_emissions >= HTTP2_SCHED_MAX_EMISSIONS)
+		    goto tx_done;
+		  if (PREDICT_FALSE (
+			http2_sched_dispatch_continuation (req, hc, &n_emissions, &ri)))
+		    goto tx_done;
+		}
+	    }
+	}
 
-      /* first handle control frames */
+      /* handle control frames before starting new header blocks */
+      fifo_space = http_io_ts_max_write (hc, 0);
+      ctrl_he = clib_llist_elt (wrk->ctrl_msg_pool, hc->pending_ctrl_frames);
       ctrl_msg = clib_llist_next (wrk->ctrl_msg_pool, sched_list, ctrl_he);
       while (ctrl_msg != ctrl_he && n_ctrl_msgs < HTTP2_SCHED_MAX_CTRL_MSGS)
 	{
@@ -1714,7 +1732,7 @@ http2_update_time_callback (f64 now, u8 thread_index)
 	  n_ctrl_msgs++;
 	}
 
-      /* second new responses/requests (headers frame) */
+      /* send new responses/requests (HEADERS frames) */
       ri = clib_llist_next_index (new_he, stream_sched_list);
       while (ri != hc->new_tx_streams && !http_io_ts_check_write_thresh (hc) &&
 	     n_emissions < HTTP2_SCHED_MAX_EMISSIONS)
@@ -1723,9 +1741,7 @@ http2_update_time_callback (f64 now, u8 thread_index)
 	  req = clib_llist_elt (wrk->ctx_pool, ri);
 	  HTTP_DBG (1, "sending headers req_index %x",
 		    ((http_req_handle_t) req->hr_req_handle).req_index);
-	  /* tx can fail if ts tx fifo is under memory pressure, in this case we should stop sending
-	   * because fragmented headrs need to be sent in sequence or we have unsent headers in
-	   * connection ctx */
+	  /* Stop if the transport FIFO cannot buffer the next header fragment. */
 	  if (PREDICT_FALSE (req->dispatch_headers_cb (req, hc, &n_emissions, &ri)))
 	    goto tx_done;
 	}
@@ -1748,6 +1764,8 @@ http2_update_time_callback (f64 now, u8 thread_index)
 	    clib_llist_remove (wrk->ctx_pool, sched_list, hc);
 	  return;
 	}
+      /* header dispatch can enqueue RST_STREAM and relocate control pool */
+      ctrl_he = clib_llist_elt (wrk->ctrl_msg_pool, hc->pending_ctrl_frames);
       /* reschedule connection if something is waiting in queue */
       if (!clib_llist_is_empty (wrk->ctx_pool, stream_sched_list, new_he) ||
 	  ((hc->peer_window > 0 || retry_data) &&
