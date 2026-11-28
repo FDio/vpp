@@ -4203,6 +4203,142 @@ done:
 #undef SCHED_TEST
 }
 
+static int
+http_test_h2_continuation_scheduling (vlib_main_t *vm)
+{
+  session_enable_disable_args_t session_args = { .is_en = 1 };
+  fifo_segment_main_t fsm = {};
+  fifo_segment_create_args_t args = {
+    .segment_type = SSVM_SEGMENT_PRIVATE,
+    .segment_size = 1 << 20,
+    .segment_name = "http2-continuation-scheduling",
+  };
+  session_update_time_fn run_scheduler;
+  typeof (((http_ctx_t *) 0)->dispatch_headers_cb) dispatch_headers;
+  typeof (http2_frame_header_read) *read_frame_header;
+  http_main_t *hm;
+  http_worker_t *wrk, saved_worker;
+  fifo_segment_t *fs;
+  svm_fifo_t *fifo;
+  session_t *ts;
+  http_ctx_t *hc, *req;
+  http_ctrl_msg_t *ctrl_msg;
+  clib_llist_index_t new_head, old_head, hc_index;
+  clib_error_t *error;
+  /* HPACK for GET http://x/. Use a small frame payload to split the block. */
+  u8 headers[] = { 0x82, 0x86, 0x84, 0x01, 0x01, 'x' };
+  u8 ping_payload[HTTP2_PING_PAYLOAD_LEN] = { 1, 2, 3, 4, 5, 6, 7, 8 };
+  u8 fragment[HTTP2_FRAME_HEADER_SIZE + sizeof (headers) / 2], ping[HTTP2_PING_FRAME_SIZE];
+  http2_frame_header_t fh;
+  int result = 1;
+
+  hm = vlib_get_plugin_symbol ("http_plugin.so", "http_main");
+  run_scheduler = vlib_get_plugin_symbol ("http_plugin.so", "http2_update_time_callback");
+  dispatch_headers =
+    vlib_get_plugin_symbol ("http_plugin.so", "http2_sched_dispatch_postponed_headers");
+  read_frame_header = vlib_get_plugin_symbol ("http_plugin.so", "http2_frame_header_read");
+  HTTP_TEST (hm && run_scheduler && dispatch_headers && read_frame_header,
+	     "HTTP/2 scheduler test symbols resolved");
+  error = vnet_session_enable_disable (vm, &session_args);
+  if (error)
+    {
+      clib_error_report (error);
+      return 1;
+    }
+  fifo_segment_main_init (&fsm, 0, 5);
+  if (!HTTP_TEST_I (!fifo_segment_create (&fsm, &args), "scheduler test segment allocated"))
+    goto free_segment_pool;
+  fs = fifo_segment_get_segment (&fsm, args.new_segment_indices[0]);
+  fifo = fifo_segment_alloc_fifo_w_slice (fs, 0, HTTP_FIFO_THRESH, FIFO_SEGMENT_TX_FIFO);
+  if (!HTTP_TEST_I (fifo != 0, "scheduler test TX FIFO allocated"))
+    goto free_segment;
+
+  ts = session_alloc (vm->thread_index);
+  ts->tx_fifo = fifo;
+  /* The fixture drains the FIFO directly. Suppress transport TX events. */
+  svm_fifo_set_event (fifo);
+  vlib_worker_thread_barrier_sync (vm);
+  wrk = &hm->wrk[vm->thread_index];
+  saved_worker = *wrk;
+  *wrk = (http_worker_t) {};
+  wrk->sched_head = clib_llist_make_head (wrk->ctx_pool, sched_list);
+  new_head = clib_llist_make_head (wrk->ctx_pool, stream_sched_list);
+  old_head = clib_llist_make_head (wrk->ctx_pool, stream_sched_list);
+  pool_get_zero (wrk->ctx_pool, hc);
+  hc_index = hc - wrk->ctx_pool;
+  pool_get_zero (wrk->ctx_pool, req);
+  hc = pool_elt_at_index (wrk->ctx_pool, hc_index);
+  hc->c_thread_index = vm->thread_index;
+  hc->hc_tc_session_handle = session_handle (ts);
+  hc->flags = HTTP_CONN_F_HAS_REQUEST;
+  hc->peer_settings.max_frame_size = sizeof (headers) / 2;
+  hc->sched_list.next = hc->sched_list.prev = CLIB_LLIST_INVALID_INDEX;
+  hc->new_tx_streams = new_head;
+  hc->old_tx_streams = old_head;
+  hc->pending_ctrl_frames = clib_llist_make_head (wrk->ctrl_msg_pool, sched_list);
+  vec_add (hc->unsent_headers, headers, sizeof (headers));
+  req->stream_id = clib_host_to_net_u32 (1);
+  req->dispatch_headers_cb = dispatch_headers;
+  clib_llist_add_tail (wrk->ctx_pool, stream_sched_list, req,
+		       clib_llist_elt (wrk->ctx_pool, new_head));
+  http2_conn_schedule_w_worker (wrk, hc);
+
+  /* One fragment drops free FIFO space below the scheduler's threshold. */
+  run_scheduler (vlib_time_now (vm), vm->thread_index);
+  if (!HTTP_TEST_I (svm_fifo_dequeue (fifo, sizeof (fragment), fragment) == sizeof (fragment),
+		    "first scheduler pass emitted a header fragment"))
+    goto done;
+  read_frame_header (fragment, &fh);
+  if (!HTTP_TEST_I (fh.type == HTTP2_FRAME_TYPE_HEADERS && fh.stream_id == req->stream_id &&
+		      !(fh.flags & HTTP2_FRAME_FLAG_END_HEADERS) && !svm_fifo_max_dequeue (fifo) &&
+		      (hc->flags & HTTP_CONN_F_TS_DESCHED),
+		    "HEADERS remain open after the first scheduler pass"))
+    goto done;
+
+  clib_llist_get (wrk->ctrl_msg_pool, ctrl_msg);
+  ctrl_msg->msg_type = HTTP_CTRL_MSG_PING_RESPONSE;
+  clib_memcpy (ctrl_msg->ping_payload, ping_payload, sizeof (ping_payload));
+  clib_llist_add_tail (wrk->ctrl_msg_pool, sched_list, ctrl_msg,
+		       clib_llist_elt (wrk->ctrl_msg_pool, hc->pending_ctrl_frames));
+  /* Resume after the transport FIFO drain. */
+  hc->flags &= ~HTTP_CONN_F_TS_DESCHED;
+  http2_conn_schedule_w_worker (wrk, hc);
+  run_scheduler (vlib_time_now (vm), vm->thread_index);
+  if (!HTTP_TEST_I (svm_fifo_dequeue (fifo, sizeof (fragment), fragment) == sizeof (fragment),
+		    "second scheduler pass emitted a frame"))
+    goto done;
+  read_frame_header (fragment, &fh);
+  if (!HTTP_TEST_I (fh.type == HTTP2_FRAME_TYPE_CONTINUATION && fh.stream_id == req->stream_id &&
+		      (fh.flags & HTTP2_FRAME_FLAG_END_HEADERS),
+		    "final CONTINUATION precedes the queued PING ACK"))
+    goto done;
+  if (!HTTP_TEST_I (svm_fifo_dequeue (fifo, sizeof (ping), ping) == sizeof (ping),
+		    "PING ACK follows END_HEADERS"))
+    goto done;
+  read_frame_header (ping, &fh);
+  result =
+    !HTTP_TEST_I (fh.type == HTTP2_FRAME_TYPE_PING && fh.flags == HTTP2_FRAME_FLAG_ACK &&
+		    !fh.stream_id && fh.length == sizeof (ping_payload) &&
+		    !memcmp (ping + HTTP2_FRAME_HEADER_SIZE, ping_payload, sizeof (ping_payload)) &&
+		    !svm_fifo_max_dequeue (fifo),
+		  "queued PING acknowledged after the header block");
+
+done:
+  vec_free (hc->unsent_headers);
+  pool_free (wrk->ctx_pool);
+  pool_free (wrk->ctrl_msg_pool);
+  *wrk = saved_worker;
+  vlib_worker_thread_barrier_release (vm);
+  session_free (ts);
+  fifo_segment_free_fifo (fs, fifo);
+free_segment:
+  fifo_segment_delete (&fsm, fs);
+free_segment_pool:
+  vec_free (args.new_segment_indices);
+  pool_free (fsm.segments);
+  return result;
+}
+
 /* Exercise the real app callbacks through the registered HTTP transport. */
 static int
 http_test_h2_app_cancel_close (vlib_main_t *vm)
@@ -6062,6 +6198,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_h2_window_update_scheduling (vm);
       else if (unformat (input, "h2-data-scheduling"))
 	res = http_test_h2_data_scheduling (vm);
+      else if (unformat (input, "h2-continuation-scheduling"))
+	res = http_test_h2_continuation_scheduling (vm);
       else if (unformat (input, "h2-app-cancel-close"))
 	res = http_test_h2_app_cancel_close (vm);
       else if (unformat (input, "h3-streaming-lifecycle"))
@@ -6123,6 +6261,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  if ((res = http_test_h2_window_update_scheduling (vm)))
 	    goto done;
 	  if ((res = http_test_h2_data_scheduling (vm)))
+	    goto done;
+	  if ((res = http_test_h2_continuation_scheduling (vm)))
 	    goto done;
 	  if ((res = http_test_h2_app_cancel_close (vm)))
 	    goto done;
