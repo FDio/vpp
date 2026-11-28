@@ -488,6 +488,40 @@ hpack_parse_trailers (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
   return hpack_error_to_http2_error[rv];
 }
 
+/* Requests whose headers don't fit the buffer are rejected without closing the connection, so the
+ * rest of their field block must still be decoded to keep the dynamic table in sync with the peer's
+ * encoder (RFC 9113 Section 10.5.1). Decoded strings are at most twice their encoded length and
+ * names and values copied from the tables are at most the dynamic table size or 64 bytes, so the
+ * scratch buffer fits any remaining field */
+static hpack_error_t
+hpack_decode_request_header (u8 **src, u8 *end, u8 **buf, uword *buf_len, u32 *name_len,
+			     u32 *value_len, void *decoder_ctx, u8 *never_index)
+{
+  hpack_dynamic_table_t *dt = (hpack_dynamic_table_t *) decoder_ctx;
+  u8 *p = *src, *scratch = 0, *b, ni;
+  hpack_error_t rv;
+  uword b_left;
+  u32 nl, vl;
+
+  rv = hpack_decode_header (src, end, buf, buf_len, name_len, value_len, decoder_ctx, never_index);
+  if (rv != HPACK_ERROR_UNKNOWN)
+    return rv;
+
+  /* Out of space, decode the field again and the rest of the block into the scratch buffer */
+  vec_validate (scratch, 2 * (end - p) + clib_max (dt->max_size, 64));
+  do
+    {
+      b = scratch;
+      b_left = vec_len (scratch);
+      rv = hpack_decode_header (&p, end, &b, &b_left, &nl, &vl, decoder_ctx, &ni);
+    }
+  while (!rv && p != end);
+  vec_free (scratch);
+
+  /* Still too large for the request */
+  return rv ? rv : HPACK_ERROR_UNKNOWN;
+}
+
 __clib_export http2_error_t
 hpack_parse_request (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
 		     hpack_request_control_data_t *control_data,
@@ -495,9 +529,8 @@ hpack_parse_request (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
 		     hpack_dynamic_table_t *dynamic_table)
 {
   hpack_error_t rv;
-  rv = hpack_decode_request (src, src + src_len, dst, dst_len, control_data,
-			     headers, (void *) dynamic_table,
-			     hpack_decode_header);
+  rv = hpack_decode_request (src, src + src_len, dst, dst_len, control_data, headers,
+			     (void *) dynamic_table, hpack_decode_request_header);
   HTTP_DBG (3, "%U", format_hpack_dynamic_table, dynamic_table);
   return hpack_error_to_http2_error[rv];
 }

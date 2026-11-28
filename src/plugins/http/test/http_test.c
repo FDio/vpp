@@ -2105,6 +2105,61 @@ http_test_hpack (vlib_main_t *vm)
 }
 
 static int
+http_test_hpack_too_large (vlib_main_t *vm)
+{
+  static http2_error_t (*parse) (
+    u8 * src, u32 src_len, u8 * dst, u32 dst_len, hpack_request_control_data_t * control_data,
+    http_field_line_t * *headers, hpack_dynamic_table_t * dynamic_table);
+  static void (*table_init) (hpack_dynamic_table_t * table, u32 max_size);
+  static void (*table_free) (hpack_dynamic_table_t * table);
+  /* GET http://www.example.com/ with the authority added to the dynamic table */
+  u8 req_start[] = { 0x82, 0x86, 0x84, 0x41, 0x0f, 'w', 'w', 'w', '.', 'e',
+		     'x',  'a',	 'm',  'p',  'l',  'e', '.', 'c', 'o', 'm' };
+  /* never indexed x-big with a 300 byte value */
+  u8 big_start[] = { 0x10, 0x05, 'x', '-', 'b', 'i', 'g', 0x7f, 0xad, 0x01 };
+  /* x-sync: ok added to the dynamic table */
+  u8 sync[] = { 0x40, 0x06, 'x', '-', 's', 'y', 'n', 'c', 0x02, 'o', 'k' };
+  /* the authority and x-sync from the dynamic table */
+  u8 next_req[] = { 0x82, 0x86, 0x84, 0xbf, 0xbe };
+  hpack_request_control_data_t control_data;
+  http_field_line_t *headers = 0;
+  hpack_dynamic_table_t table;
+  u8 *req = 0, *buf = 0;
+  http2_error_t rv;
+
+  parse = vlib_get_plugin_symbol ("http_plugin.so", "hpack_parse_request");
+  table_init = vlib_get_plugin_symbol ("http_plugin.so", "hpack_dynamic_table_init");
+  table_free = vlib_get_plugin_symbol ("http_plugin.so", "hpack_dynamic_table_free");
+
+  vec_add (req, req_start, sizeof (req_start));
+  vec_add (req, big_start, sizeof (big_start));
+  vec_validate_init_empty (req, vec_len (req) + 299, 'a');
+  vec_add (req, sync, sizeof (sync));
+  vec_validate (buf, 254);
+  table_init (&table, 4096);
+
+  rv = parse (req, vec_len (req), buf, vec_len (buf), &control_data, &headers, &table);
+  HTTP_TEST ((rv == HTTP2_ERROR_INTERNAL_ERROR), "headers too large (rv %U)", format_http2_error,
+	     rv);
+  HTTP_TEST ((table.used == 57 + 40),
+	     "fields after the one that doesn't fit still added to the dynamic table (used %u)",
+	     table.used);
+
+  vec_reset_length (headers);
+  rv = parse (next_req, sizeof (next_req), buf, vec_len (buf), &control_data, &headers, &table);
+  HTTP_TEST ((rv == HTTP2_ERROR_NO_ERROR && control_data.authority_len == 15 &&
+	      vec_len (headers) == 1 && headers[0].name_len == 6 &&
+	      !memcmp (control_data.headers + headers[0].name_offset, "x-sync", 6)),
+	     "next request decodes the dynamic table entries (rv %U)", format_http2_error, rv);
+
+  table_free (&table);
+  vec_free (headers);
+  vec_free (req);
+  vec_free (buf);
+  return 0;
+}
+
+static int
 http_test_h2_frame (vlib_main_t *vm)
 {
   static void (*_http2_frame_header_read) (u8 * src,
@@ -6024,6 +6079,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_http_token_is_case (vm);
       else if (unformat (input, "header-table"))
 	res = http_test_http_header_table (vm);
+      else if (unformat (input, "hpack-too-large"))
+	res = http_test_hpack_too_large (vm);
       else if (unformat (input, "hpack"))
 	res = http_test_hpack (vm);
       else if (unformat (input, "h2-frame"))
@@ -6085,6 +6142,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  if ((res = http_test_http_header_table (vm)))
 	    goto done;
 	  if ((res = http_test_hpack (vm)))
+	    goto done;
+	  if ((res = http_test_hpack_too_large (vm)))
 	    goto done;
 	  if ((res = http_test_h2_frame (vm)))
 	    goto done;
