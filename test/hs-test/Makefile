@@ -247,8 +247,9 @@ help:
 
 .PHONY: list-tests
 list-tests:
-	@go run github.com/onsi/ginkgo/v2/ginkgo --dry-run -v --no-color --seed=2 | head -n -1 | grep 'test.go' | \
-		sed 's/^/* /; s/\(Suite\) /\1\//g'
+	@out=$$(go run github.com/onsi/ginkgo/v2/ginkgo --dry-run -v --no-color --seed=2) || \
+		{ rv=$$?; echo "$$out" >&2; exit $$rv; }; \
+	echo "$$out" | head -n -1 | grep 'test.go' | sed 's/^/* /; s/\(Suite\) /\1\//g'
 
 .PHONY: .set-core-pattern
 .set-core-pattern:
