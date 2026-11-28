@@ -183,8 +183,9 @@ HST_TMP_DIR:=/tmp/hst
 DOCKER_CAPABILITIES:=--privileged
 DOCKER_DEVICES:=--device /dev/vhost-net:/dev/vhost-net --device /dev/net/tun:/dev/net/tun
 # Keep the Go build cache outside the workspace and reuse it across test runs.
+GO_BUILD_CACHE_VOLUME := hs-test-go-build-cache
 DOCKER_VOLUMES:=-v $(WS_ROOT):$(WS_ROOT) -v /var/run/docker.sock:/var/run/docker.sock -v $(HST_TMP_DIR):$(HST_TMP_DIR) \
-	-v /etc/localtime:/etc/localtime:ro $(CORE_VOLUME) -v hs-test-go-build-cache:/root/.cache/go-build
+	-v /etc/localtime:/etc/localtime:ro $(CORE_VOLUME) -v $(GO_BUILD_CACHE_VOLUME):/root/.cache/go-build
 DOCKER_PROXY:=-e HTTP_PROXY=$(HTTP_PROXY) -e HTTPS_PROXY=$(HTTPS_PROXY) -e NO_PROXY=$(NO_PROXY)
 DOCKER_COMMON_ARGS:=$(DOCKER_TTY) --rm $(DOCKER_CAPABILITIES) $(DOCKER_DEVICES) $(DOCKER_PROXY) \
 		-e GITHUB_REPO_URL=$(GITHUB_REPO_URL) $(DOCKER_VOLUMES) --name $(GINKGO_CONTAINER) \
@@ -454,7 +455,8 @@ clear-hst-registry:
 
 # Full hst cleanup. Run only when no other hst instance is running.
 # It removes all containers labelled by hs-test, all images, the local registry
-# and its contents, the hst_builder, and the default builder cache.
+# and its contents, the hst_builder, the default builder cache, and the Go build
+# cache volume.
 .PHONY: clean-hst-docker-state
 clean-hst-docker-state:
 	@echo "Removing all hs-test containers and their anonymous volumes:"
@@ -478,3 +480,6 @@ clean-hst-docker-state:
 	fi
 	@docker buildx prune --builder default --all --force
 	@docker volume prune --force
+	@if docker volume inspect "$(GO_BUILD_CACHE_VOLUME)" >/dev/null 2>&1; then \
+		docker volume rm "$(GO_BUILD_CACHE_VOLUME)"; \
+	fi

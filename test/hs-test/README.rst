@@ -270,10 +270,11 @@ the id recorded in ``.last_hst_run_id`` unless ``RUN_ID`` is given.
 
 ``make clean-hst-docker-state`` removes all hs-test labelled containers and their
 anonymous volumes, hs-test images, the local registry container and its contents,
-the ``hst_builder`` builder and its cache, and the default builder cache.
-Run it only when no other hs-test instance is using the same Docker daemon, since
-it removes resources for every hs-test run on that daemon. It does not remove
-named volumes or run a broad ``docker system prune``.
+the ``hst_builder`` builder and its cache, the default builder cache, and the
+``hs-test-go-build-cache`` volume. Run it only when no other hs-test instance
+is using the same Docker daemon, since it removes resources for every hs-test
+run on that daemon. The volume prune applies to dangling anonymous Docker
+volumes.
 
 Images are tagged with ``RUN_ID`` too, so ``make build`` in one checkout does not
 replace the VPP under test in the other. Topology files name images without a tag
