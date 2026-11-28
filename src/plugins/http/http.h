@@ -1424,7 +1424,9 @@ http_add_custom_header2 (http_headers_ctx_t *ctx, const char *name, uword name_l
   http_custom_token_t *value_token;
   http_app_header_name_t *name_token;
 
-  if ((ctx->tail_offset + 2 * sizeof (http_custom_token_t) + name_len + value_len) > ctx->len)
+  /* Custom header names store their length in 16 bits */
+  if (name_len > CLIB_U16_MAX ||
+      (ctx->tail_offset + 2 * sizeof (http_custom_token_t) + name_len + value_len) > ctx->len)
     return -1;
 
   /* name */
