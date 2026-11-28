@@ -3293,6 +3293,36 @@ http_test_http_headers_rx_to_tx (vlib_main_t *vm)
 }
 
 static int
+http_test_custom_header_name_len (vlib_main_t *vm)
+{
+  http_app_header_name_t *name_token;
+  http_headers_ctx_t ctx;
+  u8 *buf = 0, *name = 0;
+  u32 expected_len;
+  int rv;
+
+  vec_validate_init_empty (name, CLIB_U16_MAX, 'a');
+  vec_validate (buf, 2 * CLIB_U16_MAX);
+  http_init_headers_ctx (&ctx, buf, vec_len (buf));
+
+  rv = http_add_custom_header (&ctx, (char *) name, vec_len (name), http_token_lit ("v"));
+  HTTP_TEST ((rv == -1 && ctx.tail_offset == 0),
+	     "custom header name of %u bytes rejected (rv %d, tail_offset %u)", vec_len (name), rv,
+	     ctx.tail_offset);
+
+  rv = http_add_custom_header (&ctx, (char *) name, CLIB_U16_MAX, http_token_lit ("v"));
+  name_token = (http_app_header_name_t *) buf;
+  expected_len = sizeof (http_app_header_name_t) + CLIB_U16_MAX + sizeof (http_custom_token_t) + 1;
+  HTTP_TEST ((rv == 0 && name_token->len == CLIB_U16_MAX && ctx.tail_offset == expected_len),
+	     "custom header name of %u bytes added (rv %d, len %u, tail_offset %u)", CLIB_U16_MAX,
+	     rv, name_token->len, ctx.tail_offset);
+
+  vec_free (name);
+  vec_free (buf);
+  return 0;
+}
+
+static int
 http_test_rx_publication (vlib_main_t *vm)
 {
   session_enable_disable_args_t session_args = {
@@ -6046,6 +6076,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_http_lookup_header_name (vm);
       else if (unformat (input, "headers-rx-to-tx"))
 	res = http_test_http_headers_rx_to_tx (vm);
+      else if (unformat (input, "custom-header-name-len"))
+	res = http_test_custom_header_name_len (vm);
       else if (unformat (input, "parse-content-length"))
 	res = http_test_parse_content_length (vm);
       else if (unformat (input, "decode-chunked"))
@@ -6105,6 +6137,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  if ((res = http_test_http_lookup_header_name (vm)))
 	    goto done;
 	  if ((res = http_test_http_headers_rx_to_tx (vm)))
+	    goto done;
+	  if ((res = http_test_custom_header_name_len (vm)))
 	    goto done;
 	  if ((res = http_test_parse_content_length (vm)))
 	    goto done;
