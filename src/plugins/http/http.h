@@ -1971,7 +1971,8 @@ http_parse_masque_host_port (u8 *path, u32 path_len,
 #define HTTP_VARINT_MAX				 0x3FFFFFFFFFFFFFFF
 #define HTTP_VARINT_MAX_LEN			 8
 #define HTTP_CAPSULE_HEADER_MAX_SIZE		 8
-#define HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD 5
+/* Type (1 byte), length (4 byte varint for the max payload) and context ID (1 byte) */
+#define HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD 6
 #define HTTP_UDP_PAYLOAD_MAX_LEN		 65527
 #define HTTP_VARINT_MASK			 0x3F
 
