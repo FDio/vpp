@@ -3,12 +3,8 @@ FROM ubuntu:${UBUNTU_VERSION} AS base
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
-# set proxy env vars because nginx might fail to download without them
-ARG http_proxy
-ENV http_proxy=${http_proxy}
-ENV https_proxy=${http_proxy}
-ENV HTTP_PROXY=${http_proxy}
-ENV HTTPS_PROXY=${http_proxy}
+# Downloads need the proxy only while building. The proxy build args are predefined, so RUN steps
+# get them without persisting them in the image, where test clients would send traffic to the proxy
 
 # Add a non-root user (useful for containers that need it)
 RUN groupadd -r vpp && useradd -r -g vpp -s /bin/bash vpp
