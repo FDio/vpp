@@ -1,0 +1,322 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "717fca8e_9f56cc81",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-28T11:27:20Z",
+      "side": 1,
+      "message": "Can we split this into three commits?\n1. session: add app-worker rpc helper (if needed)\n2. quic: add send side STOP_SENDING notification\n3. http: add 100 Continue support",
+      "revId": "0b1d5898a82c34194e06519416e12df506ccc5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2d3936de_ee95830a",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1245,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-28T11:27:20Z",
+      "side": 1,
+      "message": "this can be removed now",
+      "revId": "0b1d5898a82c34194e06519416e12df506ccc5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f29be786_1fa26def",
+        "filename": "src/plugins/http/http.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1489,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-28T11:27:20Z",
+      "side": 1,
+      "message": "this can go back to original state, right?",
+      "range": {
+        "startLine": 1483,
+        "startChar": 0,
+        "endLine": 1489,
+        "endChar": 37
+      },
+      "revId": "0b1d5898a82c34194e06519416e12df506ccc5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e834be4c_3fd17d89",
+        "filename": "src/plugins/http/http1/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 736,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-28T11:27:20Z",
+      "side": 1,
+      "message": "can we move this to line 728, something like this:\nif (end - p \u003c 3 || (end - p \u003e 3 \u0026\u0026 p[3] !\u003d \u0027 \u0027))",
+      "range": {
+        "startLine": 736,
+        "startChar": 45,
+        "endLine": 736,
+        "endChar": 70
+      },
+      "revId": "0b1d5898a82c34194e06519416e12df506ccc5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0f6b8665_3d52c27f",
+        "filename": "src/plugins/http/http1/http1.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1422,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-28T11:27:20Z",
+      "side": 1,
+      "message": "can we detect \"Expect: 100-continue\" in existing header parsing loops and remove this second pass over all headers? HTTP/1 can do it in http1_identify_headers_chunk(), and hpack_decode_request() covers both HTTP/2 and HTTP/3.",
+      "revId": "0b1d5898a82c34194e06519416e12df506ccc5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1e0bb976_f4e3f1cc",
+        "filename": "src/plugins/http/http2/hpack_inlines.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 651,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-28T11:27:20Z",
+      "side": 1,
+      "message": "can we pass \u0026control_data-\u003ewire_status here and have hpack_parse_status_code() take u16 *? that makes only field it can modify explicit at the call site",
+      "revId": "0b1d5898a82c34194e06519416e12df506ccc5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "66c58af8_06d8cae5",
+        "filename": "src/plugins/http/http2/http2.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-28T11:27:20Z",
+      "side": 1,
+      "message": "move functions instead of forward declaration",
+      "revId": "0b1d5898a82c34194e06519416e12df506ccc5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c6642fb9_5d04b8d9",
+        "filename": "src/plugins/http/http2/http2.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1768,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-28T11:27:20Z",
+      "side": 1,
+      "message": "i’ll submit fix for existing HTTP/2 CONTINUATION ordering bug, i’ll guard queue lookup with hc-\u003eunsent_headers and refresh the control queue head after dispatching headers. please rebase this patch on that fix once it lands.\nfor future changes, please put fixes for pre-existing bugs in separate patch so we can review and merge them independently",
+      "revId": "0b1d5898a82c34194e06519416e12df506ccc5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "087469fb_f28e1e1f",
+        "filename": "src/plugins/http/http3/http3.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1484,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-28T11:27:20Z",
+      "side": 1,
+      "message": "can we wait for peer’s STOP_SENDING before cancelling upload? RFC 9114 4.1 says client should keep sending if server leaves its request receive side open. what requires us to cancel on the final response alone and add stream_set_tx_reset_error() for that path?",
+      "revId": "0b1d5898a82c34194e06519416e12df506ccc5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "48e94b02_be5c4120",
+        "filename": "src/plugins/http/http_buffer.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-28T11:27:20Z",
+      "side": 1,
+      "message": "can we keep existing HTTP_MSG_DATA_PTR contract and require app to enqueue valid body pointer with the request? I want to avoid adding check to buf_ptr_get_segs() on every body chunk",
+      "revId": "0b1d5898a82c34194e06519416e12df506ccc5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "148a53f3_6a8ff353",
+        "filename": "src/plugins/http/http_private.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 431,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-28T11:27:20Z",
+      "side": 1,
+      "message": "this is used only in http/1 can we move it next to http1_parse_state?",
+      "revId": "0b1d5898a82c34194e06519416e12df506ccc5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c4eb0c23_8367ebbf",
+        "filename": "src/plugins/http/http_private.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 815,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-28T11:27:20Z",
+      "side": 1,
+      "message": "http_req_rx_body_pending?",
+      "revId": "0b1d5898a82c34194e06519416e12df506ccc5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fe5854dd_0e47b9f3",
+        "filename": "src/plugins/quic_quicly/quic_quicly.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 582,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-28T11:27:20Z",
+      "side": 1,
+      "message": "I think we need some wrapper in session layer if this is needed",
+      "revId": "0b1d5898a82c34194e06519416e12df506ccc5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a63fbe1f_89e06c45",
+        "filename": "test/hs-test/http1_test.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-28T11:27:20Z",
+      "side": 1,
+      "message": "shared table adds two one-second fallback waits per protocol. can we keep one real-timer case per protocol and exercise both body modes in cases that send explicit 100?",
+      "revId": "0b1d5898a82c34194e06519416e12df506ccc5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "64647bb0_28ad47d1",
+        "filename": "test/hs-test/http1_test.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-28T11:27:20Z",
+      "side": 1,
+      "message": "one socket write doesn’t guarantee that vpp delivers both replies in the same app rx callback. if client sees 100 first, it can start upload and fail this case. can we test single-callback behavior by queuing both replies in app fifo before invoking the callback?",
+      "revId": "0b1d5898a82c34194e06519416e12df506ccc5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e9f1a4ed_75154d64",
+        "filename": "test/hs-test/http1_test.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 551,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-28T11:27:20Z",
+      "side": 1,
+      "message": "this matrix runs 60 vppctl commands plus body-file copies. can we keep one end-to-end exchange per protocol and check exact counter deltas? raw-peer tests already exercise body modes",
+      "revId": "0b1d5898a82c34194e06519416e12df506ccc5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "023d00d3_1d75b997",
+        "filename": "test/hs-test/http2_test.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 1380,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-28T11:27:20Z",
+      "side": 1,
+      "message": "ReadFrame() can consume part of frame before 40 ms deadline expires. treating that timeout as success leaves next read misaligned. can we probe with Peek(1) on the framer’s buffered reader, then give any arriving frame fresh i/o deadline?",
+      "revId": "0b1d5898a82c34194e06519416e12df506ccc5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fd79ca1f_9416baf7",
+        "filename": "test/hs-test/http3_test.go",
+        "patchSetId": 4
+      },
+      "lineNbr": 267,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2026-11-28T11:27:20Z",
+      "side": 1,
+      "message": "40 ms sleep doesn’t establish that vpp processed final headers before STOP_SENDING. can we wait for expected HTTP state on this stream before sending the stop, then verify that response body still arrives?",
+      "revId": "0b1d5898a82c34194e06519416e12df506ccc5e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
