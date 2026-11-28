@@ -1,0 +1,76 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f18bd9e7_4a29f5a8",
+        "filename": "test/vm_vpp_interfaces.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 131,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-28T14:25:06Z",
+      "side": 1,
+      "message": "Fixed the spelling in both the method definition and its call site (`setUpTestTopology`).",
+      "parentUuid": "99584275_4fbf3daa",
+      "revId": "05989a0913dc577e3dd7c287bbc7d047a1183934",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c080ac1b_aff079b5",
+        "filename": "test/vm_vpp_interfaces.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-28T14:25:06Z",
+      "side": 1,
+      "message": "I renamed this to `remaining_ipv6_wait`. It is the unused part of the original two-second monotonic deadline after both IPv6 addresses are observed usable. A loaded runner can save less time or none. If readiness cannot be confirmed, we wait until the existing deadline. The iPerf fallback restores any portion that was skipped.",
+      "parentUuid": "0fb44e48_5c65a470",
+      "revId": "05989a0913dc577e3dd7c287bbc7d047a1183934",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a8955ec9_0febac7d",
+        "filename": "test/vm_vpp_interfaces.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 578,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-28T14:25:06Z",
+      "side": 1,
+      "message": "I restored the existing address selection in the interface setup. The client prefix lookup for the probe is now local to the IPv6 readiness check.",
+      "parentUuid": "d25ea2ce_14c98568",
+      "revId": "05989a0913dc577e3dd7c287bbc7d047a1183934",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9273914d_b358613e",
+        "filename": "test/vpp_qemu_utils.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 707,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-28T14:25:06Z",
+      "side": 1,
+      "message": "Added annotations for the namespace, IPv6 address, monotonic deadline, and boolean return value. Both probe addresses are passed as strings.",
+      "parentUuid": "ac688deb_b7f82efe",
+      "revId": "05989a0913dc577e3dd7c287bbc7d047a1183934",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
