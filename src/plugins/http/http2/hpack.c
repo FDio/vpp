@@ -94,45 +94,49 @@ static http_token_t http_methods[] = {
 
 #define http_method_token(e) http_methods[e].base, http_methods[e].len
 
+static_always_inline hpack_error_t
+hpack_read_string (u8 **src, u8 *end, http_token_t *encoded, u8 *is_huffman)
+{
+  u8 *p = *src;
+  uword len;
+
+  if (p == end)
+    return HPACK_ERROR_COMPRESSION;
+
+  *is_huffman = *p & 0x80;
+  len = hpack_decode_int (&p, end, 7);
+  if (PREDICT_FALSE (len == HPACK_INVALID_INT || len > end - p))
+    return HPACK_ERROR_COMPRESSION;
+
+  encoded->base = (char *) p;
+  encoded->len = len;
+  *src = p + len;
+  return HPACK_ERROR_NONE;
+}
+
 __clib_export hpack_error_t
 hpack_decode_string (u8 **src, u8 *end, u8 **buf, uword *buf_len)
 {
-  u8 *p, is_huffman;
-  uword len;
+  u8 *p = *src, is_huffman;
+  http_token_t encoded;
+  hpack_error_t rv = hpack_read_string (&p, end, &encoded, &is_huffman);
 
-  if (*src == end)
-    return HPACK_ERROR_COMPRESSION;
-
-  p = *src;
-  /* H flag in first bit */
-  is_huffman = *p & 0x80;
-
-  /* length is integer with 7 bit prefix */
-  len = hpack_decode_int (&p, end, 7);
-  if (PREDICT_FALSE (len == HPACK_INVALID_INT))
-    return HPACK_ERROR_COMPRESSION;
-
-  /* do we have everything? */
-  if (len > (end - p))
-    return HPACK_ERROR_COMPRESSION;
-
+  if (rv)
+    return rv;
   if (is_huffman)
     {
-      *src = (p + len);
-      return hpack_decode_huffman (&p, p + len, buf, buf_len);
+      u8 *data = (u8 *) encoded.base;
+      *src = p;
+      return hpack_decode_huffman (&data, p, buf, buf_len);
     }
-  else
-    {
-      /* enough space? */
-      if (len > *buf_len)
-	return HPACK_ERROR_UNKNOWN;
+  if (encoded.len > *buf_len)
+    return HPACK_ERROR_UNKNOWN;
 
-      clib_memcpy (*buf, p, len);
-      *buf_len -= len;
-      *buf += len;
-      *src = (p + len);
-      return HPACK_ERROR_NONE;
-    }
+  clib_memcpy (*buf, encoded.base, encoded.len);
+  *buf_len -= encoded.len;
+  *buf += encoded.len;
+  *src = p;
+  return HPACK_ERROR_NONE;
 }
 
 __clib_export u8 *
@@ -172,7 +176,8 @@ hpack_dynamic_table_free (hpack_dynamic_table_t *table)
 {
   hpack_dynamic_table_entry_t *e;
 
-  while ((e = clib_ring_deq (table->entries)) != 0)
+  /* Evicted slots retain their buffers for reuse. */
+  vec_foreach (e, table->entries)
     vec_free (e->buf);
 
   clib_ring_free (table->entries);
@@ -233,39 +238,40 @@ hpack_dynamic_table_evict_one (hpack_dynamic_table_t *table)
 }
 
 static void
+hpack_dynamic_table_evict_to_size (hpack_dynamic_table_t *table, u32 size)
+{
+  while (table->used > size)
+    hpack_dynamic_table_evict_one (table);
+}
+
+static void
 hpack_dynamic_table_add (hpack_dynamic_table_t *table, http_token_t *name,
 			 http_token_t *value)
 {
-  u32 entry_size;
+  u64 payload_len = (u64) name->len + value->len;
+  u64 entry_size = payload_len + HPACK_DYNAMIC_TABLE_ENTRY_OVERHEAD;
   hpack_dynamic_table_entry_t *e;
-  u8 *buf = 0;
+  u8 *buf;
 
-  entry_size = name->len + value->len + HPACK_DYNAMIC_TABLE_ENTRY_OVERHEAD;
-
-  /* The new entry's name aor value may reference an entry that the eviction
-   * below is about to remove (RFC 7541 Section 4.4). Eviction resets that
-   * entry's buffer (poisoning it under ASAN), so assemble the payload into
-   * a temporary buffer before evicting to avoid reading freed data. */
-  vec_validate (buf, name->len + value->len - 1);
-  clib_memcpy (buf, name->base, name->len);
-  clib_memcpy (buf + name->len, value->base, value->len);
-
-  /* make space or evict all */
-  while (clib_ring_n_enq (table->entries) &&
-	 (table->used + entry_size > table->size))
-    hpack_dynamic_table_evict_one (table);
-
-  /* attempt to add entry larger than the maximum size is not error */
+  /* An oversized entry empties the table without being inserted. */
   if (entry_size > table->size)
     {
-      vec_free (buf);
+      hpack_dynamic_table_evict_to_size (table, 0);
       return;
     }
 
+  /* Copy before eviction since an indexed name may point into an entry being evicted. */
+  buf = vec_new (u8, payload_len);
+  if (name->len)
+    clib_memcpy (buf, name->base, name->len);
+  if (value->len)
+    clib_memcpy (buf + name->len, value->base, value->len);
+  hpack_dynamic_table_evict_to_size (table, table->size - entry_size);
+
   e = clib_ring_enq (table->entries);
   ASSERT (e);
-  vec_validate (e->buf, name->len + value->len - 1);
-  clib_memcpy (e->buf, buf, name->len + value->len);
+  vec_resize (e->buf, payload_len);
+  clib_memcpy (e->buf, buf, payload_len);
   e->name_len = name->len;
   table->used += entry_size;
   vec_free (buf);
@@ -312,81 +318,93 @@ hpack_get_table_entry (uword index, http_token_t *name, http_token_t *value,
     }
 }
 
+static hpack_error_t
+hpack_decode_table_size_updates (u8 **src, u8 *end, hpack_dynamic_table_t *dt)
+{
+  u8 *p = *src;
+
+  while (p != end && (*p & 0xe0) == 0x20)
+    {
+      uword size = hpack_decode_int (&p, end, 5);
+      if (size == HPACK_INVALID_INT || size > dt->max_size)
+	{
+	  HTTP_DBG (1, "invalid dynamic table size update");
+	  return HPACK_ERROR_COMPRESSION;
+	}
+      hpack_dynamic_table_evict_to_size (dt, size);
+      dt->size = size;
+    }
+
+  *src = p;
+  return HPACK_ERROR_NONE;
+}
+
+typedef enum
+{
+  HPACK_FIELD_INVALID,
+  HPACK_FIELD_INDEXED,
+  HPACK_FIELD_INCREMENTAL,
+  HPACK_FIELD_LITERAL,
+  HPACK_FIELD_NEVER_INDEXED,
+} hpack_field_type_t;
+
+static_always_inline hpack_field_type_t
+hpack_decode_field_prefix (u8 **src, u8 *end, uword *index)
+{
+  u8 prefix = **src, prefix_len;
+  hpack_field_type_t type;
+
+  if (prefix & 0x80)
+    {
+      type = HPACK_FIELD_INDEXED;
+      prefix_len = 7;
+    }
+  else if (prefix & 0x40)
+    {
+      type = HPACK_FIELD_INCREMENTAL;
+      prefix_len = 6;
+    }
+  else if (prefix & 0x20)
+    {
+      /* The field block parser handles leading size updates. */
+      HTTP_DBG (1, "dynamic table size update after first field");
+      return HPACK_FIELD_INVALID;
+    }
+  else
+    {
+      type = (prefix & 0x10) ? HPACK_FIELD_NEVER_INDEXED : HPACK_FIELD_LITERAL;
+      prefix_len = 4;
+    }
+
+  *index = hpack_decode_int (src, end, prefix_len);
+  if (*index == HPACK_INVALID_INT || (type == HPACK_FIELD_INDEXED && !*index))
+    {
+      HTTP_DBG (1, "invalid index");
+      return HPACK_FIELD_INVALID;
+    }
+  return type;
+}
+
 __clib_export hpack_error_t
 hpack_decode_header (u8 **src, u8 *end, u8 **buf, uword *buf_len, u32 *name_len, u32 *value_len,
 		     void *decoder_ctx, u8 *never_index)
 {
   hpack_dynamic_table_t *dt = (hpack_dynamic_table_t *) decoder_ctx;
-  u8 *p;
-  u8 value_is_indexed = 0, add_new_entry = 0;
-  uword old_len, new_max, index = 0;
+  u8 *p = *src;
+  uword old_len, index;
   http_token_t name = { 0 }, value = { 0 };
+  hpack_field_type_t type;
   hpack_error_t rv;
 
-  ASSERT (*src < end);
-  p = *src;
-
-  /* dynamic table size update */
-  while ((*p & 0xE0) == 0x20)
-    {
-      new_max = hpack_decode_int (&p, end, 5);
-      if (p == end || new_max > (uword) dt->max_size)
-	{
-	  HTTP_DBG (1, "invalid dynamic table size update");
-	  return HPACK_ERROR_COMPRESSION;
-	}
-      while (clib_ring_n_enq (dt->entries) && new_max > dt->used)
-	hpack_dynamic_table_evict_one (dt);
-      dt->size = (u32) new_max;
-    }
-
-  if (*p & 0x80) /* indexed header field */
-    {
-      index = hpack_decode_int (&p, end, 7);
-      /* index value of 0 is not used */
-      if (index == 0 || index == HPACK_INVALID_INT)
-	{
-	  HTTP_DBG (1, "invalid index");
-	  return HPACK_ERROR_COMPRESSION;
-	}
-      value_is_indexed = 1;
-    }
-  else if (*p > 0x40) /* incremental indexing - indexed name */
-    {
-      index = hpack_decode_int (&p, end, 6);
-      /* index value of 0 is not used */
-      if (index == 0 || index == HPACK_INVALID_INT)
-	{
-	  HTTP_DBG (1, "invalid index");
-	  return HPACK_ERROR_COMPRESSION;
-	}
-      add_new_entry = 1;
-    }
-  else if (*p == 0x40) /* incremental indexing - new name */
-    {
-      add_new_entry = 1;
-      p++;
-    }
-  else /* without indexing / never indexed */
-    {
-      *never_index = *p >> 4;
-      if ((*p & 0x0F) == 0) /* new name */
-	p++;
-      else /* indexed name */
-	{
-	  index = hpack_decode_int (&p, end, 4);
-	  /* index value of 0 is not used */
-	  if (index == 0 || index == HPACK_INVALID_INT)
-	    {
-	      HTTP_DBG (1, "invalid index");
-	      return HPACK_ERROR_COMPRESSION;
-	    }
-	}
-    }
+  ASSERT (p < end);
+  type = hpack_decode_field_prefix (&p, end, &index);
+  if (type == HPACK_FIELD_INVALID)
+    return HPACK_ERROR_COMPRESSION;
+  *never_index = type == HPACK_FIELD_NEVER_INDEXED;
 
   if (index)
     {
-      rv = hpack_get_table_entry (index, &name, &value, value_is_indexed, dt);
+      rv = hpack_get_table_entry (index, &name, &value, type == HPACK_FIELD_INDEXED, dt);
       if (rv)
 	{
 	  HTTP_DBG (1, "entry index %llu error", index);
@@ -401,7 +419,7 @@ hpack_decode_header (u8 **src, u8 *end, u8 **buf, uword *buf_len, u32 *name_len,
       *buf_len -= name.len;
       *buf += name.len;
       *name_len = name.len;
-      if (value_is_indexed)
+      if (type == HPACK_FIELD_INDEXED)
 	{
 	  if (value.len > *buf_len)
 	    {
@@ -428,7 +446,7 @@ hpack_decode_header (u8 **src, u8 *end, u8 **buf, uword *buf_len, u32 *name_len,
       name.len = *name_len;
     }
 
-  if (!value_is_indexed)
+  if (type != HPACK_FIELD_INDEXED)
     {
       old_len = *buf_len;
       value.base = (char *) *buf;
@@ -442,7 +460,7 @@ hpack_decode_header (u8 **src, u8 *end, u8 **buf, uword *buf_len, u32 *name_len,
       value.len = *value_len;
     }
 
-  if (add_new_entry)
+  if (type == HPACK_FIELD_INCREMENTAL)
     hpack_dynamic_table_add (dt, &name, &value);
 
   *src = p;
@@ -456,36 +474,96 @@ static const http2_error_t hpack_error_to_http2_error[] = {
   [HPACK_ERROR_UNKNOWN] = HTTP2_ERROR_INTERNAL_ERROR,
 };
 
-static hpack_error_t
-hpack_decode_trailer_header (u8 **src, u8 *end, u8 **buf, uword *buf_len, u32 *name_len,
-			     u32 *value_len, void *decoder_ctx, u8 *never_index)
-{
-  /* Size updates are only allowed at the start of a field block. */
-  if ((**src & 0xe0) == 0x20)
-    return HPACK_ERROR_COMPRESSION;
-  return hpack_decode_header (src, end, buf, buf_len, name_len, value_len, decoder_ctx,
-			      never_index);
-}
-
 __clib_export http2_error_t
 hpack_parse_trailers (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
 		      hpack_dynamic_table_t *dynamic_table)
 {
-  u8 *p = src, *end = src + src_len;
+  u8 *end = src + src_len;
   hpack_error_t rv;
 
-  /* A field block containing only table-size updates is a valid empty trailer. */
-  while (p != end && (*p & 0xe0) == 0x20)
-    {
-      uword size = hpack_decode_int (&p, end, 5);
-      if (size == HPACK_INVALID_INT || size > dynamic_table->max_size)
-	return HTTP2_ERROR_COMPRESSION_ERROR;
-      while (clib_ring_n_enq (dynamic_table->entries) && dynamic_table->used > size)
-	hpack_dynamic_table_evict_one (dynamic_table);
-      dynamic_table->size = size;
-    }
-  rv = hpack_decode_trailers (p, end, dst, dst_len, dynamic_table, hpack_decode_trailer_header);
+  rv = hpack_decode_table_size_updates (&src, end, dynamic_table);
+  if (!rv)
+    rv = hpack_decode_trailers (src, end, dst, dst_len, dynamic_table, hpack_decode_header);
   return hpack_error_to_http2_error[rv];
+}
+
+static hpack_error_t
+hpack_decode_discarded_string (u8 **src, u8 *end, http_token_t *token, u8 **scratch, uword capacity,
+			       uword offset)
+{
+  u8 is_huffman, *buf = 0, *data;
+  uword buf_len = 0;
+  hpack_error_t rv = hpack_read_string (src, end, token, &is_huffman);
+
+  /* Raw strings can reference the input block. */
+  if (rv || !is_huffman)
+    return rv;
+
+  data = (u8 *) token->base;
+  if (offset < capacity && token->len)
+    {
+      if (!*scratch)
+	*scratch = vec_new (u8, capacity);
+      buf = *scratch + offset;
+      buf_len = capacity - offset;
+    }
+  token->base = (char *) buf;
+  return hpack_decode_huffman_inline (data, *src, &buf, &buf_len, &token->len);
+}
+
+static hpack_error_t
+hpack_discard_header (u8 **src, u8 *end, hpack_dynamic_table_t *dt, u8 **scratch)
+{
+  uword index, capacity = 0;
+  hpack_field_type_t type = hpack_decode_field_prefix (src, end, &index);
+  http_token_t name = { 0 }, value = { 0 };
+  hpack_error_t rv = HPACK_ERROR_NONE;
+
+  if (type == HPACK_FIELD_INVALID ||
+      index > HPACK_STATIC_TABLE_SIZE + clib_ring_n_enq (dt->entries))
+    return HPACK_ERROR_COMPRESSION;
+  if (type == HPACK_FIELD_INDEXED)
+    return HPACK_ERROR_NONE;
+
+  /* Only literals that update the table need decoded bytes. */
+  if (type == HPACK_FIELD_INCREMENTAL && dt->size > HPACK_DYNAMIC_TABLE_ENTRY_OVERHEAD)
+    capacity = dt->size - HPACK_DYNAMIC_TABLE_ENTRY_OVERHEAD;
+
+  if (index && type == HPACK_FIELD_INCREMENTAL)
+    rv = hpack_get_table_entry (index, &name, &value, 0, dt);
+  else if (!index)
+    rv = hpack_decode_discarded_string (src, end, &name, scratch, capacity, 0);
+  if (rv)
+    return rv;
+
+  rv = hpack_decode_discarded_string (src, end, &value, scratch, capacity, name.len);
+  if (!rv && type == HPACK_FIELD_INCREMENTAL)
+    hpack_dynamic_table_add (dt, &name, &value);
+  return rv;
+}
+
+/* Requests whose headers don't fit the buffer are rejected without closing the connection, so the
+ * rest of their field block must still be decoded to keep the dynamic table in sync with the peer's
+ * encoder (RFC 9113 Section 10.5.1). */
+static hpack_error_t
+hpack_decode_request_header (u8 **src, u8 *end, u8 **buf, uword *buf_len, u32 *name_len,
+			     u32 *value_len, void *decoder_ctx, u8 *never_index)
+{
+  u8 *p = *src, *scratch = 0;
+  hpack_error_t rv;
+
+  rv = hpack_decode_header (src, end, buf, buf_len, name_len, value_len, decoder_ctx, never_index);
+  if (rv != HPACK_ERROR_UNKNOWN)
+    return rv;
+
+  /* Retry the field that overflowed, then discard the remaining fields. */
+  do
+    rv = hpack_discard_header (&p, end, decoder_ctx, &scratch);
+  while (!rv && p != end);
+  vec_free (scratch);
+
+  /* Still too large for the request */
+  return rv ? rv : HPACK_ERROR_UNKNOWN;
 }
 
 __clib_export http2_error_t
@@ -494,10 +572,13 @@ hpack_parse_request (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
 		     http_field_line_t **headers,
 		     hpack_dynamic_table_t *dynamic_table)
 {
+  u8 *end = src + src_len;
   hpack_error_t rv;
-  rv = hpack_decode_request (src, src + src_len, dst, dst_len, control_data,
-			     headers, (void *) dynamic_table,
-			     hpack_decode_header);
+
+  rv = hpack_decode_table_size_updates (&src, end, dynamic_table);
+  if (!rv)
+    rv = hpack_decode_request (src, end, dst, dst_len, control_data, headers, dynamic_table,
+			       hpack_decode_request_header);
   HTTP_DBG (3, "%U", format_hpack_dynamic_table, dynamic_table);
   return hpack_error_to_http2_error[rv];
 }
@@ -508,10 +589,13 @@ hpack_parse_response (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
 		      http_field_line_t **headers,
 		      hpack_dynamic_table_t *dynamic_table)
 {
+  u8 *end = src + src_len;
   hpack_error_t rv;
-  rv = hpack_decode_response (src, src + src_len, dst, dst_len, control_data,
-			      headers, (void *) dynamic_table,
-			      hpack_decode_header);
+
+  rv = hpack_decode_table_size_updates (&src, end, dynamic_table);
+  if (!rv)
+    rv = hpack_decode_response (src, end, dst, dst_len, control_data, headers, dynamic_table,
+				hpack_decode_header);
   HTTP_DBG (3, "%U", format_hpack_dynamic_table, dynamic_table);
   return hpack_error_to_http2_error[rv];
 }
