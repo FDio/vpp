@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "92322a4c_6acd33c4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2267
+      },
+      "writtenOn": "2026-11-28T00:00:45Z",
+      "side": 1,
+      "message": "Thanks Damjan, I\u0027ve updated the patch",
+      "revId": "e056274465a0ec031ca2b2d3777bce2490cd435b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
