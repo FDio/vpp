@@ -549,6 +549,10 @@ cnat_snat_cleanup (cnat_snat_policy_main_t *cpm, cnat_snat_policy_entry_t *cpe, 
   cnat_snat_policy_entry_cleanup (cpe);
   cnat_free_port_allocator (fwd_fib_index);
 
+  /* lookups for fibs without a policy return the default */
+  if (cpm->snat_default_policy == cpe)
+    cpm->snat_default_policy = 0;
+
   pool_put_index (cpm->snat_policies_pool, index);
 }
 

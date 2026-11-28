@@ -1120,6 +1120,22 @@ class TestCNatTranslationCLI(CnatCommonTestCase):
                 if t.translation.id not in before_ids:
                     self.vapi.cnat_translation_del(id=t.translation.id)
 
+    def test_cnat_cli_snat_policy_delete(self):
+        """CNat default snat policy delete and re-add"""
+        self.vapi.cli("set cnat snat-policy addr 192.0.2.1")
+        self.assertIn("192.0.2.1", self.vapi.cli("show cnat snat-policy"))
+
+        # no address deletes the policy, including as the default
+        self.vapi.cli("set cnat snat-policy addr 0.0.0.0")
+        with self.assertRaises(CliFailedCommandError):
+            self.vapi.cli("show cnat snat-policy")
+
+        self.vapi.cli("set cnat snat-policy addr 192.0.2.2")
+        show = self.vapi.cli("show cnat snat-policy")
+        self.assertIn("192.0.2.2", show)
+        self.assertNotIn("192.0.2.1", show)
+        self.vapi.cli("set cnat snat-policy addr 0.0.0.0")
+
 
 @unittest.skipIf("cnat" in config.excluded_plugins, "Exclude CNAT plugin tests")
 class TestCNatSourceNAT(CnatCommonTestCase):
