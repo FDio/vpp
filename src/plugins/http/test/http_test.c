@@ -521,6 +521,19 @@ http_test_udp_payload_datagram (vlib_main_t *vm)
   HTTP_TEST ((buffer[3] == 0xFF), "context_id should not be set");
   vec_free (buffer);
 
+  /* Largest payload needs a 4 byte length, so the capsule header takes the whole overhead */
+  vec_validate_init_empty (buffer, HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD + 2, 0xFF);
+  ret = http_encap_udp_payload_datagram (buffer, HTTP_UDP_PAYLOAD_MAX_LEN, 0);
+  payload_offset = ret - buffer;
+  HTTP_TEST ((payload_offset == 6), "payload_offset=%u should be 6", payload_offset);
+  HTTP_TEST ((payload_offset <= HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD),
+	     "capsule header %u should fit in the overhead %u", payload_offset,
+	     HTTP_UDP_PROXY_DATAGRAM_CAPSULE_OVERHEAD);
+  rv = http_decap_udp_payload_datagram (buffer, payload_offset, &payload_offset, &payload_len, 0);
+  HTTP_TEST ((rv == HTTP_CAPSULE_NO_ERROR && payload_len == HTTP_UDP_PAYLOAD_MAX_LEN),
+	     "max payload capsule should decap, payload_len=%llu", payload_len);
+  vec_free (buffer);
+
   return 0;
 }
 
