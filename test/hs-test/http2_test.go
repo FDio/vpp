@@ -32,7 +32,7 @@ func init() {
 		Http2ClientStreamingFinalResetTest, Http2ClientKnownLengthFinalResetTest, Http2ClientStreamingBodylessTest,
 		Http2ServerStreamingBodyTest, Http2ServerStreamingPaddingTest,
 		Http2ServerStreamingMultiplexingTest, Http2ServerStreamingLengthTest,
-		Http2ServerStreamingRejectedTest,
+		Http2ServerStreamingRejectedTest, Http2ContinuationTooLargeTest,
 		Http2ClientStreamingTxTest, Http2ClientStreamingTxWindowTest,
 		Http2ClientPutStreamingTest, Http2ClientPutRedirectTest, Http2ServerStreamingTxTest,
 		Http2ServerStreamingTxWindowTest, Http2ServerStreamingTxEOFWindowTest, Http2ClientStreamingTxReplyTest,
@@ -1060,6 +1060,30 @@ func Http2TrailerErrorsTest(s *Http2Suite) {
 		}
 		AssertNil(p.conn.Close())
 	}
+}
+
+func Http2ContinuationTooLargeTest(s *Http2Suite) {
+	address := net.JoinHostPort(s.VppAddr(), s.Ports.Port1)
+	// 4 KB fifos limit the header list to 2 KB
+	AssertEmpty(s.Containers.Vpp.VppInstance.Vppctl("http cli server fifo-size 4 uri http://" + address))
+	p := http2RxConnect(address)
+	AssertNil(p.framer.WriteHeaders(http2.HeadersFrameParam{StreamID: 1, EndStream: true,
+		BlockFragment: http2HeaderBlock(http2RxRequest(address, "GET")...)}))
+	// The fragments exceed the limit before the block is complete, so it is never decoded
+	filler := make([]byte, 1500)
+	AssertNil(p.framer.WriteContinuation(1, false, filler))
+	AssertNil(p.framer.WriteContinuation(1, true, filler))
+	for {
+		frame, err := p.framer.ReadFrame()
+		AssertNil(err)
+		if f, ok := frame.(*http2.GoAwayFrame); ok {
+			AssertEqual(http2.ErrCodeCompression, f.ErrCode)
+			break
+		}
+		_, err = p.control(frame)
+		AssertNil(err)
+	}
+	AssertNil(p.conn.Close())
 }
 
 func Http2ClientStreamingAbortTest(s *Http2Suite) {

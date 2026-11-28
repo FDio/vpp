@@ -2826,11 +2826,12 @@ http2_handle_continuation_frame (http_ctx_t *hc, http2_frame_header_t *fh)
     }
 
   /* limit how much we can buffer, max_header_list_size should be fine even for compressed headers,
-   * worst case we fail during decompression */
+   * worst case we fail during decompression. A field block that is not decompressed leaves the
+   * decoder out of sync, so it is a compression error (RFC 9113 Section 4.3) */
   if ((vec_len (hc->unparsed_headers) + fh->length) > hc->settings.max_header_list_size)
     {
       vec_free (hc->unparsed_headers);
-      return HTTP2_ERROR_INTERNAL_ERROR;
+      return HTTP2_ERROR_COMPRESSION_ERROR;
     }
 
   vec_add2 (hc->unparsed_headers, p, fh->length);
