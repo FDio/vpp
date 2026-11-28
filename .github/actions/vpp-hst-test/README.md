@@ -35,10 +35,10 @@ use `MW_PARALLEL=false` because NUMA-aware MW execution requires
 
 After tests, the action runs `make clean-hst-docker-state`, which removes
 hst containers, images, the local registry contents, the `hst_builder` Buildx
-builder/cache. Named volumes and volumes still attached to containers are left
-alone. Nomad hst-class runners bind-mount their task's `local/docker` directory
-at `/var/lib/docker`; Nomad reclaims that storage when it garbage collects the
-allocation.
+builder/cache, and the named `hs-test-go-build-cache` volume. The volume prune
+applies to dangling anonymous volumes. Nomad hst-class runners bind-mount
+their task's `local/docker` directory at `/var/lib/docker`. Nomad reclaims that
+storage when it garbage collects the allocation.
 
 ## Usage
 
