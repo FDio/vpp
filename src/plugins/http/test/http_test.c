@@ -1764,6 +1764,7 @@ http_test_hpack (vlib_main_t *vm)
   N_TEST ("\x7Fprivate", HPACK_ERROR_COMPRESSION);
   /* invalid EOF */
   N_TEST ("\x81\x8C", HPACK_ERROR_COMPRESSION);
+  N_TEST ("\x84\xFF\xFF\xFF\xFF", HPACK_ERROR_COMPRESSION);
   N_TEST ("\x98\xDC\x53\xFF\xFF\xFF\xDF\xFF\xFF\xFF\x14\xFF\xFF\xFF\xF7\xFF"
 	  "\xFF\xFF\xC5\x3F\xFF\xFF\xFD\xFF\xFF",
 	  HPACK_ERROR_COMPRESSION);
@@ -1973,6 +1974,31 @@ http_test_hpack (vlib_main_t *vm)
   HTTP_TEST ((result == 0), "response with Huffman Coding (result=%d)",
 	     result);
 
+  static http2_error_t (*parse_response) (
+    u8 *src, u32 src_len, u8 *dst, u32 dst_len, hpack_response_control_data_t *control_data,
+    http_field_line_t **headers, hpack_dynamic_table_t *dynamic_table);
+  hpack_response_control_data_t response_data;
+  http_field_line_t *response_headers = 0;
+  u8 leading_update[] = { 0x3f, 0x61, 0x88 }; /* Set table size to 128, then :status. */
+  u8 late_update[] = { 0x88, 0x20, 0x90 };    /* :status, size update, accept-encoding. */
+  u8 response_buf[64];
+  http2_error_t response_error;
+
+  parse_response = vlib_get_plugin_symbol ("http_plugin.so", "hpack_parse_response");
+  _hpack_dynamic_table_init (&table, 256);
+  response_error =
+    parse_response (leading_update, sizeof (leading_update), response_buf, sizeof (response_buf),
+		    &response_data, &response_headers, &table);
+  HTTP_TEST (response_error == HTTP2_ERROR_NO_ERROR && table.size == 128,
+	     "response accepts a leading table size update");
+  response_error =
+    parse_response (late_update, sizeof (late_update), response_buf, sizeof (response_buf),
+		    &response_data, &response_headers, &table);
+  HTTP_TEST (response_error == HTTP2_ERROR_COMPRESSION_ERROR && table.size == 128,
+	     "response rejects a table size update after :status");
+  _hpack_dynamic_table_free (&table);
+  vec_free (response_headers);
+
   vlib_cli_output (vm, "hpack_serialize_response");
 
   hpack_response_control_data_t resp_cd = {};
@@ -2101,6 +2127,115 @@ http_test_hpack (vlib_main_t *vm)
   vec_free (server_name);
   vec_free (authority);
 
+  return 0;
+}
+
+static int
+http_test_hpack_too_large (vlib_main_t *vm)
+{
+  static http2_error_t (*parse) (u8 *src, u32 src_len, u8 *dst, u32 dst_len,
+				 hpack_request_control_data_t *control_data,
+				 http_field_line_t **headers, hpack_dynamic_table_t *dynamic_table);
+  static void (*table_init) (hpack_dynamic_table_t *table, u32 max_size);
+  static void (*table_free) (hpack_dynamic_table_t *table);
+  /* GET http://www.example.com/ with the authority added to the dynamic table */
+  u8 req_start[] = { 0x82, 0x86, 0x84, 0x41, 0x0f, 'w', 'w', 'w', '.', 'e',
+		     'x',  'a',	 'm',  'p',  'l',  'e', '.', 'c', 'o', 'm' };
+  /* never indexed x-big with a 300 byte value */
+  u8 big_start[] = { 0x10, 0x05, 'x', '-', 'b', 'i', 'g', 0x7f, 0xad, 0x01 };
+  /* x-sync: ok added to the dynamic table */
+  u8 sync[] = { 0x40, 0x06, 'x', '-', 's', 'y', 'n', 'c', 0x02, 'o', 'k' };
+  /* the authority and x-sync from the dynamic table */
+  u8 next_req[] = { 0x82, 0x86, 0x84, 0xbf, 0xbe };
+  u8 late_update[] = { 0x82, 0x20, 0x84 };	     /* :method, size update, :path. */
+  u8 bad_index[] = { 0x82, 0xc0 };		     /* :method, missing dynamic table entry. */
+  u8 leading_updates[] = { 0x20, 0x3f, 0x61, 0x82 }; /* Set size to 0, then 128, then :method. */
+  hpack_request_control_data_t control_data;
+  http_field_line_t *headers = 0;
+  hpack_dynamic_table_t table;
+  u8 *req = 0, *buf = 0;
+  http2_error_t rv;
+
+  parse = vlib_get_plugin_symbol ("http_plugin.so", "hpack_parse_request");
+  table_init = vlib_get_plugin_symbol ("http_plugin.so", "hpack_dynamic_table_init");
+  table_free = vlib_get_plugin_symbol ("http_plugin.so", "hpack_dynamic_table_free");
+
+  vec_add (req, req_start, sizeof (req_start));
+  vec_add (req, big_start, sizeof (big_start));
+  vec_validate_init_empty (req, vec_len (req) + 299, 'a');
+  vec_add (req, sync, sizeof (sync));
+  vec_add1 (req, 0xbe); /* Reference x-sync while draining. */
+  vec_validate (buf, 254);
+  table_init (&table, 4096);
+
+  rv = parse (req, vec_len (req), buf, vec_len (buf), &control_data, &headers, &table);
+  HTTP_TEST ((rv == HTTP2_ERROR_INTERNAL_ERROR), "headers too large (rv %U)", format_http2_error,
+	     rv);
+  HTTP_TEST ((table.used == 57 + 40),
+	     "fields after the one that doesn't fit still added to the dynamic table (used %u)",
+	     table.used);
+
+  vec_reset_length (headers);
+  rv = parse (next_req, sizeof (next_req), buf, vec_len (buf), &control_data, &headers, &table);
+  HTTP_TEST ((rv == HTTP2_ERROR_NO_ERROR && control_data.authority_len == 15 &&
+	      vec_len (headers) == 1 && headers[0].name_len == 6 &&
+	      !memcmp (control_data.headers + headers[0].name_offset, "x-sync", 6)),
+	     "next request decodes the dynamic table entries (rv %U)", format_http2_error, rv);
+
+  vec_reset_length (headers);
+  rv =
+    parse (late_update, sizeof (late_update), buf, vec_len (buf), &control_data, &headers, &table);
+  HTTP_TEST (rv == HTTP2_ERROR_COMPRESSION_ERROR && table.size == 4096,
+	     "request rejects a table size update after :method");
+  rv = parse (late_update, sizeof (late_update), buf, 1, &control_data, &headers, &table);
+  HTTP_TEST (rv == HTTP2_ERROR_COMPRESSION_ERROR && table.size == 4096,
+	     "oversized request rejects a table size update after :method");
+
+  rv = parse (bad_index, sizeof (bad_index), buf, 1, &control_data, &headers, &table);
+  HTTP_TEST (rv == HTTP2_ERROR_COMPRESSION_ERROR,
+	     "oversized request rejects an invalid dynamic table index");
+
+  rv = parse (leading_updates, sizeof (leading_updates), buf, 1, &control_data, &headers, &table);
+  HTTP_TEST (rv == HTTP2_ERROR_INTERNAL_ERROR && table.size == 128 && table.used == 0,
+	     "oversized request applies leading table size updates");
+
+  /* After :method, insert Huffman-coded private: no-cache, then reference its name without
+   * indexing the Huffman-coded value. */
+  u8 huffman_fields[] = { 0x82, 0x40, 0x85, 0xae, 0xc3, 0x77, 0x1a, 0x4b, 0x86, 0xa8,
+			  0xeb, 0x10, 0x64, 0x9c, 0xbf, 0x0f, 0x2f, 0x81, 0x1f };
+  rv = parse (huffman_fields, sizeof (huffman_fields), buf, 1, &control_data, &headers, &table);
+  HTTP_TEST (rv == HTTP2_ERROR_INTERNAL_ERROR && table.used == 47,
+	     "request discard inserts only the incrementally indexed Huffman field");
+
+  u8 huffman_ref[] = { 0xbe };
+  rv =
+    parse (huffman_ref, sizeof (huffman_ref), buf, vec_len (buf), &control_data, &headers, &table);
+  HTTP_TEST (rv == HTTP2_ERROR_NO_ERROR && control_data.headers_len == 15 &&
+	       !memcmp (buf, "privateno-cache", 15),
+	     "the Huffman name and value survive request discard");
+  vec_reset_length (headers);
+
+  u8 bad_name_index[] = { 0x82, 0x0f, 0x31, 0 };
+  rv = parse (bad_name_index, sizeof (bad_name_index), buf, 1, &control_data, &headers, &table);
+  HTTP_TEST (rv == HTTP2_ERROR_COMPRESSION_ERROR,
+	     "request discard rejects an invalid name index in a literal without indexing");
+
+  /* Set the table size to 50, then try to insert private: www.example.com (54 bytes). */
+  u8 oversized_entry[] = { 0x3f, 0x13, 0x82, 0x7e, 0x8c, 0xf1, 0xe3, 0xc2, 0xe5,
+			   0xf2, 0x3a, 0x6b, 0xa0, 0xab, 0x90, 0xf4, 0xff };
+  oversized_entry[sizeof (oversized_entry) - 1] = 0xfe;
+  rv = parse (oversized_entry, sizeof (oversized_entry), buf, 1, &control_data, &headers, &table);
+  HTTP_TEST (rv == HTTP2_ERROR_COMPRESSION_ERROR && table.used == 47,
+	     "request discard rejects invalid Huffman padding beyond the insertion limit");
+  oversized_entry[sizeof (oversized_entry) - 1] = 0xff;
+  rv = parse (oversized_entry, sizeof (oversized_entry), buf, 1, &control_data, &headers, &table);
+  HTTP_TEST (rv == HTTP2_ERROR_INTERNAL_ERROR && table.used == 0,
+	     "discarded valid entry that exceeds the insertion limit empties the table");
+
+  table_free (&table);
+  vec_free (headers);
+  vec_free (req);
+  vec_free (buf);
   return 0;
 }
 
@@ -6190,6 +6325,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	res = http_test_http_token_is_case (vm);
       else if (unformat (input, "header-table"))
 	res = http_test_http_header_table (vm);
+      else if (unformat (input, "hpack-too-large"))
+	res = http_test_hpack_too_large (vm);
       else if (unformat (input, "hpack"))
 	res = http_test_hpack (vm);
       else if (unformat (input, "h2-frame"))
@@ -6255,6 +6392,8 @@ test_http_command_fn (vlib_main_t *vm, unformat_input_t *input,
 	  if ((res = http_test_http_header_table (vm)))
 	    goto done;
 	  if ((res = http_test_hpack (vm)))
+	    goto done;
+	  if ((res = http_test_hpack_too_large (vm)))
 	    goto done;
 	  if ((res = http_test_h2_frame (vm)))
 	    goto done;

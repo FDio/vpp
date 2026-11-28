@@ -127,36 +127,36 @@ hpack_encode_int (u8 *dst, uword value, u8 prefix_len)
   return dst;
 }
 
-/**
- * Decode
- *
- * @param src Pointer to source buffer which will be advanced
- * @param end End of the source buffer
- * @param buf     Pointer to the buffer where string is decoded which will be
- *                advanced by number of written bytes
- * @param buf_len Length the buffer, will be decreased
- *
- * @return @c HPACK_ERROR_NONE on success
- *
- * @note Caller is responsible to check if there is somthing left in source
- * buffer first
- */
+always_inline void
+hpack_store_huffman_symbol (u8 symbol, u8 **buf, uword *buf_len, uword *decoded_len)
+{
+  if (!decoded_len || *buf_len)
+    {
+      *(*buf)++ = symbol;
+      (*buf_len)--;
+    }
+  if (decoded_len)
+    (*decoded_len)++;
+}
+
+/* With decoded_len, validate and count the whole string while storing only
+ * the prefix that fits in the output buffer. */
 always_inline hpack_error_t
-hpack_decode_huffman (u8 **src, u8 *end, u8 **buf, uword *buf_len)
+hpack_decode_huffman_inline (u8 *p, u8 *end, u8 **buf, uword *buf_len, uword *decoded_len)
 {
   u64 accumulator = 0;
   u8 accumulator_len = 0;
-  u8 *p;
   hpack_huffman_code_t *code;
 
-  p = *src;
+  if (decoded_len)
+    *decoded_len = 0;
   /* An empty Huffman string is valid, semantic validation handles empty fields. */
   if (p == end)
     return HPACK_ERROR_NONE;
   while (1)
     {
       /* out of space?  */
-      if (*buf_len == 0)
+      if (!decoded_len && *buf_len == 0)
 	return HPACK_ERROR_UNKNOWN;
       /* refill */
       while (p < end && accumulator_len <= 56)
@@ -171,9 +171,7 @@ hpack_decode_huffman (u8 **src, u8 *end, u8 **buf, uword *buf_len)
       /* zero code length mean no luck */
       if (PREDICT_TRUE (code->code_len))
 	{
-	  **buf = code->symbol;
-	  (*buf)++;
-	  (*buf_len)--;
+	  hpack_store_huffman_symbol (code->symbol, buf, buf_len, decoded_len);
 	  accumulator_len -= code->code_len;
 	}
       else
@@ -197,12 +195,12 @@ hpack_decode_huffman (u8 **src, u8 *end, u8 **buf, uword *buf_len)
 	  /* trim code to correct length */
 	  u32 code = (accumulator >> (accumulator_len - hg->code_len)) &
 		     ((1 << hg->code_len) - 1);
-	  if (!code)
+	  /* The 30-bit EOS symbol is forbidden inside a string. */
+	  if (code == 0x3fffffff)
 	    return HPACK_ERROR_COMPRESSION;
 	  /* find symbol in the list */
-	  **buf = hg->symbols[code - hg->first_code];
-	  (*buf)++;
-	  (*buf_len)--;
+	  hpack_store_huffman_symbol (hg->symbols[code - hg->first_code], buf, buf_len,
+				      decoded_len);
 	  accumulator_len -= hg->code_len;
 	}
       /* all done */
@@ -217,15 +215,14 @@ hpack_decode_huffman (u8 **src, u8 *end, u8 **buf, uword *buf_len)
 		break;
 
 	      /* out of space?  */
-	      if (*buf_len == 0)
+	      if (!decoded_len && *buf_len == 0)
 		return HPACK_ERROR_UNKNOWN;
 
-	      /* if bogus EOF check bellow will fail */
 	      code = &huff_code_table_fast[(u8) (accumulator
 						 << (8 - accumulator_len))];
-	      **buf = code->symbol;
-	      (*buf)++;
-	      (*buf_len)--;
+	      if (!code->code_len || code->code_len > accumulator_len)
+		return HPACK_ERROR_COMPRESSION;
+	      hpack_store_huffman_symbol (code->symbol, buf, buf_len, decoded_len);
 	      accumulator_len -= code->code_len;
 	      /* end at byte boundary? */
 	      if (accumulator_len == 0)
@@ -239,6 +236,12 @@ hpack_decode_huffman (u8 **src, u8 *end, u8 **buf, uword *buf_len)
 	}
     }
   return HPACK_ERROR_NONE;
+}
+
+always_inline hpack_error_t
+hpack_decode_huffman (u8 **src, u8 *end, u8 **buf, uword *buf_len)
+{
+  return hpack_decode_huffman_inline (*src, end, buf, buf_len, 0);
 }
 
 /**
