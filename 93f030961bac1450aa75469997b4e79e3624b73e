@@ -1,0 +1,40 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b2faf1d7_bfe270ea",
+        "filename": "test/asf/test_vcl.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 287,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-28T12:08:58Z",
+      "side": 1,
+      "message": "Added annotations for the parsed rows, protocol tuple, application, data endpoint and boolean result.",
+      "parentUuid": "6415d963_56bf2422",
+      "revId": "93f030961bac1450aa75469997b4e79e3624b73e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "42ade8db_18f051ae",
+        "filename": "test/asf/test_vcl.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 303,
+      "author": {
+        "id": 333
+      },
+      "writtenOn": "2026-11-28T12:08:58Z",
+      "side": 1,
+      "message": "The comment now names both fields. The transport row starts with `[thread:index][T]` or `[thread:index][U]`. The `thread:index` after `ts` in the TLS, DTLS or HTTP data row (`row[-3]`) references that same transport session ID.",
+      "parentUuid": "fcdbfca8_61f9dd83",
+      "revId": "93f030961bac1450aa75469997b4e79e3624b73e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
