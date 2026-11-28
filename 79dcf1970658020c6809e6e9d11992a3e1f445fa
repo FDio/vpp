@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6415d963_56bf2422",
+        "filename": "test/asf/test_vcl.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 287,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-28T09:49:29Z",
+      "side": 1,
+      "message": "annotations please",
+      "revId": "79dcf1970658020c6809e6e9d11992a3e1f445fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "fcdbfca8_61f9dd83",
+        "filename": "test/asf/test_vcl.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 297,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2026-11-28T09:49:29Z",
+      "side": 1,
+      "message": "What does this comment want to say? which variable is which? what is session id in above or below lines?",
+      "revId": "79dcf1970658020c6809e6e9d11992a3e1f445fa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2"
+    }
+  ]
+}
