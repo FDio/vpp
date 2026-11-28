@@ -1134,6 +1134,13 @@ class TestCNatTranslationCLI(CnatCommonTestCase):
         show = self.vapi.cli("show cnat snat-policy")
         self.assertIn("192.0.2.2", show)
         self.assertNotIn("192.0.2.1", show)
+
+        # a fib without its own policy can't delete the default
+        with self.vapi.assert_negative_api_retval():
+            self.vapi.cnat_set_snat_addresses_v2(
+                fwd_fib_index=5, ret_fib_index=0, sw_if_index=INVALID_INDEX
+            )
+        self.assertIn("192.0.2.2", self.vapi.cli("show cnat snat-policy"))
         self.vapi.cli("set cnat snat-policy addr 0.0.0.0")
 
 

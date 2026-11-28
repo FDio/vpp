@@ -556,6 +556,22 @@ cnat_snat_cleanup (cnat_snat_policy_main_t *cpm, cnat_snat_policy_entry_t *cpe, 
   pool_put_index (cpm->snat_policies_pool, index);
 }
 
+static int
+cnat_snat_policy_is_fib_own (cnat_snat_policy_main_t *cpm, cnat_snat_policy_entry_t *cpe,
+			     u32 fwd_fib_index)
+{
+  u32 index;
+
+  if (!cpe)
+    return 0;
+
+  index = cpe - cpm->snat_policies_pool;
+  return (fwd_fib_index < vec_len (cpm->snat_policy_per_fwd_fib_index4) &&
+	  vec_elt (cpm->snat_policy_per_fwd_fib_index4, fwd_fib_index) == index) ||
+	 (fwd_fib_index < vec_len (cpm->snat_policy_per_fwd_fib_index6) &&
+	  vec_elt (cpm->snat_policy_per_fwd_fib_index6, fwd_fib_index) == index);
+}
+
 __clib_export int
 cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4, u8 ip4_pfx_len,
 	       const ip6_address_t *ip6, u8 ip6_pfx_len, u32 sw_if_index,
@@ -583,6 +599,10 @@ cnat_set_snat (u32 fwd_fib_index, u32 ret_fib_index, const ip4_address_t *ip4, u
   cpe6 = cnat_snat_policy_entry_get (AF_IP6, fwd_fib_index);
   ASSERT (cpe4 == cpe6 || (!sw_if_set && !(ip4_set && ip6_set)));
   cpe = cpe4 ? cpe4 : cpe6;
+
+  /* Fibs without a policy find the default, but can only delete their own */
+  if (is_delete && !cnat_snat_policy_is_fib_own (cpm, cpe, fwd_fib_index))
+    cpe = cnat_snat_policy_is_fib_own (cpm, cpe6, fwd_fib_index) ? cpe6 : 0;
 
   if (cpe)
     {
